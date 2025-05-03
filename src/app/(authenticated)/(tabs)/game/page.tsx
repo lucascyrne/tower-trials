@@ -14,6 +14,14 @@ export default function GamePage() {
   const { user } = useAuth();
   const [showInfo, setShowInfo] = useState(false);
 
+  const handlePlayClick = () => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    router.push('/game/play');
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-md text-center mb-8">
@@ -45,11 +53,11 @@ export default function GamePage() {
           
           <CardContent className="space-y-4">
             <Button 
-              onClick={() => router.push('/game/play')}
+              onClick={handlePlayClick}
               className="w-full py-6 text-lg" 
               size="lg"
             >
-              Jogar
+              {user ? 'Jogar' : 'Entrar para Jogar'}
             </Button>
             
             <Button 

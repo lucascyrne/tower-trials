@@ -1,18 +1,52 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import GameBattle from '@/components/game/game-battle';
 import GameOver from '@/components/game/game-over';
+import { CharacterSelect } from '@/components/game/CharacterSelect';
 import { useGame } from '@/resources/game/game-hook';
+import { CharacterService } from '@/resources/game/character.service';
+import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 export default function GamePlayPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { gameState, gameMessage, startGame } = useGame();
   const [playerName, setPlayerName] = useState('');
-  const { gameState, startGame } = useGame();
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Carregar personagem selecionado
+  useEffect(() => {
+    const loadSelectedCharacter = async () => {
+      const characterId = searchParams.get('character');
+      if (!characterId) return;
+
+      setIsLoading(true);
+      try {
+        const response = await CharacterService.getCharacter(characterId);
+        if (response.success && response.data) {
+          startGame(response.data.name);
+        } else {
+          toast.error('Erro ao carregar personagem', {
+            description: response.error
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar personagem:', error);
+        toast.error('Erro ao carregar personagem');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSelectedCharacter();
+  }, [searchParams]);
 
   const handleStartGame = () => {
     if (!playerName.trim()) {
@@ -23,6 +57,19 @@ export default function GamePlayPage() {
 
   // Renderizar componente com base no modo de jogo
   const renderGameContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        </div>
+      );
+    }
+
+    // Se não tiver characterId na URL, mostrar seleção de personagens
+    if (!searchParams.get('character')) {
+      return <CharacterSelect />;
+    }
+
     switch (gameState.mode) {
       case 'menu':
         return (
@@ -31,6 +78,12 @@ export default function GamePlayPage() {
               <CardTitle className="text-center">Novo Jogo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {gameMessage && (
+                <Alert className="bg-muted">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>{gameMessage}</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <label htmlFor="playerName" className="text-sm font-medium">
                   Nome do Aventureiro
@@ -73,7 +126,7 @@ export default function GamePlayPage() {
         return <GameOver />;
         
       default:
-        return null;
+        return <CharacterSelect />;
     }
   };
 

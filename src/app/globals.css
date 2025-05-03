@@ -1,26 +1,96 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --radius: 0.75rem;
+
+    /* Tema claro - Cores principais */
+    --background: 0 0% 100%;
+    --foreground: 220 45% 15%;
+
+    /* Cards e elementos de UI */
+    --card: 0 0% 98%;
+    --card-foreground: 220 45% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 45% 15%;
+
+    /* Cores de ação e destaque */
+    --primary: 230 95% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 220 45% 15%;
+
+    /* Elementos de interface */
+    --muted: 220 15% 90%;
+    --muted-foreground: 220 20% 40%;
+    --accent: 230 95% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Alertas e destrutivos */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordas e inputs */
+    --border: 220 15% 85%;
+    --input: 220 15% 85%;
+    --ring: 230 95% 45%;
+
+    /* Cores para gráficos */
+    --chart-1: 199 89% 48%; /* Azul principal */
+    --chart-2: 187 65% 54%; /* Azul turquesa */
+    --chart-3: 152 58% 52%; /* Verde água */
+    --chart-4: 219 70% 54%; /* Azul royal */
+    --chart-5: 182 75% 45%; /* Turquesa escuro */
+  }
+
+  .dark {
+    /* Tema escuro - Cores principais */
+    --background: 220 45% 5%;
+    --foreground: 220 15% 95%;
+
+    /* Cards e elementos de UI */
+    --card: 220 45% 8%;
+    --card-foreground: 220 15% 95%;
+    --popover: 220 45% 8%;
+    --popover-foreground: 220 15% 95%;
+
+    /* Cores de ação e destaque */
+    --primary: 230 95% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 35% 15%;
+    --secondary-foreground: 220 15% 95%;
+
+    /* Elementos de interface */
+    --muted: 220 35% 15%;
+    --muted-foreground: 220 15% 65%;
+    --accent: 230 95% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Alertas e destrutivos */
+    --destructive: 0 85% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordas e inputs */
+    --border: 220 35% 20%;
+    --input: 220 35% 20%;
+    --ring: 230 95% 50%;
+
+    /* Cores para gráficos no tema escuro */
+    --chart-1: 199 89% 58%; /* Azul mais claro */
+    --chart-2: 187 65% 64%; /* Azul turquesa mais claro */
+    --chart-3: 152 58% 62%; /* Verde água mais claro */
+    --chart-4: 219 70% 64%; /* Azul royal mais claro */
+    --chart-5: 182 75% 55%; /* Turquesa mais claro */
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased transition-colors duration-300;
+  }
 }
