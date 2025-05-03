@@ -1,0 +1,312 @@
+-- Criar tabela de personagens
+CREATE TABLE IF NOT EXISTS characters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    level INTEGER DEFAULT 1,
+    xp INTEGER DEFAULT 0,
+    xp_next_level INTEGER DEFAULT 100,
+    gold INTEGER DEFAULT 0,
+    hp INTEGER NOT NULL,
+    max_hp INTEGER NOT NULL,
+    mana INTEGER NOT NULL,
+    max_mana INTEGER NOT NULL,
+    atk INTEGER NOT NULL,
+    def INTEGER NOT NULL,
+    speed INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, name)
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_characters_user_id ON characters(user_id);
+CREATE INDEX IF NOT EXISTS idx_characters_level ON characters(level DESC);
+
+-- Trigger para atualizar o updated_at
+CREATE TRIGGER update_characters_updated_at
+    BEFORE UPDATE ON characters
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Função para calcular XP necessário para o próximo nível
+CREATE OR REPLACE FUNCTION calculate_xp_next_level(current_level INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    -- Base XP * (1.5 ^ (level - 1))
+    RETURN FLOOR(100 * POW(1.5, current_level - 1));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para calcular stats base por nível
+CREATE OR REPLACE FUNCTION calculate_base_stats(p_level INTEGER)
+RETURNS TABLE (
+    base_hp INTEGER,
+    base_mana INTEGER,
+    base_atk INTEGER,
+    base_def INTEGER,
+    base_speed INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        100 + (10 * (p_level - 1)) as base_hp,
+        50 + (5 * (p_level - 1)) as base_mana,
+        20 + (2 * (p_level - 1)) as base_atk,
+        10 + (1 * (p_level - 1)) as base_def,
+        10 + (1 * (p_level - 1)) as base_speed;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para criar um novo personagem
+CREATE OR REPLACE FUNCTION create_character(
+    p_user_id UUID,
+    p_name VARCHAR
+)
+RETURNS UUID AS $$
+DECLARE
+    v_character_id UUID;
+    v_base_stats RECORD;
+    v_character_count INTEGER;
+BEGIN
+    -- Verificar limite de personagens
+    SELECT COUNT(*)
+    INTO v_character_count
+    FROM characters
+    WHERE user_id = p_user_id;
+    
+    IF v_character_count >= 3 THEN
+        RAISE EXCEPTION 'Limite máximo de personagens atingido';
+    END IF;
+
+    -- Calcular stats iniciais
+    SELECT * INTO v_base_stats FROM calculate_base_stats(1);
+    
+    -- Inserir novo personagem
+    INSERT INTO characters (
+        user_id,
+        name,
+        level,
+        xp,
+        xp_next_level,
+        gold,
+        hp,
+        max_hp,
+        mana,
+        max_mana,
+        atk,
+        def,
+        speed
+    )
+    VALUES (
+        p_user_id,
+        p_name,
+        1, -- level inicial
+        0, -- xp inicial
+        calculate_xp_next_level(1), -- xp necessário para level 2
+        0, -- gold inicial
+        v_base_stats.base_hp,
+        v_base_stats.base_hp,
+        v_base_stats.base_mana,
+        v_base_stats.base_mana,
+        v_base_stats.base_atk,
+        v_base_stats.base_def,
+        v_base_stats.base_speed
+    )
+    RETURNING id INTO v_character_id;
+    
+    RETURN v_character_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para atualizar stats do personagem
+CREATE OR REPLACE FUNCTION update_character_stats(
+    p_character_id UUID,
+    p_xp INTEGER DEFAULT NULL,
+    p_gold INTEGER DEFAULT NULL,
+    p_hp INTEGER DEFAULT NULL,
+    p_mana INTEGER DEFAULT NULL
+)
+RETURNS TABLE (
+    leveled_up BOOLEAN,
+    new_level INTEGER,
+    new_xp INTEGER,
+    new_xp_next_level INTEGER
+) AS $$
+DECLARE
+    v_current_level INTEGER;
+    v_current_xp INTEGER;
+    v_xp_next_level INTEGER;
+    v_leveled_up BOOLEAN := FALSE;
+    v_base_stats RECORD;
+BEGIN
+    -- Obter dados atuais do personagem
+    SELECT level, xp, xp_next_level 
+    INTO v_current_level, v_current_xp, v_xp_next_level
+    FROM characters 
+    WHERE id = p_character_id;
+    
+    -- Atualizar HP e Mana se fornecidos
+    IF p_hp IS NOT NULL OR p_mana IS NOT NULL THEN
+        UPDATE characters
+        SET
+            hp = COALESCE(p_hp, hp),
+            mana = COALESCE(p_mana, mana)
+        WHERE id = p_character_id;
+    END IF;
+    
+    -- Atualizar gold se fornecido
+    IF p_gold IS NOT NULL THEN
+        UPDATE characters
+        SET gold = gold + p_gold
+        WHERE id = p_character_id;
+    END IF;
+    
+    -- Se XP foi fornecido, verificar level up
+    IF p_xp IS NOT NULL THEN
+        -- Atualizar XP
+        UPDATE characters
+        SET xp = xp + p_xp
+        WHERE id = p_character_id
+        RETURNING xp INTO v_current_xp;
+        
+        -- Verificar level up
+        WHILE v_current_xp >= v_xp_next_level LOOP
+            v_current_level := v_current_level + 1;
+            v_leveled_up := TRUE;
+            
+            -- Calcular novos stats base
+            SELECT * INTO v_base_stats FROM calculate_base_stats(v_current_level);
+            
+            -- Atualizar personagem com novo level e stats
+            UPDATE characters
+            SET
+                level = v_current_level,
+                xp_next_level = calculate_xp_next_level(v_current_level),
+                max_hp = v_base_stats.base_hp,
+                max_mana = v_base_stats.base_mana,
+                atk = v_base_stats.base_atk,
+                def = v_base_stats.base_def,
+                speed = v_base_stats.base_speed,
+                hp = v_base_stats.base_hp, -- Recupera HP totalmente ao subir de nível
+                mana = v_base_stats.base_mana -- Recupera Mana totalmente ao subir de nível
+            WHERE id = p_character_id;
+            
+            -- Atualizar variáveis para próxima iteração
+            v_xp_next_level := calculate_xp_next_level(v_current_level);
+        END LOOP;
+    END IF;
+    
+    RETURN QUERY
+    SELECT 
+        v_leveled_up,
+        v_current_level,
+        v_current_xp,
+        v_xp_next_level;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para buscar personagens do usuário
+CREATE OR REPLACE FUNCTION get_user_characters(p_user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    name VARCHAR(100),
+    level INTEGER,
+    xp INTEGER,
+    xp_next_level INTEGER,
+    gold INTEGER,
+    hp INTEGER,
+    max_hp INTEGER,
+    mana INTEGER,
+    max_mana INTEGER,
+    atk INTEGER,
+    def INTEGER,
+    speed INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT c.*
+    FROM characters c
+    WHERE c.user_id = p_user_id
+    ORDER BY c.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para verificar limite de personagens
+CREATE OR REPLACE FUNCTION check_character_limit(p_user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    character_count INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO character_count
+    FROM characters
+    WHERE user_id = p_user_id;
+    
+    RETURN character_count < 3;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para buscar um personagem específico
+CREATE OR REPLACE FUNCTION get_character(p_character_id UUID)
+RETURNS characters AS $$
+DECLARE
+    v_character characters;
+BEGIN
+    SELECT c.* INTO v_character
+    FROM characters c
+    WHERE c.id = p_character_id
+    AND c.user_id = auth.uid(); -- Garante que apenas o dono do personagem pode vê-lo
+    
+    RETURN v_character;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Habilitar RLS
+ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
+
+-- Remover políticas existentes
+DROP POLICY IF EXISTS "Usuários podem ver seus próprios personagens" ON characters;
+DROP POLICY IF EXISTS "Usuários podem criar seus próprios personagens" ON characters;
+DROP POLICY IF EXISTS "Usuários podem atualizar seus próprios personagens" ON characters;
+DROP POLICY IF EXISTS "Usuários podem deletar seus próprios personagens" ON characters;
+
+-- Criar novas políticas
+CREATE POLICY "Usuários podem ver seus próprios personagens" ON characters
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Usuários podem criar seus próprios personagens" ON characters
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        auth.uid() = user_id
+        AND (
+            SELECT COUNT(*) FROM characters 
+            WHERE user_id = auth.uid()
+        ) < 3
+    );
+
+CREATE POLICY "Usuários podem atualizar seus próprios personagens" ON characters
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Usuários podem deletar seus próprios personagens" ON characters
+    FOR DELETE
+    TO authenticated
+    USING (auth.uid() = user_id);
+
+-- Garantir que a função create_character possa ser executada por usuários autenticados
+GRANT EXECUTE ON FUNCTION create_character TO authenticated;
+
+-- Garantir que a função get_user_characters possa ser executada por usuários autenticados
+GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
+
+-- Garantir que a função get_character possa ser executada por usuários autenticados
+GRANT EXECUTE ON FUNCTION get_character TO authenticated; 
