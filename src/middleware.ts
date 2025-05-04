@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClientHelper } from '@/lib/supabase';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 const publicRoutes = ['/auth', '/logout', '/403', '/404', '/game', '/game/play', '/game/ranking'];
@@ -30,23 +30,9 @@ export async function middleware(req: NextRequest) {
   }
 
   // Criar cliente Supabase no servidor
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
-        },
-        set() {
-          // Este método não é usado no middleware, apenas para satisfazer a interface
-        },
-        remove() {
-          // Este método não é usado no middleware, apenas para satisfazer a interface
-        },
-      },
-    },
-  );
+  const supabase = createServerClientHelper({
+    get: (name) => req.cookies.get(name)
+  });
 
   // Verificar se o usuário está autenticado
   const {
