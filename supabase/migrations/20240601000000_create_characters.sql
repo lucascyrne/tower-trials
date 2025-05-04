@@ -261,6 +261,10 @@ BEGIN
     WHERE c.id = p_character_id
     AND c.user_id = auth.uid(); -- Garante que apenas o dono do personagem pode vê-lo
     
+    IF v_character IS NULL THEN
+        RAISE EXCEPTION 'Personagem não encontrado ou sem permissão';
+    END IF;
+    
     RETURN v_character;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
