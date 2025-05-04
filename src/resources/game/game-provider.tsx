@@ -2,13 +2,14 @@
 
 import React, { ReactNode, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActionType, GameContextState, GameLoadingState } from './game-model';
-import { GameContext, GameContextType, initialContextState, initialGameState } from './game-context';
+import { GameContext, GameContextType, initialGameState } from './game-context';
 import { GameService } from './game-service';
 import { CharacterService } from './character.service';
 import { Character } from './models/character.model';
 import { useAuth } from '../auth/auth-hook';
 import { toast } from 'sonner';
 import { SpellService } from './spell.service';
+import { ConsumableService } from './consumable.service';
 
 interface GameProviderProps {
   children: ReactNode;
@@ -16,7 +17,14 @@ interface GameProviderProps {
 
 export function GameProvider({ children }: GameProviderProps) {
   const [state, setState] = useState<GameContextState>({
-    ...initialContextState,
+    gameState: initialGameState,
+    loading: {
+      loadProgress: false,
+      startGame: false,
+      performAction: false,
+      saveProgress: false
+    },
+    error: null,
     gameMessage: 'Bem-vindo ao Tower Trials! Crie um personagem para iniciar sua aventura.'
   });
   const { user } = useAuth();
@@ -57,10 +65,26 @@ export function GameProvider({ children }: GameProviderProps) {
         if (response.success && response.data) {
           setCharacters(response.data);
           
+          // Verificar se há um personagem na URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const characterId = urlParams.get('character');
+          
+          if (characterId) {
+            const selectedChar = response.data.find(char => char.id === characterId);
+            if (selectedChar) {
+              // Só carrega o personagem se não houver um estado de jogo ativo
+              if (!state.gameState.player.id) {
+                await selectCharacter(selectedChar);
+              } else {
+                setSelectedCharacter(selectedChar);
+              }
+            }
+          }
+          
           if (response.data.length > 0) {
             setState(prev => ({
               ...prev,
-              gameMessage: 'Selecione um personagem para jogar!',
+              gameMessage: prev.gameState.mode === 'menu' ? 'Selecione um personagem para jogar!' : prev.gameMessage,
             }));
           } else {
             setState(prev => ({
@@ -191,6 +215,12 @@ export function GameProvider({ children }: GameProviderProps) {
       ? spellsResponse.data.map(spell => ({ ...spell, current_cooldown: 0 }))
       : [];
 
+    // Obter consumíveis do personagem
+    const consumablesResponse = await ConsumableService.getCharacterConsumables(character.id);
+    const characterConsumables = consumablesResponse.success && consumablesResponse.data
+      ? consumablesResponse.data
+      : [];
+
     // Obter dados do primeiro andar
     const initialFloor = await GameService.getFloorData(1);
     if (!initialFloor) {
@@ -220,6 +250,7 @@ export function GameProvider({ children }: GameProviderProps) {
           specialCooldown: 0,
           floor: 1,
           spells: availableSpells,
+          consumables: characterConsumables,
           active_effects: {
             buffs: [],
             debuffs: [],
@@ -235,7 +266,7 @@ export function GameProvider({ children }: GameProviderProps) {
   }, []);
 
   // Realizar ação do jogador
-  const performAction = useCallback(async (action: ActionType) => {
+  const performAction = useCallback(async (action: ActionType, spellId?: string, consumableId?: string) => {
     if (!selectedCharacter || loadingRef.current) return;
     loadingRef.current = true;
     updateLoading('performAction', true);
@@ -248,10 +279,19 @@ export function GameProvider({ children }: GameProviderProps) {
 
         const { newState, skipTurn, message } = GameService.processPlayerAction(
           action, 
-          prev.gameState
+          prev.gameState,
+          spellId,
+          consumableId
         );
         
         if (skipTurn) {
+          loadingRef.current = false;
+          
+          // Se a fuga foi bem-sucedida, redirecionar para o HUD
+          if (action === 'flee' && message.includes('conseguiu fugir')) {
+            window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
+          }
+          
           return {
             ...prev,
             gameState: {
@@ -274,6 +314,7 @@ export function GameProvider({ children }: GameProviderProps) {
               ...prev,
               gameState: updatedState,
             }));
+            loadingRef.current = false;
           });
           
           return prev;
@@ -316,6 +357,7 @@ export function GameProvider({ children }: GameProviderProps) {
         };
       } catch (error) {
         console.error('Erro ao processar ação:', error instanceof Error ? error.message : 'Erro desconhecido');
+        loadingRef.current = false;
         return {
           ...prev,
           error: error instanceof Error ? error.message : 'Erro ao processar ação',
@@ -345,7 +387,7 @@ export function GameProvider({ children }: GameProviderProps) {
       gameState: state.gameState,
       loading: state.loading,
       error: state.error,
-      gameMessage: state.gameMessage,
+      gameMessage: state.gameMessage || '',
       characters,
       selectedCharacter,
       startGame: createCharacter,

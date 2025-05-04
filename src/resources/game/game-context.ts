@@ -1,7 +1,8 @@
 import { createContext } from 'react';
-import { ActionType, GameContextState, GameState, GamePlayer } from './game-model';
+import { ActionType, GameState, GamePlayer } from './game-model';
 import { GAME_CONSTANTS } from './models/character.model';
 import { ActiveEffects } from './models/spell.model';
+import { Character } from './models/character.model';
 
 const initialActiveEffects: ActiveEffects = {
   buffs: [],
@@ -47,34 +48,44 @@ export const initialGameState: GameState = {
   selectedSpell: null
 };
 
-// Estado inicial do contexto
-export const initialContextState: GameContextState = {
-  gameState: initialGameState,
+// Tipo do contexto do jogo
+export interface GameContextType {
+  gameState: GameState;
   loading: {
-    startGame: false,
-    performAction: false,
-    saveProgress: false,
-    loadProgress: false
-  },
-  error: null,
-  gameMessage: null
-};
-
-// Interface do contexto com todos os métodos disponíveis
-export interface GameContextType extends GameContextState {
-  startGame: (playerName: string) => void;
-  performAction: (action: ActionType, spellId?: string) => void;
+    loadProgress: boolean;
+    startGame: boolean;
+    performAction: boolean;
+    saveProgress: boolean;
+  };
+  error: string | null;
+  gameMessage: string;
+  characters: Character[];
+  selectedCharacter: Character | null;
+  startGame: (name: string) => Promise<void>;
+  selectCharacter: (character: Character) => Promise<void>;
+  performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
-  saveProgress: () => Promise<void>;
   resetError: () => void;
+  saveProgress: () => Promise<void>;
 }
 
 // Criar o contexto
 export const GameContext = createContext<GameContextType>({
-  ...initialContextState,
-  startGame: () => {},
+  gameState: initialGameState,
+  loading: {
+    loadProgress: false,
+    startGame: false,
+    performAction: false,
+    saveProgress: false,
+  },
+  error: null,
+  gameMessage: '',
+  characters: [],
+  selectedCharacter: null,
+  startGame: async () => {},
+  selectCharacter: async () => {},
   performAction: () => {},
   returnToMenu: () => {},
-  saveProgress: async () => {},
-  resetError: () => {}
+  resetError: () => {},
+  saveProgress: async () => {}
 }); 

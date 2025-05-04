@@ -13,6 +13,7 @@ export interface Equipment {
   mana_bonus: number;
   speed_bonus: number;
   price: number;
+  is_unlocked: boolean;
   created_at: string;
   updated_at: string;
 }

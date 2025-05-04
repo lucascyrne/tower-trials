@@ -1,6 +1,6 @@
-import { createBrowserClient } from '@supabase/ssr';
 import { Character, CreateCharacterDTO, UpdateCharacterStatsDTO, calculateBaseStats } from './models/character.model';
 import { EquipmentService } from './equipment.service';
+import { supabase } from '@/lib/supabase';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -9,10 +9,9 @@ interface ServiceResponse<T> {
 }
 
 export class CharacterService {
-  private static supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  private static characterCache: Map<string, Character> = new Map();
+  private static lastFetchTimestamp: number = 0;
+  private static CACHE_DURATION = 5000; // 5 segundos
 
   /**
    * Buscar todos os personagens do usuário
@@ -21,12 +20,29 @@ export class CharacterService {
    */
   static async getUserCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
     try {
-      const { data, error } = await this.supabase
+      // Verificar se já buscamos recentemente
+      const now = Date.now();
+      if (now - this.lastFetchTimestamp < this.CACHE_DURATION) {
+        const cachedCharacters = Array.from(this.characterCache.values());
+        if (cachedCharacters.length > 0) {
+          return { data: cachedCharacters, error: null, success: true };
+        }
+      }
+
+      const { data, error } = await supabase
         .rpc('get_user_characters', {
           p_user_id: userId
         });
 
       if (error) throw error;
+
+      // Atualizar cache
+      this.characterCache.clear();
+      (data as Character[]).forEach(char => {
+        this.characterCache.set(char.id, char);
+      });
+      this.lastFetchTimestamp = now;
+
       return { data: data as Character[], error: null, success: true };
     } catch (error) {
       console.error('Erro ao buscar personagens:', error instanceof Error ? error.message : error);
@@ -41,7 +57,13 @@ export class CharacterService {
    */
   static async getCharacter(characterId: string): Promise<ServiceResponse<Character>> {
     try {
-      const { data, error } = await this.supabase
+      // Verificar cache primeiro
+      const cachedCharacter = this.characterCache.get(characterId);
+      if (cachedCharacter) {
+        return { data: cachedCharacter, error: null, success: true };
+      }
+
+      const { data, error } = await supabase
         .rpc('get_character', {
           p_character_id: characterId
         });
@@ -56,8 +78,12 @@ export class CharacterService {
         };
       }
 
+      // Atualizar cache
+      const character = data as Character;
+      this.characterCache.set(characterId, character);
+
       return { 
-        data: data as Character, 
+        data: character, 
         error: null, 
         success: true 
       };
@@ -79,7 +105,7 @@ export class CharacterService {
   static async createCharacter(data: CreateCharacterDTO): Promise<ServiceResponse<{ id: string }>> {
     try {
       // Verificar se o usuário já tem 3 personagens
-      const { data: characters, error: countError } = await this.supabase
+      const { data: characters, error: countError } = await supabase
         .from('characters')
         .select('id')
         .eq('user_id', data.user_id);
@@ -95,7 +121,7 @@ export class CharacterService {
       }
 
       // Criar novo personagem usando a função RPC
-      const { data: result, error } = await this.supabase
+      const { data: result, error } = await supabase
         .rpc('create_character', {
           p_user_id: data.user_id,
           p_name: data.name
@@ -132,7 +158,7 @@ export class CharacterService {
    */
   static async loadCharacter(characterId: string): Promise<Character> {
     // Carregar dados básicos do personagem
-    const { data: character, error } = await this.supabase
+    const { data: character, error } = await supabase
       .from('characters')
       .select('*')
       .eq('id', characterId)
@@ -164,7 +190,7 @@ export class CharacterService {
     stats: UpdateCharacterStatsDTO
   ): Promise<ServiceResponse<{ leveled_up: boolean; new_level: number; new_xp: number; new_xp_next_level: number }>> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .rpc('update_character_stats', {
           p_character_id: characterId,
           p_xp: stats.xp,
@@ -174,6 +200,11 @@ export class CharacterService {
         });
 
       if (error) throw error;
+
+      // Invalidar cache após atualização
+      this.characterCache.delete(characterId);
+      this.lastFetchTimestamp = 0;
+
       return { data, error: null, success: true };
     } catch (error) {
       console.error('Erro ao atualizar stats:', error instanceof Error ? error.message : error);
@@ -185,7 +216,7 @@ export class CharacterService {
    * Atualizar gold do personagem
    */
   static async updateGold(characterId: string, amount: number): Promise<void> {
-    const { error } = await this.supabase
+    const { error } = await supabase
       .from('characters')
       .update({ gold: amount })
       .eq('id', characterId);
@@ -200,7 +231,7 @@ export class CharacterService {
    */
   static async deleteCharacter(characterId: string): Promise<{ error: string | null }> {
     try {
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('characters')
         .delete()
         .eq('id', characterId);

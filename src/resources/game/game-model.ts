@@ -1,9 +1,10 @@
-import { Character } from './models/character.model';
 import { MonsterBehavior } from './models/monster.model';
 import { PlayerSpell, ActiveEffects } from './models/spell.model';
+import { MonsterDropChance } from './models/monster.model';
+import { CharacterConsumable } from './models/consumable.model';
 
 export type GameMode = 'menu' | 'battle' | 'gameover';
-export type ActionType = 'attack' | 'defend' | 'special' | 'spell';
+export type ActionType = 'attack' | 'defend' | 'special' | 'spell' | 'flee' | 'consumable' | 'continue';
 export type FloorType = 'common' | 'elite' | 'event' | 'boss';
 
 export interface Floor {
@@ -22,19 +23,38 @@ export interface Enemy {
   maxHp: number;
   attack: number;
   defense: number;
+  speed: number;
   image: string;
   behavior: MonsterBehavior;
   mana: number;
   reward_xp: number;
   reward_gold: number;
+  possible_drops?: MonsterDropChance[];
   active_effects: ActiveEffects;
 }
 
-export interface GamePlayer extends Character {
+export interface GamePlayer {
+  id: string;
+  user_id: string;
+  name: string;
+  level: number;
+  xp: number;
+  xp_next_level: number;
+  gold: number;
+  hp: number;
+  max_hp: number;
+  mana: number;
+  max_mana: number;
+  atk: number;
+  def: number;
+  speed: number;
+  created_at: string;
+  updated_at: string;
   isPlayerTurn: boolean;
   specialCooldown: number;
   floor: number;
   spells: PlayerSpell[];
+  consumables?: CharacterConsumable[];
   active_effects: ActiveEffects;
 }
 
@@ -67,4 +87,15 @@ export interface GameContextState {
   loading: GameLoadingState;
   error: string | null;
   gameMessage: string | null;
+}
+
+export interface BattleActionResult {
+  enemyDefeated?: boolean;
+  rewards?: {
+    xp: number;
+    gold: number;
+    drops: { name: string; quantity: number }[];
+    leveledUp: boolean;
+    newLevel?: number;
+  };
 } 

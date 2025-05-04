@@ -7,10 +7,20 @@ export interface Monster {
   atk: number;
   def: number;
   mana: number;
+  speed: number;
   behavior: MonsterBehavior;
   min_floor: number;
   reward_xp: number;
   reward_gold: number;
+  possible_drops?: MonsterDropChance[]; // Lista de possíveis drops
+}
+
+// Interface para chances de drop
+export interface MonsterDropChance {
+  drop_id: string;
+  drop_chance: number; // 0-1 (0-100%)
+  min_quantity: number;
+  max_quantity: number;
 }
 
 // Constantes para comportamentos dos monstros

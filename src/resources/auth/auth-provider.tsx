@@ -104,18 +104,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Observar mudanças na autenticação
   useEffect(() => {
+    // Evitar múltiplas verificações quando a página perde o foco
+    let lastActive = Date.now();
+    const authCheckInterval: NodeJS.Timeout | null = null;
+    
+    const handleVisibilityChange = () => {
+      // Só verifica novamente se passou pelo menos 5 minutos e não estiver em uma rota de jogo
+      if (document.visibilityState === 'visible' && 
+          Date.now() - lastActive > 300000 && // 5 minutos
+          !window.location.pathname.includes('/game/play')) {
+        lastActive = Date.now();
+        setState(prev => ({
+          ...prev,
+          isLoading: true, // Dispara o loadUser
+        }));
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState(prev => ({
-        ...prev,
-        session,
-        isLoading: true, // Dispara o loadUser
-      }));
+      // Só atualiza se a sessão realmente mudou
+      if (JSON.stringify(session) !== JSON.stringify(state.session)) {
+        setState(prev => ({
+          ...prev,
+          session,
+          isLoading: true, // Dispara o loadUser
+        }));
+      }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (authCheckInterval) clearInterval(authCheckInterval);
+    };
+  }, [state.session]);
 
   // Carregar usuário quando necessário
   useEffect(() => {

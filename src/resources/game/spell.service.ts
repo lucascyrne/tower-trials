@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { Spell, SpellEffect } from './models/spell.model';
 import { GamePlayer, Enemy, GameState } from './game-model';
 
@@ -9,10 +9,9 @@ interface ServiceResponse<T> {
 }
 
 export class SpellService {
-  private static supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  private static spellCache: Map<number, Spell[]> = new Map();
+  private static lastFetchTimestamp: number = 0;
+  private static CACHE_DURATION = 300000; // 5 minutos
 
   /**
    * Buscar magias disponíveis para o nível do personagem
@@ -21,10 +20,24 @@ export class SpellService {
    */
   static async getAvailableSpells(level: number): Promise<ServiceResponse<Spell[]>> {
     try {
-      const { data, error } = await this.supabase
+      // Verificar cache primeiro
+      const now = Date.now();
+      if (now - this.lastFetchTimestamp < this.CACHE_DURATION) {
+        const cachedSpells = this.spellCache.get(level);
+        if (cachedSpells) {
+          return { data: cachedSpells, error: null, success: true };
+        }
+      }
+
+      const { data, error } = await supabase
         .rpc('get_available_spells', { p_level: level });
 
       if (error) throw error;
+
+      // Atualizar cache
+      this.spellCache.set(level, data as Spell[]);
+      this.lastFetchTimestamp = now;
+
       return { data: data as Spell[], error: null, success: true };
     } catch (error) {
       console.error('Erro ao buscar magias:', error instanceof Error ? error.message : error);

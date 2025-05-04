@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
 import { AuthError } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import {
   User,
   SignInDTO,
@@ -9,11 +8,6 @@ import {
   AuthResponse,
 } from './auth-model';
 
-// Inicializa o cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 export const AuthService = {
   // Verificar sessão atual
   getSession: async () => {
