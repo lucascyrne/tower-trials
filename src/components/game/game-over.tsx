@@ -4,50 +4,67 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, ArrowRight, Home } from 'lucide-react';
+import { Trophy, Skull } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { RankingService } from '@/resources/game/ranking-service';
+import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
 
 export default function GameOver() {
   const router = useRouter();
-  const { gameState, returnToMenu } = useGame();
+  const { gameState } = useGame();
   const { player, highestFloor, gameMessage } = gameState;
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Função para salvar a pontuação no ranking
-  const saveScore = async () => {
+  // Função para salvar a pontuação no ranking e deletar o personagem
+  const handleGameOver = async () => {
     try {
       setIsSaving(true);
+      setIsDeleting(true);
       
-      const { success, error } = await RankingService.saveScore({
+      // Salvar pontuação no ranking
+      const { success: rankingSuccess, error: rankingError } = await RankingService.saveScore({
         player_name: player.name,
-        highest_floor: player.floor - 1, // O andar em que o jogador foi derrotado
+        highest_floor: player.floor - 1,
         user_id: user?.id,
       });
 
-      if (!success) {
-        throw new Error(error || 'Erro ao salvar pontuação');
+      if (!rankingSuccess) {
+        throw new Error(rankingError || 'Erro ao salvar pontuação');
       }
+
+      // Deletar personagem (permadeath)
+      const { error: deleteError } = await CharacterService.deleteCharacter(player.id);
+      if (deleteError) {
+        throw new Error(deleteError);
+      }
+
+      toast.success('Fim de jogo', {
+        description: 'Pontuação salva e personagem deletado permanentemente.',
+      });
       
-      toast.success('Pontuação salva com sucesso!');
-      router.push('/game/ranking');
+      router.push('/game/play');
     } catch (error: unknown) {
-      toast.error('Erro ao salvar pontuação', {
+      toast.error('Erro ao finalizar jogo', {
         description: error instanceof Error ? error.message : 'Erro desconhecido',
       });
-      console.error('Erro ao salvar pontuação:', error);
+      console.error('Erro ao finalizar jogo:', error);
     } finally {
       setIsSaving(false);
+      setIsDeleting(false);
     }
   };
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Fim de Jogo</CardTitle>
+        <CardTitle className="text-2xl flex items-center justify-center gap-2">
+          <Skull className="h-8 w-8 text-red-500" />
+          Fim de Jogo
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="text-center">
@@ -62,7 +79,7 @@ export default function GameOver() {
         </div>
 
         <div className="bg-muted p-4 rounded-lg">
-          <h3 className="font-medium mb-2">Estatísticas</h3>
+          <h3 className="font-medium mb-2">Estatísticas Finais</h3>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>Personagem:</div>
             <div className="font-medium">{player.name}</div>
@@ -72,47 +89,39 @@ export default function GameOver() {
             
             <div>HP final:</div>
             <div className="font-medium">{player.hp}/{player.max_hp}</div>
+            
+            <div>Nível alcançado:</div>
+            <div className="font-medium">{player.level}</div>
+            
+            <div>Gold acumulado:</div>
+            <div className="font-medium">{player.gold}</div>
           </div>
         </div>
+
+        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg">
+          <p className="text-sm text-red-400 mb-2">
+            <strong>Aviso de Permadeath:</strong> Este personagem será permanentemente deletado ao continuar.
+          </p>
+        </div>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-3">
-        {user ? (
-          <Button 
-            onClick={saveScore} 
-            className="w-full"
-            variant="default"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <span className="flex items-center">
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></span>
-                Salvando...
-              </span>
-            ) : (
-              <>
-                <Trophy className="h-4 w-4 mr-2" />
-                Salvar Pontuação
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </>
-            )}
-          </Button>
-        ) : (
-          <Button 
-            onClick={() => router.push('/auth')} 
-            className="w-full"
-            variant="outline"
-          >
-            Entrar para Salvar Pontuação
-          </Button>
-        )}
-        
-        <Button 
-          onClick={returnToMenu}
+      <CardFooter className="flex flex-col gap-2">
+        <Button
           className="w-full"
-          variant="ghost"
+          variant="destructive"
+          onClick={handleGameOver}
+          disabled={isSaving || isDeleting}
         >
-          <Home className="h-4 w-4 mr-2" />
-          Voltar ao Menu
+          {isSaving || isDeleting ? (
+            <span className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+              Finalizando...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Skull className="h-4 w-4" />
+              Aceitar Derrota e Salvar Pontuação
+            </span>
+          )}
         </Button>
       </CardFooter>
     </Card>
