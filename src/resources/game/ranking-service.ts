@@ -1,6 +1,6 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from "@/lib/supabase";
 
 export interface RankingEntry {
   id?: string;
@@ -11,11 +11,6 @@ export interface RankingEntry {
 }
 
 export class RankingService {
-  private static supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   /**
    * Salva uma nova pontuação no ranking
    * @param entry Dados da pontuação
@@ -24,14 +19,14 @@ export class RankingService {
   static async saveScore(entry: Omit<RankingEntry, 'id' | 'created_at'>): Promise<{ success: boolean; error?: string }> {
     try {
       // Obter o usuário atual para validação
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       
       // Validar se o user_id corresponde ao usuário autenticado
       if (entry.user_id && user && entry.user_id !== user.id) {
         return { success: false, error: 'Não é possível salvar pontuação para outro usuário' };
       }
 
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('game_rankings')
         .insert({
           player_name: entry.player_name,
@@ -54,7 +49,7 @@ export class RankingService {
    */
   static async getGlobalRanking(limit: number = 10): Promise<{ data: RankingEntry[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('game_rankings')
         .select('*')
         .order('highest_floor', { ascending: false })
@@ -76,7 +71,7 @@ export class RankingService {
    */
   static async getUserRanking(userId: string, limit: number = 5): Promise<{ data: RankingEntry[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('game_rankings')
         .select('*')
         .eq('user_id', userId)

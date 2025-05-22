@@ -18,6 +18,7 @@ export interface Character {
   created_at: string;
   updated_at: string;
   equipment_slots?: EquipmentSlots;
+  floor: number;
 }
 
 export interface CreateCharacterDTO {

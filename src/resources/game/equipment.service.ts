@@ -1,17 +1,12 @@
-import { createBrowserClient } from '@supabase/ssr';
 import { Equipment, CharacterEquipment, EquipmentSlots } from './models/equipment.model';
+import { supabase } from '@/lib/supabase';
 
 export class EquipmentService {
-    private static supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     /**
      * Obter todos os equipamentos disponíveis para um nível
      */
     static async getAvailableEquipment(level: number): Promise<Equipment[]> {
-        const { data, error } = await this.supabase
+        const { data, error } = await supabase
             .from('equipment')
             .select('*')
             .lte('level_requirement', level)
@@ -25,7 +20,7 @@ export class EquipmentService {
      * Obter equipamentos de um personagem
      */
     static async getCharacterEquipment(characterId: string): Promise<CharacterEquipment[]> {
-        const { data, error } = await this.supabase
+        const { data, error } = await supabase
             .from('character_equipment')
             .select(`
                 *,
@@ -41,7 +36,7 @@ export class EquipmentService {
      * Obter slots de equipamento equipados do personagem
      */
     static async getEquippedSlots(characterId: string): Promise<EquipmentSlots> {
-        const { data, error } = await this.supabase
+        const { data, error } = await supabase
             .from('character_equipment')
             .select(`
                 *,
@@ -75,7 +70,7 @@ export class EquipmentService {
         equipmentId: string,
         price: number
     ): Promise<boolean> {
-        const { error } = await this.supabase.rpc('buy_equipment', {
+        const { error } = await supabase.rpc('buy_equipment', {
             p_character_id: characterId,
             p_equipment_id: equipmentId,
             p_price: price
@@ -92,7 +87,7 @@ export class EquipmentService {
         equipmentId: string,
         equip: boolean
     ): Promise<boolean> {
-        const { error } = await this.supabase.rpc('toggle_equipment', {
+        const { error } = await supabase.rpc('toggle_equipment', {
             p_character_id: characterId,
             p_equipment_id: equipmentId,
             p_equip: equip
@@ -112,7 +107,7 @@ export class EquipmentService {
         await this.toggleEquipment(characterId, equipmentId, false);
 
         // Então remover o item e dar o gold ao personagem
-        const { error } = await this.supabase.rpc('sell_equipment', {
+        const { error } = await supabase.rpc('sell_equipment', {
             p_character_id: characterId,
             p_equipment_id: equipmentId
         });

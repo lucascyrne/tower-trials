@@ -1,4 +1,4 @@
-import { Character, CreateCharacterDTO, UpdateCharacterStatsDTO, calculateBaseStats } from './models/character.model';
+import { Character, CreateCharacterDTO, calculateBaseStats } from './models/character.model';
 import { EquipmentService } from './equipment.service';
 import { supabase } from '@/lib/supabase';
 
@@ -6,6 +6,15 @@ interface ServiceResponse<T> {
   data: T | null;
   error: string | null;
   success: boolean;
+}
+
+// Atualizar a interface UpdateCharacterStatsDTO para incluir floor
+export interface UpdateCharacterStatsDTO {
+  xp?: number;
+  gold?: number;
+  hp?: number;
+  mana?: number;
+  floor?: number;
 }
 
 export class CharacterService {
@@ -59,10 +68,15 @@ export class CharacterService {
     try {
       // Verificar cache primeiro
       const cachedCharacter = this.characterCache.get(characterId);
-      if (cachedCharacter) {
+      const now = Date.now();
+      
+      // Usar cache somente se estiver dentro do tempo de validade
+      if (cachedCharacter && now - this.lastFetchTimestamp < this.CACHE_DURATION) {
+        console.log(`[CharacterService] Usando personagem em cache: ${cachedCharacter.name} (andar: ${cachedCharacter.floor})`);
         return { data: cachedCharacter, error: null, success: true };
       }
 
+      console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
       const { data, error } = await supabase
         .rpc('get_character', {
           p_character_id: characterId
@@ -80,7 +94,9 @@ export class CharacterService {
 
       // Atualizar cache
       const character = data as Character;
+      console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor})`);
       this.characterCache.set(characterId, character);
+      this.lastFetchTimestamp = now;
 
       return { 
         data: character, 
@@ -190,6 +206,11 @@ export class CharacterService {
     stats: UpdateCharacterStatsDTO
   ): Promise<ServiceResponse<{ leveled_up: boolean; new_level: number; new_xp: number; new_xp_next_level: number }>> {
     try {
+      // Se temos o parâmetro floor, atualizamos separadamente
+      if (stats.floor !== undefined) {
+        await this.updateCharacterFloor(characterId, stats.floor);
+      }
+      
       const { data, error } = await supabase
         .rpc('update_character_stats', {
           p_character_id: characterId,
@@ -201,9 +222,8 @@ export class CharacterService {
 
       if (error) throw error;
 
-      // Invalidar cache após atualização
+      // Apenas invalidar o cache específico do personagem, não todo o cache
       this.characterCache.delete(characterId);
-      this.lastFetchTimestamp = 0;
 
       return { 
         data: { 
@@ -218,6 +238,54 @@ export class CharacterService {
     } catch (error) {
       console.error('Erro ao atualizar stats:', error instanceof Error ? error.message : error);
       return { data: null, error: error instanceof Error ? error.message : 'Erro ao atualizar stats', success: false };
+    }
+  }
+
+  /**
+   * Atualizar o andar atual do personagem
+   * @param characterId ID do personagem
+   * @param floor Número do andar
+   * @returns Resultado da operação
+   */
+  static async updateCharacterFloor(characterId: string, floor: number): Promise<ServiceResponse<null>> {
+    try {
+      console.log(`[CharacterService] updateCharacterFloor - ID: ${characterId}, Andar: ${floor}`);
+      
+      // Verificar cache para evitar atualizações redundantes
+      const cachedCharacter = this.characterCache.get(characterId);
+      if (cachedCharacter && (cachedCharacter as Character).floor === floor) {
+        console.log(`[CharacterService] Andar já está atualizado para ${floor}, ignorando atualização`);
+        return { data: null, error: null, success: true };
+      }
+      
+      console.log(`[CharacterService] Chamando RPC update_character_floor...`);
+      
+      // Usar a função RPC dedicada para atualizar o andar
+      const { error } = await supabase
+        .rpc('update_character_floor', {
+          p_character_id: characterId,
+          p_floor: floor
+        });
+
+      if (error) {
+        console.error('[CharacterService] Erro na RPC update_character_floor:', error.message);
+        throw error;
+      }
+
+      // Apenas invalidar o cache específico do personagem
+      this.characterCache.delete(characterId);
+
+      console.log(`[CharacterService] Andar atualizado com sucesso para ${floor}`);
+      
+      return { data: null, error: null, success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('[CharacterService] Erro crítico ao atualizar andar:', errorMsg);
+      return { 
+        data: null, 
+        error: errorMsg, 
+        success: false 
+      };
     }
   }
 

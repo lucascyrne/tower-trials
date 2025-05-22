@@ -32,6 +32,7 @@ export function GameProvider({ children }: GameProviderProps) {
   const loadingRef = useRef(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [processingDefeat, setProcessingDefeat] = useState(false);
 
   // Adicionar flag para evitar duplicação de mensagens
   const messageProcessedRef = useRef(false);
@@ -245,17 +246,21 @@ export function GameProvider({ children }: GameProviderProps) {
         ? consumablesResponse.data
         : [];
 
-      // Obter dados do primeiro andar
-      const initialFloor = await GameService.getFloorData(1);
-      if (!initialFloor) {
-        throw new Error('Erro ao gerar andar inicial');
+      // Obter dados do andar atual do personagem (usar o andar salvo, não sempre 1)
+      const currentFloor = character.floor || 1; // Failsafe se o andar for undefined ou 0
+      const floorData = await GameService.getFloorData(currentFloor);
+      if (!floorData) {
+        throw new Error(`Erro ao gerar dados do andar ${currentFloor}`);
       }
 
-      // Gerar inimigo inicial
-      const initialEnemy = await GameService.generateEnemy(1);
-      if (!initialEnemy) {
-        throw new Error('Erro ao gerar inimigo inicial');
+      // Gerar inimigo para o andar atual
+      const currentEnemy = await GameService.generateEnemy(currentFloor);
+      if (!currentEnemy) {
+        throw new Error(`Erro ao gerar inimigo para o andar ${currentFloor}`);
       }
+      
+      // Limpar todos os caches do jogo
+      GameService.clearAllCaches();
       
       setState(prev => ({
         ...prev,
@@ -266,7 +271,7 @@ export function GameProvider({ children }: GameProviderProps) {
             ...character,
             isPlayerTurn: true,
             specialCooldown: 0,
-            floor: 1,
+            floor: currentFloor, // Usar o andar salvo do personagem
             spells: availableSpells,
             consumables: characterConsumables,
             active_effects: {
@@ -276,9 +281,9 @@ export function GameProvider({ children }: GameProviderProps) {
               hots: []
             }
           },
-          currentEnemy: initialEnemy,
-          currentFloor: initialFloor,
-          gameMessage: `Bem-vindo de volta, ${character.name}! Você está no ${initialFloor.description}.`,
+          currentEnemy: currentEnemy,
+          currentFloor: floorData,
+          gameMessage: `Bem-vindo de volta, ${character.name}! Você está no ${floorData.description}.`,
         },
       }));
     } catch (error) {
@@ -291,13 +296,101 @@ export function GameProvider({ children }: GameProviderProps) {
 
   // Realizar ação do jogador
   const performAction = useCallback(async (action: ActionType, spellId?: string, consumableId?: string) => {
-    if (!selectedCharacter || loadingRef.current) return;
+    console.log(`[game-provider] performAction chamado com ação: '${action}'`);
+    console.log(`[game-provider] selectedCharacter:`, selectedCharacter?.name);
+    console.log(`[game-provider] loadingRef.current:`, loadingRef.current);
+    
+    if (!selectedCharacter || loadingRef.current) {
+      console.warn(`[game-provider] Ação '${action}' ignorada - selectedCharacter: ${!!selectedCharacter}, loading: ${loadingRef.current}`);
+      return;
+    }
+    
     loadingRef.current = true;
     updateLoading('performAction', true);
     
     setState(prev => {
       try {
+        // CRÍTICO: Processar ação 'continue' ANTES de qualquer outra validação
+        if (action === 'continue') {
+          console.log('[game-provider] Processando ação continue - verificando pré-condições');
+          
+          // Verificar se temos recompensas de batalha para processar
+          if (!prev.gameState.battleRewards) {
+            console.warn('[game-provider] Tentativa de continuar sem recompensas de batalha');
+            loadingRef.current = false;
+            return prev;
+          }
+          
+          console.log('[game-provider] Pré-condições OK - iniciando transição para próximo andar');
+          
+          const currentFloor = prev.gameState.player.floor;
+          const nextFloor = currentFloor + 1;
+          
+          console.log(`[game-provider] Transição: ${currentFloor} → ${nextFloor}`);
+          
+          // Executar transição de forma imediata
+          setTimeout(async () => {
+            try {
+              console.log(`[game-provider] Executando transição assíncrona para andar ${nextFloor}`);
+              
+              // Limpar cache do jogo
+              GameService.clearAllCaches();
+              
+              // Avançar para o próximo andar
+              const updatedState = await GameService.advanceToNextFloor({
+                ...prev.gameState,
+                battleRewards: null
+              });
+              
+              console.log(`[game-provider] advanceToNextFloor concluído - novo andar: ${updatedState.player.floor}`);
+              
+              // Atualizar o andar no banco de dados
+              if (selectedCharacter) {
+                await CharacterService.updateCharacterFloor(
+                  selectedCharacter.id, 
+                  updatedState.player.floor
+                );
+                console.log(`[game-provider] Andar ${updatedState.player.floor} persistido no banco`);
+              }
+              
+              // Atualizar o estado do jogo
+              setState(currentState => ({
+                ...currentState,
+                gameState: updatedState
+              }));
+              
+              console.log(`[game-provider] Transição concluída com sucesso para andar ${updatedState.player.floor}`);
+            } catch (error) {
+              console.error('[game-provider] Erro ao processar transição:', error);
+              setState(currentState => ({
+                ...currentState,
+                gameState: {
+                  ...currentState.gameState,
+                  gameMessage: 'Erro ao avançar para o próximo andar. Tente novamente.'
+                }
+              }));
+            } finally {
+              loadingRef.current = false;
+              updateLoading('performAction', false);
+            }
+          }, 100);
+          
+          // Retornar estado intermediário limpo
+          return {
+            ...prev,
+            gameState: {
+              ...prev.gameState,
+              currentEnemy: null,
+              battleRewards: null,
+              gameMessage: `Avançando para o Andar ${nextFloor}...`
+            }
+          };
+        }
+        
+        // Para outras ações, verificar validações de batalha
         if (prev.gameState.mode !== 'battle' || !prev.gameState.currentEnemy) {
+          console.log('[game-provider] Validação falhou - mode:', prev.gameState.mode, 'enemy:', !!prev.gameState.currentEnemy);
+          loadingRef.current = false;
           return prev;
         }
 
@@ -308,11 +401,17 @@ export function GameProvider({ children }: GameProviderProps) {
           consumableId
         );
         
+        console.log(`[game-provider] processPlayerAction retornou - skipTurn: ${skipTurn}, message: "${message}"`);
+        
         if (skipTurn) {
           loadingRef.current = false;
           
-          // Se a fuga foi bem-sucedida, redirecionar para o HUD
+          // Se a fuga foi bem-sucedida, reiniciar do andar 1
           if (action === 'flee' && message.includes('conseguiu fugir')) {
+            // Atualizar andar para 1 e redirecionar
+            if (selectedCharacter) {
+              CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
+            }
             window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
           }
           
@@ -325,85 +424,66 @@ export function GameProvider({ children }: GameProviderProps) {
           };
         }
 
-        if (action === 'continue') {
-          loadingRef.current = false;
-          
-          // Adicionar mensagem de log para o próximo andar (apenas uma vez)
-          const nextFloor = prev.gameState.player.floor;
-          const floorMessage = `Avançando para o Andar ${nextFloor}...`;
-          
-          // Verificar se esta mensagem já existe no log
-          const recentLogs = prev.gameLog.slice(-5);
-          const isDuplicate = recentLogs.some(log => log.text === floorMessage);
-          
-          if (!isDuplicate) {
-            addGameLogMessage(floorMessage, 'system');
+        if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
+          // Processar derrota do inimigo apenas se ainda não temos recompensas e não estamos processando
+          if (!prev.gameState.battleRewards && !processingDefeat) {
+            setProcessingDefeat(true);
+            
+            (async () => {
+              try {
+                loadingRef.current = true;
+                console.log('[game-provider] Processando derrota do inimigo');
+                
+                // Processar a derrota e obter recompensas
+                const updatedState = await GameService.processEnemyDefeat(newState);
+                
+                // Verificar se realmente obtivemos recompensas (evitar processamento de estado inválido)
+                if (!updatedState.battleRewards) {
+                  console.warn('[game-provider] Processamento de derrota não gerou recompensas válidas');
+                  return;
+                }
+                
+                // Atualizar stats do personagem
+                if (selectedCharacter && updatedState.battleRewards) {
+                  await CharacterService.updateCharacterStats(selectedCharacter.id, {
+                    xp: updatedState.battleRewards.xp,
+                    gold: updatedState.battleRewards.gold
+                  });
+                }
+                
+                // Atualizar estado com recompensas
+                setState(currentState => ({
+                  ...currentState,
+                  gameState: updatedState
+                }));
+                
+              } catch (error) {
+                console.error('[game-provider] Erro ao processar derrota do inimigo:', error);
+              } finally {
+                loadingRef.current = false;
+                setProcessingDefeat(false);
+              }
+            })();
           }
           
-          // Ao continuar para o próximo andar, garantir que o estado seja sincronizado imediatamente
-          const currentState = {
-            ...prev.gameState,
-            // Garantir que o andar esteja correto e bloqueando múltiplas chamadas
-            player: {
-              ...prev.gameState.player,
-              // O andar já deve estar atualizado pelo processEnemyDefeat
-            },
-            isPlayerTurn: true,
-            battleRewards: null // Remover imediatamente as recompensas ao continuar
-          };
-          
-          // Debug log
-          console.log(`Avançando para o andar ${nextFloor}`);
-          
-          // Atualizar o estado imediatamente para evitar problemas de sincronização
-          return {
-            ...prev,
-            gameState: currentState,
-          };
-        }
-
-        if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
-          // Processar derrota do inimigo de forma assíncrona
-          GameService.processEnemyDefeat(newState).then(async updatedState => {
-            // Verificar se o personagem subiu de nível
-            const response = await CharacterService.updateCharacterStats(selectedCharacter.id, {
-              xp: updatedState.currentEnemy!.reward_xp,
-              gold: updatedState.currentEnemy!.reward_gold,
-            });
-            
-            // Atualizar o estado com o novo nível e XP se subiu de nível
-            if (response.success && response.data?.leveled_up) {
-              // Recarregar o personagem para obter os novos stats
-              const updatedCharacter = await CharacterService.getCharacter(selectedCharacter.id);
-              if (updatedCharacter.success && updatedCharacter.data) {
-                updatedState.player = {
-                  ...updatedState.player,
-                  level: updatedCharacter.data.level,
-                  xp: updatedCharacter.data.xp,
-                  xp_next_level: updatedCharacter.data.xp_next_level,
-                  max_hp: updatedCharacter.data.max_hp,
-                  max_mana: updatedCharacter.data.max_mana,
-                  hp: updatedCharacter.data.hp,
-                  mana: updatedCharacter.data.mana,
-                  atk: updatedCharacter.data.atk,
-                  def: updatedCharacter.data.def,
-                  speed: updatedCharacter.data.speed
-                };
-              }
-            }
-            
-            setState(prev => ({
-              ...prev,
-              gameState: updatedState,
-            }));
-            loadingRef.current = false;
-          });
-          
+          // Retornar estado intermediário
           return {
             ...prev,
             gameState: {
               ...prev.gameState,
               gameMessage: 'Você derrotou o inimigo!'
+            }
+          };
+        }
+
+        // Se não há inimigo atual, não processar ações de combate
+        if (!newState.currentEnemy) {
+          console.log('[game-provider] Nenhum inimigo atual - ignorando ação de combate');
+          return {
+            ...prev,
+            gameState: {
+              ...prev.gameState,
+              gameMessage: message
             }
           };
         }
@@ -420,6 +500,23 @@ export function GameProvider({ children }: GameProviderProps) {
               currentState,
               action === 'defend'
             );
+
+            // Se o inimigo foi derrotado por efeitos ao longo do tempo, processar a vitória
+            if (enemyActionState.currentEnemy && enemyActionState.currentEnemy.hp <= 0) {
+              console.log('[game-provider] Inimigo derrotado por efeitos ao longo do tempo - processando vitória');
+              
+              // Processar derrota de forma síncrona para garantir que tenhamos as recompensas
+              const defeatState = await GameService.processEnemyDefeat(enemyActionState);
+              
+              // Atualizar estado com recompensas
+              setState(prev => ({
+                ...prev,
+                gameState: defeatState
+              }));
+              
+              loadingRef.current = false;
+              return;
+            }
 
             // Atualizar HP e Mana do personagem
             if (selectedCharacter) {
@@ -502,7 +599,7 @@ export function GameProvider({ children }: GameProviderProps) {
         updateLoading('performAction', false);
       }
     });
-  }, [selectedCharacter, addGameLogMessage]);
+  }, [selectedCharacter]);
 
   // Voltar ao menu principal
   const returnToMenu = useCallback(() => {

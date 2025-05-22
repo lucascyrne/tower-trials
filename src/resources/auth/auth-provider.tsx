@@ -71,22 +71,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [state.isLoading]);
 
   useEffect(() => {
-    let lastActive = Date.now();
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && 
-          Date.now() - lastActive > 300000 && 
-          !window.location.pathname.includes('/game/play')) {
-        lastActive = Date.now();
-        setState(prev => ({
-          ...prev,
-          isLoading: true,
-        }));
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -101,7 +85,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       subscription.unsubscribe();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [state.session]);
 

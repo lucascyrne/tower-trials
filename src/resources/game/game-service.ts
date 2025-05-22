@@ -1,6 +1,5 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
 import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType } from './game-model';
 import { defaultPlayer } from './game-context';
 import { MonsterService } from './monster.service';
@@ -9,6 +8,7 @@ import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
 import { RankingService } from './ranking-service';
+import { supabase } from '@/lib/supabase';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -45,10 +45,22 @@ interface GameProgressEntry {
 }
 
 export class GameService {
-  private static supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Cache temporário para dados de andar
+  private static floorCache: Map<number, Floor> = new Map();
+  private static floorCacheExpiry: Map<number, number> = new Map();
+  private static FLOOR_CACHE_DURATION = 10000; // 10 segundos de cache
+
+  /**
+   * Limpar todos os caches
+   * Esta função deve ser chamada após transições importantes para garantir dados atualizados
+   */
+  static clearAllCaches(): void {
+    console.log('[GameService] Limpando todos os caches');
+    this.floorCache.clear();
+    this.floorCacheExpiry.clear();
+    MonsterService.clearCache();
+    console.log('[GameService] Todos os caches foram limpos');
+  }
 
   /**
    * Gerar inimigo para o andar atual
@@ -57,6 +69,12 @@ export class GameService {
    */
   static async generateEnemy(floor: number): Promise<Enemy | null> {
     try {
+      // Validar o andar - não pode ser menor que 1
+      if (floor < 1) {
+        console.error(`[GameService] Tentativa de gerar inimigo para andar inválido: ${floor}, usando andar 1`);
+        floor = 1; // Failsafe para garantir andar mínimo válido
+      }
+      
       const monsterResponse = await MonsterService.getMonsterForFloor(floor);
       
       if (!monsterResponse.success || !monsterResponse.data) {
@@ -66,7 +84,7 @@ export class GameService {
       const monster = monsterResponse.data;
 
       // Obter drops possíveis
-      const { data: possibleDrops } = await this.supabase
+      const { data: possibleDrops } = await supabase
         .rpc('get_monster_drops', { p_monster_id: monster.id });
 
       const monsterDrops = possibleDrops ? possibleDrops.map((drop: MonsterDropChance) => ({
@@ -117,7 +135,7 @@ export class GameService {
       }
 
       // Verificar se o usuário está autenticado e corresponde ao ID fornecido
-      const { data: { user } } = await this.supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user || user.id !== userId) {
         return { success: false, error: 'Usuário não autenticado ou ID inválido' };
       }
@@ -136,7 +154,7 @@ export class GameService {
       };
 
       // Verificar se já existe um progresso para este usuário
-      const { data: existingProgress, error: queryError } = await this.supabase
+      const { data: existingProgress, error: queryError } = await supabase
         .from('game_progress')
         .select('id')
         .eq('user_id', userId)
@@ -147,7 +165,7 @@ export class GameService {
       }
 
       // Upsert - atualiza se existir, cria se não existir
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('game_progress')
         .upsert({
           id: existingProgress?.id,
@@ -156,6 +174,9 @@ export class GameService {
         });
 
       if (error) throw error;
+      
+      // Atualizar também o andar na tabela characters
+      await CharacterService.updateCharacterFloor(player.id, player.floor);
       
       // Salvar também no ranking para preservar o recorde histórico
       if (highestFloor > 0) {
@@ -178,7 +199,7 @@ export class GameService {
    */
   private static async saveHighScore(playerName: string, highestFloor: number, userId: string): Promise<void> {
     try {
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('game_rankings')
         .insert({
           player_name: playerName,
@@ -205,7 +226,7 @@ export class GameService {
         return { success: false, error: 'Usuário não autenticado' };
       }
 
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('game_progress')
         .select('*')
         .eq('user_id', userId)
@@ -305,8 +326,23 @@ export class GameService {
   } {
     const { player, currentEnemy } = gameState;
     
-    // Garantir que currentEnemy não é null
+    console.log(`[processPlayerAction] Processando ação: '${action}'`);
+    console.log(`[processPlayerAction] currentEnemy:`, currentEnemy?.name || 'null');
+    console.log(`[processPlayerAction] battleRewards:`, !!gameState.battleRewards);
+    
+    // Verificação especial para ação 'continue' - pode ser executada sem inimigo
+    if (action === 'continue') {
+      console.log(`[processPlayerAction] Ação 'continue' detectada - processando...`);
+      return {
+        newState: gameState,
+        skipTurn: true,
+        message: 'Avançando para o próximo andar...'
+      };
+    }
+    
+    // Para todas as outras ações, garantir que currentEnemy não é null
     if (!currentEnemy) {
+      console.warn(`[processPlayerAction] Tentativa de executar ação '${action}' sem inimigo atual`);
       return {
         newState: gameState,
         skipTurn: true,
@@ -325,6 +361,12 @@ export class GameService {
         damage = this.calculateDamage(player.atk, currentEnemy.defense);
         currentEnemy.hp = Math.max(0, currentEnemy.hp - damage);
         message = `Você atacou e causou ${damage} de dano!`;
+        
+        // Adicionar verificação explícita de derrota do inimigo
+        if (currentEnemy.hp <= 0) {
+          message = `Você atacou, causou ${damage} de dano e derrotou ${currentEnemy.name}!`;
+          console.log(`[processPlayerAction] Inimigo ${currentEnemy.name} derrotado - HP: ${currentEnemy.hp}`);
+        }
         break;
       
       case 'defend':
@@ -494,6 +536,12 @@ export class GameService {
         skipTurn = true;
     }
     
+    // Após o switch, adicionar verificação explícita de inimigo derrotado (apenas se há inimigo)
+    if (currentEnemy && currentEnemy.hp <= 0) {
+      console.log('[processPlayerAction] Inimigo derrotado após processamento da ação');
+      // Não usamos skipTurn para permitir que o processamento de derrota continue
+    }
+
     return { newState, skipTurn, message };
   }
 
@@ -504,12 +552,38 @@ export class GameService {
    */
   static async getFloorData(floorNumber: number): Promise<Floor | null> {
     try {
-      const { data, error } = await this.supabase
+      // Validar número do andar
+      if (floorNumber <= 0) {
+        console.error(`Tentativa de obter dados de andar inválido: ${floorNumber}`);
+        return null;
+      }
+
+      console.log(`[getFloorData] Solicitando dados do andar ${floorNumber}`);
+
+      // Verificar cache
+      const now = Date.now();
+      const cachedFloor = this.floorCache.get(floorNumber);
+      const cacheExpiry = this.floorCacheExpiry.get(floorNumber) || 0;
+      
+      if (cachedFloor && now < cacheExpiry) {
+        console.log(`[getFloorData] Usando dados em cache para o andar ${floorNumber}`);
+        return cachedFloor;
+      }
+
+      // Buscar dados do andar no servidor
+      const { data, error } = await supabase
         .rpc('get_floor_data', { p_floor_number: floorNumber })
         .single();
 
-      if (error) throw error;
-      if (!data) return null;
+      if (error) {
+        console.error(`[getFloorData] Erro ao obter andar ${floorNumber}:`, error.message);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error(`[getFloorData] Nenhum dado retornado para o andar ${floorNumber}`);
+        return null;
+      }
 
       const floorData = data as {
         floor_number: number;
@@ -519,15 +593,27 @@ export class GameService {
         description: string;
       };
 
-      return {
+      // Validar dados recebidos
+      if (floorData.floor_number !== floorNumber) {
+        console.warn(`[getFloorData] Discrepância no número do andar: solicitado=${floorNumber}, recebido=${floorData.floor_number}`);
+      }
+
+      const floor = {
         floorNumber: floorData.floor_number,
         type: floorData.type,
         isCheckpoint: floorData.is_checkpoint,
         minLevel: floorData.min_level,
         description: floorData.description
       };
+
+      // Atualizar cache
+      this.floorCache.set(floorNumber, floor);
+      this.floorCacheExpiry.set(floorNumber, now + this.FLOOR_CACHE_DURATION);
+
+      console.log(`[getFloorData] Obtidos dados do andar ${floorNumber}: ${floor.description}`);
+      return floor;
     } catch (error) {
-      console.error('Erro ao obter dados do andar:', error instanceof Error ? error.message : error);
+      console.error(`[getFloorData] Erro crítico ao obter dados do andar ${floorNumber}:`, error instanceof Error ? error.message : error);
       return null;
     }
   }
@@ -565,18 +651,35 @@ export class GameService {
   static async processEnemyDefeat(gameState: GameState): Promise<GameState> {
     try {
       const { player, currentEnemy, currentFloor } = gameState;
-      const nextFloorNumber = player.floor + 1;
       
-      // Debug log para rastrear a progressão
-      console.log(`Processando derrota do inimigo. Andar atual: ${player.floor}, Próximo andar: ${nextFloorNumber}`);
+      // Criar ID único para esta tentativa de processamento
+      const defeatId = `${currentEnemy?.name}-${currentEnemy?.hp}-${player.floor}-${Date.now()}`;
+      console.log(`[processEnemyDefeat] Iniciando processamento ${defeatId}`);
+      
+      // Validações rigorosas para evitar processamento duplicado
+      if (!currentEnemy) {
+        console.warn('[processEnemyDefeat] Nenhum inimigo encontrado');
+        return gameState;
+      }
+      
+      if (currentEnemy.hp > 0) {
+        console.warn('[processEnemyDefeat] Tentativa de processar inimigo que ainda não foi derrotado');
+        return gameState;
+      }
+      
+      // CRÍTICO: Evitar processamento duplicado verificando se já temos recompensas
+      if (gameState.battleRewards) {
+        console.warn(`[processEnemyDefeat] Tentativa de processar derrota de inimigo que já possui recompensas - ignorando (${defeatId})`);
+        return gameState;
+      }
       
       // Atualizar o recorde se necessário
-      const highestFloor = Math.max(gameState.highestFloor, nextFloorNumber - 1);
+      const highestFloor = Math.max(gameState.highestFloor, player.floor);
       
       // Processar drops do monstro (se houver)
       let obtainedDrops: { name: string; quantity: number }[] = [];
       
-      if (currentEnemy && currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
+      if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
         // Processar os drops obtidos
         const levelMultiplier = 1 + (currentEnemy.level * 0.01);
         let floorMultiplier = 1.0;
@@ -606,73 +709,18 @@ export class GameService {
               quantity: dropsResult[index].quantity
             }));
           } catch (error) {
-            console.error('Erro ao processar drops:', error);
+            console.error('[processEnemyDefeat] Erro ao processar drops:', error);
             // Continua o fluxo mesmo se houver erro nos drops
           }
         }
       }
       
-      // Obter dados do próximo andar
-      let nextFloor: Floor;
-      try {
-        const floorData = await this.getFloorData(nextFloorNumber);
-        if (floorData) {
-          nextFloor = floorData;
-        } else {
-          // Fallback se não conseguir obter dados do andar
-          nextFloor = {
-            floorNumber: nextFloorNumber,
-            type: 'common' as FloorType,
-            isCheckpoint: nextFloorNumber % 10 === 0,
-            minLevel: Math.max(1, Math.floor(nextFloorNumber / 2)),
-            description: `Andar ${nextFloorNumber}`
-          };
-        }
-      } catch (error) {
-        console.error('Erro ao obter dados do próximo andar:', error);
-        // Fallback seguro
-        nextFloor = {
-          floorNumber: nextFloorNumber,
-          type: 'common' as FloorType,
-          isCheckpoint: nextFloorNumber % 10 === 0,
-          minLevel: Math.max(1, Math.floor(nextFloorNumber / 2)),
-          description: `Andar ${nextFloorNumber}`
-        };
-      }
-      
-      // Gerar próximo inimigo
-      let nextEnemy;
-      try {
-        nextEnemy = await this.generateEnemy(nextFloorNumber);
-        if (!nextEnemy) {
-          throw new Error('Não foi possível gerar o próximo inimigo');
-        }
-      } catch (error) {
-        console.error('Erro ao gerar próximo inimigo:', error);
-        return {
-          ...gameState,
-          mode: 'gameover',
-          gameMessage: 'Erro ao gerar próximo inimigo. Você venceu o jogo!',
-          highestFloor
-        };
-      }
-
       // Calcular recompensas baseadas no tipo do andar
-      let rewards = { xp: currentEnemy!.reward_xp, gold: currentEnemy!.reward_gold };
+      let rewards = { xp: currentEnemy.reward_xp, gold: currentEnemy.reward_gold };
       if (currentFloor) {
         rewards = this.calculateFloorRewards(rewards.xp, rewards.gold, currentFloor.type);
       }
       
-      // Ajustar a recuperação de HP e mana baseada no tipo do andar
-      const baseRecovery = {
-        common: Math.max(10, 25 - Math.floor(nextFloorNumber / 5) * 2),
-        elite: Math.max(15, 35 - Math.floor(nextFloorNumber / 5) * 2),
-        event: Math.max(20, 40 - Math.floor(nextFloorNumber / 5) * 2),
-        boss: Math.max(25, 50 - Math.floor(nextFloorNumber / 5) * 2)
-      }[nextFloor.type];
-      
-      const manaRecovery = Math.max(5, Math.floor(baseRecovery / 2));
-
       // Verificar se subiu de nível
       const oldLevel = player.level;
       const newXp = player.xp + rewards.xp;
@@ -689,27 +737,22 @@ export class GameService {
             updatedSpells = [...player.spells, ...newSpells];
           }
         } catch (error) {
-          console.error('Erro ao carregar novas magias:', error);
+          console.error('[processEnemyDefeat] Erro ao carregar novas magias:', error);
           // Continuar sem adicionar novas magias em caso de erro
         }
       }
       
-      // Criar o novo estado do jogo com o próximo andar
+      // Criar o estado após vitória com as recompensas
       const updatedState = {
         ...gameState,
         player: {
           ...player,
-          floor: nextFloorNumber,
-          hp: Math.min(player.max_hp, player.hp + baseRecovery),
-          mana: Math.min(player.max_mana, player.mana + manaRecovery),
           xp: newXp,
           gold: player.gold + rewards.gold,
           spells: updatedSpells
         },
-        currentEnemy: nextEnemy,
-        currentFloor: nextFloor,
         isPlayerTurn: true,
-        gameMessage: '', // Removendo a mensagem pois usaremos o modal
+        gameMessage: 'Inimigo derrotado! Colete suas recompensas.',
         highestFloor,
         battleRewards: {
           xp: rewards.xp,
@@ -720,12 +763,12 @@ export class GameService {
         }
       };
       
-      // Debug log para confirmar transição
-      console.log(`Transição de andar concluída. Andar antigo: ${player.floor}, Novo andar: ${nextFloorNumber}`);
+      // Debug log para confirmar processamento
+      console.log(`[processEnemyDefeat] Vitória processada com sucesso (${defeatId}) - recompensas definidas no andar ${player.floor}`);
       
       return updatedState;
     } catch (error) {
-      console.error('Erro não tratado ao processar derrota do inimigo:', error);
+      console.error('[processEnemyDefeat] Erro não tratado:', error);
       // Retornar o estado atual com uma mensagem de erro para evitar travamento
       return {
         ...gameState,
@@ -746,7 +789,7 @@ export class GameService {
     
     for (const drop of drops) {
       try {
-        const { data, error } = await this.supabase
+        const { data, error } = await supabase
           .from('monster_drops')
           .select('name')
           .eq('id', drop.drop_id)
@@ -840,5 +883,90 @@ export class GameService {
       player,
       isPlayerTurn: true,
     };
+  }
+
+  /**
+   * Avançar para o próximo andar após coletar recompensas
+   * @param gameState Estado atual do jogo
+   * @returns Novo estado com o próximo andar
+   */
+  static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
+    try {
+      const { player } = gameState;
+      const nextFloorNumber = player.floor + 1;
+      
+      console.log(`[advanceToNextFloor] INÍCIO - Avançando do andar ${player.floor} para ${nextFloorNumber}`);
+      console.log(`[advanceToNextFloor] Player atual:`, { name: player.name, level: player.level, hp: player.hp });
+      
+      // Limpar cache para garantir dados atualizados
+      this.clearAllCaches();
+      console.log(`[advanceToNextFloor] Cache limpo`);
+      
+      // Obter dados do próximo andar
+      console.log(`[advanceToNextFloor] Buscando dados do andar ${nextFloorNumber}`);
+      const nextFloor = await this.getFloorData(nextFloorNumber);
+      if (!nextFloor) {
+        const errorMsg = `Não foi possível obter dados do andar ${nextFloorNumber}`;
+        console.error(`[advanceToNextFloor] ERRO: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+      console.log(`[advanceToNextFloor] Dados do andar ${nextFloorNumber} obtidos:`, nextFloor.description);
+      
+      // Gerar próximo inimigo
+      console.log(`[advanceToNextFloor] Gerando inimigo para o andar ${nextFloorNumber}`);
+      const nextEnemy = await this.generateEnemy(nextFloorNumber);
+      if (!nextEnemy) {
+        const errorMsg = `Não foi possível gerar inimigo para o andar ${nextFloorNumber}`;
+        console.error(`[advanceToNextFloor] ERRO: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+      console.log(`[advanceToNextFloor] Inimigo gerado para o andar ${nextFloorNumber}:`, nextEnemy.name);
+      
+      // Ajustar a recuperação de HP e mana baseada no tipo do andar
+      const baseRecovery = {
+        common: Math.max(10, 25 - Math.floor(nextFloorNumber / 5) * 2),
+        elite: Math.max(15, 35 - Math.floor(nextFloorNumber / 5) * 2),
+        event: Math.max(20, 40 - Math.floor(nextFloorNumber / 5) * 2),
+        boss: Math.max(25, 50 - Math.floor(nextFloorNumber / 5) * 2)
+      }[nextFloor.type];
+      
+      const manaRecovery = Math.max(5, Math.floor(baseRecovery / 2));
+      
+      console.log(`[advanceToNextFloor] Recuperação calculada - HP: +${baseRecovery}, Mana: +${manaRecovery}`);
+      
+      // Criar o novo estado com o próximo andar
+      const newState: GameState = {
+        ...gameState,
+        player: {
+          ...player,
+          floor: nextFloorNumber,
+          hp: Math.min(player.max_hp, player.hp + baseRecovery),
+          mana: Math.min(player.max_mana, player.mana + manaRecovery)
+        },
+        currentEnemy: nextEnemy,
+        currentFloor: nextFloor,
+        isPlayerTurn: true,
+        gameMessage: `Você chegou ao ${nextFloor.description}.`,
+        battleRewards: null // Limpar recompensas após avançar
+      };
+      
+      console.log(`[advanceToNextFloor] SUCESSO - Transição concluída: ${player.floor} -> ${nextFloorNumber}`);
+      console.log(`[advanceToNextFloor] Novo estado:`, { 
+        floor: newState.player.floor, 
+        enemy: newState.currentEnemy?.name,
+        floorDesc: newState.currentFloor?.description
+      });
+      
+      return newState;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('[advanceToNextFloor] ERRO CRÍTICO:', errorMsg);
+      console.error('[advanceToNextFloor] Stack trace:', error);
+      return {
+        ...gameState,
+        gameMessage: 'Erro ao avançar para o próximo andar. Tente novamente.',
+        isPlayerTurn: true
+      };
+    }
   }
 } 
