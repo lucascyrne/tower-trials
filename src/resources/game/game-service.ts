@@ -7,6 +7,8 @@ import { MonsterService } from './monster.service';
 import { Monster, MonsterDropChance } from './models/monster.model';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
+import { CharacterService } from './character.service';
+import { RankingService } from './ranking-service';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -55,34 +57,13 @@ export class GameService {
    */
   static async generateEnemy(floor: number): Promise<Enemy | null> {
     try {
-      // Obter um inimigo aleatório do banco de dados
-      const { data: monsters, error } = await this.supabase
-        .from('monsters')
-        .select('*')
-        .lte('min_floor', floor);
+      const monsterResponse = await MonsterService.getMonsterForFloor(floor);
+      
+      if (!monsterResponse.success || !monsterResponse.data) {
+        throw new Error(monsterResponse.error || 'Erro ao gerar monstro');
+      }
 
-      if (error) throw error;
-      if (!monsters || monsters.length === 0) return null;
-
-      // Filtrar monstros pelo andar máximo
-      const validMonsters = monsters.filter(m => m.min_floor <= floor);
-      if (validMonsters.length === 0) return null;
-
-      const monster = validMonsters[Math.floor(Math.random() * validMonsters.length)];
-      const level = Math.min(floor, floor); // O nível será igual ao andar atual
-
-      // Calcular stats baseados no nível
-      const levelDiff = level - monster.min_floor;
-      const hp = monster.hp + (levelDiff * 10);
-      const attack = monster.atk + (levelDiff * 2);
-      const defense = monster.def + (levelDiff * 1);
-      const speed = monster.speed + (levelDiff * 1);
-
-      // Calcular recompensas
-      const baseReward = 10 + (level * 5);
-      const rewardMultiplier = 1;
-      const reward_xp = Math.floor(baseReward * rewardMultiplier);
-      const reward_gold = Math.floor((baseReward * 0.5) * rewardMultiplier);
+      const monster = monsterResponse.data;
 
       // Obter drops possíveis
       const { data: possibleDrops } = await this.supabase
@@ -98,18 +79,18 @@ export class GameService {
       return {
         id: parseInt(monster.id),
         name: monster.name,
-        level,
-        hp,
-        maxHp: hp,
-        attack,
-        defense,
-        speed,
-        image: monster.image || '👾',
-        behavior: monster.behavior || 'aggressive',
-        mana: monster.mana || 0,
-        reward_xp,
-        reward_gold,
-        possible_drops: monsterDrops as MonsterDropChance[],
+        level: floor,
+        hp: monster.hp,
+        maxHp: monster.hp,
+        attack: monster.atk,
+        defense: monster.def,
+        speed: monster.speed,
+        image: '👾',
+        behavior: monster.behavior,
+        mana: monster.mana,
+        reward_xp: monster.reward_xp,
+        reward_gold: monster.reward_gold,
+        possible_drops: monsterDrops,
         active_effects: {
           buffs: [],
           debuffs: [],
@@ -118,7 +99,7 @@ export class GameService {
         }
       };
     } catch (error) {
-      console.error('Erro ao gerar inimigo:', error);
+      console.error('Erro ao gerar inimigo:', error instanceof Error ? error.message : error);
       return null;
     }
   }
@@ -401,6 +382,13 @@ export class GameService {
           break;
         }
 
+        // Garantir que o inimigo existe antes de aplicar o efeito da magia
+        if (!currentEnemy) {
+          message = 'Nenhum inimigo encontrado!';
+          skipTurn = true;
+          break;
+        }
+
         const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
         if (!spellResult.success) {
           message = spellResult.message;
@@ -552,6 +540,9 @@ export class GameService {
    * @returns Recompensas calculadas
    */
   static calculateFloorRewards(baseXP: number, baseGold: number, floorType: FloorType): { xp: number; gold: number } {
+    // Reduzir XP e Gold em 60% (multiplicar por 0.4)
+    const reductionFactor = 0.4;
+    
     const multipliers = {
       common: 1,
       elite: 1.5,
@@ -561,8 +552,8 @@ export class GameService {
 
     const multiplier = multipliers[floorType];
     return {
-      xp: Math.floor(baseXP * multiplier),
-      gold: Math.floor(baseGold * multiplier)
+      xp: Math.floor(baseXP * multiplier * reductionFactor),
+      gold: Math.floor(baseGold * multiplier * reductionFactor)
     };
   }
 
@@ -572,132 +563,176 @@ export class GameService {
    * @returns Novo estado do jogo após a derrota do inimigo
    */
   static async processEnemyDefeat(gameState: GameState): Promise<GameState> {
-    const { player, currentEnemy, currentFloor } = gameState;
-    const nextFloorNumber = player.floor + 1;
-    
-    // Atualizar o recorde se necessário
-    const highestFloor = Math.max(gameState.highestFloor, nextFloorNumber - 1);
-    
-    // Processar drops do monstro (se houver)
-    let dropsMessage = '';
-    let obtainedDrops: { drop_id: string; quantity: number }[] = [];
-    
-    if (currentEnemy && currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
-      // Processar os drops obtidos - ajuste para diferenciar baseado no nível do monstro
-      // Monstros mais fortes têm chances melhores de drop
-      const levelMultiplier = 1 + (currentEnemy.level * 0.01); // +1% por nível
+    try {
+      const { player, currentEnemy, currentFloor } = gameState;
+      const nextFloorNumber = player.floor + 1;
       
-      // Aplicar multiplicador de chance baseado no tipo do andar
-      let floorMultiplier = 1.0;
+      // Debug log para rastrear a progressão
+      console.log(`Processando derrota do inimigo. Andar atual: ${player.floor}, Próximo andar: ${nextFloorNumber}`);
+      
+      // Atualizar o recorde se necessário
+      const highestFloor = Math.max(gameState.highestFloor, nextFloorNumber - 1);
+      
+      // Processar drops do monstro (se houver)
+      let obtainedDrops: { name: string; quantity: number }[] = [];
+      
+      if (currentEnemy && currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
+        // Processar os drops obtidos
+        const levelMultiplier = 1 + (currentEnemy.level * 0.01);
+        let floorMultiplier = 1.0;
+        
+        if (currentFloor) {
+          switch (currentFloor.type) {
+            case 'elite': floorMultiplier = 1.2; break;
+            case 'event': floorMultiplier = 1.3; break;
+            case 'boss': floorMultiplier = 1.5; break;
+            default: floorMultiplier = 1.0;
+          }
+        }
+        
+        const dropsResult = ConsumableService.processMonsterDrops(
+          currentEnemy.level, 
+          currentEnemy.possible_drops,
+          levelMultiplier * floorMultiplier
+        );
+        
+        // Adicionar drops ao inventário do jogador
+        if (dropsResult.length > 0) {
+          try {
+            await ConsumableService.addDropsToInventory(player.id, dropsResult);
+            const dropNames = await this.getDropNames(dropsResult);
+            obtainedDrops = dropNames.map((name, index) => ({
+              name,
+              quantity: dropsResult[index].quantity
+            }));
+          } catch (error) {
+            console.error('Erro ao processar drops:', error);
+            // Continua o fluxo mesmo se houver erro nos drops
+          }
+        }
+      }
+      
+      // Obter dados do próximo andar
+      let nextFloor: Floor;
+      try {
+        const floorData = await this.getFloorData(nextFloorNumber);
+        if (floorData) {
+          nextFloor = floorData;
+        } else {
+          // Fallback se não conseguir obter dados do andar
+          nextFloor = {
+            floorNumber: nextFloorNumber,
+            type: 'common' as FloorType,
+            isCheckpoint: nextFloorNumber % 10 === 0,
+            minLevel: Math.max(1, Math.floor(nextFloorNumber / 2)),
+            description: `Andar ${nextFloorNumber}`
+          };
+        }
+      } catch (error) {
+        console.error('Erro ao obter dados do próximo andar:', error);
+        // Fallback seguro
+        nextFloor = {
+          floorNumber: nextFloorNumber,
+          type: 'common' as FloorType,
+          isCheckpoint: nextFloorNumber % 10 === 0,
+          minLevel: Math.max(1, Math.floor(nextFloorNumber / 2)),
+          description: `Andar ${nextFloorNumber}`
+        };
+      }
+      
+      // Gerar próximo inimigo
+      let nextEnemy;
+      try {
+        nextEnemy = await this.generateEnemy(nextFloorNumber);
+        if (!nextEnemy) {
+          throw new Error('Não foi possível gerar o próximo inimigo');
+        }
+      } catch (error) {
+        console.error('Erro ao gerar próximo inimigo:', error);
+        return {
+          ...gameState,
+          mode: 'gameover',
+          gameMessage: 'Erro ao gerar próximo inimigo. Você venceu o jogo!',
+          highestFloor
+        };
+      }
+
+      // Calcular recompensas baseadas no tipo do andar
+      let rewards = { xp: currentEnemy!.reward_xp, gold: currentEnemy!.reward_gold };
       if (currentFloor) {
-        switch (currentFloor.type) {
-          case 'elite': floorMultiplier = 1.2; break;  // +20% chance em andares elite
-          case 'event': floorMultiplier = 1.3; break;  // +30% chance em andares evento
-          case 'boss': floorMultiplier = 1.5; break;   // +50% chance em andares de boss
-          default: floorMultiplier = 1.0;
+        rewards = this.calculateFloorRewards(rewards.xp, rewards.gold, currentFloor.type);
+      }
+      
+      // Ajustar a recuperação de HP e mana baseada no tipo do andar
+      const baseRecovery = {
+        common: Math.max(10, 25 - Math.floor(nextFloorNumber / 5) * 2),
+        elite: Math.max(15, 35 - Math.floor(nextFloorNumber / 5) * 2),
+        event: Math.max(20, 40 - Math.floor(nextFloorNumber / 5) * 2),
+        boss: Math.max(25, 50 - Math.floor(nextFloorNumber / 5) * 2)
+      }[nextFloor.type];
+      
+      const manaRecovery = Math.max(5, Math.floor(baseRecovery / 2));
+
+      // Verificar se subiu de nível
+      const oldLevel = player.level;
+      const newXp = player.xp + rewards.xp;
+      const leveledUp = newXp >= player.xp_next_level;
+      let updatedSpells = [...player.spells];
+
+      if (leveledUp) {
+        try {
+          const spellsResponse = await SpellService.getAvailableSpells(oldLevel + 1);
+          if (spellsResponse.success && spellsResponse.data) {
+            const newSpells = spellsResponse.data
+              .filter(spell => !player.spells.some(ps => ps.id === spell.id))
+              .map(spell => ({ ...spell, current_cooldown: 0 }));
+            updatedSpells = [...player.spells, ...newSpells];
+          }
+        } catch (error) {
+          console.error('Erro ao carregar novas magias:', error);
+          // Continuar sem adicionar novas magias em caso de erro
         }
       }
       
-      obtainedDrops = ConsumableService.processMonsterDrops(
-        currentEnemy.level, 
-        currentEnemy.possible_drops,
-        levelMultiplier * floorMultiplier // Multiplicador combinado
-      );
-      
-      // Adicionar drops ao inventário do jogador
-      if (obtainedDrops.length > 0) {
-        await ConsumableService.addDropsToInventory(player.id, obtainedDrops);
-        
-        const dropNames = await this.getDropNames(obtainedDrops);
-        dropsMessage = ` Você obteve: ${dropNames.join(', ')}.`;
-      }
-    }
-    
-    // Obter dados do próximo andar
-    const nextFloor = await this.getFloorData(nextFloorNumber);
-    if (!nextFloor) {
-      return {
+      // Criar o novo estado do jogo com o próximo andar
+      const updatedState = {
         ...gameState,
-        mode: 'gameover',
-        gameMessage: 'Erro ao gerar próximo andar. Você venceu o jogo!',
-        highestFloor
-      };
-    }
-
-    // Verificar nível mínimo recomendado
-    let levelWarning = '';
-    if (player.level < nextFloor.minLevel) {
-      levelWarning = ` Cuidado: o nível recomendado para o próximo andar é ${nextFloor.minLevel}!`;
-    }
-
-    // Gerar próximo inimigo
-    const nextEnemy = await this.generateEnemy(nextFloorNumber);
-    if (!nextEnemy) {
-      return {
-        ...gameState,
-        mode: 'gameover',
-        gameMessage: 'Erro ao gerar próximo inimigo. Você venceu o jogo!',
-        highestFloor
-      };
-    }
-
-    // Calcular recompensas baseadas no tipo do andar
-    let rewards = { xp: currentEnemy!.reward_xp, gold: currentEnemy!.reward_gold };
-    if (currentFloor) {
-      rewards = this.calculateFloorRewards(rewards.xp, rewards.gold, currentFloor.type);
-    }
-    
-    // Ajustar a recuperação de HP baseada no tipo do andar e no nível
-    // Quanto mais alto o andar, menor a recuperação (aumenta dificuldade)
-    const baseRecovery = {
-      common: Math.max(10, 25 - Math.floor(nextFloorNumber / 5) * 2),
-      elite: Math.max(15, 35 - Math.floor(nextFloorNumber / 5) * 2),
-      event: Math.max(20, 40 - Math.floor(nextFloorNumber / 5) * 2),
-      boss: Math.max(25, 50 - Math.floor(nextFloorNumber / 5) * 2)
-    }[nextFloor.type];
-    
-    // Recuperação de mana também é reduzida em andares superiores
-    const manaRecovery = Math.max(5, Math.floor(baseRecovery / 2));
-
-    // Verificar se subiu de nível e atualizar magias disponíveis
-    const oldLevel = player.level;
-    const newXp = player.xp + rewards.xp;
-    const leveledUp = newXp >= player.xp_next_level;
-    let levelUpMessage = '';
-
-    let updatedSpells = [...player.spells];
-    if (leveledUp) {
-      levelUpMessage = ' Você subiu de nível!';
-      const spellsResponse = await SpellService.getAvailableSpells(oldLevel + 1);
-      if (spellsResponse.success && spellsResponse.data) {
-        const newSpells = spellsResponse.data
-          .filter(spell => !player.spells.some(ps => ps.id === spell.id))
-          .map(spell => ({ ...spell, current_cooldown: 0 }));
-        
-        if (newSpells.length > 0) {
-          levelUpMessage += ` Você aprendeu ${newSpells.length} nova(s) magia(s)!`;
+        player: {
+          ...player,
+          floor: nextFloorNumber,
+          hp: Math.min(player.max_hp, player.hp + baseRecovery),
+          mana: Math.min(player.max_mana, player.mana + manaRecovery),
+          xp: newXp,
+          gold: player.gold + rewards.gold,
+          spells: updatedSpells
+        },
+        currentEnemy: nextEnemy,
+        currentFloor: nextFloor,
+        isPlayerTurn: true,
+        gameMessage: '', // Removendo a mensagem pois usaremos o modal
+        highestFloor,
+        battleRewards: {
+          xp: rewards.xp,
+          gold: rewards.gold,
+          drops: obtainedDrops,
+          leveledUp,
+          newLevel: leveledUp ? oldLevel + 1 : undefined
         }
-        updatedSpells = [...player.spells, ...newSpells];
-      }
+      };
+      
+      // Debug log para confirmar transição
+      console.log(`Transição de andar concluída. Andar antigo: ${player.floor}, Novo andar: ${nextFloorNumber}`);
+      
+      return updatedState;
+    } catch (error) {
+      console.error('Erro não tratado ao processar derrota do inimigo:', error);
+      // Retornar o estado atual com uma mensagem de erro para evitar travamento
+      return {
+        ...gameState,
+        gameMessage: 'Ocorreu um erro ao processar a batalha. Tente novamente.',
+        isPlayerTurn: true
+      };
     }
-    
-    return {
-      ...gameState,
-      player: {
-        ...player,
-        floor: nextFloorNumber,
-        hp: Math.min(player.max_hp, player.hp + baseRecovery),
-        mana: Math.min(player.max_mana, player.mana + manaRecovery),
-        xp: newXp,
-        gold: player.gold + rewards.gold,
-        spells: updatedSpells
-      },
-      currentEnemy: nextEnemy,
-      currentFloor: nextFloor,
-      isPlayerTurn: true,
-      gameMessage: `Você derrotou o inimigo e avançou para o ${nextFloor.description}!${dropsMessage}${levelUpMessage}${levelWarning}`,
-      highestFloor,
-    };
   }
 
   /**
@@ -734,7 +769,7 @@ export class GameService {
    * @param playerDefendAction Indica se o jogador usou a ação de defesa
    * @returns Novo estado do jogo após a ação do inimigo
    */
-  static processEnemyAction(gameState: GameState, playerDefendAction: boolean): GameState {
+  static async processEnemyAction(gameState: GameState, playerDefendAction: boolean): Promise<GameState> {
     const { player, currentEnemy } = gameState;
     
     if (!currentEnemy) {
@@ -773,6 +808,20 @@ export class GameService {
     const updatedState = SpellService.updateSpellCooldowns(gameState);
     
     if (player.hp <= 0) {
+      try {
+        // Salvar a pontuação no ranking antes de deletar o personagem
+        const rankingEntry = {
+          player_name: player.name,
+          highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
+          user_id: player.user_id
+        };
+
+        await RankingService.saveScore(rankingEntry);
+        await CharacterService.deleteCharacter(player.id);
+      } catch (error) {
+        console.error('Erro ao processar morte do personagem:', error);
+      }
+
       return {
         ...updatedState,
         mode: 'gameover',

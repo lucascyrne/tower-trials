@@ -74,12 +74,15 @@ export class SpellService {
       source_spell: spell.id
     };
 
-    // Aplicar efeito baseado no tipo
+    // Aplicar efeito baseado no tipo com aumento de 60% para dano
+    const damageMultiplier = 1.6; // 60% a mais
+
     switch (spell.effect_type) {
       case 'damage':
-        target.hp = Math.max(0, target.hp - spell.effect_value);
+        const boostedDamage = Math.floor(spell.effect_value * damageMultiplier);
+        target.hp = Math.max(0, target.hp - boostedDamage);
         return {
-          message: `${spell.name} causou ${spell.effect_value} de dano!`,
+          message: `${spell.name} causou ${boostedDamage} de dano!`,
           success: true
         };
 
@@ -113,6 +116,8 @@ export class SpellService {
         };
 
       case 'dot':
+        // Aumentar o dano ao longo do tempo também
+        effect.value = Math.floor(effect.value * damageMultiplier);
         target.active_effects.dots.push(effect);
         return {
           message: `${spell.name} aplicou um efeito de dano ao longo do tempo!`,

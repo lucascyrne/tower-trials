@@ -38,35 +38,33 @@ export const AuthService = {
 
       if (error) throw error;
 
-      if (user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('uid', user.id)
-          .single();
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uid', user.id)
+        .maybeSingle();
 
-        if (profileError) {
-          console.error('Erro ao buscar perfil:', profileError.message);
-          return null;
-        }
-
-        if (profile) {
-          return {
-            ...user,
-            username: profile.username,
-            display_name: profile.display_name,
-            avatar_url: profile.avatar_url,
-            role: profile.role,
-            highest_floor: profile.highest_floor,
-            total_games: profile.total_games,
-            total_victories: profile.total_victories,
-            is_active: profile.is_active,
-            last_login: profile.last_login,
-          } as User;
-        }
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError.message);
+        return null;
       }
 
-      return null;
+      if (!profile) {
+        return null;
+      }
+
+      return {
+        ...user,
+        username: profile.username,
+        display_name: profile.display_name,
+        avatar_url: profile.avatar_url,
+        role: profile.role,
+        highest_floor: profile.highest_floor,
+        total_games: profile.total_games,
+        total_victories: profile.total_victories,
+        is_active: profile.is_active,
+        last_login: profile.last_login,
+      } as User;
     } catch (error: unknown) {
       if (error instanceof Error && !error.message.includes('JWT')) {
         console.error('Erro ao obter usuário atual:', error.message);
@@ -96,42 +94,45 @@ export const AuthService = {
 
       if (error) throw error;
 
-      if (data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('uid', data.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Erro ao buscar perfil:', profileError.message);
-          return { user: null, session: data.session, error: 'Erro ao buscar perfil do usuário' };
-        }
-
-        // Atualizar last_login
-        await supabase
-          .from('users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('uid', data.user.id);
-
-        if (profile) {
-          const fullUser: User = {
-            ...data.user,
-            username: profile.username,
-            display_name: profile.display_name,
-            avatar_url: profile.avatar_url,
-            role: profile.role,
-            highest_floor: profile.highest_floor,
-            total_games: profile.total_games,
-            total_victories: profile.total_victories,
-            is_active: profile.is_active,
-            last_login: profile.last_login,
-          };
-          return { user: fullUser, session: data.session };
-        }
+      if (!data.user) {
+        return { user: null, session: null, error: 'Usuário não encontrado' };
       }
 
-      return { user: null, session: data.session };
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('uid', data.user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError.message);
+        return { user: null, session: data.session, error: 'Erro ao buscar perfil do usuário' };
+      }
+
+      if (!profile) {
+        return { user: null, session: data.session, error: 'Perfil não encontrado' };
+      }
+
+      // Atualizar last_login
+      await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('uid', data.user.id);
+
+      const fullUser: User = {
+        ...data.user,
+        username: profile.username,
+        display_name: profile.display_name,
+        avatar_url: profile.avatar_url,
+        role: profile.role,
+        highest_floor: profile.highest_floor,
+        total_games: profile.total_games,
+        total_victories: profile.total_victories,
+        is_active: profile.is_active,
+        last_login: profile.last_login,
+      };
+
+      return { user: fullUser, session: data.session };
     } catch (error: unknown) {
       return { user: null, session: null, error: String(error) };
     }
@@ -140,9 +141,9 @@ export const AuthService = {
   // Registrar com Email/Senha
   signUpWithEmail: async (signUpData: SignUpDTO): Promise<AuthResponse> => {
     try {
-      const { email, password } = signUpData;
-      const username = email.split('@')[0];
+      const { email, password, username = email.split('@')[0] } = signUpData;
 
+      // Primeiro, crie o usuário no Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -156,6 +157,61 @@ export const AuthService = {
 
       if (!data.user) {
         throw new Error('Falha ao criar usuário');
+      }
+
+      // Aguardar um momento para garantir que o usuário foi criado no Auth
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      try {
+        // Usar função RPC ou inserção direta com service_role
+        await supabase.rpc('create_user_profile', {
+          p_uid: data.user.id,
+          p_username: username,
+          p_email: email
+        });
+      } catch (rpcError) {
+        console.error('Erro ao chamar RPC:', rpcError);
+        
+        // Fallback: inserção direta se a RPC falhar
+        try {
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              uid: data.user.id,
+              username,
+              email,
+              role: 'PLAYER',
+              highest_floor: 0,
+              total_games: 0,
+              total_victories: 0,
+              is_active: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            console.error('Erro no fallback de inserção:', insertError);
+            if (insertError.code === '23505') { // Duplicate key
+              return { 
+                user: {
+                  ...data.user,
+                  username,
+                  role: 'PLAYER',
+                  highest_floor: 0,
+                  total_games: 0,
+                  total_victories: 0,
+                  is_active: true,
+                } as User, 
+                session: data.session 
+              };
+            }
+            throw insertError;
+          }
+        } catch (fallbackError) {
+          console.error('Erro total no processo de criação de perfil:', fallbackError);
+          // Se chegamos aqui, houve falha em todas as tentativas
+          // Mas ainda assim retornamos o usuário para que possa prosseguir com confirmação de email
+        }
       }
 
       return { 

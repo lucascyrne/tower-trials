@@ -205,7 +205,16 @@ export class CharacterService {
       this.characterCache.delete(characterId);
       this.lastFetchTimestamp = 0;
 
-      return { data, error: null, success: true };
+      return { 
+        data: { 
+          leveled_up: data.leveled_up,
+          new_level: data.new_level,
+          new_xp: data.new_xp, 
+          new_xp_next_level: data.new_xp_next_level 
+        }, 
+        error: null, 
+        success: true 
+      };
     } catch (error) {
       console.error('Erro ao atualizar stats:', error instanceof Error ? error.message : error);
       return { data: null, error: error instanceof Error ? error.message : 'Erro ao atualizar stats', success: false };
@@ -231,12 +240,18 @@ export class CharacterService {
    */
   static async deleteCharacter(characterId: string): Promise<{ error: string | null }> {
     try {
+      // Deletar o personagem usando a função RPC do banco
       const { error } = await supabase
-        .from('characters')
-        .delete()
-        .eq('id', characterId);
+        .rpc('delete_character', {
+          p_character_id: characterId
+        });
 
       if (error) throw error;
+
+      // Limpar cache após deletar
+      this.characterCache.delete(characterId);
+      this.lastFetchTimestamp = 0;
+
       return { error: null };
     } catch (error) {
       console.error('Erro ao deletar personagem:', error instanceof Error ? error.message : error);

@@ -15,12 +15,26 @@ export class MonsterService {
    */
   static async getMonsterForFloor(floor: number): Promise<ServiceResponse<Monster>> {
     try {
+      // Chamar a função RPC que criamos especificamente para isso
       const { data, error } = await supabase
-        .rpc('get_monster_for_floor', { p_floor: floor })
+        .rpc('get_monster_for_floor', {
+          p_floor: floor
+        })
         .single();
 
       if (error) throw error;
-      return { data: data as Monster, error: null, success: true };
+      
+      if (!data) {
+        throw new Error('Nenhum monstro encontrado para este andar');
+      }
+
+      // Aplicar redução de 60% nas recompensas
+      const reductionFactor = 0.4;
+      const monster = data as Monster;
+      monster.reward_xp = Math.floor(monster.reward_xp * reductionFactor);
+      monster.reward_gold = Math.floor(monster.reward_gold * reductionFactor);
+
+      return { data: monster, error: null, success: true };
     } catch (error) {
       console.error('Erro ao buscar monstro:', error instanceof Error ? error.message : error);
       return { 

@@ -1,24 +1,19 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase';
 import { CriteriosPesquisaUser, IUser, UpdateUserDTO } from './user-model';
 
 class UserService {
-  private supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   async getUserProfile(): Promise<{ data: IUser | null; error: string | null }> {
     try {
-      const { data: { user }, error: authError } = await this.supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (authError) throw authError;
       if (!user) return { data: null, error: 'Usuário não autenticado' };
 
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('uid', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return { data: data as IUser, error: null };
@@ -31,9 +26,35 @@ class UserService {
     }
   }
 
-  async searchUsers(criterios: CriteriosPesquisaUser): Promise<{ data: IUser[] | null; error: string | null }> {
+  async searchUsers(criterios: CriteriosPesquisaUser): Promise<{ data: IUser[] | null; count: number; error: string | null }> {
     try {
-      let query = this.supabase
+      // Primeiro, obter o total de registros para paginação
+      let countQuery = supabase
+        .from('users')
+        .select('id', { count: 'exact' });
+
+      if (criterios.nome) {
+        countQuery = countQuery.ilike('nome', `%${criterios.nome}%`);
+      }
+
+      if (criterios.email) {
+        countQuery = countQuery.ilike('email', `%${criterios.email}%`);
+      }
+
+      if (criterios.role) {
+        countQuery = countQuery.eq('role', criterios.role);
+      }
+
+      if (criterios.ativo !== undefined) {
+        countQuery = countQuery.eq('ativo', criterios.ativo);
+      }
+
+      const { count, error: countError } = await countQuery;
+      
+      if (countError) throw countError;
+
+      // Agora buscar os dados com paginação
+      let query = supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
@@ -58,11 +79,12 @@ class UserService {
         .range((criterios.page - 1) * criterios.limit, criterios.page * criterios.limit - 1);
 
       if (error) throw error;
-      return { data: data as IUser[], error: null };
+      return { data: data as IUser[], count: count || 0, error: null };
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
       return { 
-        data: null, 
+        data: null,
+        count: 0, 
         error: error instanceof Error ? error.message : 'Erro ao buscar usuários' 
       };
     }
@@ -71,31 +93,40 @@ class UserService {
   async updateUser(uid: string, updateData: UpdateUserDTO): Promise<{ error: string | null }> {
     try {
       // Se houver arquivo de imagem, fazer upload primeiro
+      let imagemPerfil_url = undefined;
+      
       if (updateData.imagemPerfil) {
-        const { error: uploadError } = await this.supabase.storage
+        const fileExt = updateData.imagemPerfil.name.split('.').pop();
+        const fileName = `${uid}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
           .from('profile-images')
-          .upload(`${uid}/${updateData.imagemPerfil.name}`, updateData.imagemPerfil);
+          .upload(fileName, updateData.imagemPerfil, {
+            cacheControl: '3600',
+            upsert: true
+          });
 
         if (uploadError) throw uploadError;
 
         // Gerar URL pública da imagem
-        const { data: { publicUrl } } = this.supabase.storage
+        const { data: { publicUrl } } = supabase.storage
           .from('profile-images')
-          .getPublicUrl(`${uid}/${updateData.imagemPerfil.name}`);
+          .getPublicUrl(fileName);
 
-        // Atualizar URL da imagem no perfil
-        const { error: updateError } = await this.supabase
-          .from('users')
-          .update({ imagem_perfil_url: publicUrl })
-          .eq('uid', uid);
-
-        if (updateError) throw updateError;
+        imagemPerfil_url = publicUrl;
+        
+        // Remover o campo de arquivo antes de atualizar o perfil
+        delete updateData.imagemPerfil;
       }
 
-      // Atualizar outros campos do perfil
-      const { error } = await this.supabase
+      // Atualizar perfil com os campos restantes e a URL da imagem, se houver
+      const { error } = await supabase
         .from('users')
-        .update(updateData)
+        .update({ 
+          ...updateData,
+          ...(imagemPerfil_url && { imagem_perfil_url: imagemPerfil_url }),
+          updated_at: new Date().toISOString()
+        })
         .eq('uid', uid);
 
       if (error) throw error;

@@ -39,59 +39,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
 
   const loadUser = useCallback(async () => {
-    if (!state.isLoading) return; // Evita múltiplas chamadas desnecessárias
+    if (!state.isLoading) return;
 
     try {
       const session = await AuthService.getSession();
       
-      if (session) {
-        const user = await AuthService.getCurrentUser();
-        
-        // Se não encontrou o usuário na tabela users, tenta criar o perfil
-        if (!user && session.user) {
-          const username = session.user.user_metadata.username || session.user.email?.split('@')[0];
-          const { error: createError } = await supabase
-            .from('users')
-            .insert({
-              uid: session.user.id,
-              email: session.user.email,
-              username,
-              role: 'PLAYER',
-              highest_floor: 0,
-              total_games: 0,
-              total_victories: 0,
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-
-          if (!createError) {
-            // Recarrega o usuário após criar o perfil
-            const newUser = await AuthService.getCurrentUser();
-            setState({
-              ...initialState,
-              user: newUser,
-              session,
-              isAuthenticated: !!newUser,
-              isLoading: false,
-            });
-            return;
-          }
-        }
-
-        setState({
-          ...initialState,
-          user,
-          session,
-          isAuthenticated: !!user,
-          isLoading: false,
-        });
-      } else {
+      if (!session) {
         setState({
           ...initialState,
           isLoading: false,
         });
+        return;
       }
+
+      const user = await AuthService.getCurrentUser();
+      setState({
+        ...initialState,
+        user,
+        session,
+        isAuthenticated: !!user,
+        isLoading: false,
+      });
     } catch (error: unknown) {
       console.error('Erro ao carregar usuário:', error instanceof Error ? error.message : error);
       setState({
@@ -102,21 +70,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [state.isLoading]);
 
-  // Observar mudanças na autenticação
   useEffect(() => {
-    // Evitar múltiplas verificações quando a página perde o foco
     let lastActive = Date.now();
-    const authCheckInterval: NodeJS.Timeout | null = null;
     
     const handleVisibilityChange = () => {
-      // Só verifica novamente se passou pelo menos 5 minutos e não estiver em uma rota de jogo
       if (document.visibilityState === 'visible' && 
-          Date.now() - lastActive > 300000 && // 5 minutos
+          Date.now() - lastActive > 300000 && 
           !window.location.pathname.includes('/game/play')) {
         lastActive = Date.now();
         setState(prev => ({
           ...prev,
-          isLoading: true, // Dispara o loadUser
+          isLoading: true,
         }));
       }
     };
@@ -126,12 +90,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Só atualiza se a sessão realmente mudou
       if (JSON.stringify(session) !== JSON.stringify(state.session)) {
         setState(prev => ({
           ...prev,
           session,
-          isLoading: true, // Dispara o loadUser
+          isLoading: true,
         }));
       }
     });
@@ -139,11 +102,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       subscription.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (authCheckInterval) clearInterval(authCheckInterval);
     };
   }, [state.session]);
 
-  // Carregar usuário quando necessário
   useEffect(() => {
     if (state.isLoading) {
       loadUser();
@@ -164,7 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       setState(prev => ({
         ...prev,
-        isLoading: true, // Dispara o loadUser
+        isLoading: true,
         loading: { ...prev.loading, signIn: false },
       }));
       return { success: true };
@@ -193,7 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       setState(prev => ({
         ...prev,
-        isLoading: true, // Dispara o loadUser
+        isLoading: true,
         loading: { ...prev.loading, signUp: false },
       }));
       return { success: true };
@@ -245,7 +206,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       setState(prev => ({
         ...prev,
-        isLoading: true, // Dispara o loadUser
+        isLoading: true,
         loading: { ...prev.loading, updateProfile: false },
       }));
       return { success: true };

@@ -287,14 +287,47 @@ export class ConsumableService {
     drops: { drop_id: string; quantity: number }[]
   ): Promise<ServiceResponse<null>> {
     try {
-      for (const drop of drops) {
-        const { error } = await supabase.rpc('add_monster_drop', {
-          p_character_id: characterId,
-          p_drop_id: drop.drop_id,
-          p_quantity: drop.quantity
-        });
+      // Processar os drops em lote em vez de um por um
+      if (drops.length === 0) {
+        return { data: null, error: null, success: true };
+      }
+      
+      // Usar Promise.allSettled para não interromper todo o processo se um falhar
+      const results = await Promise.allSettled(drops.map(async (drop) => {
+        try {
+          const { error } = await supabase.rpc('add_monster_drop', {
+            p_character_id: characterId,
+            p_drop_id: drop.drop_id,
+            p_quantity: drop.quantity
+          });
 
-        if (error) throw error;
+          if (error) {
+            // Se for um erro de chave duplicada, já foi tratado no backend
+            if (error.code === '23505') {
+              console.warn(`Drop já existe para o personagem. Usando fallback SQL.`);
+              return { success: true };
+            }
+            throw error;
+          }
+          
+          return { success: true };
+        } catch (err) {
+          console.error(`Erro ao adicionar drop ${drop.drop_id}:`, err);
+          return { success: false, error: err };
+        }
+      }));
+      
+      // Verificar se algum drop falhou totalmente
+      const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+      
+      if (failures.length > 0) {
+        console.warn(`${failures.length} de ${drops.length} drops falharam ao serem adicionados.`);
+        // Se falhar parcialmente, ainda é considerado sucesso, mas logamos o erro
+        return { 
+          data: null, 
+          error: null, 
+          success: true 
+        };
       }
 
       return { data: null, error: null, success: true };

@@ -45,7 +45,8 @@ export const initialGameState: GameState = {
   isPlayerTurn: true,
   gameMessage: '',
   highestFloor: 0,
-  selectedSpell: null
+  selectedSpell: null,
+  battleRewards: null
 };
 
 // Tipo do contexto do jogo
@@ -59,6 +60,7 @@ export interface GameContextType {
   };
   error: string | null;
   gameMessage: string;
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' }[];
   characters: Character[];
   selectedCharacter: Character | null;
   startGame: (name: string) => Promise<void>;
@@ -66,6 +68,7 @@ export interface GameContextType {
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
   resetError: () => void;
+  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore') => void;
   saveProgress: () => Promise<void>;
 }
 
@@ -80,6 +83,7 @@ export const GameContext = createContext<GameContextType>({
   },
   error: null,
   gameMessage: '',
+  gameLog: [],
   characters: [],
   selectedCharacter: null,
   startGame: async () => {},
@@ -87,5 +91,6 @@ export const GameContext = createContext<GameContextType>({
   performAction: () => {},
   returnToMenu: () => {},
   resetError: () => {},
+  addGameLogMessage: () => {},
   saveProgress: async () => {}
 }); 

@@ -67,6 +67,7 @@ export interface GameState {
   gameMessage: string;
   highestFloor: number;
   selectedSpell: PlayerSpell | null;
+  battleRewards: BattleRewards | null;
 }
 
 export interface GameLoadingState {
@@ -87,6 +88,7 @@ export interface GameContextState {
   loading: GameLoadingState;
   error: string | null;
   gameMessage: string | null;
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' }[];
 }
 
 export interface BattleActionResult {
@@ -99,3 +101,11 @@ export interface BattleActionResult {
     newLevel?: number;
   };
 } 
+
+export interface BattleRewards {
+  xp: number;
+  gold: number;
+  drops: { name: string; quantity: number }[];
+  leveledUp: boolean;
+  newLevel?: number;
+}
