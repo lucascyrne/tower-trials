@@ -27,7 +27,7 @@ export default function Footer() {
           </div>
           <div className="flex flex-col gap-3">
             <h5 className="font-bold text-primary">Links</h5>
-            <Link href="/ranking" className="text-muted-foreground hover:text-primary transition-colors">Ranking Global</Link>
+            <Link href="/game/ranking" className="text-muted-foreground hover:text-primary transition-colors">Ranking Global</Link>
             <Link href="/guia" className="text-muted-foreground hover:text-primary transition-colors">Guia do Jogo</Link>
             <Link href="/sobre" className="text-muted-foreground hover:text-primary transition-colors">Sobre</Link>
           </div>

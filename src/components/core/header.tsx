@@ -25,7 +25,7 @@ const getMenuItemsByRole = (role?: string) => {
       label: 'Jogar',
     },
     {
-      href: '/ranking',
+      href: '/game/ranking',
       icon: Trophy,
       label: 'Ranking',
     },
