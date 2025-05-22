@@ -22,6 +22,48 @@ CREATE TRIGGER update_game_progress_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Função para atualizar o andar do personagem
+CREATE OR REPLACE FUNCTION update_character_floor(
+    p_character_id UUID,
+    p_floor INTEGER
+)
+RETURNS VOID AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_floor INTEGER;
+BEGIN
+    -- Obter user_id e andar atual do personagem
+    SELECT user_id, floor INTO v_user_id, v_current_floor
+    FROM characters
+    WHERE id = p_character_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Personagem não encontrado';
+    END IF;
+    
+    -- Verificar se o novo andar é maior que o atual para garantir progressão
+    IF p_floor < v_current_floor THEN
+        RAISE NOTICE 'Tentativa de retroceder andar rejeitada: % -> %', v_current_floor, p_floor;
+        RETURN; -- Não permite retroceder de andar
+    END IF;
+    
+    -- Atualizar andar na tabela de personagens
+    UPDATE characters
+    SET floor = p_floor
+    WHERE id = p_character_id;
+    
+    -- Atualizar andar na tabela de progresso
+    UPDATE game_progress
+    SET current_floor = p_floor
+    WHERE user_id = v_user_id;
+    
+    -- Atualizar highest_floor se necessário
+    UPDATE game_progress
+    SET highest_floor = GREATEST(highest_floor, p_floor)
+    WHERE user_id = v_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Habilitar RLS
 ALTER TABLE game_progress ENABLE ROW LEVEL SECURITY;
 
@@ -44,4 +86,7 @@ CREATE POLICY "Usuários podem atualizar seu próprio progresso" ON game_progres
 -- Política para deleção do próprio progresso
 CREATE POLICY "Usuários podem deletar seu próprio progresso" ON game_progress
     FOR DELETE
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)); 
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+
+-- Garantir que as funções possam ser executadas por usuários autenticados
+GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated; 

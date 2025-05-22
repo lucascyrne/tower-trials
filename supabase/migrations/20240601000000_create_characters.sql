@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS characters (
     atk INTEGER NOT NULL,
     def INTEGER NOT NULL,
     speed INTEGER NOT NULL,
+    floor INTEGER DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, name)
@@ -96,7 +97,8 @@ BEGIN
         max_mana,
         atk,
         def,
-        speed
+        speed,
+        floor
     )
     VALUES (
         p_user_id,
@@ -111,7 +113,8 @@ BEGIN
         v_base_stats.base_mana,
         v_base_stats.base_atk,
         v_base_stats.base_def,
-        v_base_stats.base_speed
+        v_base_stats.base_speed,
+        1  -- andar inicial
     )
     RETURNING id INTO v_character_id;
     
@@ -125,7 +128,8 @@ CREATE OR REPLACE FUNCTION update_character_stats(
     p_xp INTEGER DEFAULT NULL,
     p_gold INTEGER DEFAULT NULL,
     p_hp INTEGER DEFAULT NULL,
-    p_mana INTEGER DEFAULT NULL
+    p_mana INTEGER DEFAULT NULL,
+    p_floor INTEGER DEFAULT NULL
 )
 RETURNS TABLE (
     leveled_up BOOLEAN,
@@ -161,6 +165,18 @@ BEGIN
         UPDATE characters
         SET gold = gold + p_gold
         WHERE id = p_character_id;
+    END IF;
+    
+    -- Atualizar andar se fornecido
+    IF p_floor IS NOT NULL THEN
+        UPDATE characters
+        SET floor = p_floor
+        WHERE id = p_character_id;
+        
+        -- Atualizar também o progresso do jogo
+        UPDATE game_progress
+        SET current_floor = p_floor
+        WHERE user_id = (SELECT user_id FROM characters WHERE id = p_character_id);
     END IF;
     
     -- Se XP foi fornecido, verificar level up
@@ -236,6 +252,7 @@ RETURNS TABLE (
     atk INTEGER,
     def INTEGER,
     speed INTEGER,
+    floor INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE
 ) AS $$

@@ -13,17 +13,15 @@ const GameBattleWithTransition = withFloorTransition(GameBattle);
 export default function BattlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { gameState, loading } = useGame();
+  const { loading } = useGame();
   const [isLoading, setIsLoading] = useState(true);
 
-  // Monitor de carregamento global
+  // Monitor de carregamento global - otimizado
   useEffect(() => {
-    // Se o componente GameBattle estiver carregando o personagem, este componente também está carregando
     if (!loading.loadProgress && !loading.performAction) {
-      // Adicionar um pequeno delay para evitar flashes de estados intermediários
       const timer = setTimeout(() => {
         setIsLoading(false);
-      }, 300);
+      }, 100); // Reduzir delay para transições mais rápidas
       
       return () => clearTimeout(timer);
     } else {
@@ -31,15 +29,7 @@ export default function BattlePage() {
     }
   }, [loading.loadProgress, loading.performAction]);
 
-  // Monitorar alterações nas recompensas de batalha
-  useEffect(() => {
-    if (gameState.battleRewards) {
-      // Registrar recompensas no console para depuração (modo silencioso)
-      console.debug('Recompensas de batalha recebidas:', gameState.battleRewards);
-    }
-  }, [gameState.battleRewards]);
-
-  // Validar se o personagem existe no URL
+  // Validar se o personagem existe no URL - apenas uma vez
   useEffect(() => {
     const characterId = searchParams.get('character');
     if (!characterId) {
@@ -48,7 +38,7 @@ export default function BattlePage() {
       });
       router.push('/game/play');
     }
-  }, [searchParams, router]);
+  }, []); // Remover dependências para executar apenas uma vez
 
   // Renderizar skeleton loader enquanto carrega
   if (isLoading) {
