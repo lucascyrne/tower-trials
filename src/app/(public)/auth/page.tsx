@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { LoginFormValues, RegisterFormValues, SignUpDTO } from '@/resources/auth/auth-model';
@@ -11,12 +11,25 @@ import { toast } from 'sonner';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const { signInWithEmail, signUpWithEmail, loading } = useAuth();
+  const { signInWithEmail, signUpWithEmail, loading, isAuthenticated } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    // Redirecionar se já estiver autenticado
+    if (isAuthenticated) {
+      router.replace('/game');
+    }
+  }, [isAuthenticated, router]);
 
   const handleLogin = async (data: LoginFormValues) => {
     try {
-      await signInWithEmail(data);
+      const result = await signInWithEmail(data);
+      
+      if (!result.success) {
+        toast.error('Erro ao fazer login', {
+          description: result.error || 'Ocorreu um erro inesperado',
+        });
+      }
     } catch (error) {
       toast.error('Erro ao fazer login', {
         description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado',
@@ -34,7 +47,12 @@ export default function AuthPage() {
 
       const result = await signUpWithEmail(signUpData);
       
-      if (result.success || (result.error && result.error.includes('Email rate limit'))) {
+      if (result.success) {
+        toast.success('Conta criada com sucesso', {
+          description: 'Por favor, verifique seu e-mail para confirmar sua conta.',
+        });
+        router.replace('/auth/verify-email');
+      } else if (result.error && result.error.includes('Email rate limit')) {
         toast.success('Conta criada com sucesso', {
           description: 'Por favor, verifique seu e-mail para confirmar sua conta.',
         });
@@ -68,12 +86,12 @@ export default function AuthPage() {
 
           {isLogin ? (
             <LoginForm
-              onSubmit={(data) => handleLogin(data as LoginFormValues)}
+              onSubmit={handleLogin}
               isLoading={loading.signIn}
             />
           ) : (
             <RegisterForm
-              onSubmit={(data) => handleRegister(data as RegisterFormValues)}
+              onSubmit={handleRegister}
               isLoading={loading.signUp}
             />
           )}

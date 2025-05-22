@@ -20,7 +20,7 @@ export default function Home() {
     } else {
       router.replace('/auth');
     }
-  }, [user, pathname, router]);
+  }, [user, pathname]);
 
   useEffect(() => {
     if (!isLoading) {

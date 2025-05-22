@@ -95,42 +95,91 @@ export default function RankingPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">Pos.</TableHead>
-                  <TableHead>Jogador</TableHead>
-                  <TableHead className="text-right">Andar</TableHead>
-                  <TableHead className="text-right">Data</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(activeTab === 'global' ? rankingData : userRanking).map((entry, index) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-center font-medium">
-                      <Trophy className={`inline h-4 w-4 ${getMedalColor(index)}`} />
-                      <span className="ml-1">{index + 1}</span>
-                    </TableCell>
-                    <TableCell>{entry.player_name}</TableCell>
-                    <TableCell className="text-right">{entry.highest_floor}</TableCell>
-                    <TableCell className="text-right">
-                      {entry.created_at ? new Date(entry.created_at).toLocaleDateString('pt-BR') : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                
-                {/* Mensagem se não houver dados */}
-                {(activeTab === 'global' ? rankingData.length === 0 : userRanking.length === 0) && (
+            <>
+              {/* Estatísticas do Jogador (se autenticado) */}
+              {user && activeTab === 'personal' && userRanking.length > 0 && (
+                <div className="mb-6 bg-muted p-4 rounded-lg">
+                  <h3 className="font-medium mb-2">Suas Estatísticas</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Melhor Andar:</span>
+                      <p className="font-medium">{Math.max(...userRanking.map(r => r.highest_floor))}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total de Tentativas:</span>
+                      <p className="font-medium">{userRanking.length}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Última Tentativa:</span>
+                      <p className="font-medium">
+                        {userRanking[0]?.created_at 
+                          ? new Date(userRanking[0].created_at).toLocaleDateString('pt-BR')
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                      {activeTab === 'global' 
-                        ? 'Nenhum registro encontrado no ranking global.'
-                        : 'Você ainda não tem pontuações registradas.'}
-                    </TableCell>
+                    <TableHead className="w-12 text-center">Pos.</TableHead>
+                    <TableHead>Jogador</TableHead>
+                    <TableHead className="text-right">Andar</TableHead>
+                    <TableHead className="text-right">Data</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {(activeTab === 'global' ? rankingData : userRanking).map((entry, index) => (
+                    <TableRow key={entry.id} className={entry.user_id === user?.id ? 'bg-primary/5' : ''}>
+                      <TableCell className="text-center font-medium">
+                        {index < 3 ? (
+                          <Trophy className={`inline h-4 w-4 ${getMedalColor(index)}`} />
+                        ) : (
+                          <span className="text-muted-foreground">{index + 1}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{entry.player_name}</span>
+                          {entry.user_id === user?.id && (
+                            <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                              Você
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {entry.highest_floor}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {entry.created_at 
+                          ? new Date(entry.created_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  {/* Mensagem se não houver dados */}
+                  {(activeTab === 'global' ? rankingData.length === 0 : userRanking.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        {activeTab === 'global' 
+                          ? 'Nenhum registro encontrado no ranking global.'
+                          : 'Você ainda não tem pontuações registradas.'}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </>
           )}
         </CardContent>
         
