@@ -3,22 +3,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Shield, Sword, Star, Sparkles, Backpack } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { Backpack } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
-import { FloorType } from '@/resources/game/game-model';
-import { PlayerSpell } from '@/resources/game/models/spell.model';
 import { EquipmentPanel } from './EquipmentPanel';
 import { EquipmentShop } from './EquipmentShop';
-import { ConsumablesPanel } from './ConsumablesPanel';
+import { PlayerInfo } from './PlayerInfo';
+import { EnemyInfo } from './EnemyInfo';
+import { BattleActions } from './BattleActions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Skull } from 'lucide-react';
 import { toast } from 'sonner';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle } from "lucide-react";
+
+import { BattleHeader } from './BattleHeader';
+import { GameLog } from './GameLog';
 
 interface BattleRewards {
   xp: number;
@@ -38,6 +38,7 @@ export default function GameBattle() {
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messageProcessedRef = useRef<Set<string>>(new Set());
+  const characterLoadedRef = useRef(false); // Para evitar carregamentos duplicados
   const [victoryRewards, setVictoryRewards] = useState<BattleRewards>({
     xp: 0,
     gold: 0,
@@ -47,41 +48,56 @@ export default function GameBattle() {
   });
 
   useEffect(() => {
+    console.log(`[GameBattle] Andar atual: ${player.floor}`);
+  }, [player.floor]);
+
+  // Processamento de recompensas de batalha
+  useEffect(() => {
     if (gameState.battleRewards) {
-      const rewardKey = `${gameState.currentEnemy?.name}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}`;
+      const rewardKey = `${gameState.currentEnemy?.name}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}-${gameState.player.floor}`;
       
       if (!messageProcessedRef.current.has(rewardKey)) {
+        console.log(`[GameBattle] Processando recompensa: ${rewardKey}`);
         messageProcessedRef.current.add(rewardKey);
         
-        console.log(`Processando recompensa: ${rewardKey}`);
+        const battleRewards = gameState.battleRewards;
         
         setVictoryRewards({
-          xp: gameState.battleRewards.xp,
-          gold: gameState.battleRewards.gold,
-          drops: gameState.battleRewards.drops || [],
-          leveledUp: gameState.battleRewards.leveledUp,
-          newLevel: gameState.battleRewards.newLevel
+          xp: battleRewards.xp,
+          gold: battleRewards.gold,
+          drops: battleRewards.drops || [],
+          leveledUp: battleRewards.leveledUp,
+          newLevel: battleRewards.newLevel
         });
+        
+        // Mostrar modal imediatamente após receber as recompensas
         setShowVictoryModal(true);
         
-        const victoryMessage = `Vitória! Você derrotou ${gameState.currentEnemy?.name || 'o inimigo'} e recebeu ${gameState.battleRewards.xp} XP e ${gameState.battleRewards.gold} Gold.`;
+        const victoryMessage = `Vitória! Você derrotou ${gameState.currentEnemy?.name || 'o inimigo'} e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
         addGameLogMessage(victoryMessage, 'system');
         
-        if (gameState.battleRewards.leveledUp && gameState.battleRewards.newLevel) {
-          addGameLogMessage(`Você subiu para o nível ${gameState.battleRewards.newLevel}!`, 'system');
+        if (battleRewards.leveledUp && battleRewards.newLevel) {
+          addGameLogMessage(`Você subiu para o nível ${battleRewards.newLevel}!`, 'system');
         }
       }
     }
-  }, [gameState.battleRewards, gameState.currentEnemy]);
+  }, [gameState.battleRewards]);
 
+  // Verificação de game over
   useEffect(() => {
     if (gameState.mode === 'gameover' && player.hp <= 0) {
       setShowDeathModal(true);
     }
   }, [gameState.mode, player.hp]);
 
+  // Carregamento inicial do personagem
   useEffect(() => {
     const loadSelectedCharacter = async () => {
+      // Evitar carregamentos duplicados do mesmo personagem
+      if (characterLoadedRef.current) {
+        return;
+      }
+      
       setIsLoading(true);
       
       const characterId = searchParams.get('character');
@@ -91,10 +107,12 @@ export default function GameBattle() {
       }
 
       try {
+        console.log(`[GameBattle] Carregando personagem: ${characterId}`);
         const { CharacterService } = await import('@/resources/game/character.service');
         const response = await CharacterService.getCharacter(characterId);
         
         if (response.success && response.data) {
+          characterLoadedRef.current = true;
           await selectCharacter(response.data);
         } else {
           toast.error('Erro ao carregar personagem', {
@@ -112,12 +130,19 @@ export default function GameBattle() {
     };
 
     loadSelectedCharacter();
+    
+    // Cleanup function para garantir que não há requisições desnecessárias
+    return () => {
+      messageProcessedRef.current.clear();
+    };
   }, [searchParams]);
 
+  // Função para retornar à seleção de personagens
   const handleReturnToCharacterSelect = () => {
     router.push('/game/play');
   };
 
+  // Componente de carregamento
   if (isLoading || loading.performAction) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
@@ -130,42 +155,44 @@ export default function GameBattle() {
     );
   }
 
-  if (!currentEnemy || !currentFloor) return null;
+  // Se não há inimigo ou andar, não renderizar a batalha
+  if (!currentEnemy || !currentFloor) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Transicionando...</h2>
+          <p className="text-muted-foreground">Preparando próximo andar</p>
+        </div>
+      </div>
+    );
+  }
 
   const enemyHpPercentage = (currentEnemy.hp / currentEnemy.maxHp) * 100;
   const playerHpPercentage = (player.hp / player.max_hp) * 100;
   const playerManaPercentage = (player.mana / player.max_mana) * 100;
 
+  // Função para executar ações do jogador
   const handleAction = async (action: ActionType, spellId?: string) => {
     if (!isPlayerTurn) return;
     
     await performAction(action, spellId);
   };
 
+  // Função para continuar a aventura após derrotar um inimigo
   const handleContinueAdventure = async () => {
-    console.log("Iniciando transição para o próximo andar");
+    console.log("[GameBattle] Iniciando transição para o próximo andar");
+    console.log("[GameBattle] Chamando performAction('continue')...");
     
     setShowVictoryModal(false);
     
-    setTimeout(async () => {
-      if (gameState.battleRewards) {
-        try {
-          await performAction('continue');
-          
-          const currentRewardKey = `${gameState.currentEnemy?.name}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}`;
-          messageProcessedRef.current.delete(currentRewardKey);
-          
-          if (currentFloor) {
-            toast.success(`Avançando para o Andar ${player.floor}`, {
-              description: currentFloor.description
-            });
-          }
-        } catch (error) {
-          console.error("Erro ao avançar para o próximo andar:", error);
-          toast.error("Erro ao avançar para o próximo andar");
-        }
-      }
-    }, 100);
+    try {
+      await performAction('continue');
+      console.log("[GameBattle] performAction('continue') concluído com sucesso");
+    } catch (error) {
+      console.error("[GameBattle] Erro ao avançar:", error);
+      toast.error("Erro ao avançar para o próximo andar");
+      setShowVictoryModal(true);
+    }
   };
 
   const handleReturnToHub = () => {
@@ -178,36 +205,6 @@ export default function GameBattle() {
     return 'bg-red-500';
   };
 
-  const getFloorIcon = (type: FloorType) => {
-    switch (type) {
-      case 'boss': return '👑';
-      case 'elite': return '⭐';
-      case 'event': return '❓';
-      default: return '🗺️';
-    }
-  };
-
-  const renderSpellButton = (spell: PlayerSpell) => (
-    <Button
-      key={spell.id}
-      onClick={() => handleAction('spell', spell.id)}
-      disabled={!isPlayerTurn || spell.current_cooldown > 0 || player.mana < spell.mana_cost}
-      className="flex flex-col items-center justify-center h-24 relative"
-      variant="outline"
-    >
-      <Sparkles className="h-8 w-8 mb-1" />
-      <span>{spell.name}</span>
-      {spell.current_cooldown > 0 && (
-        <span className="absolute bottom-1 text-xs">
-          CD: {spell.current_cooldown}
-        </span>
-      )}
-      <span className="absolute top-1 right-1 text-xs text-blue-500">
-        {spell.mana_cost}
-      </span>
-    </Button>
-  );
-
   const handleEquipmentChange = () => {
     window.location.reload();
   };
@@ -215,138 +212,11 @@ export default function GameBattle() {
   return (
     <>
       <div className="w-full max-w-6xl">
-        <div className="mb-4">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h2 className="text-2xl font-bold text-primary">
-                {getFloorIcon(currentFloor.type)} {currentFloor.description}
-              </h2>
-              {currentFloor.isCheckpoint && (
-                <span className="bg-primary/20 text-primary text-sm px-2 py-1 rounded">
-                  Checkpoint
-                </span>
-              )}
-            </div>
-            {player.level < currentFloor.minLevel && (
-              <div className="text-yellow-500 text-sm mb-2">
-                ⚠️ Nível recomendado: {currentFloor.minLevel}
-              </div>
-            )}
-            <p className="text-foreground/80">{gameMessage}</p>
-          </div>
-        </div>
+        <BattleHeader currentFloor={currentFloor} playerLevel={player.level} gameMessage={gameMessage} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-card/95 pb-2">
-              <CardTitle className="text-center text-lg">{currentEnemy.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="aspect-square bg-muted flex items-center justify-center rounded-md mb-4">
-                <div className="text-6xl font-bold text-muted-foreground">👾</div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between mb-1 text-sm">
-                    <span>HP: {currentEnemy.hp}/{currentEnemy.maxHp}</span>
-                    <span>{Math.round(enemyHpPercentage)}%</span>
-                  </div>
-                  <Progress 
-                    value={enemyHpPercentage} 
-                    className={`h-2 ${getHpColor(enemyHpPercentage)}`} 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-muted p-2 rounded flex items-center gap-1">
-                    <Sword className="h-4 w-4" />
-                    <span>Ataque: {currentEnemy.attack}</span>
-                  </div>
-                  <div className="bg-muted p-2 rounded flex items-center gap-1">
-                    <Shield className="h-4 w-4" />
-                    <span>Defesa: {currentEnemy.defense}</span>
-                  </div>
-                </div>
-                {Object.entries(currentEnemy.active_effects).map(([type, effects]) => 
-                  effects.length > 0 && (
-                    <div key={type} className="text-sm">
-                      <span className="font-medium">{type}: </span>
-                      {effects.map((e: { value: number; duration: number }) => 
-                        `${e.value} (${e.duration})`
-                      ).join(', ')}
-                    </div>
-                  )
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-card/95 pb-2">
-              <CardTitle className="text-center text-lg">{player.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="aspect-square bg-muted flex items-center justify-center rounded-md mb-4">
-                <div className="text-6xl font-bold text-muted-foreground">🧙</div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between mb-1 text-sm">
-                    <span>HP: {player.hp}/{player.max_hp}</span>
-                    <span>{Math.round(playerHpPercentage)}%</span>
-                  </div>
-                  <Progress 
-                    value={playerHpPercentage} 
-                    className={`h-2 ${getHpColor(playerHpPercentage)}`} 
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between mb-1 text-sm">
-                    <span>Mana: {player.mana}/{player.max_mana}</span>
-                    <span>{Math.round(playerManaPercentage)}%</span>
-                  </div>
-                  <Progress 
-                    value={playerManaPercentage} 
-                    className="h-2 bg-blue-500" 
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-muted p-2 rounded flex items-center gap-1">
-                    <Sword className="h-4 w-4" />
-                    <span>Ataque: {player.atk}</span>
-                  </div>
-                  <div className="bg-muted p-2 rounded flex items-center gap-1">
-                    <Shield className="h-4 w-4" />
-                    <span>Defesa: {player.def}</span>
-                  </div>
-                  <div className="bg-muted p-2 rounded flex items-center gap-1">
-                    <Star className="h-4 w-4" />
-                    <span>Nível: {player.level}</span>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <div className="flex justify-between mb-1 text-sm">
-                    <span>XP: {player.xp}/{player.xp_next_level}</span>
-                    <span>{Math.round((player.xp / player.xp_next_level) * 100)}%</span>
-                  </div>
-                  <Progress 
-                    value={(player.xp / player.xp_next_level) * 100} 
-                    className="h-2 bg-primary/20" 
-                  />
-                </div>
-                {Object.entries(player.active_effects).map(([type, effects]) => 
-                  effects.length > 0 && (
-                    <div key={type} className="text-sm">
-                      <span className="font-medium">{type}: </span>
-                      {effects.map((e: { value: number; duration: number }) => 
-                        `${e.value} (${e.duration})`
-                      ).join(', ')}
-                    </div>
-                  )
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
+          <EnemyInfo currentEnemy={currentEnemy} enemyHpPercentage={enemyHpPercentage} getHpColor={getHpColor} />
+          <PlayerInfo player={player} playerHpPercentage={playerHpPercentage} playerManaPercentage={playerManaPercentage} getHpColor={getHpColor} />
           <Card className="overflow-hidden">
             <CardHeader className="bg-card/95 pb-2">
               <CardTitle className="text-center text-lg">Equipamentos</CardTitle>
@@ -384,73 +254,9 @@ export default function GameBattle() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-center text-lg">Ações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
-              <Button 
-                onClick={() => handleAction('attack')} 
-                className="flex-1"
-                disabled={!gameState.player.isPlayerTurn || loading.performAction}
-              >
-                Atacar
-              </Button>
-              <Button 
-                onClick={() => handleAction('defend')} 
-                variant="outline" 
-                className="flex-1"
-                disabled={!gameState.player.isPlayerTurn || loading.performAction}
-              >
-                Defender
-              </Button>
-              <Button 
-                onClick={() => handleAction('flee')} 
-                variant="outline" 
-                className="flex-1"
-                disabled={!gameState.player.isPlayerTurn || loading.performAction}
-              >
-                Fugir
-              </Button>
-              <ConsumablesPanel />
-            </div>
+        <BattleActions handleAction={handleAction} isPlayerTurn={isPlayerTurn} loading={loading} player={player} />
 
-            {player.spells.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-3">Magias</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {player.spells.map(renderSpellButton)}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Log de Eventos</CardTitle>
-            <MessageCircle className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-48 rounded border p-2">
-              {gameLog.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`mb-2 text-sm ${
-                    log.type === 'system' 
-                      ? 'text-blue-500' 
-                      : log.type === 'lore' 
-                        ? 'text-purple-500 italic' 
-                        : 'text-foreground'
-                  }`}
-                >
-                  {log.text}
-                </div>
-              ))}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <GameLog gameLog={gameLog} />
       </div>
 
       <VictoryModal

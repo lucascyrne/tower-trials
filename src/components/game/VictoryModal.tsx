@@ -32,6 +32,17 @@ export function VictoryModal({
   leveledUp,
   newLevel
 }: VictoryModalProps) {
+  
+  const handleContinue = () => {
+    console.log('[VictoryModal] Botão Continuar clicado - chamando onContinue');
+    onContinue();
+  };
+  
+  const handleReturnToHub = () => {
+    console.log('[VictoryModal] Botão Voltar ao Hub clicado - chamando onReturnToHub');
+    onReturnToHub();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -140,14 +151,14 @@ export function VictoryModal({
 
             <DialogFooter className="flex gap-2 mt-4">
               <Button 
-                onClick={onReturnToHub} 
+                onClick={handleReturnToHub} 
                 variant="outline"
                 className="flex-1 items-center justify-center"
               >
                 Voltar ao Hub
               </Button>
               <Button 
-                onClick={onContinue}
+                onClick={handleContinue}
                 className="flex-1 bg-primary items-center justify-center gap-1"
               >
                 Continuar <ArrowRight className="h-4 w-4" />
