@@ -1,7 +1,7 @@
 -- Criação da tabela de progresso do jogo
 CREATE TABLE IF NOT EXISTS game_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     player_name VARCHAR(100) NOT NULL,
     current_floor INTEGER DEFAULT 1,
     hp INTEGER NOT NULL,
@@ -28,20 +28,20 @@ ALTER TABLE game_progress ENABLE ROW LEVEL SECURITY;
 -- Política para leitura do próprio progresso
 CREATE POLICY "Usuários podem ler seu próprio progresso" ON game_progress
     FOR SELECT
-    USING (auth.uid() = user_id);
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 -- Política para inserção do próprio progresso
 CREATE POLICY "Usuários podem inserir seu próprio progresso" ON game_progress
     FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 -- Política para atualização do próprio progresso
 CREATE POLICY "Usuários podem atualizar seu próprio progresso" ON game_progress
     FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid))
+    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 -- Política para deleção do próprio progresso
 CREATE POLICY "Usuários podem deletar seu próprio progresso" ON game_progress
     FOR DELETE
-    USING (auth.uid() = user_id); 
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)); 

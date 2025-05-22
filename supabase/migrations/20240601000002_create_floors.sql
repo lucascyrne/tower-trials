@@ -48,18 +48,22 @@ RETURNS TABLE (
 ) AS $$
 DECLARE
     v_floor floors;
-    v_monster_id UUID;
     v_floor_type floor_type;
     v_is_checkpoint BOOLEAN;
     v_min_level INTEGER;
     v_description TEXT;
 BEGIN
+    -- Verificar se o usuário está autenticado
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Usuário não autenticado';
+    END IF;
+
     -- Tentar obter andar existente
     SELECT * INTO v_floor
     FROM floors f
     WHERE f.floor_number = p_floor_number;
 
-    -- Se o andar não existe, gerar informações dinamicamente sem inserção
+    -- Se o andar não existe, gerar informações dinamicamente
     IF v_floor IS NULL THEN
         v_floor_type := CASE 
             WHEN p_floor_number % 10 = 0 THEN 'boss'::floor_type
@@ -68,8 +72,8 @@ BEGIN
             ELSE 'common'::floor_type
         END;
         
-        v_is_checkpoint := p_floor_number % 10 = 0; -- Checkpoint a cada 10 andares
-        v_min_level := GREATEST(1, p_floor_number / 2); -- Nível mínimo recomendado
+        v_is_checkpoint := p_floor_number % 10 = 0;
+        v_min_level := GREATEST(1, p_floor_number / 2);
         
         v_description := CASE 
             WHEN p_floor_number % 10 = 0 THEN 'Andar do Chefe'
@@ -78,7 +82,6 @@ BEGIN
             ELSE 'Andar Comum'
         END || ' ' || p_floor_number;
         
-        -- Retornar dados gerados dinamicamente
         RETURN QUERY
         SELECT 
             p_floor_number,
@@ -97,4 +100,4 @@ BEGIN
             v_floor.description;
     END IF;
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql SECURITY DEFINER; 

@@ -29,17 +29,6 @@ CREATE TRIGGER update_spells_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Inserir algumas magias iniciais
-INSERT INTO spells (name, description, effect_type, mana_cost, cooldown, unlocked_at_level, effect_value, duration) VALUES
-    ('Bola de Fogo', 'Lança uma bola de fogo que causa dano ao inimigo', 'damage', 20, 2, 1, 30, 1),
-    ('Cura Menor', 'Recupera uma pequena quantidade de HP', 'heal', 15, 3, 2, 25, 1),
-    ('Veneno', 'Envenena o inimigo causando dano ao longo do tempo', 'dot', 25, 4, 3, 10, 3),
-    ('Bênção', 'Aumenta temporariamente a defesa', 'buff', 30, 5, 4, 15, 2),
-    ('Maldição', 'Reduz temporariamente o ataque do inimigo', 'debuff', 35, 5, 5, 20, 2),
-    ('Regeneração', 'Recupera HP ao longo do tempo', 'hot', 40, 6, 6, 15, 3),
-    ('Explosão Arcana', 'Causa uma grande quantidade de dano', 'damage', 50, 8, 8, 80, 1),
-    ('Cura Maior', 'Recupera uma grande quantidade de HP', 'heal', 45, 7, 7, 60, 1);
-
 -- Função para obter magias disponíveis para um nível
 CREATE OR REPLACE FUNCTION get_available_spells(p_level INTEGER)
 RETURNS TABLE (

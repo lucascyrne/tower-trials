@@ -1,7 +1,7 @@
 -- Criar tabela de personagens
 CREATE TABLE IF NOT EXISTS characters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     level INTEGER DEFAULT 1,
     xp INTEGER DEFAULT 0,
@@ -139,6 +139,7 @@ DECLARE
     v_xp_next_level INTEGER;
     v_leveled_up BOOLEAN := FALSE;
     v_base_stats RECORD;
+    v_new_xp INTEGER;
 BEGIN
     -- Obter dados atuais do personagem
     SELECT level, xp, xp_next_level 
@@ -164,25 +165,34 @@ BEGIN
     
     -- Se XP foi fornecido, verificar level up
     IF p_xp IS NOT NULL THEN
-        -- Atualizar XP
-        UPDATE characters
-        SET xp = xp + p_xp
-        WHERE id = p_character_id
-        RETURNING xp INTO v_current_xp;
+        -- Atualizar XP primeiro sem salvar
+        v_new_xp := v_current_xp + p_xp;
         
-        -- Verificar level up
-        WHILE v_current_xp >= v_xp_next_level LOOP
+        -- Verificar level up antes de salvar
+        WHILE v_new_xp >= v_xp_next_level LOOP
             v_current_level := v_current_level + 1;
             v_leveled_up := TRUE;
             
-            -- Calcular novos stats base
+            -- Calcular novos stats base para o novo nível
             SELECT * INTO v_base_stats FROM calculate_base_stats(v_current_level);
             
-            -- Atualizar personagem com novo level e stats
+            -- Atualizar variáveis para próxima iteração
+            v_xp_next_level := calculate_xp_next_level(v_current_level);
+        END LOOP;
+        
+        -- Inicializar v_base_stats com valores do nível atual se não subiu de nível
+        IF NOT v_leveled_up THEN
+            SELECT * INTO v_base_stats FROM calculate_base_stats(v_current_level);
+        END IF;
+        
+        -- Agora aplicar todas as mudanças de uma vez
+        IF v_leveled_up THEN
+            -- Se subiu de nível, atualizar todos os stats
             UPDATE characters
             SET
                 level = v_current_level,
-                xp_next_level = calculate_xp_next_level(v_current_level),
+                xp = v_new_xp,
+                xp_next_level = v_xp_next_level,
                 max_hp = v_base_stats.base_hp,
                 max_mana = v_base_stats.base_mana,
                 atk = v_base_stats.base_atk,
@@ -191,17 +201,20 @@ BEGIN
                 hp = v_base_stats.base_hp, -- Recupera HP totalmente ao subir de nível
                 mana = v_base_stats.base_mana -- Recupera Mana totalmente ao subir de nível
             WHERE id = p_character_id;
-            
-            -- Atualizar variáveis para próxima iteração
-            v_xp_next_level := calculate_xp_next_level(v_current_level);
-        END LOOP;
+        ELSE
+            -- Se não subiu de nível, atualizar apenas XP
+            UPDATE characters
+            SET
+                xp = v_new_xp
+            WHERE id = p_character_id;
+        END IF;
     END IF;
     
     RETURN QUERY
     SELECT 
         v_leveled_up,
         v_current_level,
-        v_current_xp,
+        COALESCE(v_new_xp, v_current_xp) AS new_xp,
         v_xp_next_level;
 END;
 $$ LANGUAGE plpgsql;
@@ -269,6 +282,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Função para deletar um personagem e todos os seus dados relacionados
+CREATE OR REPLACE FUNCTION delete_character(p_character_id UUID)
+RETURNS VOID AS $$
+BEGIN
+    -- Verificar se o usuário tem permissão para deletar este personagem
+    IF NOT EXISTS (
+        SELECT 1 FROM characters c
+        WHERE c.id = p_character_id
+        AND c.user_id = auth.uid()
+    ) THEN
+        RAISE EXCEPTION 'Personagem não encontrado ou sem permissão para deletar';
+    END IF;
+
+    -- Deletar todos os dados relacionados
+    -- As constraints ON DELETE CASCADE cuidarão de limpar as tabelas relacionadas
+    DELETE FROM characters WHERE id = p_character_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Habilitar RLS
 ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
 
@@ -282,35 +314,32 @@ DROP POLICY IF EXISTS "Usuários podem deletar seus próprios personagens" ON ch
 CREATE POLICY "Usuários podem ver seus próprios personagens" ON characters
     FOR SELECT
     TO authenticated
-    USING (auth.uid() = user_id);
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 CREATE POLICY "Usuários podem criar seus próprios personagens" ON characters
     FOR INSERT
     TO authenticated
     WITH CHECK (
-        auth.uid() = user_id
+        user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)
         AND (
             SELECT COUNT(*) FROM characters 
-            WHERE user_id = auth.uid()
+            WHERE user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)
         ) < 3
     );
 
 CREATE POLICY "Usuários podem atualizar seus próprios personagens" ON characters
     FOR UPDATE
     TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid))
+    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 CREATE POLICY "Usuários podem deletar seus próprios personagens" ON characters
     FOR DELETE
     TO authenticated
-    USING (auth.uid() = user_id);
+    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
--- Garantir que a função create_character possa ser executada por usuários autenticados
+-- Garantir que as funções possam ser executadas por usuários autenticados
 GRANT EXECUTE ON FUNCTION create_character TO authenticated;
-
--- Garantir que a função get_user_characters possa ser executada por usuários autenticados
 GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
-
--- Garantir que a função get_character possa ser executada por usuários autenticados
-GRANT EXECUTE ON FUNCTION get_character TO authenticated; 
+GRANT EXECUTE ON FUNCTION get_character TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_character TO authenticated; 

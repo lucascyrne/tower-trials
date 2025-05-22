@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS game_rankings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   player_name VARCHAR(100) NOT NULL,
   highest_floor INTEGER NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES users(uid) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -23,15 +23,18 @@ CREATE POLICY game_rankings_select_policy ON game_rankings
 -- Apenas usuários autenticados podem inserir seus próprios registros
 CREATE POLICY game_rankings_insert_policy ON game_rankings
   FOR INSERT TO authenticated
-  WITH CHECK (user_id IS NULL OR user_id = auth.uid());
+  WITH CHECK (
+    user_id IS NULL OR 
+    user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)
+  );
 
 -- Apenas o próprio usuário pode atualizar seus registros
 CREATE POLICY game_rankings_update_policy ON game_rankings
   FOR UPDATE TO authenticated
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid))
+  WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 -- Apenas o próprio usuário pode deletar seus registros
 CREATE POLICY game_rankings_delete_policy ON game_rankings
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid()); 
+  USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)); 

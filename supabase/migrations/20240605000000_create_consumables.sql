@@ -107,19 +107,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Inserir consumíveis iniciais
-INSERT INTO consumables (name, description, type, effect_value, price, craftable)
-VALUES
-    ('Poção de Vida Pequena', 'Recupera 20 HP', 'potion', 20, 25, false),
-    ('Poção de Vida Média', 'Recupera 50 HP', 'potion', 50, 60, true),
-    ('Poção de Vida Grande', 'Recupera 100 HP', 'potion', 100, 120, true),
-    ('Poção de Mana Pequena', 'Recupera 10 Mana', 'potion', 10, 25, false),
-    ('Poção de Mana Média', 'Recupera 25 Mana', 'potion', 25, 60, true),
-    ('Poção de Mana Grande', 'Recupera 50 Mana', 'potion', 50, 120, true),
-    ('Antídoto', 'Remove efeitos negativos', 'antidote', 0, 75, true),
-    ('Elixir de Força', 'Aumenta o ataque em 5 por 5 turnos', 'buff', 5, 100, true),
-    ('Elixir de Defesa', 'Aumenta a defesa em 5 por 5 turnos', 'buff', 5, 100, true);
-
 -- Trigger para atualizar timestamp de updated_at
 CREATE TRIGGER set_updated_at_consumables
 BEFORE UPDATE ON consumables
