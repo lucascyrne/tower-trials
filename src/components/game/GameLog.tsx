@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle } from "lucide-react";
@@ -13,6 +13,18 @@ interface GameLogProps {
 }
 
 export function GameLog({ gameLog }: GameLogProps) {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll para o final quando novos logs chegarem
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [gameLog]);
+
   return (
     <Card className="mt-6">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -20,7 +32,7 @@ export function GameLog({ gameLog }: GameLogProps) {
         <MessageCircle className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-48 rounded border p-2">
+        <ScrollArea ref={scrollAreaRef} className="h-48 rounded border p-2">
           {gameLog.map((log, index) => (
             <div 
               key={index} 

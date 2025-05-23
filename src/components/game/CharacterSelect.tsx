@@ -3,13 +3,15 @@ import { Character } from '@/resources/game/models/character.model';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { CharacterService } from '@/resources/game/character.service';
+import { NameValidationService } from '@/resources/game/name-validation.service';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Skull, Crown, Swords } from 'lucide-react';
+import { Skull, Crown, Swords, AlertCircle, CheckCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function CharacterSelect() {
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -18,6 +20,7 @@ export function CharacterSelect() {
   const [showPermadeathDialog, setShowPermadeathDialog] = useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [newCharacterName, setNewCharacterName] = useState('');
+  const [nameValidation, setNameValidation] = useState<{ isValid: boolean; error?: string; suggestions?: string[] }>({ isValid: true });
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
@@ -27,6 +30,34 @@ export function CharacterSelect() {
       loadCharacters();
     }
   }, [user]);
+
+  // Validar nome em tempo real
+  useEffect(() => {
+    if (newCharacterName.trim()) {
+      const validation = NameValidationService.validateCharacterName(newCharacterName);
+      
+      // Se o nome for válido, verificar se não é muito similar aos existentes
+      if (validation.isValid && characters.length > 0) {
+        const existingNames = characters.map(c => c.name);
+        const formattedName = NameValidationService.formatCharacterName(newCharacterName);
+        
+        if (NameValidationService.isTooSimilar(formattedName, existingNames)) {
+          const suggestions = NameValidationService.generateNameSuggestions(formattedName);
+          setNameValidation({
+            isValid: false,
+            error: 'Nome muito similar a um personagem existente',
+            suggestions
+          });
+        } else {
+          setNameValidation(validation);
+        }
+      } else {
+        setNameValidation(validation);
+      }
+    } else {
+      setNameValidation({ isValid: true });
+    }
+  }, [newCharacterName, characters]);
 
   const loadCharacters = async () => {
     try {
@@ -49,6 +80,14 @@ export function CharacterSelect() {
   const handleCreateCharacter = async () => {
     if (!user?.id || !newCharacterName.trim()) return;
     
+    // Validação final antes de criar
+    if (!nameValidation.isValid) {
+      toast.error('Nome inválido', {
+        description: nameValidation.error
+      });
+      return;
+    }
+    
     setIsCreating(true);
     try {
       const response = await CharacterService.createCharacter({
@@ -57,10 +96,13 @@ export function CharacterSelect() {
       });
 
       if (response.success && response.data) {
-        toast.success('Personagem criado com sucesso!');
+        toast.success('Personagem criado com sucesso!', {
+          description: `${NameValidationService.formatCharacterName(newCharacterName)} foi criado!`
+        });
         await loadCharacters();
         setShowCreateDialog(false);
         setNewCharacterName('');
+        setNameValidation({ isValid: true });
       } else {
         toast.error('Erro ao criar personagem', {
           description: response.error
@@ -72,6 +114,16 @@ export function CharacterSelect() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleNameSuggestionClick = (suggestion: string) => {
+    setNewCharacterName(suggestion);
+  };
+
+  const resetCreateDialog = () => {
+    setShowCreateDialog(false);
+    setNewCharacterName('');
+    setNameValidation({ isValid: true });
   };
 
   const handleSelectCharacter = async (character: Character) => {
@@ -199,31 +251,104 @@ export function CharacterSelect() {
       )}
 
       {/* Diálogo de Criação de Personagem */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
+      <Dialog open={showCreateDialog} onOpenChange={resetCreateDialog}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Criar Novo Personagem</DialogTitle>
             <DialogDescription>
-              Digite o nome do seu novo personagem.
+              Digite o nome do seu novo personagem. Siga as regras para um nome válido.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <Input
-              placeholder="Nome do personagem"
-              value={newCharacterName}
-              onChange={(e) => setNewCharacterName(e.target.value)}
-            />
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  placeholder="Nome do personagem (3-20 caracteres)"
+                  value={newCharacterName}
+                  onChange={(e) => setNewCharacterName(e.target.value)}
+                  className={`pr-10 ${
+                    newCharacterName.trim() 
+                      ? nameValidation.isValid 
+                        ? 'border-green-500 focus:border-green-500' 
+                        : 'border-red-500 focus:border-red-500'
+                      : ''
+                  }`}
+                  maxLength={20}
+                />
+                {newCharacterName.trim() && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {nameValidation.isValid ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Preview do nome formatado */}
+              {newCharacterName.trim() && nameValidation.isValid && (
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">Nome formatado:</span> {NameValidationService.formatCharacterName(newCharacterName)}
+                </div>
+              )}
+              
+              {/* Mensagem de erro */}
+              {newCharacterName.trim() && !nameValidation.isValid && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {nameValidation.error}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Sugestões de nomes */}
+              {nameValidation.suggestions && nameValidation.suggestions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Sugestões de nomes:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {nameValidation.suggestions.map((suggestion, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleNameSuggestionClick(suggestion)}
+                        className="text-xs"
+                      >
+                        {suggestion}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Regras de validação */}
+              {!newCharacterName.trim() && (
+                <div className="bg-muted p-3 rounded-lg text-sm space-y-1">
+                  <p className="font-medium mb-2">Regras para o nome:</p>
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>Entre 3 e 20 caracteres</li>
+                    <li>Deve começar com uma letra</li>
+                    <li>Apenas letras, números, espaços, hífen e apostrofe</li>
+                    <li>Não pode ser apenas números</li>
+                    <li>Não pode conter palavras ofensivas</li>
+                    <li>Máximo 2 números consecutivos</li>
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"
-              onClick={() => setShowCreateDialog(false)}
+              onClick={resetCreateDialog}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleCreateCharacter}
-              disabled={!newCharacterName.trim() || isCreating}
+              disabled={!newCharacterName.trim() || !nameValidation.isValid || isCreating}
             >
               {isCreating ? (
                 <>

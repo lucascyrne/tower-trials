@@ -14,6 +14,7 @@ import { VictoryModal } from './VictoryModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Skull } from 'lucide-react';
 import { toast } from 'sonner';
+import SpecialEventPanel from './SpecialEventPanel';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
@@ -151,6 +152,11 @@ export default function GameBattle() {
         </div>
       </div>
     );
+  }
+
+  // Renderizar evento especial se estiver no modo especial ou se há evento especial ativo
+  if (gameState.mode === 'special_event' || gameState.currentSpecialEvent) {
+    return <SpecialEventPanel />;
   }
 
   // Se não há inimigo ou andar, não renderizar a batalha

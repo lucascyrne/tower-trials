@@ -7,7 +7,7 @@ import { Character } from '@/resources/game/models/character.model';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sword, Shield, Gem, Package, Zap, Sparkles } from 'lucide-react';
+import { Sword, Shield, Gem, Package, Zap, Sparkles, Heart, Droplets } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InventoryPanelProps {
@@ -32,6 +32,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
     const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
     const [drops, setDrops] = useState<CharacterDrop[]>([]);
     const [loading, setLoading] = useState(true);
+    const [usingConsumable, setUsingConsumable] = useState<string | null>(null);
 
     useEffect(() => {
         loadInventory();
@@ -133,6 +134,82 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
             console.error('Erro ao vender item:', error);
             toast.error('Erro ao vender item');
         }
+    };
+
+    const handleUseConsumable = async (item: CharacterConsumable) => {
+        if (!item.consumable || item.quantity <= 0) {
+            toast.error('Consumível não disponível');
+            return;
+        }
+
+        // Verificar se pode usar o consumível baseado no estado atual
+        const canUse = checkCanUseConsumable(item);
+        if (!canUse.allowed) {
+            toast.warning(canUse.reason);
+            return;
+        }
+
+        setUsingConsumable(item.consumable_id);
+
+        try {
+            const response = await ConsumableService.consumeItem(
+                character.id,
+                item.consumable_id,
+                character
+            );
+
+            if (response.success && response.data) {
+                await loadInventory();
+                onEquipmentChange(); // Atualizar character na interface
+                toast.success(response.data.message);
+            } else {
+                toast.error(response.error || 'Erro ao usar consumível');
+            }
+        } catch (error) {
+            console.error('Erro ao usar consumível:', error);
+            toast.error('Erro ao usar consumível');
+        } finally {
+            setUsingConsumable(null);
+        }
+    };
+
+    const checkCanUseConsumable = (item: CharacterConsumable): { allowed: boolean; reason?: string } => {
+        if (!item.consumable) {
+            return { allowed: false, reason: 'Consumível inválido' };
+        }
+
+        switch (item.consumable.type) {
+            case 'potion':
+                if (item.consumable.description.includes('HP') || item.consumable.description.includes('Vida')) {
+                    if (character.hp >= character.max_hp) {
+                        return { allowed: false, reason: 'HP já está no máximo' };
+                    }
+                } else if (item.consumable.description.includes('Mana')) {
+                    if (character.mana >= character.max_mana) {
+                        return { allowed: false, reason: 'Mana já está no máximo' };
+                    }
+                }
+                break;
+            case 'antidote':
+                return { allowed: false, reason: 'Use durante batalhas' };
+            case 'buff':
+                return { allowed: false, reason: 'Use durante batalhas' };
+            default:
+                return { allowed: false, reason: 'Tipo não suportado' };
+        }
+
+        return { allowed: true };
+    };
+
+    const getConsumableIcon = (type: string, description: string) => {
+        if (type === 'potion') {
+            if (description.includes('HP') || description.includes('Vida')) {
+                return <Heart className="h-4 w-4 text-red-400" />;
+            } else if (description.includes('Mana')) {
+                return <Droplets className="h-4 w-4 text-blue-400" />;
+            }
+        }
+        return <Zap className="h-4 w-4" />;
     };
 
     const getEquipmentIcon = (type: keyof EquipmentSlots) => {
@@ -322,30 +399,48 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
                                 <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                                 <p className="text-lg font-medium text-muted-foreground">Nenhum consumível no inventário</p>
                                 <p className="text-sm text-muted-foreground mt-2">
-                                    Consumíveis podem ser usados durante as batalhas
+                                    Consumíveis podem ser comprados na loja ou encontrados em batalhas
                                 </p>
                             </Card>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {consumables
                                     .filter(item => item && item.consumable && item.quantity > 0)
-                                    .map(item => (
-                                    <Card key={item.id} className="p-4 bg-card/95">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <h4 className="text-lg font-semibold text-primary">{item.consumable!.name}</h4>
-                                                <p className="text-sm text-muted-foreground">{item.consumable!.description}</p>
-                                                <p className="text-sm font-medium mt-1">Quantidade: {item.quantity}</p>
-                                            </div>
-                                        </div>
+                                    .map(item => {
+                                        const canUse = checkCanUseConsumable(item);
+                                        const isUsing = usingConsumable === item.consumable_id;
+                                        
+                                        return (
+                                            <Card key={item.id} className="p-4 bg-card/95">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <h4 className="text-lg font-semibold text-primary flex items-center gap-2">
+                                                            {getConsumableIcon(item.consumable!.type, item.consumable!.description)}
+                                                            {item.consumable!.name}
+                                                        </h4>
+                                                        <p className="text-sm text-muted-foreground">{item.consumable!.description}</p>
+                                                        <p className="text-sm font-medium mt-1">Quantidade: {item.quantity}</p>
+                                                        {item.consumable!.effect_value > 0 && (
+                                                            <p className="text-xs text-green-600 mt-1">
+                                                                Efeito: +{item.consumable!.effect_value}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
 
-                                        <div className="mt-4">
-                                            <p className="text-xs text-muted-foreground">
-                                                Use durante as batalhas para obter vantagens
-                                            </p>
-                                        </div>
-                                    </Card>
-                                ))}
+                                                <div className="mt-4">
+                                                    <Button
+                                                        onClick={() => handleUseConsumable(item)}
+                                                        disabled={!canUse.allowed || isUsing}
+                                                        className="w-full"
+                                                        variant={canUse.allowed ? "default" : "secondary"}
+                                                    >
+                                                        {isUsing ? 'Usando...' : canUse.allowed ? 'Usar' : canUse.reason}
+                                                    </Button>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                             </div>
                         )}
                     </TabsContent>
