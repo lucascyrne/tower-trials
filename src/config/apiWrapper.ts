@@ -22,5 +22,5 @@ class ApiWrapper {
 }
 
 export const apiWrapper = new ApiWrapper({
-  baseURL: environment.NEXT_PUBLIC_API_URL
+  baseURL: environment.NEXT_PUBLIC_BASE_URL
 });

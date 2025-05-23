@@ -52,10 +52,15 @@ export function BattleActions({ handleAction, isPlayerTurn, loading, player }: B
           <Button 
             onClick={() => handleAction('defend')} 
             variant="outline" 
-            className="flex-1"
-            disabled={!isPlayerTurn || loading.performAction}
+            className={`flex-1 relative ${player.isDefending ? 'bg-blue-100 border-blue-500' : ''}`}
+            disabled={!isPlayerTurn || loading.performAction || player.defenseCooldown > 0}
           >
-            Defender
+            {player.isDefending ? '🛡️ Defendendo' : 'Defender'}
+            {player.defenseCooldown > 0 && (
+              <span className="absolute bottom-1 text-xs text-red-500">
+                CD: {player.defenseCooldown}
+              </span>
+            )}
           </Button>
           <Button 
             onClick={() => handleAction('flee')} 

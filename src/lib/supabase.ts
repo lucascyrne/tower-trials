@@ -1,12 +1,35 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import type { CookieMethodsBrowser } from '@supabase/ssr';
+import env, { Environment } from '@/config/env';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Configurações por ambiente
+const getSupabaseConfig = () => {
+  const environment = env.NEXT_PUBLIC_ENV;
+  
+  switch (environment) {
+    case Environment.LOCAL:
+      // Ambiente local (Docker)
+      return {
+        url: env.NEXT_PUBLIC_SUPABASE_LOCAL_URL || 'http://127.0.0.1:54321',
+        anonKey: env.NEXT_PUBLIC_SUPABASE_LOCAL_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+      };
+    
+    case Environment.DEV:
+    case Environment.PROD:
+    default:
+      // Ambientes remotos (DEV/PROD usam as mesmas URLs por enquanto)
+      return {
+        url: env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      };
+  }
+};
+
+const config = getSupabaseConfig();
 
 // Cliente para uso no navegador
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createBrowserClient(config.url, config.anonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -15,13 +38,13 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Cliente para uso no servidor
-export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+export const supabaseServer = createClient(config.url, config.anonKey);
 
 // Função para criar cliente no middleware (SSR)
 export const createServerClientHelper = (cookieStore: {
   get: (name: string) => { value: string } | undefined;
 }) => {
-  return createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  return createBrowserClient(config.url, config.anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -38,4 +61,20 @@ export const createServerClientHelper = (cookieStore: {
 export const getSupabaseToken = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token;
-}; 
+};
+
+// Função para verificar qual ambiente está sendo usado
+export const getCurrentEnvironment = () => {
+  return env.NEXT_PUBLIC_ENV;
+};
+
+// Função para verificar se está no ambiente local
+export const isLocalEnvironment = () => {
+  return env.NEXT_PUBLIC_ENV === Environment.LOCAL;
+};
+
+// Log para debug (apenas em desenvolvimento)
+if (typeof window !== 'undefined' && env.NEXT_PUBLIC_ENV !== Environment.PROD) {
+  console.log(`🏗️ Supabase conectado ao ambiente: ${env.NEXT_PUBLIC_ENV}`);
+  console.log(`📡 URL: ${config.url}`);
+} 

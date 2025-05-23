@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Character } from '@/resources/game/models/character.model';
+import { Character, CharacterProgressionInfo } from '@/resources/game/models/character.model';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { CharacterService } from '@/resources/game/character.service';
@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Skull, Crown, Swords, AlertCircle, CheckCircle } from 'lucide-react';
+import { Skull, Crown, Swords, AlertCircle, CheckCircle, Plus, Users, TrendingUp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function CharacterSelect() {
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [progression, setProgression] = useState<CharacterProgressionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPermadeathDialog, setShowPermadeathDialog] = useState(false);
@@ -28,6 +29,7 @@ export function CharacterSelect() {
   useEffect(() => {
     if (user?.id) {
       loadCharacters();
+      loadProgression();
     }
   }, [user]);
 
@@ -72,6 +74,19 @@ export function CharacterSelect() {
     } catch (error) {
       console.error('Erro ao carregar personagens:', error);
       toast.error('Erro ao carregar personagens');
+    }
+  };
+
+  const loadProgression = async () => {
+    try {
+      const response = await CharacterService.getUserCharacterProgression(user!.id);
+      if (response.success && response.data) {
+        setProgression(response.data);
+      } else if (response.error) {
+        console.error('Erro ao carregar progressão:', response.error);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar progressão:', error);
     } finally {
       setLoading(false);
     }
@@ -100,6 +115,7 @@ export function CharacterSelect() {
           description: `${NameValidationService.formatCharacterName(newCharacterName)} foi criado!`
         });
         await loadCharacters();
+        await loadProgression(); // Recarregar progressão após criar
         setShowCreateDialog(false);
         setNewCharacterName('');
         setNameValidation({ isValid: true });
@@ -147,6 +163,64 @@ export function CharacterSelect() {
       console.error('Erro ao selecionar personagem:', error);
       toast.error('Erro ao selecionar personagem');
     }
+  };
+
+  const canCreateNewCharacter = () => {
+    if (!progression) return false;
+    return progression.current_character_count < progression.max_character_slots;
+  };
+
+  const renderProgressionInfo = () => {
+    if (!progression) return null;
+
+    const isMaxedOut = progression.max_character_slots >= 20; // Limite razoável
+    const nextSlotProgress = progression.progress_to_next_slot;
+
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-500" />
+            Progressão de Personagens
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-700 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-blue-400">{progression.total_character_level}</div>
+              <div className="text-sm text-muted-foreground">Nível Total</div>
+            </div>
+            <div className="bg-gray-700 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-green-400">
+                {progression.current_character_count}/{progression.max_character_slots}
+              </div>
+              <div className="text-sm text-muted-foreground">Slots Disponíveis</div>
+            </div>
+            <div className="bg-gray-700 p-3 rounded-lg text-center">
+              <div className="text-2xl font-bold text-purple-400">
+                {isMaxedOut ? "MAX" : progression.next_slot_required_level}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isMaxedOut ? "Máximo" : "Próximo Slot"}
+              </div>
+            </div>
+          </div>
+
+          {!isMaxedOut && (
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Progresso para o {progression.max_character_slots + 1}º slot:</span>
+                <span>{nextSlotProgress.toFixed(1)}%</span>
+              </div>
+              <Progress value={nextSlotProgress} className="h-2" />
+              <div className="text-xs text-muted-foreground mt-1">
+                Faltam {progression.next_slot_required_level - progression.total_character_level} níveis
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   const renderCharacterStats = (character: Character) => {
@@ -208,19 +282,45 @@ export function CharacterSelect() {
 
   return (
     <div className="container mx-auto p-4">
+      {renderProgressionInfo()}
+      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Seus Personagens</h1>
-        <Button onClick={() => setShowCreateDialog(true)}>Criar Personagem</Button>
+        <Button 
+          onClick={() => setShowCreateDialog(true)}
+          disabled={!canCreateNewCharacter()}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Criar Personagem
+          {!canCreateNewCharacter() && progression && (
+            <span className="text-xs opacity-75">
+              ({progression.current_character_count}/{progression.max_character_slots})
+            </span>
+          )}
+        </Button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-        </div>
-      ) : characters.length === 0 ? (
+      {!canCreateNewCharacter() && progression && progression.current_character_count >= progression.max_character_slots && (
+        <Alert className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Para criar mais personagens, você precisa aumentar o nível total dos seus personagens atuais. 
+            Próximo slot desbloqueado em {progression.next_slot_required_level - progression.total_character_level} níveis.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {characters.length === 0 ? (
         <div className="text-center py-12">
+          <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <p className="text-gray-400 mb-4">Você ainda não tem personagens</p>
-          <Button onClick={() => setShowCreateDialog(true)}>Criar Primeiro Personagem</Button>
+          <Button 
+            onClick={() => setShowCreateDialog(true)}
+            disabled={!canCreateNewCharacter()}
+          >
+            Criar Primeiro Personagem
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -257,6 +357,11 @@ export function CharacterSelect() {
             <DialogTitle>Criar Novo Personagem</DialogTitle>
             <DialogDescription>
               Digite o nome do seu novo personagem. Siga as regras para um nome válido.
+              {progression && (
+                <span className="block mt-2 text-sm font-medium">
+                  Slot {progression.current_character_count + 1}/{progression.max_character_slots}
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -348,7 +453,7 @@ export function CharacterSelect() {
             </Button>
             <Button
               onClick={handleCreateCharacter}
-              disabled={!newCharacterName.trim() || !nameValidation.isValid || isCreating}
+              disabled={!newCharacterName.trim() || !nameValidation.isValid || isCreating || !canCreateNewCharacter()}
             >
               {isCreating ? (
                 <>

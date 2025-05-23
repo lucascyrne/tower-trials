@@ -15,7 +15,8 @@ interface EquipmentPanelProps {
 export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEquipmentChange }) => {
     const [inventory, setInventory] = useState<CharacterEquipment[]>([]);
     const [equippedItems, setEquippedItems] = useState<EquipmentSlots>({
-        weapon: null,
+        main_hand: null,
+        off_hand: null,
         armor: null,
         accessory: null
     });
@@ -47,7 +48,8 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
             // Definir valores padrão em caso de erro
             setInventory([]);
             setEquippedItems({
-                weapon: null,
+                main_hand: null,
+                off_hand: null,
                 armor: null,
                 accessory: null
             });
@@ -109,7 +111,8 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
 
     const getEquipmentIcon = (type: keyof EquipmentSlots) => {
         switch (type) {
-            case 'weapon': return <Sword className="h-6 w-6" />;
+            case 'main_hand': return <Sword className="h-6 w-6" />;
+            case 'off_hand': return <Sword className="h-6 w-6" />;
             case 'armor': return <Shield className="h-6 w-6" />;
             case 'accessory': return <Gem className="h-6 w-6" />;
         }
@@ -117,7 +120,8 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
 
     const getEquipmentLabel = (type: keyof EquipmentSlots) => {
         switch (type) {
-            case 'weapon': return 'Arma';
+            case 'main_hand': return 'Arma';
+            case 'off_hand': return 'Arma';
             case 'armor': return 'Armadura';
             case 'accessory': return 'Acessório';
         }
@@ -201,7 +205,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
             <div>
                 <h3 className="text-xl font-bold mb-4">Equipamentos Equipados</h3>
                 <div className="grid grid-cols-3 gap-4">
-                    {(['weapon', 'armor', 'accessory'] as const).map(type => 
+                    {(['main_hand', 'off_hand', 'armor', 'accessory'] as const).map(type => 
                         renderEquipmentSlot(type)
                     )}
                 </div>
