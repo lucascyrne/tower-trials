@@ -1,3 +1,5 @@
+-- Usar a função update_updated_at_column que já existe
+
 -- Criação da tabela de drops de monstros
 CREATE TABLE IF NOT EXISTS monster_drops (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -108,12 +110,10 @@ CREATE OR REPLACE FUNCTION add_monster_drop(
 ) RETURNS VOID AS $$
 DECLARE
     v_current_quantity INTEGER;
-    v_user_id UUID;
 BEGIN
-    -- Verificar permissão
-    SELECT user_id INTO v_user_id FROM characters WHERE id = p_character_id;
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Sem permissão para modificar este personagem';
+    -- Verificar se o personagem existe (RLS cuidará da permissão)
+    IF NOT EXISTS (SELECT 1 FROM characters WHERE id = p_character_id) THEN
+        RAISE EXCEPTION 'Personagem não encontrado';
     END IF;
 
     -- Utilizar padrão UPSERT para evitar problemas de concorrência
@@ -136,7 +136,7 @@ EXCEPTION
         -- Propagar o erro
         RAISE;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para verificar se o personagem pode criar um item
 CREATE OR REPLACE FUNCTION check_can_craft(
@@ -257,25 +257,30 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Criar triggers para atualizar timestamps
-CREATE TRIGGER set_updated_at_monster_drops
-BEFORE UPDATE ON monster_drops
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_monster_drops_updated_at
+    BEFORE UPDATE ON monster_drops
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_monster_possible_drops
-BEFORE UPDATE ON monster_possible_drops
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_monster_possible_drops_updated_at
+    BEFORE UPDATE ON monster_possible_drops
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_character_drops
-BEFORE UPDATE ON character_drops
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_character_drops_updated_at
+    BEFORE UPDATE ON character_drops
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_crafting_recipes
-BEFORE UPDATE ON crafting_recipes
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_crafting_recipes_updated_at
+    BEFORE UPDATE ON crafting_recipes
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_crafting_ingredients
-BEFORE UPDATE ON crafting_ingredients
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_crafting_ingredients_updated_at
+    BEFORE UPDATE ON crafting_ingredients
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ========================================
 -- CONFIGURAR RLS (Row Level Security)
@@ -295,22 +300,8 @@ CREATE POLICY "Leitura pública de possíveis drops" ON monster_possible_drops
 
 -- character_drops: acesso apenas ao dono do personagem
 ALTER TABLE character_drops ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Usuários podem ver drops dos próprios personagens" ON character_drops
-    FOR SELECT
-    TO authenticated
-    USING (character_id IN (
-        SELECT id FROM characters WHERE user_id = auth.uid()
-    ));
-
-CREATE POLICY "Usuários podem inserir drops nos próprios personagens" ON character_drops
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (character_id IN (
-        SELECT id FROM characters WHERE user_id = auth.uid()
-    ));
-
-CREATE POLICY "Usuários podem atualizar drops dos próprios personagens" ON character_drops
-    FOR UPDATE
+CREATE POLICY "Usuários podem gerenciar drops dos próprios personagens" ON character_drops
+    FOR ALL
     TO authenticated
     USING (character_id IN (
         SELECT id FROM characters WHERE user_id = auth.uid()
@@ -331,9 +322,4 @@ CREATE POLICY "Leitura pública de ingredientes" ON crafting_ingredients
     FOR SELECT 
     USING (true);
 
--- Garantir permissões corretas
-GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, service_role;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated; 
+-- Permissões serão gerenciadas automaticamente pelo Supabase 

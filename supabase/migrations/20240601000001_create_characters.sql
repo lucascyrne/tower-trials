@@ -128,6 +128,10 @@ RETURNS VOID AS $$
 DECLARE
     v_character RECORD;
     v_stats RECORD;
+    v_hp_ratio DECIMAL;
+    v_mana_ratio DECIMAL;
+    v_new_hp INTEGER;
+    v_new_mana INTEGER;
 BEGIN
     -- Buscar dados atuais do personagem
     SELECT * INTO v_character
@@ -135,7 +139,16 @@ BEGIN
     WHERE id = p_character_id;
     
     -- Calcular novos stats derivados
-    SELECT * INTO v_stats FROM calculate_derived_stats(
+    SELECT 
+        derived_hp,
+        derived_max_hp,
+        derived_mana,
+        derived_max_mana,
+        derived_atk,
+        derived_def,
+        derived_speed
+    INTO v_stats 
+    FROM calculate_derived_stats(
         v_character.level,
         v_character.strength,
         v_character.dexterity,
@@ -146,24 +159,22 @@ BEGIN
     );
     
     -- Calcular diferença de HP/Mana para manter proporção atual
-    DECLARE
-        v_hp_ratio DECIMAL := v_character.hp::DECIMAL / v_character.max_hp;
-        v_mana_ratio DECIMAL := v_character.mana::DECIMAL / v_character.max_mana;
-        v_new_hp INTEGER := CEILING(v_stats.derived_max_hp * v_hp_ratio);
-        v_new_mana INTEGER := CEILING(v_stats.derived_max_mana * v_mana_ratio);
-    BEGIN
-        -- Atualizar stats
-        UPDATE characters
-        SET
-            max_hp = v_stats.derived_max_hp,
-            max_mana = v_stats.derived_max_mana,
-            atk = v_stats.derived_atk,
-            def = v_stats.derived_def,
-            speed = v_stats.derived_speed,
-            hp = LEAST(v_new_hp, v_stats.derived_max_hp),
-            mana = LEAST(v_new_mana, v_stats.derived_max_mana)
-        WHERE id = p_character_id;
-    END;
+    v_hp_ratio := v_character.hp::DECIMAL / v_character.max_hp;
+    v_mana_ratio := v_character.mana::DECIMAL / v_character.max_mana;
+    v_new_hp := CEILING(v_stats.derived_max_hp * v_hp_ratio);
+    v_new_mana := CEILING(v_stats.derived_max_mana * v_mana_ratio);
+    
+    -- Atualizar stats
+    UPDATE characters
+    SET
+        max_hp = v_stats.derived_max_hp,
+        max_mana = v_stats.derived_max_mana,
+        atk = v_stats.derived_atk,
+        def = v_stats.derived_def,
+        speed = v_stats.derived_speed,
+        hp = LEAST(v_new_hp, v_stats.derived_max_hp),
+        mana = LEAST(v_new_mana, v_stats.derived_max_mana)
+    WHERE id = p_character_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -443,7 +454,16 @@ BEGIN
     END IF;
 
     -- Calcular stats iniciais usando novos atributos
-    SELECT * INTO v_base_stats FROM calculate_derived_stats(
+    SELECT 
+        derived_hp,
+        derived_max_hp,
+        derived_mana,
+        derived_max_mana,
+        derived_atk,
+        derived_def,
+        derived_speed
+    INTO v_base_stats 
+    FROM calculate_derived_stats(
         1, -- level
         10, -- strength
         10, -- dexterity  
@@ -504,7 +524,7 @@ BEGIN
     
     RETURN v_character_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para atualizar stats do personagem
 CREATE OR REPLACE FUNCTION update_character_stats(
@@ -560,11 +580,6 @@ BEGIN
         UPDATE characters
         SET floor = p_floor
         WHERE id = p_character_id;
-        
-        -- Atualizar também o progresso do jogo
-        UPDATE game_progress
-        SET current_floor = p_floor
-        WHERE user_id = v_user_id;
     END IF;
     
     -- Se XP foi fornecido, verificar level up
@@ -582,7 +597,16 @@ BEGIN
         END LOOP;
         
         -- Calcular stats derivados para o nível atual
-        SELECT * INTO v_base_stats FROM calculate_derived_stats(
+        SELECT 
+            derived_hp,
+            derived_max_hp,
+            derived_mana,
+            derived_max_mana,
+            derived_atk,
+            derived_def,
+            derived_speed
+        INTO v_base_stats 
+        FROM calculate_derived_stats(
             v_current_level,
             (SELECT strength FROM characters WHERE id = p_character_id),
             (SELECT dexterity FROM characters WHERE id = p_character_id),
@@ -609,6 +633,9 @@ BEGIN
                 mana = v_base_stats.derived_max_mana -- Recupera Mana totalmente ao subir de nível
             WHERE id = p_character_id;
             
+            -- Conceder pontos de atributo por subir de nível
+            PERFORM grant_attribute_points_on_levelup(p_character_id, v_current_level);
+            
             -- Atualizar progressão do usuário quando um personagem sobe de nível
             SELECT * INTO v_progression_result 
             FROM update_user_character_progression(v_user_id);
@@ -633,8 +660,8 @@ BEGIN
         v_current_level,
         COALESCE(v_new_xp, v_current_xp) AS new_xp,
         v_xp_next_level,
-        COALESCE(v_progression_result.slots_unlocked, FALSE) AS slots_unlocked,
-        COALESCE(v_progression_result.available_slots, 3) AS new_available_slots;
+        CASE WHEN v_progression_result IS NOT NULL THEN v_progression_result.slots_unlocked ELSE FALSE END AS slots_unlocked,
+        CASE WHEN v_progression_result IS NOT NULL THEN v_progression_result.available_slots ELSE 3 END AS new_available_slots;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -711,12 +738,12 @@ BEGIN
     -- Recalcular stats derivados
     PERFORM recalculate_character_stats(p_character_id);
     
-    -- Buscar novos stats
+    -- Buscar novos stats completos
     SELECT * INTO v_stats FROM get_character_full_stats(p_character_id);
     
     RETURN QUERY SELECT TRUE, 'Atributos distribuídos com sucesso'::TEXT, v_stats;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 
 
@@ -810,7 +837,7 @@ BEGIN
         v_character.defense_mastery_xp,
         v_character.magic_mastery_xp;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para dar pontos de atributo ao subir de nível
 CREATE OR REPLACE FUNCTION grant_attribute_points_on_levelup(
@@ -876,7 +903,7 @@ BEGIN
         v_total_level,
         v_next_required;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para buscar informações de progressão do usuário
 CREATE OR REPLACE FUNCTION get_user_character_progression(p_user_id UUID)
@@ -923,7 +950,7 @@ BEGIN
         v_next_required,
         v_progress;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para buscar personagens do usuário
 CREATE OR REPLACE FUNCTION get_user_characters(p_user_id UUID)
@@ -954,7 +981,7 @@ BEGIN
     WHERE c.user_id = p_user_id
     ORDER BY c.created_at DESC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para buscar um personagem específico
 CREATE OR REPLACE FUNCTION get_character(p_character_id UUID)
@@ -964,35 +991,33 @@ DECLARE
 BEGIN
     SELECT c.* INTO v_character
     FROM characters c
-    WHERE c.id = p_character_id
-    AND c.user_id = auth.uid(); -- Garante que apenas o dono do personagem pode vê-lo
+    WHERE c.id = p_character_id;
     
     IF v_character IS NULL THEN
-        RAISE EXCEPTION 'Personagem não encontrado ou sem permissão';
+        RAISE EXCEPTION 'Personagem não encontrado';
     END IF;
     
     RETURN v_character;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para deletar um personagem e todos os seus dados relacionados
 CREATE OR REPLACE FUNCTION delete_character(p_character_id UUID)
 RETURNS VOID AS $$
 BEGIN
-    -- Verificar se o usuário tem permissão para deletar este personagem
+    -- Verificar se o personagem existe (RLS cuidará da permissão)
     IF NOT EXISTS (
         SELECT 1 FROM characters c
         WHERE c.id = p_character_id
-        AND c.user_id = auth.uid()
     ) THEN
-        RAISE EXCEPTION 'Personagem não encontrado ou sem permissão para deletar';
+        RAISE EXCEPTION 'Personagem não encontrado';
     END IF;
 
     -- Deletar todos os dados relacionados
     -- As constraints ON DELETE CASCADE cuidarão de limpar as tabelas relacionadas
     DELETE FROM characters WHERE id = p_character_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para atualizar o andar atual do personagem
 CREATE OR REPLACE FUNCTION update_character_floor(
@@ -1017,15 +1042,8 @@ BEGIN
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Personagem não encontrado';
     END IF;
-    
-    -- Atualizar também o progresso do jogo se existir
-    UPDATE game_progress
-    SET 
-        current_floor = p_floor,
-        updated_at = NOW()
-    WHERE user_id = (SELECT user_id FROM characters WHERE id = p_character_id);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Habilitar RLS
 ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
@@ -1040,25 +1058,30 @@ DROP POLICY IF EXISTS "Usuários podem deletar seus próprios personagens" ON ch
 CREATE POLICY "Usuários podem ver seus próprios personagens" ON characters
     FOR SELECT
     TO authenticated
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    USING (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "Usuários podem criar seus próprios personagens" ON characters
     FOR INSERT
     TO authenticated
-    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    WITH CHECK (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "Usuários podem atualizar seus próprios personagens" ON characters
     FOR UPDATE
     TO authenticated
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid))
-    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    USING (user_id = (SELECT auth.uid()));
 
 CREATE POLICY "Usuários podem deletar seus próprios personagens" ON characters
     FOR DELETE
     TO authenticated
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    USING (user_id = (SELECT auth.uid()));
 
--- Note: Function permissions are handled automatically by SECURITY DEFINER
+CREATE POLICY "Service role full access to characters" ON characters
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Funções com SECURITY DEFINER são executadas com privilégios do criador
 
 -- =====================================================
 -- SISTEMA DE CURA AUTOMÁTICA
@@ -1185,9 +1208,9 @@ BEGIN
         RAISE EXCEPTION 'Personagem não encontrado';
     END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
--- Note: Auto-heal function permissions are handled automatically by SECURITY DEFINER
+-- Funções de cura automática com SECURITY DEFINER
 
 -- Adicionar comentário explicativo ao campo last_activity
 COMMENT ON COLUMN characters.last_activity IS 'Timestamp da última atividade do personagem, usado para cura automática baseada em tempo (6h para cura completa)'; 

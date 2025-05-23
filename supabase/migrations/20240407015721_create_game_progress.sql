@@ -22,7 +22,7 @@ CREATE TRIGGER update_game_progress_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Note: update_character_floor function is defined in characters migration
+-- Update character floor function will be available after characters migration
 
 -- Habilitar RLS
 ALTER TABLE game_progress ENABLE ROW LEVEL SECURITY;
@@ -41,15 +41,14 @@ CREATE POLICY "Users can insert own progress" ON game_progress
 CREATE POLICY "Users can update own progress" ON game_progress
     FOR UPDATE
     TO authenticated
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid());
+    USING (user_id = auth.uid());
 
 CREATE POLICY "Users can delete own progress" ON game_progress
     FOR DELETE
     TO authenticated
     USING (user_id = auth.uid());
 
--- Note: Function permissions handled automatically by SECURITY DEFINER
+-- Game progress permissions
 
 -- =====================================
 -- SISTEMA DE EVENTOS ESPECIAIS
@@ -199,6 +198,4 @@ CREATE POLICY "Service role full access special events" ON special_events
     USING (true)
     WITH CHECK (true);
 
--- Basic permissions
-GRANT SELECT ON special_events TO authenticated;
-GRANT ALL ON special_events TO service_role; 
+-- Permissões serão gerenciadas automaticamente pelo Supabase 

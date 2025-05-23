@@ -19,7 +19,7 @@ const environment = createEnv({
    */
   client: {
     NEXT_PUBLIC_ENV: z.nativeEnum(Environment),
-    NEXT_PUBLIC_BASE_URL: z.string().url(),
+    NEXT_PUBLIC_BASE_URL: z.string().url().optional(),
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
     NEXT_PUBLIC_SERVICE_ROLE: z.string().optional(),
@@ -36,7 +36,7 @@ const environment = createEnv({
    */
   runtimeEnv: {
     NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
-    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_SERVICE_ROLE: process.env.NEXT_PUBLIC_SERVICE_ROLE,

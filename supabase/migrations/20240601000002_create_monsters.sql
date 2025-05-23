@@ -208,6 +208,4 @@ CREATE POLICY "Service role full access monsters" ON monsters
     USING (true)
     WITH CHECK (true);
 
--- Basic read permissions for monsters table
-GRANT SELECT ON monsters TO authenticated;
-GRANT ALL ON monsters TO service_role; 
+-- Permissões serão gerenciadas automaticamente pelo Supabase 

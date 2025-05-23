@@ -53,11 +53,6 @@ DECLARE
     v_min_level INTEGER;
     v_description TEXT;
 BEGIN
-    -- Verificar se o usuário está autenticado
-    IF auth.uid() IS NULL THEN
-        RAISE EXCEPTION 'Usuário não autenticado';
-    END IF;
-
     -- Tentar obter andar existente
     SELECT * INTO v_floor
     FROM floors f
@@ -100,7 +95,7 @@ BEGIN
             v_floor.description;
     END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para obter checkpoints desbloqueados
 CREATE OR REPLACE FUNCTION get_unlocked_checkpoints(p_highest_floor INTEGER)
@@ -109,11 +104,6 @@ RETURNS TABLE (
     description TEXT
 ) AS $$
 BEGIN
-    -- Verificar se o usuário está autenticado
-    IF auth.uid() IS NULL THEN
-        RAISE EXCEPTION 'Usuário não autenticado';
-    END IF;
-
     -- Sempre incluir o andar 1
     RETURN QUERY
     SELECT 
@@ -132,4 +122,4 @@ BEGIN
     WHERE f.floor_number <= p_highest_floor
     ORDER BY f.floor_number;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER; 
+$$ LANGUAGE plpgsql; 

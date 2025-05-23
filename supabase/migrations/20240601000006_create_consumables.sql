@@ -1,11 +1,4 @@
--- Função para atualizar automaticamente o updated_at
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Usar a função update_updated_at_column que já existe
 
 -- Criação da tabela de consumíveis
 CREATE TABLE IF NOT EXISTS consumables (
@@ -109,10 +102,12 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger para atualizar timestamp de updated_at
-CREATE TRIGGER set_updated_at_consumables
-BEFORE UPDATE ON consumables
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER update_consumables_updated_at
+    BEFORE UPDATE ON consumables
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_updated_at_character_consumables
-BEFORE UPDATE ON character_consumables
-FOR EACH ROW EXECUTE FUNCTION set_updated_at(); 
+CREATE TRIGGER update_character_consumables_updated_at
+    BEFORE UPDATE ON character_consumables
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

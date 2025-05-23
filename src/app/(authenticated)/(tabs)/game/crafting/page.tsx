@@ -99,8 +99,16 @@ export default function CraftingPage() {
     drops: []
   });
   const [processedRecipes, setProcessedRecipes] = useState<ProcessedRecipe[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  // Garantir que só execute no cliente
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+    
     const characterId = searchParams.get('character');
     if (characterId && characters.length > 0) {
       const character = characters.find(char => char.id === characterId);
@@ -110,12 +118,13 @@ export default function CraftingPage() {
     } else if (!characterId && characters.length > 0) {
       router.push(`/game/crafting?character=${characters[0].id}`);
     }
-  }, [characters, selectedCharacter, searchParams, router, selectCharacter]);
+  }, [mounted, characters, selectedCharacter, searchParams, router, selectCharacter]);
 
   // Carregar receitas e inventário
   useEffect(() => {
+    if (!mounted || !selectedCharacter) return;
+    
     const loadData = async () => {
-      if (!selectedCharacter) return;
       setLoading(true);
       
       try {
@@ -160,11 +169,11 @@ export default function CraftingPage() {
     };
     
     loadData();
-  }, [selectedCharacter]);
+  }, [mounted, selectedCharacter]);
 
   // Processar receitas com informações de ingredientes
   useEffect(() => {
-    if (!recipes.length) return;
+    if (!mounted || !recipes.length || !selectedCharacter) return;
     
     const processRecipes = async () => {
       const processed: ProcessedRecipe[] = [];
@@ -173,7 +182,7 @@ export default function CraftingPage() {
         try {
           // Verificar se o personagem pode criar este item
           const canCraftRes = await ConsumableService.canCraftItem(
-            selectedCharacter?.id || '', 
+            selectedCharacter.id, 
             recipe.result_id
           );
           
@@ -241,7 +250,7 @@ export default function CraftingPage() {
     };
     
     processRecipes();
-  }, [recipes, inventory, selectedCharacter]);
+  }, [mounted, recipes, inventory, selectedCharacter]);
 
   const handleCraftItem = async (recipeId: string) => {
     if (!selectedCharacter) return;
@@ -277,6 +286,15 @@ export default function CraftingPage() {
       setLoading(false);
     }
   };
+
+  // Mostrar loading até montar o componente
+  if (!mounted) {
+    return (
+      <div className="container py-6 text-center">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
 
   if (!selectedCharacter) {
     return (

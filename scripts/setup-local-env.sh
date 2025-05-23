@@ -15,6 +15,7 @@ cat > .env << 'EOF'
 # Use este arquivo quando rodar `supabase start` e quiser usar o banco local
 
 NEXT_PUBLIC_ENV="LOCAL"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 
 # URLs do Supabase Local (Docker)
 NEXT_PUBLIC_SUPABASE_LOCAL_URL="http://127.0.0.1:54321"

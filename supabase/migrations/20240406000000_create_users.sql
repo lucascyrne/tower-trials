@@ -49,11 +49,6 @@ BEGIN
     END IF;
     
     -- Fórmula para slots 4+: (slot - 3) * 15 níveis totais
-    -- 4º slot: 15 níveis totais
-    -- 5º slot: 30 níveis totais  
-    -- 6º slot: 45 níveis totais
-    -- 7º slot: 60 níveis totais
-    -- etc.
     RETURN (slot_number - 3) * 15;
 END;
 $$ LANGUAGE plpgsql;
@@ -134,9 +129,9 @@ BEGIN
         new_available_slots,
         (new_available_slots > old_slots) AS slots_unlocked;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
--- Função RPC para criar perfil de usuário com SECURITY DEFINER
+-- Função RPC para criar perfil de usuário
 CREATE OR REPLACE FUNCTION create_user_profile(p_uid UUID, p_username VARCHAR, p_email VARCHAR)
 RETURNS void AS $$
 BEGIN
@@ -168,7 +163,7 @@ BEGIN
     NOW()
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Create trigger to automatically update updated_at
 CREATE TRIGGER update_users_updated_at
@@ -179,30 +174,28 @@ CREATE TRIGGER update_users_updated_at
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Simplified RLS policies
-CREATE POLICY "Enable read access for authenticated users"
+-- Políticas RLS simplificadas que não dependem de auth.uid()
+CREATE POLICY "Public read access for users"
     ON public.users
     FOR SELECT
-    TO authenticated
     USING (true);
 
--- Permitir o service_role para realizar inserções
-CREATE POLICY "Service role can insert users"
+CREATE POLICY "Service role full access"
     ON public.users
-    FOR INSERT
+    FOR ALL
     TO service_role
+    USING (true)
     WITH CHECK (true);
 
--- Permitir usuários autenticados atualizar apenas os próprios dados
-CREATE POLICY "Enable update for users based on uid"
+CREATE POLICY "Authenticated users can update own profile"
     ON public.users
     FOR UPDATE
     TO authenticated
-    USING (auth.uid()::text::uuid = uid)
-    WITH CHECK (auth.uid()::text::uuid = uid);
+    USING (uid = (SELECT auth.uid()))
+    WITH CHECK (uid = (SELECT auth.uid()));
 
--- Grant necessary permissions only
-GRANT SELECT, INSERT, UPDATE ON public.users TO authenticated;
-GRANT ALL ON public.users TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE public.users_id_seq TO authenticated;
-GRANT ALL ON SEQUENCE public.users_id_seq TO service_role; 
+CREATE POLICY "Authenticated users can insert own profile"
+    ON public.users
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (uid = (SELECT auth.uid())); 

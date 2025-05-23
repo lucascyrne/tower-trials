@@ -346,28 +346,16 @@ CREATE POLICY "Allow public read equipment" ON equipment
 CREATE POLICY "Users can view own character equipment" ON character_equipment
     FOR SELECT
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM characters 
-            WHERE characters.id = character_equipment.character_id 
-            AND characters.user_id = auth.uid()
-        )
-    );
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
 
 CREATE POLICY "Users can manage own character equipment" ON character_equipment
     FOR ALL
     TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM characters 
-            WHERE characters.id = character_equipment.character_id 
-            AND characters.user_id = auth.uid()
-        )
-    )
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM characters 
-            WHERE characters.id = character_equipment.character_id 
-            AND characters.user_id = auth.uid()
-        )
-    ); 
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ))
+    WITH CHECK (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    )); 
