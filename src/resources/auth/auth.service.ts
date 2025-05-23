@@ -62,6 +62,8 @@ export const AuthService = {
         highest_floor: profile.highest_floor,
         total_games: profile.total_games,
         total_victories: profile.total_victories,
+        total_character_level: profile.total_character_level,
+        max_character_slots: profile.max_character_slots,
         is_active: profile.is_active,
         last_login: profile.last_login,
       } as User;
@@ -128,6 +130,8 @@ export const AuthService = {
         highest_floor: profile.highest_floor,
         total_games: profile.total_games,
         total_victories: profile.total_victories,
+        total_character_level: profile.total_character_level,
+        max_character_slots: profile.max_character_slots,
         is_active: profile.is_active,
         last_login: profile.last_login,
       };
@@ -184,6 +188,8 @@ export const AuthService = {
               highest_floor: 0,
               total_games: 0,
               total_victories: 0,
+              total_character_level: 0,
+              max_character_slots: 3,
               is_active: true,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -200,6 +206,8 @@ export const AuthService = {
                   highest_floor: 0,
                   total_games: 0,
                   total_victories: 0,
+                  total_character_level: 0,
+                  max_character_slots: 3,
                   is_active: true,
                 } as User, 
                 session: data.session 
@@ -222,6 +230,8 @@ export const AuthService = {
           highest_floor: 0,
           total_games: 0,
           total_victories: 0,
+          total_character_level: 0,
+          max_character_slots: 3,
           is_active: true,
         } as User, 
         session: data.session 

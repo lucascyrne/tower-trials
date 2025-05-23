@@ -9,6 +9,7 @@ import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
 import { RankingService } from './ranking-service';
 import { SpecialEventService } from './special-event.service';
+import { SkillXpGain } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
 
 // Interface para salvar o progresso do jogo
@@ -268,6 +269,8 @@ export class GameService {
         updated_at: progress.updated_at,
         isPlayerTurn: true,
         specialCooldown: 0,
+        defenseCooldown: 0,
+        isDefending: false,
         floor: progress.current_floor,
         spells: [],
         active_effects: {
@@ -324,6 +327,8 @@ export class GameService {
     newState: GameState;
     skipTurn: boolean;
     message: string;
+    skillXpGains?: SkillXpGain[];
+    skillMessages?: string[];
   } {
     const { player, currentEnemy } = gameState;
     
@@ -356,6 +361,11 @@ export class GameService {
     const newState = { ...gameState };
     let skipTurn = false;
     
+    // Reduzir cooldown de defesa no início do turno
+    if (player.defenseCooldown > 0) {
+      player.defenseCooldown--;
+    }
+    
     // Processar a ação do jogador
     switch (action) {
       case 'attack':
@@ -371,8 +381,17 @@ export class GameService {
         break;
       
       case 'defend':
-        player.def += 5;
-        message = 'Você entrou em postura defensiva!';
+        // Verificar se a defesa está em cooldown
+        if (player.defenseCooldown > 0) {
+          message = `Defesa em cooldown: ${player.defenseCooldown} turnos restantes.`;
+          skipTurn = true;
+          break;
+        }
+        
+        // Ativar defesa estratégica
+        player.isDefending = true;
+        player.defenseCooldown = 4; // Cooldown de 4 turnos
+        message = 'Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.';
         break;
 
       case 'flee':
@@ -633,11 +652,9 @@ export class GameService {
    * @returns Recompensas calculadas
    */
   static calculateFloorRewards(baseXP: number, baseGold: number, floorType: FloorType): { xp: number; gold: number } {
-    // Reduzir Gold em 10%
-    const reductionGoldFactor = 0.9;
-    
-    // Reduzir XP em 40%
-    const reductionXpFactor = 0.6;
+    // Ajustes de balanceamento: reduzir apenas 20% do XP para manter progressão
+    const reductionXpFactor = 0.8; // Reduzido de 0.6 para 0.8
+    const reductionGoldFactor = 1.0; // Removida redução do gold
 
     const multipliers = {
       common: 1,
@@ -819,7 +836,7 @@ export class GameService {
   /**
    * Processar ação do inimigo
    * @param gameState Estado atual do jogo
-   * @param playerDefendAction Indica se o jogador usou a ação de defesa
+   * @param playerDefendAction Indica se o jogador usou a ação de defesa (DEPRECATED)
    * @returns Novo estado do jogo após a ação do inimigo
    */
   static async processEnemyAction(gameState: GameState, playerDefendAction: boolean): Promise<GameState> {
@@ -845,14 +862,66 @@ export class GameService {
     // Processar efeitos ao longo do tempo no jogador
     const playerEffectMessages = SpellService.processOverTimeEffects(player);
     
-    const enemyDamage = MonsterService.calculateDamage(
+    // Calcular dano base do inimigo
+    let enemyDamage = MonsterService.calculateDamage(
       currentEnemy as unknown as Monster,
       currentEnemy.attack,
       player.def
     );
     
+    // Aplicar redução de dano se o jogador está defendendo
+    if (player.isDefending) {
+      const originalDamage = enemyDamage;
+      enemyDamage = Math.floor(enemyDamage * 0.15); // Reduz 85% do dano
+      
+      // Resetar estado de defesa após o ataque
+      player.isDefending = false;
+      
+      // Adicionar mensagem explicativa sobre a defesa
+      const effectMessages = [...enemyEffectMessages, ...playerEffectMessages];
+      const effectMessage = effectMessages.length > 0 ? effectMessages.join(' ') + ' ' : '';
+      
+      player.hp = Math.max(0, player.hp - enemyDamage);
+      
+      // Atualizar cooldowns das magias
+      const updatedState = SpellService.updateSpellCooldowns(gameState);
+      
+      if (player.hp <= 0) {
+        try {
+          // Salvar a pontuação no ranking antes de deletar o personagem
+          const rankingEntry = {
+            player_name: player.name,
+            highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
+            user_id: player.user_id
+          };
+
+          await RankingService.saveScore(rankingEntry);
+          await CharacterService.deleteCharacter(player.id);
+        } catch (error) {
+          console.error('Erro ao processar morte do personagem:', error);
+        }
+
+        return {
+          ...updatedState,
+          mode: 'gameover',
+          gameMessage: `Você foi derrotado no Andar ${player.floor}!`,
+          player,
+          isPlayerTurn: true,
+        };
+      }
+      
+      return {
+        ...updatedState,
+        gameMessage: `${effectMessage}Sua defesa bloqueou a maior parte do ataque! O inimigo causou apenas ${enemyDamage} de dano (${originalDamage - enemyDamage} bloqueado)!`,
+        player,
+        isPlayerTurn: true,
+      };
+    }
+    
+    // Aplicar dano normal se não estava defendendo
     player.hp = Math.max(0, player.hp - enemyDamage);
     
+    // Resetar defesa modificada (lógica antiga) - não mais usada
     if (playerDefendAction) {
       player.def = defaultPlayer.def;
     }

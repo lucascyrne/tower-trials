@@ -54,7 +54,8 @@ export class EquipmentService {
      */
     static async getEquippedSlots(characterId: string): Promise<EquipmentSlots> {
         const defaultSlots: EquipmentSlots = {
-            weapon: null,
+            main_hand: null,
+            off_hand: null,
             armor: null,
             accessory: null
         };

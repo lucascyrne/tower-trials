@@ -1,4 +1,16 @@
-import { Character, CreateCharacterDTO, calculateBaseStats } from './models/character.model';
+import { 
+  Character, 
+  CreateCharacterDTO, 
+  calculateBaseStats, 
+  CharacterProgressionInfo, 
+  CharacterLimitInfo, 
+  UpdateCharacterStatsResult,
+  AttributeDistribution,
+  AttributeDistributionResult,
+  CharacterStats,
+  SkillType,
+  SkillXpResult
+} from './models/character.model';
 import { EquipmentService } from './equipment.service';
 import { NameValidationService } from './name-validation.service';
 import { supabase } from '@/lib/supabase';
@@ -23,6 +35,66 @@ export class CharacterService {
   private static lastFetchTimestamp: Map<string, number> = new Map();
   private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
   private static CACHE_DURATION = 30000; // 30 segundos de cache
+
+  /**
+   * Buscar informações de progressão do usuário
+   * @param userId ID do usuário
+   * @returns Informações de progressão
+   */
+  static async getUserCharacterProgression(userId: string): Promise<ServiceResponse<CharacterProgressionInfo>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_character_progression', {
+          p_user_id: userId
+        })
+        .single();
+
+      if (error) throw error;
+
+      return { 
+        data: data as CharacterProgressionInfo, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao buscar progressão de personagens:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao buscar progressão', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Verificar limite de personagens do usuário
+   * @param userId ID do usuário
+   * @returns Informações sobre limites de personagem
+   */
+  static async checkCharacterLimit(userId: string): Promise<ServiceResponse<CharacterLimitInfo>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('check_character_limit', {
+          p_user_id: userId
+        })
+        .single();
+
+      if (error) throw error;
+
+      return { 
+        data: data as CharacterLimitInfo, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao verificar limite de personagens:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao verificar limite', 
+        success: false 
+      };
+    }
+  }
 
   /**
    * Buscar todos os personagens do usuário
@@ -178,9 +250,9 @@ export class CharacterService {
   /**
    * Criar um novo personagem
    * @param data Dados do personagem
-   * @returns ID do personagem criado
+   * @returns ID do personagem criado e informações de progressão
    */
-  static async createCharacter(data: CreateCharacterDTO): Promise<ServiceResponse<{ id: string }>> {
+  static async createCharacter(data: CreateCharacterDTO): Promise<ServiceResponse<{ id: string; progressionUpdated?: boolean }>> {
     try {
       // Validar nome do personagem no frontend primeiro
       const nameValidation = NameValidationService.validateCharacterName(data.name);
@@ -192,28 +264,26 @@ export class CharacterService {
         };
       }
 
-      // Formatar nome corretamente
-      const formattedName = NameValidationService.formatCharacterName(data.name);
-
-      // Verificar se o usuário já tem 3 personagens
-      const { data: characters, error: countError } = await supabase
-        .from('characters')
-        .select('id, name')
-        .eq('user_id', data.user_id);
-
-      if (countError) throw countError;
-      
-      if (characters && characters.length >= 3) {
+      // Verificar limite antes de tentar criar
+      const limitInfo = await this.checkCharacterLimit(data.user_id);
+      if (!limitInfo.success || !limitInfo.data?.can_create) {
+        const nextSlotLevel = limitInfo.data?.next_slot_required_level || 0;
+        const currentSlots = limitInfo.data?.available_slots || 3;
+        
         return {
           data: null,
-          error: 'Você já atingiu o limite máximo de 3 personagens',
+          error: `Limite de personagens atingido. Para criar o ${currentSlots + 1}º personagem, você precisa de ${nextSlotLevel} níveis totais entre todos os seus personagens.`,
           success: false
         };
       }
 
-      // Verificar se já existe personagem com nome similar
-      if (characters && characters.length > 0) {
-        const existingNames = characters.map(c => c.name);
+      // Formatar nome corretamente
+      const formattedName = NameValidationService.formatCharacterName(data.name);
+
+      // Verificar se o usuário já tem personagem com nome similar
+      const existingCharacters = await this.getUserCharacters(data.user_id);
+      if (existingCharacters.success && existingCharacters.data && existingCharacters.data.length > 0) {
+        const existingNames = existingCharacters.data.map(c => c.name);
         if (NameValidationService.isTooSimilar(formattedName, existingNames)) {
           const suggestions = NameValidationService.generateNameSuggestions(formattedName);
           return {
@@ -240,22 +310,18 @@ export class CharacterService {
             success: false
           };
         }
-        if (error.message.includes('Limite máximo de personagens')) {
+        if (error.message.includes('Limite') || error.message.includes('personagem')) {
           return {
             data: null,
-            error: 'Você já atingiu o limite máximo de 3 personagens',
-            success: false
-          };
-        }
-        if (error.message.includes('já possui um personagem com este nome')) {
-          return {
-            data: null,
-            error: 'Você já possui um personagem com este nome',
+            error: error.message,
             success: false
           };
         }
         throw error;
       }
+
+      // Limpar cache do usuário para forçar atualização
+      this.invalidateUserCache(data.user_id);
 
       return { 
         data: { id: result }, 
@@ -286,10 +352,15 @@ export class CharacterService {
     if (error) throw error;
 
     // Carregar equipamentos equipados
-    const equipmentSlots = await EquipmentService.getEquippedSlots(characterId);
+    const equipmentSlotsData = await EquipmentService.getEquippedSlots(characterId);
+    
+    // Converter para array se necessário
+    const equipmentSlots = Array.isArray(equipmentSlotsData) 
+      ? equipmentSlotsData 
+      : Object.values(equipmentSlotsData || {});
 
     // Calcular stats com bônus de equipamento
-    const baseStats = calculateBaseStats(character.level, equipmentSlots);
+    const baseStats = calculateBaseStats(character.level, undefined);
 
     return {
       ...character,
@@ -302,12 +373,12 @@ export class CharacterService {
    * Atualizar stats do personagem
    * @param characterId ID do personagem
    * @param stats Stats a serem atualizados
-   * @returns Resultado da atualização
+   * @returns Resultado da atualização com informações de progressão
    */
   static async updateCharacterStats(
     characterId: string,
     stats: UpdateCharacterStatsDTO
-  ): Promise<ServiceResponse<{ leveled_up: boolean; new_level: number; new_xp: number; new_xp_next_level: number }>> {
+  ): Promise<ServiceResponse<UpdateCharacterStatsResult>> {
     try {
       // Se temos o parâmetro floor, atualizamos separadamente
       if (stats.floor !== undefined) {
@@ -331,13 +402,16 @@ export class CharacterService {
       // Invalidar cache apenas do personagem específico
       this.invalidateCharacterCache(characterId);
 
+      // Se houve level up, também invalidar cache do usuário para atualizar progressão
+      if (data.leveled_up || data.slots_unlocked) {
+        const character = await this.getCharacter(characterId);
+        if (character.success && character.data) {
+          this.invalidateUserCache(character.data.user_id);
+        }
+      }
+
       return { 
-        data: { 
-          leveled_up: data.leveled_up,
-          new_level: data.new_level,
-          new_xp: data.new_xp, 
-          new_xp_next_level: data.new_xp_next_level 
-        }, 
+        data: data as UpdateCharacterStatsResult, 
         error: null, 
         success: true 
       };
@@ -414,6 +488,9 @@ export class CharacterService {
    */
   static async deleteCharacter(characterId: string): Promise<{ error: string | null }> {
     try {
+      // Obter dados do personagem antes de deletar para invalidar cache do usuário
+      const character = await this.getCharacter(characterId);
+      
       // Deletar o personagem usando a função RPC do banco
       const { error } = await supabase
         .rpc('delete_character', {
@@ -424,6 +501,11 @@ export class CharacterService {
 
       // Invalidar cache do personagem deletado
       this.invalidateCharacterCache(characterId);
+      
+      // Invalidar cache do usuário para atualizar progressão
+      if (character.success && character.data) {
+        this.invalidateUserCache(character.data.user_id);
+      }
 
       return { error: null };
     } catch (error) {
@@ -439,6 +521,23 @@ export class CharacterService {
     this.characterCache.delete(characterId);
     this.lastFetchTimestamp.delete(characterId);
     console.log(`[CharacterService] Cache invalidado para personagem ${characterId}`);
+  }
+
+  /**
+   * Limpar cache de um usuário específico
+   */
+  static invalidateUserCache(userId: string): void {
+    const userCacheKey = `user_${userId}`;
+    this.lastFetchTimestamp.delete(userCacheKey);
+    
+    // Remover todos os personagens deste usuário do cache
+    Array.from(this.characterCache.entries()).forEach(([id, character]) => {
+      if (character.user_id === userId) {
+        this.characterCache.delete(id);
+      }
+    });
+    
+    console.log(`[CharacterService] Cache de usuário ${userId} invalidado`);
   }
 
   /**
@@ -713,6 +812,154 @@ export class CharacterService {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao atualizar última atividade',
         success: false
+      };
+    }
+  }
+
+  /**
+   * Obter stats completos do personagem incluindo atributos e habilidades
+   * @param characterId ID do personagem
+   * @returns Stats completos do personagem
+   */
+  static async getCharacterStats(characterId: string): Promise<ServiceResponse<CharacterStats>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_character_full_stats', {
+          p_character_id: characterId
+        })
+        .single();
+
+      if (error) throw error;
+
+      return { 
+        data: data as CharacterStats, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao buscar stats do personagem:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao buscar stats', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Distribuir pontos de atributo
+   * @param characterId ID do personagem
+   * @param distribution Distribuição de pontos
+   * @returns Resultado da distribuição
+   */
+  static async distributeAttributePoints(
+    characterId: string, 
+    distribution: AttributeDistribution
+  ): Promise<ServiceResponse<AttributeDistributionResult>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('distribute_attribute_points', {
+          p_character_id: characterId,
+          p_strength: distribution.strength,
+          p_dexterity: distribution.dexterity,
+          p_intelligence: distribution.intelligence,
+          p_wisdom: distribution.wisdom,
+          p_vitality: distribution.vitality,
+          p_luck: distribution.luck
+        })
+        .single();
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      return { 
+        data: data as AttributeDistributionResult, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao distribuir pontos de atributo:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao distribuir pontos', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Adicionar XP a uma habilidade específica
+   * @param characterId ID do personagem
+   * @param skillType Tipo da habilidade
+   * @param xpAmount Quantidade de XP
+   * @returns Resultado do ganho de XP
+   */
+  static async addSkillXp(
+    characterId: string,
+    skillType: SkillType,
+    xpAmount: number
+  ): Promise<ServiceResponse<SkillXpResult>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('add_skill_xp', {
+          p_character_id: characterId,
+          p_skill_type: skillType,
+          p_xp_amount: xpAmount
+        })
+        .single();
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem se a habilidade subiu de nível
+      if (data && (data as SkillXpResult).skill_leveled_up) {
+        this.invalidateCharacterCache(characterId);
+      }
+
+      return { 
+        data: data as SkillXpResult, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao adicionar XP de habilidade:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao adicionar XP', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Recalcular todos os stats de um personagem
+   * @param characterId ID do personagem
+   * @returns Sucesso da operação
+   */
+  static async recalculateCharacterStats(characterId: string): Promise<ServiceResponse<null>> {
+    try {
+      const { error } = await supabase
+        .rpc('recalculate_character_stats', {
+          p_character_id: characterId
+        });
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      return { 
+        data: null, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao recalcular stats:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao recalcular stats', 
+        success: false 
       };
     }
   }

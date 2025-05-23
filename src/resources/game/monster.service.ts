@@ -93,16 +93,11 @@ export class MonsterService {
         throw new Error('Nenhum monstro encontrado para este andar');
       }
 
-      // Aplicar redução de 20% nas recompensas
-      const reductionFactor = 0.8;
-      const monster = data as Monster;
-      monster.reward_xp = Math.floor(monster.reward_xp * reductionFactor);
-      monster.reward_gold = Math.floor(monster.reward_gold * reductionFactor);
-
       // Atualizar cache
-      this.monsterCache.set(floor, { ...monster });
+      this.monsterCache.set(floor, { ...data } as Monster);
       this.cacheExpiry.set(floor, Date.now() + this.CACHE_DURATION);
 
+      const monster = data as Monster;
       console.log(`[MonsterService] Monstro obtido para andar ${floor}: ${monster.name}`);
       
       return { data: monster, error: null, success: true };

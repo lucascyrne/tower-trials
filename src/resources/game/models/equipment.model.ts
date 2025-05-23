@@ -39,6 +39,14 @@ export const RARITY_MULTIPLIERS = {
 
 // Interface para os slots de equipamento do personagem
 export interface EquipmentSlots {
+  main_hand: Equipment | null;
+  off_hand: Equipment | null; // Para dual-wielding
+  armor: Equipment | null;
+  accessory: Equipment | null;
+}
+
+// Interface para compatibilidade com código legado
+export interface LegacyEquipmentSlots {
   weapon: Equipment | null;
   armor: Equipment | null;
   accessory: Equipment | null;
@@ -64,10 +72,38 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     }
   };
 
-  // Adicionar bônus de cada slot
-  addEquipmentBonus(slots.weapon);
+  // Adicionar bônus de cada slot - atualizado para dual-wielding
+  addEquipmentBonus(slots.main_hand);
+  addEquipmentBonus(slots.off_hand);
   addEquipmentBonus(slots.armor);
   addEquipmentBonus(slots.accessory);
 
+  // Bônus especial para dual-wielding (15% extra de ataque se ambas as mãos tiverem armas)
+  if (slots.main_hand && slots.off_hand && 
+      slots.main_hand.type === 'weapon' && slots.off_hand.type === 'weapon') {
+    totalBonus.atk = Math.floor(totalBonus.atk * 1.15);
+  }
+
   return totalBonus;
+};
+
+// Função para verificar se está em dual-wielding
+export const isDualWielding = (slots: EquipmentSlots): boolean => {
+  return !!(slots.main_hand && slots.off_hand && 
+           slots.main_hand.type === 'weapon' && slots.off_hand.type === 'weapon');
+};
+
+// Função para obter arma principal
+export const getMainWeapon = (slots: EquipmentSlots): Equipment | null => {
+  return slots.main_hand && slots.main_hand.type === 'weapon' ? slots.main_hand : null;
+};
+
+// Função para obter escudo ou segunda arma
+export const getOffHandItem = (slots: EquipmentSlots): Equipment | null => {
+  return slots.off_hand;
+};
+
+// Função para verificar se tem escudo equipado
+export const hasShield = (slots: EquipmentSlots): boolean => {
+  return !!(slots.off_hand && slots.off_hand.type === 'armor');
 }; 

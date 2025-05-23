@@ -74,6 +74,8 @@ export interface GamePlayer {
   updated_at: string;
   isPlayerTurn: boolean;
   specialCooldown: number;
+  defenseCooldown: number;
+  isDefending: boolean;
   floor: number;
   spells: PlayerSpell[];
   consumables?: CharacterConsumable[];
@@ -111,7 +113,7 @@ export interface GameContextState {
   loading: GameLoadingState;
   error: string | null;
   gameMessage: string | null;
-  gameLog: { text: string; type: 'system' | 'battle' | 'lore' }[];
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'skill_xp' | 'level_up' | 'equipment' }[];
 }
 
 export interface BattleActionResult {

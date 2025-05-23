@@ -12,8 +12,10 @@ export interface User extends SupabaseUser {
   highest_floor: number;
   total_games: number;
   total_victories: number;
+  total_character_level: number;
+  max_character_slots: number;
   is_active: boolean;
-  last_login?: Date;
+  last_login: string;
 }
 
 export interface AuthLoadingState {

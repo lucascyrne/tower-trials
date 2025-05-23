@@ -57,7 +57,7 @@ export function GameProvider({ children }: GameProviderProps) {
   }, []);
 
   // Função para adicionar mensagens ao log do jogo
-  const addGameLogMessage = useCallback((message: string, type: 'system' | 'battle' | 'lore' = 'system') => {
+  const addGameLogMessage = useCallback((message: string, type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' = 'system') => {
     // Verificar se a mensagem já existe nas últimas 5 entradas do log para evitar duplicação
     setState(prev => {
       const recentLogs = prev.gameLog.slice(-5);
@@ -176,6 +176,8 @@ export function GameProvider({ children }: GameProviderProps) {
                 ...newCharacter.data!,
                 isPlayerTurn: true,
                 specialCooldown: 0,
+                defenseCooldown: 0,
+                isDefending: false,
                 floor: 1,
                 spells: initialSpells,
                 active_effects: {
@@ -256,6 +258,8 @@ export function GameProvider({ children }: GameProviderProps) {
             ...character,
             isPlayerTurn: true,
             specialCooldown: 0,
+            defenseCooldown: 0,
+            isDefending: false,
             floor: currentFloor,
             spells: availableSpells,
             consumables: characterConsumables,
@@ -294,6 +298,8 @@ export function GameProvider({ children }: GameProviderProps) {
             ...character,
             isPlayerTurn: true,
             specialCooldown: 0,
+            defenseCooldown: 0,
+            isDefending: false,
             floor: character.floor || 1,
             spells: [],
             consumables: [],
@@ -689,6 +695,11 @@ export function GameProvider({ children }: GameProviderProps) {
           }
         }
 
+        // Adicionar mensagem específica para defesa
+        if (action === 'defend' && !message.includes('cooldown')) {
+          addGameLogMessage('Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.', 'battle');
+        }
+
         // Ao processar mensagens de ação, evitar duplicações
         if (message && message.trim() !== '' && !messageProcessedRef.current) {
           messageProcessedRef.current = true;
@@ -696,7 +707,8 @@ export function GameProvider({ children }: GameProviderProps) {
           // Filtrar mensagens que não queremos mostrar no log
           if (!message.includes('conseguiu fugir') && 
               !message.includes('Nenhum consumível') && 
-              !message.includes('insuficiente')) {
+              !message.includes('insuficiente') &&
+              !message.includes('assume uma postura defensiva')) { // Evitar duplicação da mensagem de defesa
             
             // Verificar se é uma mensagem duplicada
             const recentLogs = prev.gameLog.slice(-3);

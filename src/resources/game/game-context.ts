@@ -31,6 +31,8 @@ export const defaultPlayer: GamePlayer = {
   updated_at: '',
   isPlayerTurn: true,
   specialCooldown: 0,
+  defenseCooldown: 0,
+  isDefending: false,
   floor: 0,
   spells: [],
   active_effects: initialActiveEffects
@@ -61,7 +63,7 @@ export interface GameContextType {
   };
   error: string | null;
   gameMessage: string;
-  gameLog: { text: string; type: 'system' | 'battle' | 'lore' }[];
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' }[];
   characters: Character[];
   selectedCharacter: Character | null;
   startGame: (name: string) => Promise<void>;
@@ -71,7 +73,7 @@ export interface GameContextType {
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
   resetError: () => void;
-  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore') => void;
+  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up') => void;
   saveProgress: () => Promise<void>;
 }
 
