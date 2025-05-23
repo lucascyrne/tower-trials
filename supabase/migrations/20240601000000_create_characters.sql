@@ -254,6 +254,7 @@ RETURNS TABLE (
     def INTEGER,
     speed INTEGER,
     floor INTEGER,
+    last_activity TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE
 ) AS $$
