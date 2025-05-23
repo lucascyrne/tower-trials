@@ -60,6 +60,141 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Função para validar nome de personagem no banco
+CREATE OR REPLACE FUNCTION validate_character_name(p_name VARCHAR)
+RETURNS TABLE (
+    is_valid BOOLEAN,
+    error_message TEXT
+) AS $$
+DECLARE
+    clean_name VARCHAR;
+    name_length INTEGER;
+    letter_count INTEGER;
+    number_count INTEGER;
+    
+    -- Lista completa de palavras ofensivas e reservadas
+    forbidden_words TEXT[] := ARRAY[
+        -- Português - palavras de baixo calão
+        'porra', 'merda', 'caralho', 'puta', 'putaria', 'viado', 'bicha', 'cu', 'buceta',
+        'piroca', 'pinto', 'rola', 'foda', 'foder', 'fodido', 'cuzao', 'cuzão', 'babaca',
+        'otario', 'otário', 'idiota', 'imbecil', 'retardado', 'mongoloide', 'burro',
+        'desgraça', 'desgraçado', 'filho da puta', 'fdp', 'vagabundo', 'safado',
+        'cachorro', 'cadela', 'prostituta', 'vagabunda', 'piranha', 'galinha',
+        
+        -- Inglês - palavras de baixo calão
+        'fuck', 'shit', 'bitch', 'damn', 'hell', 'ass', 'asshole', 'bastard',
+        'crap', 'piss', 'dick', 'cock', 'pussy', 'cunt', 'whore', 'slut',
+        'fag', 'faggot', 'nigger', 'retard', 'moron', 'idiot', 'stupid',
+        'gay', 'lesbian', 'homo', 'nazi', 'hitler', 'rape', 'kill', 'murder',
+        
+        -- Espanhol - palavras de baixo calão
+        'mierda', 'joder', 'puta', 'puto', 'cabron', 'cabrón', 'pendejo',
+        'estupido', 'estúpido', 'culo', 'coño', 'verga', 'chingar', 'pinche',
+        'mamada', 'putada', 'hijo de puta', 'hdp', 'marica', 'maricon', 'maricón',
+        
+        -- Palavras relacionadas a drogas
+        'droga', 'cocaina', 'heroina', 'crack', 'cocaine',
+        'heroin', 'drug', 'dealer', 'traficante',
+        
+        -- Termos inadequados gerais
+        'sexo', 'sex', 'porn', 'porno', 'nude', 'naked', 'xxx', 'fetish',
+        
+        -- Palavras reservadas do sistema
+        'admin', 'administrator', 'moderador', 'moderator', 'mod', 'gm', 'gamemaster',
+        'suporte', 'support', 'help', 'ajuda', 'oficial', 'official', 'staff',
+        'dev', 'developer', 'sistema', 'system', 'bot', 'null', 'undefined',
+        'test', 'teste', 'demo', 'sample', 'example', 'exemplo', 'guest', 'visitante',
+        'player', 'jogador', 'user', 'usuario', 'usuário', 'npc', 'monster', 'monstro'
+    ];
+    
+    word TEXT;
+BEGIN
+    -- Verificar se nome foi fornecido
+    IF p_name IS NULL OR p_name = '' THEN
+        RETURN QUERY SELECT FALSE, 'Nome é obrigatório';
+        RETURN;
+    END IF;
+    
+    -- Limpar espaços desnecessários
+    clean_name := TRIM(p_name);
+    name_length := LENGTH(clean_name);
+    
+    -- Verificar comprimento
+    IF name_length < 3 THEN
+        RETURN QUERY SELECT FALSE, 'Nome deve ter pelo menos 3 caracteres';
+        RETURN;
+    END IF;
+    
+    IF name_length > 20 THEN
+        RETURN QUERY SELECT FALSE, 'Nome deve ter no máximo 20 caracteres';
+        RETURN;
+    END IF;
+    
+    -- Verificar se começa com letra
+    IF NOT (SUBSTRING(clean_name FROM 1 FOR 1) ~ '[a-zA-ZÀ-ÿ]') THEN
+        RETURN QUERY SELECT FALSE, 'Nome deve começar com uma letra';
+        RETURN;
+    END IF;
+    
+    -- Verificar caracteres válidos (letras, números, espaços, hífen, apostrofe)
+    IF NOT (clean_name ~ '^[a-zA-ZÀ-ÿ0-9\s''\-]+$') THEN
+        RETURN QUERY SELECT FALSE, 'Nome contém caracteres especiais não permitidos';
+        RETURN;
+    END IF;
+    
+    -- Verificar se é apenas números
+    IF clean_name ~ '^[0-9]+$' THEN
+        RETURN QUERY SELECT FALSE, 'Nome não pode ser apenas números';
+        RETURN;
+    END IF;
+    
+    -- Verificar números consecutivos (mais de 2)
+    IF clean_name ~ '[0-9]{3,}' THEN
+        RETURN QUERY SELECT FALSE, 'Nome não pode ter mais de 2 números consecutivos';
+        RETURN;
+    END IF;
+    
+    -- Verificar caracteres repetidos (mais de 3 iguais)
+    IF clean_name ~ '(.)\1{3,}' THEN
+        RETURN QUERY SELECT FALSE, 'Nome não pode ter mais de 3 caracteres iguais seguidos';
+        RETURN;
+    END IF;
+    
+    -- Verificar espaços múltiplos
+    IF clean_name ~ '\s{2,}' THEN
+        RETURN QUERY SELECT FALSE, 'Nome não pode ter espaços múltiplos';
+        RETURN;
+    END IF;
+    
+    -- Contar letras e números
+    letter_count := LENGTH(clean_name) - LENGTH(REGEXP_REPLACE(clean_name, '[a-zA-ZÀ-ÿ]', '', 'g'));
+    number_count := LENGTH(clean_name) - LENGTH(REGEXP_REPLACE(clean_name, '[0-9]', '', 'g'));
+    
+    -- Verificar se tem pelo menos uma letra
+    IF letter_count = 0 THEN
+        RETURN QUERY SELECT FALSE, 'Nome deve conter pelo menos uma letra';
+        RETURN;
+    END IF;
+    
+    -- Verificar proporção de números
+    IF number_count > letter_count THEN
+        RETURN QUERY SELECT FALSE, 'Nome não pode ter mais números que letras';
+        RETURN;
+    END IF;
+    
+    -- Verificar palavras proibidas (completas e substrings)
+    FOREACH word IN ARRAY forbidden_words LOOP
+        IF LOWER(clean_name) LIKE '%' || word || '%' THEN
+            RETURN QUERY SELECT FALSE, 'Nome contém termos inadequados ou reservados';
+            RETURN;
+        END IF;
+    END LOOP;
+    
+    -- Nome válido
+    RETURN QUERY SELECT TRUE, NULL::TEXT;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Função para criar um novo personagem
 CREATE OR REPLACE FUNCTION create_character(
     p_user_id UUID,
@@ -70,7 +205,28 @@ DECLARE
     v_character_id UUID;
     v_base_stats RECORD;
     v_character_count INTEGER;
+    v_validation RECORD;
+    v_formatted_name VARCHAR;
 BEGIN
+    -- Validar nome do personagem
+    SELECT * INTO v_validation FROM validate_character_name(p_name);
+    
+    IF NOT v_validation.is_valid THEN
+        RAISE EXCEPTION '%', v_validation.error_message;
+    END IF;
+    
+    -- Formatar nome (capitalizar primeira letra de cada palavra)
+    v_formatted_name := INITCAP(TRIM(p_name));
+    
+    -- Verificar se já existe personagem com mesmo nome para o usuário
+    IF EXISTS (
+        SELECT 1 FROM characters 
+        WHERE user_id = p_user_id 
+        AND UPPER(name) = UPPER(v_formatted_name)
+    ) THEN
+        RAISE EXCEPTION 'Você já possui um personagem com este nome';
+    END IF;
+    
     -- Verificar limite de personagens
     SELECT COUNT(*)
     INTO v_character_count
@@ -103,7 +259,7 @@ BEGIN
     )
     VALUES (
         p_user_id,
-        p_name,
+        v_formatted_name, -- Usar nome formatado
         1, -- level inicial
         0, -- xp inicial
         calculate_xp_next_level(1), -- xp necessário para level 2
@@ -396,87 +552,117 @@ GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
 GRANT EXECUTE ON FUNCTION get_character TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_character TO authenticated;
 GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated;
+GRANT EXECUTE ON FUNCTION validate_character_name TO authenticated;
 
 -- =====================================================
 -- SISTEMA DE CURA AUTOMÁTICA
 -- =====================================================
 
--- Função para calcular cura automática baseada em tempo
+-- Função para calcular cura automática baseada em tempo offline
+-- Cura total em 2 horas (de 0.1% a 100% da vida e mana)
 CREATE OR REPLACE FUNCTION calculate_auto_heal(
     p_character_id UUID,
     p_current_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 )
-RETURNS TABLE (
-    healed BOOLEAN,
-    old_hp INTEGER,
-    new_hp INTEGER,
-    heal_amount INTEGER
-) AS $$
+RETURNS TABLE(new_hp INTEGER, new_mana INTEGER, healed BOOLEAN) AS $$
 DECLARE
-    v_character RECORD;
-    v_time_diff_seconds INTEGER;
-    v_heal_amount INTEGER;
-    v_new_hp INTEGER;
-    v_adjusted_current_hp INTEGER;
-    v_heal_rate_per_second NUMERIC;
+    char_record RECORD;
+    time_diff_seconds INTEGER;
+    heal_duration_seconds INTEGER := 7200; -- 2 horas = 7200 segundos
+    min_percent DECIMAL := 0.1;
+    max_percent DECIMAL := 100.0;
+    
+    -- Variáveis para HP
+    adjusted_current_hp INTEGER;
+    adjusted_current_hp_percent DECIMAL;
+    heal_rate_per_second DECIMAL;
+    hp_heal_percentage DECIMAL;
+    hp_heal_amount INTEGER;
+    calculated_new_hp INTEGER;
+    
+    -- Variáveis para Mana
+    adjusted_current_mana INTEGER;
+    adjusted_current_mana_percent DECIMAL;
+    mana_heal_percentage DECIMAL;
+    mana_heal_amount INTEGER;
+    calculated_new_mana INTEGER;
 BEGIN
     -- Buscar dados do personagem
-    SELECT c.hp, c.max_hp, c.last_activity
-    INTO v_character
-    FROM characters c
-    WHERE c.id = p_character_id;
+    SELECT hp, max_hp, mana, max_mana, last_activity
+    INTO char_record
+    FROM characters
+    WHERE id = p_character_id;
     
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Personagem não encontrado';
+    -- Se não encontrou o personagem ou não tem last_activity
+    IF NOT FOUND OR char_record.last_activity IS NULL THEN
+        RETURN QUERY SELECT char_record.hp, char_record.mana, FALSE;
+        RETURN;
     END IF;
     
-    -- Se HP já está no máximo ou não há last_activity, não curar
-    IF v_character.hp >= v_character.max_hp OR v_character.last_activity IS NULL THEN
-        RETURN QUERY
-        SELECT FALSE, v_character.hp, v_character.hp, 0;
+    -- Se HP e Mana já estão no máximo, não curar
+    IF char_record.hp >= char_record.max_hp AND char_record.mana >= char_record.max_mana THEN
+        RETURN QUERY SELECT char_record.hp, char_record.mana, FALSE;
         RETURN;
     END IF;
     
     -- Calcular diferença de tempo em segundos
-    v_time_diff_seconds := EXTRACT(EPOCH FROM (p_current_time - v_character.last_activity))::INTEGER;
+    time_diff_seconds := EXTRACT(EPOCH FROM (p_current_time - char_record.last_activity))::INTEGER;
     
     -- Se passou menos de 1 segundo, não curar
-    IF v_time_diff_seconds < 1 THEN
-        RETURN QUERY
-        SELECT FALSE, v_character.hp, v_character.hp, 0;
+    IF time_diff_seconds < 1 THEN
+        RETURN QUERY SELECT char_record.hp, char_record.mana, FALSE;
         RETURN;
     END IF;
     
-    -- Configurações de cura: 6 horas para cura completa (0.1% a 100%)
-    -- Taxa de cura: 99.9% / 21600s ≈ 0.00462% por segundo
-    v_heal_rate_per_second := 99.9 / 21600.0;
-    
-    -- Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
-    v_adjusted_current_hp := GREATEST(v_character.hp, CEIL(v_character.max_hp * 0.001));
-    
-    -- Calcular quantidade de cura baseada no tempo
-    v_heal_amount := FLOOR((v_heal_rate_per_second * v_time_diff_seconds / 100.0) * v_character.max_hp);
-    
-    -- Aplicar cura sem ultrapassar HP máximo
-    v_new_hp := LEAST(v_character.max_hp, v_adjusted_current_hp + v_heal_amount);
-    
-    -- Verificar se houve cura efetiva
-    IF v_new_hp > v_character.hp THEN
-        -- Atualizar HP no banco de dados
-        UPDATE characters
-        SET 
-            hp = v_new_hp,
-            last_activity = p_current_time
-        WHERE id = p_character_id;
+    -- Calcular nova HP se necessário
+    calculated_new_hp := char_record.hp;
+    IF char_record.hp < char_record.max_hp THEN
+        -- Ajustar HP atual se estiver abaixo de 0.1%
+        adjusted_current_hp := GREATEST(char_record.hp, CEIL(char_record.max_hp * (min_percent / 100.0)));
+        adjusted_current_hp_percent := (adjusted_current_hp::DECIMAL / char_record.max_hp::DECIMAL) * 100.0;
         
-        RETURN QUERY
-        SELECT TRUE, v_character.hp, v_new_hp, (v_new_hp - v_character.hp);
-    ELSE
-        RETURN QUERY
-        SELECT FALSE, v_character.hp, v_character.hp, 0;
+        -- Taxa de cura HP: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
+        heal_rate_per_second := (max_percent - min_percent) / heal_duration_seconds;
+        
+        -- Calcular percentual de cura baseado no tempo
+        hp_heal_percentage := LEAST(
+            heal_rate_per_second * time_diff_seconds,
+            max_percent - adjusted_current_hp_percent
+        );
+        
+        -- Calcular quantidade de HP a ser curada
+        hp_heal_amount := FLOOR((hp_heal_percentage / 100.0) * char_record.max_hp);
+        calculated_new_hp := LEAST(char_record.max_hp, adjusted_current_hp + hp_heal_amount);
     END IF;
+    
+    -- Calcular nova Mana se necessário
+    calculated_new_mana := char_record.mana;
+    IF char_record.mana < char_record.max_mana THEN
+        -- Ajustar Mana atual se estiver abaixo de 0.1%
+        adjusted_current_mana := GREATEST(char_record.mana, CEIL(char_record.max_mana * (min_percent / 100.0)));
+        adjusted_current_mana_percent := (adjusted_current_mana::DECIMAL / char_record.max_mana::DECIMAL) * 100.0;
+        
+        -- Taxa de cura Mana: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
+        heal_rate_per_second := (max_percent - min_percent) / heal_duration_seconds;
+        
+        -- Calcular percentual de cura baseado no tempo
+        mana_heal_percentage := LEAST(
+            heal_rate_per_second * time_diff_seconds,
+            max_percent - adjusted_current_mana_percent
+        );
+        
+        -- Calcular quantidade de Mana a ser curada
+        mana_heal_amount := FLOOR((mana_heal_percentage / 100.0) * char_record.max_mana);
+        calculated_new_mana := LEAST(char_record.max_mana, adjusted_current_mana + mana_heal_amount);
+    END IF;
+    
+    -- Retornar resultados
+    RETURN QUERY SELECT 
+        calculated_new_hp, 
+        calculated_new_mana,
+        (calculated_new_hp > char_record.hp OR calculated_new_mana > char_record.mana);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
 -- Função para atualizar última atividade
 CREATE OR REPLACE FUNCTION update_character_last_activity(

@@ -10,6 +10,7 @@ DELETE FROM character_equipment;
 DELETE FROM consumables;
 DELETE FROM equipment;
 DELETE FROM monsters;
+DELETE FROM special_events;
 
 -- =====================================
 -- CONSUMÍVEIS
@@ -503,4 +504,50 @@ VALUES
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Pergaminho de Acessório Épico'),
      (SELECT id FROM monster_drops WHERE name = 'Núcleo Ancestral'), 'monster_drop', 1),
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Pergaminho de Acessório Épico'),
-     (SELECT id FROM monster_drops WHERE name = 'Cristal Glacial'), 'monster_drop', 1); 
+     (SELECT id FROM monster_drops WHERE name = 'Cristal Glacial'), 'monster_drop', 1);
+
+-- =====================================
+-- EVENTOS ESPECIAIS
+-- =====================================
+
+-- Inserir eventos especiais para pisos do tipo "event"
+INSERT INTO special_events (name, type, description, hp_restore_percent, mana_restore_percent, gold_reward_min, gold_reward_max, chance_weight, min_floor)
+VALUES
+    -- FOGUEIRA - Evento mais comum, restaura parcialmente
+    ('Fogueira Acolhedora', 'bonfire', 
+     'Você encontra uma fogueira acesa. As chamas emanam calor reconfortante, permitindo um breve descanso.', 
+     40, 30, 0, 0, 50, 1),
+    
+    ('Fogueira Mágica', 'bonfire', 
+     'Uma fogueira com chamas azuladas emite energia mágica. O descanso aqui é especialmente revigorante.', 
+     50, 40, 0, 0, 30, 5),
+    
+    -- BAÚS DE TESOURO - Recompensas de gold variáveis
+    ('Baú Simples', 'treasure_chest', 
+     'Um baú de madeira contém algumas moedas deixadas por aventureiros anteriores.', 
+     0, 0, 30, 80, 35, 1),
+    
+    ('Baú Ornamentado', 'treasure_chest', 
+     'Um baú decorado com detalhes dourados revela tesouros valiosos.', 
+     0, 0, 80, 150, 25, 3),
+    
+    ('Baú do Tesouro', 'treasure_chest', 
+     'Um grande baú reforçado com ferro contém riquezas consideráveis.', 
+     0, 0, 150, 300, 20, 7),
+    
+    ('Baú Ancestral', 'treasure_chest', 
+     'Um antigo baú emanando poder mágico guarda fortunas de eras passadas.', 
+     0, 0, 250, 500, 10, 12),
+    
+    -- FONTE MÁGICA - Evento raro, restaura completamente
+    ('Fonte Cristalina', 'magic_fountain', 
+     'Uma fonte de águas cristalinas brilha com luz própria. Suas águas possuem propriedades curativas extraordinárias.', 
+     100, 100, 0, 0, 15, 3),
+    
+    ('Fonte dos Anciões', 'magic_fountain', 
+     'Uma fonte ancestral esculpida em pedra luminosa. Lendas dizem que suas águas podem curar qualquer ferimento.', 
+     100, 100, 50, 150, 8, 8),
+    
+    ('Fonte do Destino', 'magic_fountain', 
+     'Uma fonte mística que aparece apenas para os mais dignos. Suas águas concedem renovação completa do corpo e espírito.', 
+     100, 100, 100, 200, 5, 15); 
