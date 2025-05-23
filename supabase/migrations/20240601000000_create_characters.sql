@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS characters (
     def INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     floor INTEGER DEFAULT 1,
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, name)
@@ -393,4 +394,109 @@ GRANT EXECUTE ON FUNCTION create_character TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
 GRANT EXECUTE ON FUNCTION get_character TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_character TO authenticated;
-GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated; 
+GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated;
+
+-- =====================================================
+-- SISTEMA DE CURA AUTOMÁTICA
+-- =====================================================
+
+-- Função para calcular cura automática baseada em tempo
+CREATE OR REPLACE FUNCTION calculate_auto_heal(
+    p_character_id UUID,
+    p_current_time TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+RETURNS TABLE (
+    healed BOOLEAN,
+    old_hp INTEGER,
+    new_hp INTEGER,
+    heal_amount INTEGER
+) AS $$
+DECLARE
+    v_character RECORD;
+    v_time_diff_seconds INTEGER;
+    v_heal_amount INTEGER;
+    v_new_hp INTEGER;
+    v_adjusted_current_hp INTEGER;
+    v_heal_rate_per_second NUMERIC;
+BEGIN
+    -- Buscar dados do personagem
+    SELECT c.hp, c.max_hp, c.last_activity
+    INTO v_character
+    FROM characters c
+    WHERE c.id = p_character_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Personagem não encontrado';
+    END IF;
+    
+    -- Se HP já está no máximo ou não há last_activity, não curar
+    IF v_character.hp >= v_character.max_hp OR v_character.last_activity IS NULL THEN
+        RETURN QUERY
+        SELECT FALSE, v_character.hp, v_character.hp, 0;
+        RETURN;
+    END IF;
+    
+    -- Calcular diferença de tempo em segundos
+    v_time_diff_seconds := EXTRACT(EPOCH FROM (p_current_time - v_character.last_activity))::INTEGER;
+    
+    -- Se passou menos de 1 segundo, não curar
+    IF v_time_diff_seconds < 1 THEN
+        RETURN QUERY
+        SELECT FALSE, v_character.hp, v_character.hp, 0;
+        RETURN;
+    END IF;
+    
+    -- Configurações de cura: 6 horas para cura completa (0.1% a 100%)
+    -- Taxa de cura: 99.9% / 21600s ≈ 0.00462% por segundo
+    v_heal_rate_per_second := 99.9 / 21600.0;
+    
+    -- Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
+    v_adjusted_current_hp := GREATEST(v_character.hp, CEIL(v_character.max_hp * 0.001));
+    
+    -- Calcular quantidade de cura baseada no tempo
+    v_heal_amount := FLOOR((v_heal_rate_per_second * v_time_diff_seconds / 100.0) * v_character.max_hp);
+    
+    -- Aplicar cura sem ultrapassar HP máximo
+    v_new_hp := LEAST(v_character.max_hp, v_adjusted_current_hp + v_heal_amount);
+    
+    -- Verificar se houve cura efetiva
+    IF v_new_hp > v_character.hp THEN
+        -- Atualizar HP no banco de dados
+        UPDATE characters
+        SET 
+            hp = v_new_hp,
+            last_activity = p_current_time
+        WHERE id = p_character_id;
+        
+        RETURN QUERY
+        SELECT TRUE, v_character.hp, v_new_hp, (v_new_hp - v_character.hp);
+    ELSE
+        RETURN QUERY
+        SELECT FALSE, v_character.hp, v_character.hp, 0;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para atualizar última atividade
+CREATE OR REPLACE FUNCTION update_character_last_activity(
+    p_character_id UUID,
+    p_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE characters
+    SET last_activity = p_timestamp
+    WHERE id = p_character_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Personagem não encontrado';
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Permitir execução das funções de cura automática por usuários autenticados
+GRANT EXECUTE ON FUNCTION calculate_auto_heal TO authenticated;
+GRANT EXECUTE ON FUNCTION update_character_last_activity TO authenticated;
+
+-- Adicionar comentário explicativo ao campo last_activity
+COMMENT ON COLUMN characters.last_activity IS 'Timestamp da última atividade do personagem, usado para cura automática baseada em tempo (6h para cura completa)'; 

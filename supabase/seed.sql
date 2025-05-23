@@ -15,18 +15,25 @@ DELETE FROM monsters;
 -- CONSUMÍVEIS
 -- =====================================
 
--- Inserir consumíveis iniciais
+-- Inserir consumíveis com preços balanceados para escassez controlada
 INSERT INTO consumables (name, description, type, effect_value, price, craftable)
 VALUES
-    ('Poção de Vida Pequena', 'Recupera 20 HP', 'potion', 20, 25, false),
-    ('Poção de Vida Média', 'Recupera 50 HP', 'potion', 50, 60, true),
-    ('Poção de Vida Grande', 'Recupera 100 HP', 'potion', 100, 120, true),
-    ('Poção de Mana Pequena', 'Recupera 10 Mana', 'potion', 10, 25, false),
-    ('Poção de Mana Média', 'Recupera 25 Mana', 'potion', 25, 60, true),
-    ('Poção de Mana Grande', 'Recupera 50 Mana', 'potion', 50, 120, true),
-    ('Antídoto', 'Remove efeitos negativos', 'antidote', 0, 75, true),
-    ('Elixir de Força', 'Aumenta o ataque em 5 por 5 turnos', 'buff', 5, 100, true),
-    ('Elixir de Defesa', 'Aumenta a defesa em 5 por 5 turnos', 'buff', 5, 100, true);
+    -- POÇÕES DE VIDA (progressão de escassez)
+    ('Poção de Vida Pequena', 'Recupera 20 HP instantaneamente', 'potion', 20, 50, false), -- Acessível mas não barata
+    ('Poção de Vida Média', 'Recupera 50 HP instantaneamente', 'potion', 50, 150, true),   -- 3x mais cara que pequena
+    ('Poção de Vida Grande', 'Recupera 100 HP instantaneamente', 'potion', 100, 400, true), -- Muito cara para mid-game
+    
+    -- POÇÕES DE MANA (progressão similar)
+    ('Poção de Mana Pequena', 'Recupera 10 Mana instantaneamente', 'potion', 10, 45, false), -- Levemente mais barata que vida
+    ('Poção de Mana Média', 'Recupera 25 Mana instantaneamente', 'potion', 25, 135, true),   -- Proporcional à vida
+    ('Poção de Mana Grande', 'Recupera 50 Mana instantaneamente', 'potion', 50, 350, true),  -- Cara mas menos que vida grande
+    
+    -- UTILITÁRIOS (preços moderados mas importantes)
+    ('Antídoto', 'Remove todos os efeitos negativos', 'antidote', 0, 120, true), -- Caro pois é muito útil
+    
+    -- ELIXIRES (não vendidos na loja - apenas craftáveis)
+    ('Elixir de Força', 'Aumenta o ataque em 8 por 3 turnos', 'buff', 8, 0, true), -- Não vendido na loja
+    ('Elixir de Defesa', 'Aumenta a defesa em 8 por 3 turnos', 'buff', 8, 0, true); -- Não vendido na loja
 
 -- =====================================
 -- EQUIPAMENTOS
@@ -445,13 +452,13 @@ VALUES
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Antídoto'),
      (SELECT id FROM monster_drops WHERE name = 'Presa de Lobo'), 'monster_drop', 1),
      
-    -- Elixir de Força (Essência Elemental + Escama de Dragão Jovem)
+    -- Elixir de Força (Essência Elemental + Escama de Dragão Jovem) - AUMENTO DO BUFF E REDUÇÃO DA DURAÇÃO
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Elixir de Força'),
      (SELECT id FROM monster_drops WHERE name = 'Essência Elemental'), 'monster_drop', 1),
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Elixir de Força'),
      (SELECT id FROM monster_drops WHERE name = 'Escama de Dragão Jovem'), 'monster_drop', 1),
      
-    -- Elixir de Defesa (Escama de Réptil + Fragmento de Cristal)
+    -- Elixir de Defesa (Escama de Réptil + Fragmento de Cristal) - AUMENTO DO BUFF E REDUÇÃO DA DURAÇÃO
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Elixir de Defesa'),
      (SELECT id FROM monster_drops WHERE name = 'Escama de Réptil'), 'monster_drop', 2),
     ((SELECT id FROM crafting_recipes WHERE name = 'Receita: Elixir de Defesa'),

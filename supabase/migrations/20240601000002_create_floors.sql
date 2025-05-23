@@ -100,4 +100,36 @@ BEGIN
             v_floor.description;
     END IF;
 END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para obter checkpoints desbloqueados
+CREATE OR REPLACE FUNCTION get_unlocked_checkpoints(p_highest_floor INTEGER)
+RETURNS TABLE (
+    floor_number INTEGER,
+    description TEXT
+) AS $$
+BEGIN
+    -- Verificar se o usuário está autenticado
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Usuário não autenticado';
+    END IF;
+
+    -- Sempre incluir o andar 1
+    RETURN QUERY
+    SELECT 
+        1 as floor_number,
+        'Andar 1 - Início da Torre'::TEXT as description;
+    
+    -- Incluir checkpoints a cada 10 andares até o andar mais alto
+    RETURN QUERY
+    SELECT 
+        f.floor_number,
+        CASE 
+            WHEN f.floor_number % 10 = 0 THEN 'Andar ' || f.floor_number || ' - Checkpoint de Chefe'
+            ELSE 'Andar ' || f.floor_number || ' - Checkpoint'
+        END::TEXT as description
+    FROM generate_series(10, p_highest_floor, 10) as f(floor_number)
+    WHERE f.floor_number <= p_highest_floor
+    ORDER BY f.floor_number;
+END;
 $$ LANGUAGE plpgsql SECURITY DEFINER; 

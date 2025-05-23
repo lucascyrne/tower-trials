@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS consumables (
     type VARCHAR(50) NOT NULL CHECK (type IN ('potion', 'elixir', 'antidote', 'buff')),
     effect_value INTEGER NOT NULL,
     price INTEGER NOT NULL,
+    level_requirement INTEGER NOT NULL DEFAULT 1,
     craftable BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
