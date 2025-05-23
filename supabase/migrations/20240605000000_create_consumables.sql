@@ -9,7 +9,7 @@ $$ LANGUAGE plpgsql;
 
 -- Criação da tabela de consumíveis
 CREATE TABLE IF NOT EXISTS consumables (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     type VARCHAR(50) NOT NULL CHECK (type IN ('potion', 'elixir', 'antidote', 'buff')),
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS consumables (
 
 -- Criação da tabela para consumíveis dos personagens
 CREATE TABLE IF NOT EXISTS character_consumables (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     consumable_id UUID NOT NULL REFERENCES consumables(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 0,
@@ -111,8 +111,8 @@ $$ LANGUAGE plpgsql;
 -- Trigger para atualizar timestamp de updated_at
 CREATE TRIGGER set_updated_at_consumables
 BEFORE UPDATE ON consumables
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_character_consumables
 BEFORE UPDATE ON character_consumables
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at(); 
+FOR EACH ROW EXECUTE FUNCTION set_updated_at(); 

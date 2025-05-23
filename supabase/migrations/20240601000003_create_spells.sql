@@ -10,7 +10,7 @@ CREATE TYPE spell_effect_type AS ENUM (
 
 -- Criar tabela de magias
 CREATE TABLE IF NOT EXISTS spells (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
     effect_type spell_effect_type NOT NULL,

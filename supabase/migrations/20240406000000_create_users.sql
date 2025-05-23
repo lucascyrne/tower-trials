@@ -1,3 +1,6 @@
+-- Habilitar extensões necessárias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create users table
 CREATE TABLE IF NOT EXISTS public.users (
     id BIGSERIAL PRIMARY KEY,
@@ -31,10 +34,10 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
 -- Função para calcular o nível total necessário para um determinado slot
 CREATE OR REPLACE FUNCTION calculate_required_total_level_for_slot(slot_number INTEGER)
@@ -198,14 +201,8 @@ CREATE POLICY "Enable update for users based on uid"
     USING (auth.uid()::text::uuid = uid)
     WITH CHECK (auth.uid()::text::uuid = uid);
 
--- Grant permissions
-GRANT ALL ON public.users TO authenticated;
+-- Grant necessary permissions only
+GRANT SELECT, INSERT, UPDATE ON public.users TO authenticated;
 GRANT ALL ON public.users TO service_role;
-GRANT USAGE ON SEQUENCE public.users_id_seq TO authenticated;
-GRANT USAGE ON SEQUENCE public.users_id_seq TO service_role;
-GRANT EXECUTE ON FUNCTION create_user_profile TO anon;
-GRANT EXECUTE ON FUNCTION create_user_profile TO authenticated;
-GRANT EXECUTE ON FUNCTION create_user_profile TO service_role;
-GRANT EXECUTE ON FUNCTION calculate_required_total_level_for_slot TO authenticated;
-GRANT EXECUTE ON FUNCTION calculate_available_character_slots TO authenticated;
-GRANT EXECUTE ON FUNCTION update_user_character_progression TO authenticated; 
+GRANT USAGE, SELECT ON SEQUENCE public.users_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.users_id_seq TO service_role; 

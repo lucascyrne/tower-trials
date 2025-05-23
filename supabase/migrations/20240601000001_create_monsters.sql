@@ -197,23 +197,17 @@ $$ LANGUAGE plpgsql;
 -- Habilitar RLS
 ALTER TABLE monsters ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS
-CREATE POLICY "Leitura pública de monstros" ON monsters
+-- RLS Policies
+CREATE POLICY "Allow public read monsters" ON monsters
     FOR SELECT 
     USING (true);
 
-CREATE POLICY "Service role tem acesso total" ON monsters
+CREATE POLICY "Service role full access monsters" ON monsters
     FOR ALL
-    USING (auth.role() = 'service_role')
-    WITH CHECK (auth.role() = 'service_role');
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Garantir que as funções possam ser executadas por usuários autenticados
-GRANT EXECUTE ON FUNCTION get_monster_for_floor TO authenticated;
-GRANT EXECUTE ON FUNCTION get_monster_for_floor TO anon;
-
--- Garantir que a tabela monsters possa ser lida por todos
+-- Basic read permissions for monsters table
 GRANT SELECT ON monsters TO authenticated;
-GRANT SELECT ON monsters TO anon;
-
--- Garantir que o service_role tenha acesso total
 GRANT ALL ON monsters TO service_role; 

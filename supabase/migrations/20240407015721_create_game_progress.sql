@@ -22,74 +22,34 @@ CREATE TRIGGER update_game_progress_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Função para atualizar o andar do personagem
-CREATE OR REPLACE FUNCTION update_character_floor(
-    p_character_id UUID,
-    p_floor INTEGER
-)
-RETURNS VOID AS $$
-DECLARE
-    v_user_id UUID;
-    v_current_floor INTEGER;
-BEGIN
-    -- Obter user_id e andar atual do personagem
-    SELECT user_id, floor INTO v_user_id, v_current_floor
-    FROM characters
-    WHERE id = p_character_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Personagem não encontrado';
-    END IF;
-    
-    -- Verificar se o novo andar é maior que o atual para garantir progressão
-    IF p_floor < v_current_floor THEN
-        RAISE NOTICE 'Tentativa de retroceder andar rejeitada: % -> %', v_current_floor, p_floor;
-        RETURN; -- Não permite retroceder de andar
-    END IF;
-    
-    -- Atualizar andar na tabela de personagens
-    UPDATE characters
-    SET floor = p_floor
-    WHERE id = p_character_id;
-    
-    -- Atualizar andar na tabela de progresso
-    UPDATE game_progress
-    SET current_floor = p_floor
-    WHERE user_id = v_user_id;
-    
-    -- Atualizar highest_floor se necessário
-    UPDATE game_progress
-    SET highest_floor = GREATEST(highest_floor, p_floor)
-    WHERE user_id = v_user_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Note: update_character_floor function is defined in characters migration
 
 -- Habilitar RLS
 ALTER TABLE game_progress ENABLE ROW LEVEL SECURITY;
 
--- Política para leitura do próprio progresso
-CREATE POLICY "Usuários podem ler seu próprio progresso" ON game_progress
+-- RLS Policies for game progress
+CREATE POLICY "Users can read own progress" ON game_progress
     FOR SELECT
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    TO authenticated
+    USING (user_id = auth.uid());
 
--- Política para inserção do próprio progresso
-CREATE POLICY "Usuários podem inserir seu próprio progresso" ON game_progress
+CREATE POLICY "Users can insert own progress" ON game_progress
     FOR INSERT
-    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    TO authenticated
+    WITH CHECK (user_id = auth.uid());
 
--- Política para atualização do próprio progresso
-CREATE POLICY "Usuários podem atualizar seu próprio progresso" ON game_progress
+CREATE POLICY "Users can update own progress" ON game_progress
     FOR UPDATE
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid))
-    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
--- Política para deleção do próprio progresso
-CREATE POLICY "Usuários podem deletar seu próprio progresso" ON game_progress
+CREATE POLICY "Users can delete own progress" ON game_progress
     FOR DELETE
-    USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
+    TO authenticated
+    USING (user_id = auth.uid());
 
--- Garantir que as funções possam ser executadas por usuários autenticados
-GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated;
+-- Note: Function permissions handled automatically by SECURITY DEFINER
 
 -- =====================================
 -- SISTEMA DE EVENTOS ESPECIAIS
@@ -229,19 +189,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- RLS para special_events
 ALTER TABLE special_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Leitura pública de eventos especiais" ON special_events
+CREATE POLICY "Allow public read special events" ON special_events
     FOR SELECT 
     USING (true);
 
-CREATE POLICY "Service role tem acesso total aos eventos" ON special_events
+CREATE POLICY "Service role full access special events" ON special_events
     FOR ALL
-    USING (auth.role() = 'service_role')
-    WITH CHECK (auth.role() = 'service_role');
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
 
--- Permissions
+-- Basic permissions
 GRANT SELECT ON special_events TO authenticated;
-GRANT SELECT ON special_events TO anon;
-GRANT ALL ON special_events TO service_role;
-GRANT EXECUTE ON FUNCTION get_special_event_for_floor TO authenticated;
-GRANT EXECUTE ON FUNCTION get_special_event_for_floor TO anon;
-GRANT EXECUTE ON FUNCTION process_special_event TO authenticated; 
+GRANT ALL ON special_events TO service_role; 

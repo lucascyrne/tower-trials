@@ -121,6 +121,52 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Função para recalcular todos os stats derivados de um personagem
+-- IMPORTANTE: Definida aqui para ser usada por outras funções
+CREATE OR REPLACE FUNCTION recalculate_character_stats(p_character_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    v_character RECORD;
+    v_stats RECORD;
+BEGIN
+    -- Buscar dados atuais do personagem
+    SELECT * INTO v_character
+    FROM characters
+    WHERE id = p_character_id;
+    
+    -- Calcular novos stats derivados
+    SELECT * INTO v_stats FROM calculate_derived_stats(
+        v_character.level,
+        v_character.strength,
+        v_character.dexterity,
+        v_character.intelligence,
+        v_character.wisdom,
+        v_character.vitality,
+        v_character.luck
+    );
+    
+    -- Calcular diferença de HP/Mana para manter proporção atual
+    DECLARE
+        v_hp_ratio DECIMAL := v_character.hp::DECIMAL / v_character.max_hp;
+        v_mana_ratio DECIMAL := v_character.mana::DECIMAL / v_character.max_mana;
+        v_new_hp INTEGER := CEILING(v_stats.derived_max_hp * v_hp_ratio);
+        v_new_mana INTEGER := CEILING(v_stats.derived_max_mana * v_mana_ratio);
+    BEGIN
+        -- Atualizar stats
+        UPDATE characters
+        SET
+            max_hp = v_stats.derived_max_hp,
+            max_mana = v_stats.derived_max_mana,
+            atk = v_stats.derived_atk,
+            def = v_stats.derived_def,
+            speed = v_stats.derived_speed,
+            hp = LEAST(v_new_hp, v_stats.derived_max_hp),
+            mana = LEAST(v_new_mana, v_stats.derived_max_mana)
+        WHERE id = p_character_id;
+    END;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Função para calcular XP necessário para próximo nível de habilidade
 CREATE OR REPLACE FUNCTION calculate_skill_xp_requirement(current_level INTEGER)
 RETURNS INTEGER AS $$
@@ -531,17 +577,20 @@ BEGIN
             v_current_level := v_current_level + 1;
             v_leveled_up := TRUE;
             
-            -- Calcular novos stats base para o novo nível
-            SELECT * INTO v_base_stats FROM calculate_base_stats(v_current_level);
-            
             -- Atualizar variáveis para próxima iteração
             v_xp_next_level := calculate_xp_next_level(v_current_level);
         END LOOP;
         
-        -- Inicializar v_base_stats com valores do nível atual se não subiu de nível
-        IF NOT v_leveled_up THEN
-            SELECT * INTO v_base_stats FROM calculate_base_stats(v_current_level);
-        END IF;
+        -- Calcular stats derivados para o nível atual
+        SELECT * INTO v_base_stats FROM calculate_derived_stats(
+            v_current_level,
+            (SELECT strength FROM characters WHERE id = p_character_id),
+            (SELECT dexterity FROM characters WHERE id = p_character_id),
+            (SELECT intelligence FROM characters WHERE id = p_character_id),
+            (SELECT wisdom FROM characters WHERE id = p_character_id),
+            (SELECT vitality FROM characters WHERE id = p_character_id),
+            (SELECT luck FROM characters WHERE id = p_character_id)
+        );
         
         -- Agora aplicar todas as mudanças de uma vez
         IF v_leveled_up THEN
@@ -551,13 +600,13 @@ BEGIN
                 level = v_current_level,
                 xp = v_new_xp,
                 xp_next_level = v_xp_next_level,
-                max_hp = v_base_stats.base_hp,
-                max_mana = v_base_stats.base_mana,
-                atk = v_base_stats.base_atk,
-                def = v_base_stats.base_def,
-                speed = v_base_stats.base_speed,
-                hp = v_base_stats.base_hp, -- Recupera HP totalmente ao subir de nível
-                mana = v_base_stats.base_mana -- Recupera Mana totalmente ao subir de nível
+                max_hp = v_base_stats.derived_max_hp,
+                max_mana = v_base_stats.derived_max_mana,
+                atk = v_base_stats.derived_atk,
+                def = v_base_stats.derived_def,
+                speed = v_base_stats.derived_speed,
+                hp = v_base_stats.derived_max_hp, -- Recupera HP totalmente ao subir de nível
+                mana = v_base_stats.derived_max_mana -- Recupera Mana totalmente ao subir de nível
             WHERE id = p_character_id;
             
             -- Atualizar progressão do usuário quando um personagem sobe de nível
@@ -669,50 +718,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Função para recalcular todos os stats derivados de um personagem
-CREATE OR REPLACE FUNCTION recalculate_character_stats(p_character_id UUID)
-RETURNS VOID AS $$
-DECLARE
-    v_character RECORD;
-    v_stats RECORD;
-BEGIN
-    -- Buscar dados atuais do personagem
-    SELECT * INTO v_character
-    FROM characters
-    WHERE id = p_character_id;
-    
-    -- Calcular novos stats derivados
-    SELECT * INTO v_stats FROM calculate_derived_stats(
-        v_character.level,
-        v_character.strength,
-        v_character.dexterity,
-        v_character.intelligence,
-        v_character.wisdom,
-        v_character.vitality,
-        v_character.luck
-    );
-    
-    -- Calcular diferença de HP/Mana para manter proporção atual
-    DECLARE
-        v_hp_ratio DECIMAL := v_character.hp::DECIMAL / v_character.max_hp;
-        v_mana_ratio DECIMAL := v_character.mana::DECIMAL / v_character.max_mana;
-        v_new_hp INTEGER := CEILING(v_stats.derived_max_hp * v_hp_ratio);
-        v_new_mana INTEGER := CEILING(v_stats.derived_max_mana * v_mana_ratio);
-    BEGIN
-        -- Atualizar stats
-        UPDATE characters
-        SET
-            max_hp = v_stats.derived_max_hp,
-            max_mana = v_stats.derived_max_mana,
-            atk = v_stats.derived_atk,
-            def = v_stats.derived_def,
-            speed = v_stats.derived_speed,
-            hp = LEAST(v_new_hp, v_stats.derived_max_hp),
-            mana = LEAST(v_new_mana, v_stats.derived_max_mana)
-        WHERE id = p_character_id;
-    END;
-END;
-$$ LANGUAGE plpgsql;
+
 
 -- Função para obter stats completos do personagem
 CREATE OR REPLACE FUNCTION get_character_full_stats(p_character_id UUID)
@@ -1039,13 +1045,7 @@ CREATE POLICY "Usuários podem ver seus próprios personagens" ON characters
 CREATE POLICY "Usuários podem criar seus próprios personagens" ON characters
     FOR INSERT
     TO authenticated
-    WITH CHECK (
-        user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)
-        AND (
-            SELECT COUNT(*) FROM characters 
-            WHERE user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid)
-        ) < 3
-    );
+    WITH CHECK (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
 CREATE POLICY "Usuários podem atualizar seus próprios personagens" ON characters
     FOR UPDATE
@@ -1058,15 +1058,7 @@ CREATE POLICY "Usuários podem deletar seus próprios personagens" ON characters
     TO authenticated
     USING (user_id IN (SELECT uid FROM users WHERE uid = auth.uid()::text::uuid));
 
--- Garantir que as funções possam ser executadas por usuários autenticados
-GRANT EXECUTE ON FUNCTION create_character TO authenticated;
-GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
-GRANT EXECUTE ON FUNCTION get_character TO authenticated;
-GRANT EXECUTE ON FUNCTION delete_character TO authenticated;
-GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated;
-GRANT EXECUTE ON FUNCTION validate_character_name TO authenticated;
-GRANT EXECUTE ON FUNCTION check_character_limit TO authenticated;
-GRANT EXECUTE ON FUNCTION get_user_character_progression TO authenticated;
+-- Note: Function permissions are handled automatically by SECURITY DEFINER
 
 -- =====================================================
 -- SISTEMA DE CURA AUTOMÁTICA
@@ -1195,9 +1187,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Permitir execução das funções de cura automática por usuários autenticados
-GRANT EXECUTE ON FUNCTION calculate_auto_heal TO authenticated;
-GRANT EXECUTE ON FUNCTION update_character_last_activity TO authenticated;
+-- Note: Auto-heal function permissions are handled automatically by SECURITY DEFINER
 
 -- Adicionar comentário explicativo ao campo last_activity
 COMMENT ON COLUMN characters.last_activity IS 'Timestamp da última atividade do personagem, usado para cura automática baseada em tempo (6h para cura completa)'; 

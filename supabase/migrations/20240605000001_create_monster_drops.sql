@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS monster_possible_drops (
 
 -- Tabela para inventário de drops dos personagens
 CREATE TABLE IF NOT EXISTS character_drops (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     drop_id UUID NOT NULL REFERENCES monster_drops(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 0,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS character_drops (
 
 -- Tabela de receitas de crafting
 CREATE TABLE IF NOT EXISTS crafting_recipes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     result_id UUID NOT NULL REFERENCES consumables(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS crafting_recipes (
 
 -- Tabela de ingredientes para receitas
 CREATE TABLE IF NOT EXISTS crafting_ingredients (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     recipe_id UUID NOT NULL REFERENCES crafting_recipes(id) ON DELETE CASCADE,
     item_id UUID NOT NULL,
     item_type VARCHAR(50) NOT NULL CHECK (item_type IN ('monster_drop', 'consumable')),
@@ -259,23 +259,23 @@ $$ LANGUAGE plpgsql;
 -- Criar triggers para atualizar timestamps
 CREATE TRIGGER set_updated_at_monster_drops
 BEFORE UPDATE ON monster_drops
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_monster_possible_drops
 BEFORE UPDATE ON monster_possible_drops
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_character_drops
 BEFORE UPDATE ON character_drops
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_crafting_recipes
 BEFORE UPDATE ON crafting_recipes
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER set_updated_at_crafting_ingredients
 BEFORE UPDATE ON crafting_ingredients
-FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ========================================
 -- CONFIGURAR RLS (Row Level Security)

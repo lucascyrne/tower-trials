@@ -25,7 +25,7 @@ CREATE TYPE equipment_rarity AS ENUM (
 
 -- Criar tabela de equipamentos
 CREATE TABLE IF NOT EXISTS equipment (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
     type equipment_type NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS equipment (
 
 -- Criar tabela de equipamentos do personagem
 CREATE TABLE IF NOT EXISTS character_equipment (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     character_id UUID NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     equipment_id UUID NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
     is_equipped BOOLEAN DEFAULT false,
@@ -189,6 +189,11 @@ BEGIN
             WHEN 'sword' THEN
                 IF v_sword_mastery < v_min_mastery THEN
                     RAISE EXCEPTION 'Maestria com espadas insuficiente (necessário: %)', v_min_mastery;
+                END IF;
+            WHEN 'dagger' THEN
+                -- Adagas usam maestria com espadas
+                IF v_sword_mastery < v_min_mastery THEN
+                    RAISE EXCEPTION 'Maestria com espadas insuficiente para usar adagas (necessário: %)', v_min_mastery;
                 END IF;
             WHEN 'axe' THEN
                 IF v_axe_mastery < v_min_mastery THEN
@@ -333,25 +338,36 @@ ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE character_equipment ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS para equipment (leitura pública - dados de referência)
-CREATE POLICY "Leitura pública de equipamentos" ON equipment
+CREATE POLICY "Allow public read equipment" ON equipment
     FOR SELECT 
     USING (true);
 
 -- Políticas RLS para character_equipment (acesso apenas ao dono do personagem)
-CREATE POLICY "Usuários podem ver equipamentos dos próprios personagens" ON character_equipment
+CREATE POLICY "Users can view own character equipment" ON character_equipment
     FOR SELECT
     TO authenticated
     USING (
-        character_id IN (
-            SELECT id FROM characters WHERE user_id = auth.uid()
+        EXISTS (
+            SELECT 1 FROM characters 
+            WHERE characters.id = character_equipment.character_id 
+            AND characters.user_id = auth.uid()
         )
     );
 
-CREATE POLICY "Usuários podem modificar equipamentos dos próprios personagens" ON character_equipment
+CREATE POLICY "Users can manage own character equipment" ON character_equipment
     FOR ALL
     TO authenticated
     USING (
-        character_id IN (
-            SELECT id FROM characters WHERE user_id = auth.uid()
+        EXISTS (
+            SELECT 1 FROM characters 
+            WHERE characters.id = character_equipment.character_id 
+            AND characters.user_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM characters 
+            WHERE characters.id = character_equipment.character_id 
+            AND characters.user_id = auth.uid()
         )
     ); 
