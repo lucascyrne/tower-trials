@@ -426,6 +426,79 @@ export function GameProvider({ children }: GameProviderProps) {
           };
         }
         
+        // Processar interação com evento especial
+        if (action === 'interact_event') {
+          console.log('[game-provider] Processando interação com evento especial');
+          
+          if (prev.gameState.mode !== 'special_event' || !prev.gameState.currentSpecialEvent) {
+            console.warn('[game-provider] Tentativa de interagir com evento especial sem evento atual');
+            loadingRef.current = false;
+            return prev;
+          }
+          
+          // Processar evento de forma assíncrona
+          setTimeout(async () => {
+            try {
+              console.log(`[game-provider] Processando evento especial: ${prev.gameState.currentSpecialEvent?.name}`);
+              
+              const updatedState = await GameService.processSpecialEventInteraction(
+                prev.gameState,
+                selectedCharacter.id
+              );
+              
+              // Atualizar stats do personagem no banco se houve mudanças
+              if (selectedCharacter && updatedState.player) {
+                await CharacterService.updateCharacterStats(selectedCharacter.id, {
+                  hp: updatedState.player.hp,
+                  mana: updatedState.player.mana,
+                  gold: updatedState.player.gold - prev.gameState.player.gold // Apenas o gold ganho
+                });
+              }
+              
+              setState(currentState => ({
+                ...currentState,
+                gameState: updatedState
+              }));
+              
+              console.log(`[game-provider] Evento especial processado com sucesso`);
+              
+              // Após 3 segundos, permitir continuar para o próximo andar
+              setTimeout(() => {
+                setState(currentState => ({
+                  ...currentState,
+                  gameState: {
+                    ...currentState.gameState,
+                    currentSpecialEvent: null,
+                    mode: 'battle' as const,
+                    gameMessage: 'Pressione "Continuar" para avançar para o próximo andar.'
+                  }
+                }));
+              }, 3000);
+              
+            } catch (error) {
+              console.error('[game-provider] Erro ao processar evento especial:', error);
+              setState(currentState => ({
+                ...currentState,
+                gameState: {
+                  ...currentState.gameState,
+                  gameMessage: 'Erro ao processar evento especial. Tente novamente.'
+                }
+              }));
+            } finally {
+              loadingRef.current = false;
+              updateLoading('performAction', false);
+            }
+          }, 100);
+          
+          return {
+            ...prev,
+            gameState: {
+              ...prev.gameState,
+              gameMessage: 'Processando evento especial...'
+            }
+          };
+        }
+        
         // Para outras ações, verificar validações de batalha
         if (prev.gameState.mode !== 'battle' || !prev.gameState.currentEnemy) {
           console.log('[game-provider] Validação falhou - mode:', prev.gameState.mode, 'enemy:', !!prev.gameState.currentEnemy);

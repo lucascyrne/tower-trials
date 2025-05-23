@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType } from './game-model';
+import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType, SpecialEvent } from './game-model';
 import { defaultPlayer } from './game-context';
 import { MonsterService } from './monster.service';
 import { Monster, MonsterDropChance } from './models/monster.model';
@@ -8,6 +8,7 @@ import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
 import { RankingService } from './ranking-service';
+import { SpecialEventService } from './special-event.service';
 import { supabase } from '@/lib/supabase';
 
 // Interface para salvar o progresso do jogo
@@ -921,15 +922,41 @@ export class GameService {
       }
       console.log(`[advanceToNextFloor] Dados do andar ${nextFloorNumber} obtidos:`, nextFloor.description);
       
-      // Gerar próximo inimigo
-      console.log(`[advanceToNextFloor] Gerando inimigo para o andar ${nextFloorNumber}`);
-      const nextEnemy = await this.generateEnemy(nextFloorNumber);
-      if (!nextEnemy) {
-        const errorMsg = `Não foi possível gerar inimigo para o andar ${nextFloorNumber}`;
+      // Verificar se deve gerar evento especial ou monstro
+      let nextEnemy: Enemy | null = null;
+      let nextSpecialEvent: SpecialEvent | null = null;
+      let newMode: 'battle' | 'special_event' = 'battle';
+      
+      if (SpecialEventService.shouldGenerateSpecialEvent(nextFloor.type)) {
+        // Gerar evento especial
+        console.log(`[advanceToNextFloor] Gerando evento especial para andar ${nextFloorNumber}`);
+        const eventResponse = await SpecialEventService.getSpecialEventForFloor(nextFloorNumber);
+        
+        if (eventResponse.success && eventResponse.data) {
+          nextSpecialEvent = eventResponse.data;
+          newMode = 'special_event';
+          console.log(`[advanceToNextFloor] Evento especial gerado: ${nextSpecialEvent.name}`);
+        } else {
+          // Fallback para monstro se evento falhar
+          console.warn(`[advanceToNextFloor] Falha ao gerar evento especial, gerando monstro`);
+          nextEnemy = await this.generateEnemy(nextFloorNumber);
+        }
+      } else {
+        // Gerar monstro normal
+        console.log(`[advanceToNextFloor] Gerando monstro para o andar ${nextFloorNumber}`);
+        nextEnemy = await this.generateEnemy(nextFloorNumber);
+      }
+      
+      // Verificar se temos inimigo ou evento
+      if (!nextEnemy && !nextSpecialEvent) {
+        const errorMsg = `Não foi possível gerar conteúdo para o andar ${nextFloorNumber}`;
         console.error(`[advanceToNextFloor] ERRO: ${errorMsg}`);
         throw new Error(errorMsg);
       }
-      console.log(`[advanceToNextFloor] Inimigo gerado para o andar ${nextFloorNumber}:`, nextEnemy.name);
+      
+      if (nextEnemy) {
+        console.log(`[advanceToNextFloor] Monstro gerado: ${nextEnemy.name}`);
+      }
       
       // Ajustar a recuperação de HP e mana baseada no tipo do andar
       const baseRecovery = {
@@ -943,9 +970,18 @@ export class GameService {
       
       console.log(`[advanceToNextFloor] Recuperação calculada - HP: +${baseRecovery}, Mana: +${manaRecovery}`);
       
+      // Criar mensagem apropriada
+      let gameMessage: string;
+      if (nextSpecialEvent) {
+        gameMessage = `Você chegou ao ${nextFloor.description} e encontrou algo especial...`;
+      } else {
+        gameMessage = `Você chegou ao ${nextFloor.description}.`;
+      }
+      
       // Criar o novo estado com o próximo andar
       const newState: GameState = {
         ...gameState,
+        mode: newMode,
         player: {
           ...player,
           floor: nextFloorNumber,
@@ -953,16 +989,19 @@ export class GameService {
           mana: Math.min(player.max_mana, player.mana + manaRecovery)
         },
         currentEnemy: nextEnemy,
+        currentSpecialEvent: nextSpecialEvent,
         currentFloor: nextFloor,
         isPlayerTurn: true,
-        gameMessage: `Você chegou ao ${nextFloor.description}.`,
+        gameMessage,
         battleRewards: null // Limpar recompensas após avançar
       };
       
       console.log(`[advanceToNextFloor] SUCESSO - Transição concluída: ${player.floor} -> ${nextFloorNumber}`);
       console.log(`[advanceToNextFloor] Novo estado:`, { 
         floor: newState.player.floor, 
+        mode: newState.mode,
         enemy: newState.currentEnemy?.name,
+        event: newState.currentSpecialEvent?.name,
         floorDesc: newState.currentFloor?.description
       });
       
@@ -974,6 +1013,68 @@ export class GameService {
       return {
         ...gameState,
         gameMessage: 'Erro ao avançar para o próximo andar. Tente novamente.',
+        isPlayerTurn: true
+      };
+    }
+  }
+
+  /**
+   * Processar interação com evento especial
+   * @param gameState Estado atual do jogo
+   * @param characterId ID do personagem
+   * @returns Novo estado do jogo após processar o evento
+   */
+  static async processSpecialEventInteraction(
+    gameState: GameState, 
+    characterId: string
+  ): Promise<GameState> {
+    try {
+      const { currentSpecialEvent, player } = gameState;
+      
+      if (!currentSpecialEvent) {
+        console.warn('[processSpecialEventInteraction] Nenhum evento especial atual');
+        return {
+          ...gameState,
+          gameMessage: 'Nenhum evento especial disponível.'
+        };
+      }
+
+      console.log(`[processSpecialEventInteraction] Processando evento: ${currentSpecialEvent.name}`);
+      
+      // Processar evento no servidor
+      const eventResponse = await SpecialEventService.processSpecialEvent(
+        characterId, 
+        currentSpecialEvent.id
+      );
+      
+      if (!eventResponse.success || !eventResponse.data) {
+        throw new Error(eventResponse.error || 'Erro ao processar evento especial');
+      }
+      
+      const result = eventResponse.data;
+      
+      // Atualizar estado do jogador com os benefícios do evento
+      const updatedPlayer = {
+        ...player,
+        hp: Math.min(player.max_hp, player.hp + result.hp_restored),
+        mana: Math.min(player.max_mana, player.mana + result.mana_restored),
+        gold: player.gold + result.gold_gained
+      };
+      
+      console.log(`[processSpecialEventInteraction] Evento processado com sucesso: +${result.hp_restored} HP, +${result.mana_restored} Mana, +${result.gold_gained} Gold`);
+      
+      // Retornar estado atualizado - ainda em modo evento para mostrar resultados
+      return {
+        ...gameState,
+        player: updatedPlayer,
+        gameMessage: result.message,
+        isPlayerTurn: true
+      };
+    } catch (error) {
+      console.error('[processSpecialEventInteraction] Erro ao processar evento especial:', error);
+      return {
+        ...gameState,
+        gameMessage: 'Erro ao interagir com o evento especial. Tente novamente.',
         isPlayerTurn: true
       };
     }

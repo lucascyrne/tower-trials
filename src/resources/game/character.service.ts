@@ -1,5 +1,6 @@
 import { Character, CreateCharacterDTO, calculateBaseStats } from './models/character.model';
 import { EquipmentService } from './equipment.service';
+import { NameValidationService } from './name-validation.service';
 import { supabase } from '@/lib/supabase';
 
 interface ServiceResponse<T> {
@@ -181,10 +182,23 @@ export class CharacterService {
    */
   static async createCharacter(data: CreateCharacterDTO): Promise<ServiceResponse<{ id: string }>> {
     try {
+      // Validar nome do personagem no frontend primeiro
+      const nameValidation = NameValidationService.validateCharacterName(data.name);
+      if (!nameValidation.isValid) {
+        return {
+          data: null,
+          error: nameValidation.error || 'Nome inválido',
+          success: false
+        };
+      }
+
+      // Formatar nome corretamente
+      const formattedName = NameValidationService.formatCharacterName(data.name);
+
       // Verificar se o usuário já tem 3 personagens
       const { data: characters, error: countError } = await supabase
         .from('characters')
-        .select('id')
+        .select('id, name')
         .eq('user_id', data.user_id);
 
       if (countError) throw countError;
@@ -197,18 +211,46 @@ export class CharacterService {
         };
       }
 
-      // Criar novo personagem usando a função RPC
+      // Verificar se já existe personagem com nome similar
+      if (characters && characters.length > 0) {
+        const existingNames = characters.map(c => c.name);
+        if (NameValidationService.isTooSimilar(formattedName, existingNames)) {
+          const suggestions = NameValidationService.generateNameSuggestions(formattedName);
+          return {
+            data: null,
+            error: `Nome muito similar a um personagem existente. Sugestões: ${suggestions.join(', ')}`,
+            success: false
+          };
+        }
+      }
+
+      // Criar novo personagem usando a função RPC com nome formatado
       const { data: result, error } = await supabase
         .rpc('create_character', {
           p_user_id: data.user_id,
-          p_name: data.name
+          p_name: formattedName
         });
 
       if (error) {
+        // Tratar erros específicos de validação do banco
+        if (error.message.includes('Nome')) {
+          return {
+            data: null,
+            error: error.message,
+            success: false
+          };
+        }
         if (error.message.includes('Limite máximo de personagens')) {
           return {
             data: null,
             error: 'Você já atingiu o limite máximo de 3 personagens',
+            success: false
+          };
+        }
+        if (error.message.includes('já possui um personagem com este nome')) {
+          return {
+            data: null,
+            error: 'Você já possui um personagem com este nome',
             success: false
           };
         }
@@ -499,15 +541,20 @@ export class CharacterService {
 
   /**
    * Calcular cura automática baseada em tempo
-   * Cura total em 6 horas (de 0.1% a 100% da vida)
+   * Cura total em 2 horas (de 0.1% a 100% da vida e mana)
    * @param character Dados do personagem
    * @param currentTime Timestamp atual
-   * @returns HP atualizado após cura automática
+   * @returns HP e Mana atualizados após cura automática
    */
-  static calculateAutoHeal(character: Character, currentTime: Date): number {
-    // Se não há last_activity ou HP já está no máximo, não curar
-    if (!character.last_activity || character.hp >= character.max_hp) {
-      return character.hp;
+  static calculateAutoHeal(character: Character, currentTime: Date): { hp: number; mana: number } {
+    // Se não há last_activity, não curar
+    if (!character.last_activity) {
+      return { hp: character.hp, mana: character.mana };
+    }
+
+    // Se HP e Mana já estão no máximo, não curar
+    if (character.hp >= character.max_hp && character.mana >= character.max_mana) {
+      return { hp: character.hp, mana: character.mana };
     }
 
     const lastActivity = new Date(character.last_activity);
@@ -516,34 +563,61 @@ export class CharacterService {
 
     // Se passou menos de 1 segundo, não curar
     if (timeDiffSeconds < 1) {
-      return character.hp;
+      return { hp: character.hp, mana: character.mana };
     }
 
-    // Configurações de cura
-    const HEAL_DURATION_HOURS = 6;
-    const HEAL_DURATION_SECONDS = HEAL_DURATION_HOURS * 3600; // 21600 segundos
-    const MIN_HP_PERCENT = 0.1; // Começa a curar a partir de 0.1% HP
-    const MAX_HP_PERCENT = 100; // Cura até 100% HP
+    // Configurações de cura - REDUZIDO para 2 horas
+    const HEAL_DURATION_HOURS = 2;
+    const HEAL_DURATION_SECONDS = HEAL_DURATION_HOURS * 3600; // 7200 segundos
+    const MIN_PERCENT = 0.1; // Começa a curar a partir de 0.1%
+    const MAX_PERCENT = 100; // Cura até 100%
     
-    // Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
-    const adjustedCurrentHp = Math.max(character.hp, Math.ceil(character.max_hp * (MIN_HP_PERCENT / 100)));
-    const adjustedCurrentHpPercent = (adjustedCurrentHp / character.max_hp) * 100;
+    // Calcular HP curado
+    let newHp = character.hp;
+    if (character.hp < character.max_hp) {
+      // Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
+      const adjustedCurrentHp = Math.max(character.hp, Math.ceil(character.max_hp * (MIN_PERCENT / 100)));
+      const adjustedCurrentHpPercent = (adjustedCurrentHp / character.max_hp) * 100;
+      
+      // Taxa de cura HP: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
+      const healRatePerSecond = (MAX_PERCENT - MIN_PERCENT) / HEAL_DURATION_SECONDS;
+      
+      // Calcular HP curado baseado no tempo decorrido
+      const healPercentage = Math.min(
+        healRatePerSecond * timeDiffSeconds,
+        MAX_PERCENT - adjustedCurrentHpPercent
+      );
+      
+      const healAmount = Math.floor((healPercentage / 100) * character.max_hp);
+      newHp = Math.min(character.max_hp, adjustedCurrentHp + healAmount);
+    }
+
+    // Calcular Mana curada (mesma lógica que HP)
+    let newMana = character.mana;
+    if (character.mana < character.max_mana) {
+      // Se Mana está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
+      const adjustedCurrentMana = Math.max(character.mana, Math.ceil(character.max_mana * (MIN_PERCENT / 100)));
+      const adjustedCurrentManaPercent = (adjustedCurrentMana / character.max_mana) * 100;
+      
+      // Taxa de cura Mana: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
+      const healRatePerSecond = (MAX_PERCENT - MIN_PERCENT) / HEAL_DURATION_SECONDS;
+      
+      // Calcular Mana curada baseada no tempo decorrido
+      const healPercentage = Math.min(
+        healRatePerSecond * timeDiffSeconds,
+        MAX_PERCENT - adjustedCurrentManaPercent
+      );
+      
+      const healAmount = Math.floor((healPercentage / 100) * character.max_mana);
+      newMana = Math.min(character.max_mana, adjustedCurrentMana + healAmount);
+    }
     
-    // Taxa de cura: (100% - 0.1%) / 6 horas = 99.9% / 21600s ≈ 0.00462% por segundo
-    const healRatePerSecond = (MAX_HP_PERCENT - MIN_HP_PERCENT) / HEAL_DURATION_SECONDS;
+    // Log apenas se houve cura significativa
+    if (newHp > character.hp || newMana > character.mana) {
+      console.log(`[AutoHeal] ${character.name}: HP ${character.hp} -> ${newHp} (+${newHp - character.hp}), Mana ${character.mana} -> ${newMana} (+${newMana - character.mana}) após ${Math.floor(timeDiffSeconds / 60)}min`);
+    }
     
-    // Calcular HP curado baseado no tempo decorrido
-    const healPercentage = Math.min(
-      healRatePerSecond * timeDiffSeconds,
-      MAX_HP_PERCENT - adjustedCurrentHpPercent
-    );
-    
-    const healAmount = Math.floor((healPercentage / 100) * character.max_hp);
-    const newHp = Math.min(character.max_hp, adjustedCurrentHp + healAmount);
-    
-    console.log(`[AutoHeal] ${character.name}: ${character.hp} -> ${newHp} HP (+${newHp - character.hp}) após ${Math.floor(timeDiffSeconds / 60)}min`);
-    
-    return newHp;
+    return { hp: newHp, mana: newMana };
   }
 
   /**
@@ -560,10 +634,10 @@ export class CharacterService {
 
       const character = characterResponse.data;
       const currentTime = new Date();
-      const newHp = this.calculateAutoHeal(character, currentTime);
+      const { hp, mana } = this.calculateAutoHeal(character, currentTime);
       
       // Se não houve cura, retornar sem atualizar
-      if (newHp === character.hp) {
+      if (hp === character.hp && mana === character.mana) {
         return {
           data: {
             healed: false,
@@ -576,11 +650,12 @@ export class CharacterService {
         };
       }
 
-      // Atualizar HP e last_activity no banco
+      // Atualizar HP e Mana no banco
       const { error } = await supabase
         .from('characters')
         .update({
-          hp: newHp,
+          hp: hp,
+          mana: mana,
           last_activity: currentTime.toISOString()
         })
         .eq('id', characterId);
@@ -590,13 +665,13 @@ export class CharacterService {
       // Invalidar cache do personagem
       this.invalidateCharacterCache(characterId);
 
-      const updatedCharacter = { ...character, hp: newHp, last_activity: currentTime.toISOString() };
+      const updatedCharacter = { ...character, hp: hp, mana: mana, last_activity: currentTime.toISOString() };
 
       return {
         data: {
           healed: true,
           oldHp: character.hp,
-          newHp,
+          newHp: hp,
           character: updatedCharacter
         },
         error: null,

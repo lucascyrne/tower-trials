@@ -42,6 +42,7 @@ export const initialGameState: GameState = {
   player: defaultPlayer,
   currentEnemy: null,
   currentFloor: null,
+  currentSpecialEvent: null,
   isPlayerTurn: true,
   gameMessage: '',
   highestFloor: 0,

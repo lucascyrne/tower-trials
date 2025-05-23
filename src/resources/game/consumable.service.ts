@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { Consumable, CharacterConsumable, CraftingRecipe, MonsterDrop, CraftingIngredient } from './models/consumable.model';
 import { GamePlayer } from './game-model';
 import { MonsterDropChance } from './models/monster.model';
+import { Character } from './models/character.model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -109,10 +110,10 @@ export class ConsumableService {
    * @param player Estado atual do jogador (para aplicar efeitos)
    * @returns Resultado da operação
    */
-  static async useConsumable(
+  static async consumeItem(
     characterId: string,
     consumableId: string,
-    player: GamePlayer
+    character: Character | GamePlayer
   ): Promise<ServiceResponse<{ message: string }>> {
     try {
       // Verificar se o jogador possui o consumível
@@ -136,61 +137,91 @@ export class ConsumableService {
       // Aplicar efeito do consumível
       const consumable = characterConsumable.consumable!;
       let message = '';
+      const statsToUpdate: { hp?: number; mana?: number } = {};
 
       switch (consumable.type) {
         case 'potion':
           // Poção de HP
           if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
-            player.hp = Math.min(player.max_hp, player.hp + consumable.effect_value);
-            message = `Recuperou ${consumable.effect_value} HP!`;
+            const oldHp = character.hp;
+            const newHp = Math.min(character.max_hp, character.hp + consumable.effect_value);
+            const actualHealing = newHp - oldHp;
+            
+            character.hp = newHp;
+            statsToUpdate.hp = newHp;
+            message = actualHealing > 0 ? `Recuperou ${actualHealing} HP!` : 'HP já estava no máximo!';
           } 
           // Poção de Mana
           else if (consumable.description.includes('Mana')) {
-            player.mana = Math.min(player.max_mana, player.mana + consumable.effect_value);
-            message = `Recuperou ${consumable.effect_value} Mana!`;
+            const oldMana = character.mana;
+            const newMana = Math.min(character.max_mana, character.mana + consumable.effect_value);
+            const actualRecovery = newMana - oldMana;
+            
+            character.mana = newMana;
+            statsToUpdate.mana = newMana;
+            message = actualRecovery > 0 ? `Recuperou ${actualRecovery} Mana!` : 'Mana já estava no máximo!';
           }
           break;
         
         case 'antidote':
-          // Remover efeitos negativos
-          player.active_effects.debuffs = [];
-          player.active_effects.dots = [];
-          message = 'Todos os efeitos negativos foram removidos!';
+          // Só funciona em batalha (GamePlayer), no inventário apenas mostra mensagem
+          if ('active_effects' in character) {
+            character.active_effects.debuffs = [];
+            character.active_effects.dots = [];
+            message = 'Todos os efeitos negativos foram removidos!';
+          } else {
+            message = 'Antídoto só pode ser usado durante batalhas!';
+          }
           break;
         
         case 'buff':
-          // Elixir de força
-          if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
-            player.atk += consumable.effect_value;
-            player.active_effects.buffs.push({
-              type: 'buff',
-              value: consumable.effect_value,
-              duration: 3, // Duração reduzida para 3 turnos (combo-friendly)
-              source_spell: 'elixir_strength'
-            });
-            message = `Ataque aumentado em ${consumable.effect_value} por 3 turnos! Perfeito para combos!`;
-          } 
-          // Elixir de defesa
-          else if (consumable.description.includes('Defesa') || consumable.description.includes('defesa')) {
-            player.def += consumable.effect_value;
-            player.active_effects.buffs.push({
-              type: 'buff',
-              value: consumable.effect_value,
-              duration: 3, // Duração reduzida para 3 turnos (combo-friendly)
-              source_spell: 'elixir_defense'
-            });
-            message = `Defesa aumentada em ${consumable.effect_value} por 3 turnos! Resistência temporária!`;
+          // Só funciona em batalha (GamePlayer), no inventário apenas mostra mensagem
+          if ('active_effects' in character) {
+            // Elixir de força
+            if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
+              character.atk += consumable.effect_value;
+              character.active_effects.buffs.push({
+                type: 'buff',
+                value: consumable.effect_value,
+                duration: 3,
+                source_spell: 'elixir_strength'
+              });
+              message = `Ataque aumentado em ${consumable.effect_value} por 3 turnos!`;
+            } 
+            // Elixir de defesa
+            else if (consumable.description.includes('Defesa') || consumable.description.includes('defesa')) {
+              character.def += consumable.effect_value;
+              character.active_effects.buffs.push({
+                type: 'buff',
+                value: consumable.effect_value,
+                duration: 3,
+                source_spell: 'elixir_defense'
+              });
+              message = `Defesa aumentada em ${consumable.effect_value} por 3 turnos!`;
+            }
+          } else {
+            message = 'Elixires só podem ser usados durante batalhas!';
           }
           break;
       }
 
-      // Atualizar quantidade no banco de dados
+      // Atualizar quantidade no banco de dados usando a função RPC
       const { error: updateError } = await supabase.rpc('use_consumable', {
         p_character_id: characterId,
         p_consumable_id: consumableId
       });
 
       if (updateError) throw updateError;
+
+      // Atualizar HP/Mana no banco se necessário
+      if (Object.keys(statsToUpdate).length > 0) {
+        const { error: statsError } = await supabase
+          .from('characters')
+          .update(statsToUpdate)
+          .eq('id', characterId);
+
+        if (statsError) throw statsError;
+      }
 
       return { 
         data: { message }, 
