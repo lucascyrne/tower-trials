@@ -129,12 +129,18 @@ BEGIN
         new_available_slots,
         (new_available_slots > old_slots) AS slots_unlocked;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Função RPC para criar perfil de usuário
+-- SECURITY DEFINER permite que a função execute com privilégios do criador (bypassa RLS)
 CREATE OR REPLACE FUNCTION create_user_profile(p_uid UUID, p_username VARCHAR, p_email VARCHAR)
 RETURNS void AS $$
 BEGIN
+  -- Verificar se o usuário já existe antes de inserir
+  IF EXISTS (SELECT 1 FROM public.users WHERE uid = p_uid) THEN
+    RETURN; -- Usuário já existe, não fazer nada
+  END IF;
+  
   INSERT INTO public.users (
     uid, 
     username, 
@@ -163,7 +169,7 @@ BEGIN
     NOW()
   );
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger to automatically update updated_at
 CREATE TRIGGER update_users_updated_at
@@ -174,28 +180,32 @@ CREATE TRIGGER update_users_updated_at
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS simplificadas que não dependem de auth.uid()
-CREATE POLICY "Public read access for users"
-    ON public.users
-    FOR SELECT
-    USING (true);
+-- Remover políticas existentes se houver
+DROP POLICY IF EXISTS "Public read access for users" ON public.users;
+DROP POLICY IF EXISTS "Service role full access" ON public.users;
+DROP POLICY IF EXISTS "Allow profile creation during signup" ON public.users;
+DROP POLICY IF EXISTS "Authenticated users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Allow function inserts" ON public.users;
+DROP POLICY IF EXISTS "Authenticated users can insert own profile" ON public.users;
 
-CREATE POLICY "Service role full access"
-    ON public.users
-    FOR ALL
-    TO service_role
-    USING (true)
-    WITH CHECK (true);
+-- Políticas RLS simplificadas
+CREATE POLICY "users_select_policy" ON public.users
+    FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can update own profile"
-    ON public.users
-    FOR UPDATE
-    TO authenticated
-    USING (uid = (SELECT auth.uid()))
-    WITH CHECK (uid = (SELECT auth.uid()));
+CREATE POLICY "users_insert_policy" ON public.users
+    FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Authenticated users can insert own profile"
-    ON public.users
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (uid = (SELECT auth.uid())); 
+CREATE POLICY "users_update_policy" ON public.users
+    FOR UPDATE USING (
+        uid = (SELECT auth.uid()) OR 
+        auth.role() = 'service_role'
+    ) WITH CHECK (
+        uid = (SELECT auth.uid()) OR 
+        auth.role() = 'service_role'
+    );
+
+CREATE POLICY "users_delete_policy" ON public.users
+    FOR DELETE USING (
+        uid = (SELECT auth.uid()) OR 
+        auth.role() = 'service_role'
+    ); 

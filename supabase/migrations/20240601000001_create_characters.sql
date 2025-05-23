@@ -97,21 +97,21 @@ BEGIN
     RETURN QUERY
     SELECT
         -- HP derivado de Vitality (cada ponto = +8 HP máximo)
-        base_hp + (p_vitality * 8) as derived_hp,
-        base_hp + (p_vitality * 8) as derived_max_hp,
+        (base_hp + (p_vitality * 8))::INTEGER as derived_hp,
+        (base_hp + (p_vitality * 8))::INTEGER as derived_max_hp,
         
         -- Mana derivado de Intelligence (cada ponto = +5 mana máximo)
-        base_mana + (p_intelligence * 5) as derived_mana,
-        base_mana + (p_intelligence * 5) as derived_max_mana,
+        (base_mana + (p_intelligence * 5))::INTEGER as derived_mana,
+        (base_mana + (p_intelligence * 5))::INTEGER as derived_max_mana,
         
         -- Ataque derivado de Strength (cada ponto = +2 ataque)
-        base_atk + (p_strength * 2) as derived_atk,
+        (base_atk + (p_strength * 2))::INTEGER as derived_atk,
         
         -- Defesa derivado de Vitality e Wisdom (cada ponto = +1 defesa)
-        base_def + (p_vitality + p_wisdom) as derived_def,
+        (base_def + (p_vitality + p_wisdom))::INTEGER as derived_def,
         
         -- Velocidade derivado de Dexterity (cada ponto = +1.5 speed)
-        base_speed + FLOOR(p_dexterity * 1.5) as derived_speed,
+        (base_speed + FLOOR(p_dexterity * 1.5))::INTEGER as derived_speed,
         
         -- Chance crítica derivada de Luck (cada ponto = +0.5% crítico)
         ROUND((p_luck * 0.5)::DECIMAL, 2) as derived_critical_chance,
@@ -976,7 +976,25 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT c.*
+    SELECT 
+        c.id,
+        c.user_id,
+        c.name,
+        c.level,
+        c.xp,
+        c.xp_next_level,
+        c.gold,
+        c.hp,
+        c.max_hp,
+        c.mana,
+        c.max_mana,
+        c.atk,
+        c.def,
+        c.speed,
+        c.floor,
+        c.last_activity,
+        c.created_at,
+        c.updated_at
     FROM characters c
     WHERE c.user_id = p_user_id
     ORDER BY c.created_at DESC;
