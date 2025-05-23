@@ -15,11 +15,13 @@ import {
   Shield,
   Sword,
   Star,
-  Gem
+  Gem,
+  Map
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
+import { MapModal } from '@/components/game/MapModal';
 
 export default function GameHubPage() {
   const router = useRouter();
@@ -28,6 +30,9 @@ export default function GameHubPage() {
   const { player } = gameState;
   const [isLoading, setIsLoading] = useState(true);
   const [characterLoaded, setCharacterLoaded] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [showHealNotification, setShowHealNotification] = useState(false);
+  const [healInfo, setHealInfo] = useState<{ oldHp: number; newHp: number; character: string } | null>(null);
 
   // Carregar personagem selecionado - apenas uma vez
   useEffect(() => {
@@ -48,6 +53,32 @@ export default function GameHubPage() {
         setIsLoading(true);
         const response = await CharacterService.getCharacter(characterId);
         if (response.success && response.data) {
+          // Verificar se houve cura significativa comparando com cache anterior
+          const cachedPlayer = sessionStorage.getItem(`player_${characterId}`);
+          if (cachedPlayer) {
+            const previousPlayer = JSON.parse(cachedPlayer);
+            const healAmount = response.data.hp - previousPlayer.hp;
+            const healPercent = (healAmount / response.data.max_hp) * 100;
+            
+            // Se foi curado significativamente (mais de 5% do HP máximo)
+            if (healAmount > 0 && healPercent >= 5) {
+              setHealInfo({
+                oldHp: previousPlayer.hp,
+                newHp: response.data.hp,
+                character: response.data.name
+              });
+              setShowHealNotification(true);
+              
+              // Esconder notificação após 5 segundos
+              setTimeout(() => {
+                setShowHealNotification(false);
+              }, 5000);
+            }
+          }
+          
+          // Salvar estado atual para comparação futura
+          sessionStorage.setItem(`player_${characterId}`, JSON.stringify(response.data));
+          
           await loadCharacterForHub(response.data);
           setCharacterLoaded(true);
         } else {
@@ -81,6 +112,35 @@ export default function GameHubPage() {
   const hpProgress = (player.hp / player.max_hp) * 100;
   const manaProgress = (player.mana / player.max_mana) * 100;
 
+  // Função para iniciar sempre do andar 1
+  const handleStartFromBeginning = async () => {
+    try {
+      // Resetar para andar 1
+      await CharacterService.updateCharacterFloor(player.id, 1);
+      router.push(`/game/play/battle?character=${player.id}`);
+    } catch (error) {
+      console.error('Erro ao iniciar do começo:', error);
+      toast.error('Erro ao iniciar aventura');
+    }
+  };
+
+  // Função para iniciar de um checkpoint
+  const handleStartFromCheckpoint = async (checkpointFloor: number) => {
+    try {
+      const response = await CharacterService.startFromCheckpoint(player.id, checkpointFloor);
+      if (response.success) {
+        router.push(`/game/play/battle?character=${player.id}`);
+      } else {
+        toast.error('Erro ao iniciar do checkpoint', {
+          description: response.error
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar do checkpoint:', error);
+      toast.error('Erro ao iniciar do checkpoint');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-4xl space-y-6">
@@ -100,7 +160,17 @@ export default function GameHubPage() {
             {/* Barras de status */}
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span>HP: {player.hp}/{player.max_hp}</span>
+                <span className="flex items-center gap-2">
+                  HP: {player.hp}/{player.max_hp}
+                  {player.hp < player.max_hp && (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full flex items-center gap-1">
+                      <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Curando automaticamente
+                    </span>
+                  )}
+                </span>
                 <span>{Math.round(hpProgress)}%</span>
               </div>
               <Progress value={hpProgress} className="h-2 bg-red-500" />
@@ -146,19 +216,38 @@ export default function GameHubPage() {
 
         {/* Menu de Ações */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Entrar na Torre */}
+          {/* Entrar na Torre - Sempre do Andar 1 */}
           <Card className="hover:bg-accent/50 transition-colors">
             <Button
               variant="ghost"
               className="w-full h-full p-8"
-              onClick={() => router.push(`/game/play/battle?character=${player.id}`)}
+              onClick={handleStartFromBeginning}
             >
               <div className="flex flex-col items-center gap-4">
                 <Swords className="h-12 w-12" />
                 <div className="text-center">
                   <h3 className="font-bold text-lg">Entrar na Torre</h3>
                   <p className="text-sm text-muted-foreground">
-                    Continue sua aventura no andar {player.floor}
+                    Começar uma nova aventura do Andar 1
+                  </p>
+                </div>
+              </div>
+            </Button>
+          </Card>
+
+          {/* Mapa de Checkpoints */}
+          <Card className="hover:bg-accent/50 transition-colors">
+            <Button
+              variant="ghost"
+              className="w-full h-full p-8"
+              onClick={() => setShowMapModal(true)}
+            >
+              <div className="flex flex-col items-center gap-4">
+                <Map className="h-12 w-12" />
+                <div className="text-center">
+                  <h3 className="font-bold text-lg">Mapa da Torre</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Iniciar de um checkpoint desbloqueado
                   </p>
                 </div>
               </div>
@@ -177,7 +266,7 @@ export default function GameHubPage() {
                 <div className="text-center">
                   <h3 className="font-bold text-lg">Loja</h3>
                   <p className="text-sm text-muted-foreground">
-                    Compre equipamentos e itens
+                    Compre equipamentos e consumíveis
                   </p>
                 </div>
               </div>
@@ -222,6 +311,47 @@ export default function GameHubPage() {
             </Button>
           </Card>
         </div>
+
+        {/* Modal do Mapa */}
+        <MapModal
+          isOpen={showMapModal}
+          onClose={() => setShowMapModal(false)}
+          character={player}
+          onStartFromCheckpoint={handleStartFromCheckpoint}
+        />
+
+        {/* Notificação de Cura Automática */}
+        {showHealNotification && healInfo && (
+          <div className="fixed top-4 right-4 z-50 max-w-sm">
+            <Card className="bg-green-50 border-green-200 shadow-lg">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-full">
+                    <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800">
+                      {healInfo.character} foi curado!
+                    </p>
+                    <p className="text-xs text-green-600">
+                      HP: {healInfo.oldHp} → {healInfo.newHp} (+{healInfo.newHp - healInfo.oldHp})
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowHealNotification(false)}
+                    className="h-6 w-6 p-0 text-green-600 hover:text-green-800"
+                  >
+                    ×
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
