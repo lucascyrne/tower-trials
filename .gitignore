@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Mas permitir arquivos de exemplo
+!.env.example
+
+# Environment backups (criados pelos scripts)
+.env.backup.*
 
 # vercel
 .vercel
@@ -39,3 +44,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase local (Docker volumes e cache)
+.temp/
+.branches/
+supabase/.temp/
+supabase/.branches/

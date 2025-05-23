@@ -1,3 +1,5 @@
+# ATENÇÃO: PARCIALMENTE DESATUALIZADA!
+
 # Tower Trials - Balanceamento do Jogo
 
 Este documento descreve as decisões de balanceamento implementadas no jogo para garantir uma progressão satisfatória e desafiadora ao longo de aproximadamente 2 semanas de jogo.

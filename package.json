@@ -6,7 +6,29 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    
+    "# Gerenciamento de Ambientes": "",
+    "env:local": "bash ./scripts/setup-local-env.sh",
+    "env:dev": "bash ./scripts/setup-dev-env.sh",
+    
+    "# Supabase Local": "",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push",
+    "db:status": "supabase status",
+    "db:config": "bash ./scripts/get-db-config.sh",
+    "db:fix": "bash ./scripts/fix-docker-ports.sh",
+    "db:fix-force": "bash ./scripts/fix-docker-ports.sh --force",
+    
+    "# Migrações Seguras": "",
+    "migrate:local": "bash ./scripts/apply-migrations.sh local",
+    "migrate:dev": "bash ./scripts/apply-migrations.sh dev",
+    
+    "# Workflows Completos": "",
+    "local": "npm run env:local && npm run db:start && npm run dev",
+    "dev-remote": "npm run env:dev && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
