@@ -145,8 +145,14 @@ export class SkillXpService {
     // Armas mágicas (cajados, varinhas, orbes)
     if (weaponName.includes('cajado') || weaponName.includes('staff') || 
         weaponName.includes('varinha') || weaponName.includes('orbe') ||
-        weaponName.includes('bastão')) {
+        weaponName.includes('bastão') || weaponName.includes('cetro')) {
       return SkillType.MAGIC_MASTERY;
+    }
+    
+    // Adagas e punhais - usar maestria em espadas por enquanto
+    if (weaponName.includes('adaga') || weaponName.includes('dagger') || 
+        weaponName.includes('punhal') || weaponName.includes('fang')) {
+      return SkillType.SWORD_MASTERY;
     }
     
     // Default para espada se não conseguir determinar
