@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,10 +24,12 @@ import { toast } from 'sonner';
 export default function GameHubPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { gameState, selectCharacter } = useGame();
+  const { gameState, loadCharacterForHub } = useGame();
   const { player } = gameState;
+  const [isLoading, setIsLoading] = useState(true);
+  const [characterLoaded, setCharacterLoaded] = useState(false);
 
-  // Carregar personagem selecionado
+  // Carregar personagem selecionado - apenas uma vez
   useEffect(() => {
     const loadSelectedCharacter = async () => {
       const characterId = searchParams.get('character');
@@ -36,10 +38,18 @@ export default function GameHubPage() {
         return;
       }
 
+      // Evitar carregamentos duplicados
+      if (characterLoaded && player.id === characterId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        setIsLoading(true);
         const response = await CharacterService.getCharacter(characterId);
         if (response.success && response.data) {
-          await selectCharacter(response.data);
+          await loadCharacterForHub(response.data);
+          setCharacterLoaded(true);
         } else {
           toast.error('Erro ao carregar personagem', {
             description: response.error
@@ -50,13 +60,16 @@ export default function GameHubPage() {
         console.error('Erro ao carregar personagem:', error);
         toast.error('Erro ao carregar personagem');
         router.push('/game/play');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadSelectedCharacter();
-  }, [searchParams]);
+  }, [searchParams.get('character')]); // Só executar quando o ID do personagem mudar
 
-  if (!player.id) {
+  // Loading state
+  if (isLoading || !player.id) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
