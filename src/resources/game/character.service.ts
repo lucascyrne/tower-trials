@@ -97,7 +97,30 @@ export class CharacterService {
         this.pendingRequests.delete(characterId);
       });
 
-      return request;
+      const result = await request;
+      
+      // Aplicar cura automática se o personagem foi carregado com sucesso
+      if (result.success && result.data) {
+        console.log(`[CharacterService] Aplicando cura automática para ${result.data.name}`);
+        const healResult = await this.applyAutoHeal(characterId);
+        
+        if (healResult.success && healResult.data && healResult.data.healed) {
+          console.log(`[CharacterService] ${result.data.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`);
+          
+          // Mostrar notificação de cura se significativa (mais de 5% do HP máximo)
+          const healAmount = healResult.data.newHp - healResult.data.oldHp;
+          const healPercent = (healAmount / result.data.max_hp) * 100;
+          
+          if (healPercent >= 5) {
+            // A notificação será mostrada pelo componente que chama esta função
+            console.log(`[CharacterService] Cura significativa detectada: +${healAmount} HP (${healPercent.toFixed(1)}%)`);
+          }
+          
+          return { data: healResult.data.character, error: null, success: true };
+        }
+      }
+
+      return result;
     } catch (error) {
       console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
       return { 
@@ -260,6 +283,9 @@ export class CharacterService {
 
       if (error) throw error;
 
+      // Atualizar também o last_activity para marcar atividade recente
+      await this.updateLastActivity(characterId);
+
       // Invalidar cache apenas do personagem específico
       this.invalidateCharacterCache(characterId);
 
@@ -381,5 +407,238 @@ export class CharacterService {
     this.lastFetchTimestamp.clear();
     this.pendingRequests.clear();
     console.log('[CharacterService] Todo o cache foi limpo');
+  }
+
+  /**
+   * Obter checkpoints desbloqueados pelo personagem
+   * @param characterId ID do personagem
+   * @returns Lista de checkpoints disponíveis
+   */
+  static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<{ floor: number; description: string }[]>> {
+    try {
+      // Obter o personagem para saber o andar mais alto alcançado
+      const characterResponse = await this.getCharacter(characterId);
+      if (!characterResponse.success || !characterResponse.data) {
+        return { data: null, error: 'Personagem não encontrado', success: false };
+      }
+      
+      const character = characterResponse.data;
+      const highestFloor = character.floor;
+      
+      try {
+        // Tentar usar a função RPC
+        const { data, error } = await supabase
+          .rpc('get_unlocked_checkpoints', {
+            p_highest_floor: highestFloor
+          });
+
+        if (!error && data) {
+          const checkpoints = data.map((row: { floor_number: number; description: string }) => ({
+            floor: row.floor_number,
+            description: row.description
+          }));
+          return { data: checkpoints, error: null, success: true };
+        }
+      } catch (rpcError) {
+        console.warn('Função RPC não disponível, usando fallback:', rpcError);
+      }
+
+      // Fallback: gerar checkpoints manualmente
+      const checkpoints: { floor: number; description: string }[] = [];
+      
+      // Sempre incluir o andar 1
+      checkpoints.push({ floor: 1, description: 'Andar 1 - Início da Torre' });
+      
+      // Adicionar checkpoints a cada 10 andares até o andar mais alto
+      for (let floor = 10; floor <= highestFloor; floor += 10) {
+        checkpoints.push({
+          floor,
+          description: `Andar ${floor} - Checkpoint de Chefe`
+        });
+      }
+
+      return { data: checkpoints, error: null, success: true };
+    } catch (error) {
+      console.error('Erro ao obter checkpoints:', error instanceof Error ? error.message : error);
+      return { data: null, error: error instanceof Error ? error.message : 'Erro ao obter checkpoints', success: false };
+    }
+  }
+
+  /**
+   * Iniciar personagem em um checkpoint específico
+   * @param characterId ID do personagem
+   * @param checkpointFloor Andar do checkpoint
+   * @returns Resultado da operação
+   */
+  static async startFromCheckpoint(characterId: string, checkpointFloor: number): Promise<ServiceResponse<null>> {
+    try {
+      // Verificar se o checkpoint é válido (deve ser múltiplo de 10 ou andar 1)
+      if (checkpointFloor !== 1 && checkpointFloor % 10 !== 0) {
+        return { data: null, error: 'Checkpoint inválido', success: false };
+      }
+      
+      // Verificar se o personagem pode acessar este checkpoint
+      const checkpointsResponse = await this.getUnlockedCheckpoints(characterId);
+      if (!checkpointsResponse.success || !checkpointsResponse.data) {
+        return { data: null, error: 'Erro ao verificar checkpoints', success: false };
+      }
+      
+      const hasAccess = checkpointsResponse.data.some(cp => cp.floor === checkpointFloor);
+      if (!hasAccess) {
+        return { data: null, error: 'Checkpoint não desbloqueado', success: false };
+      }
+      
+      // Atualizar o andar do personagem
+      const updateResponse = await this.updateCharacterFloor(characterId, checkpointFloor);
+      return updateResponse;
+    } catch (error) {
+      console.error('Erro ao iniciar do checkpoint:', error instanceof Error ? error.message : error);
+      return { data: null, error: error instanceof Error ? error.message : 'Erro ao iniciar do checkpoint', success: false };
+    }
+  }
+
+  /**
+   * Calcular cura automática baseada em tempo
+   * Cura total em 6 horas (de 0.1% a 100% da vida)
+   * @param character Dados do personagem
+   * @param currentTime Timestamp atual
+   * @returns HP atualizado após cura automática
+   */
+  static calculateAutoHeal(character: Character, currentTime: Date): number {
+    // Se não há last_activity ou HP já está no máximo, não curar
+    if (!character.last_activity || character.hp >= character.max_hp) {
+      return character.hp;
+    }
+
+    const lastActivity = new Date(character.last_activity);
+    const timeDiffMs = currentTime.getTime() - lastActivity.getTime();
+    const timeDiffSeconds = Math.floor(timeDiffMs / 1000);
+
+    // Se passou menos de 1 segundo, não curar
+    if (timeDiffSeconds < 1) {
+      return character.hp;
+    }
+
+    // Configurações de cura
+    const HEAL_DURATION_HOURS = 6;
+    const HEAL_DURATION_SECONDS = HEAL_DURATION_HOURS * 3600; // 21600 segundos
+    const MIN_HP_PERCENT = 0.1; // Começa a curar a partir de 0.1% HP
+    const MAX_HP_PERCENT = 100; // Cura até 100% HP
+    
+    // Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
+    const adjustedCurrentHp = Math.max(character.hp, Math.ceil(character.max_hp * (MIN_HP_PERCENT / 100)));
+    const adjustedCurrentHpPercent = (adjustedCurrentHp / character.max_hp) * 100;
+    
+    // Taxa de cura: (100% - 0.1%) / 6 horas = 99.9% / 21600s ≈ 0.00462% por segundo
+    const healRatePerSecond = (MAX_HP_PERCENT - MIN_HP_PERCENT) / HEAL_DURATION_SECONDS;
+    
+    // Calcular HP curado baseado no tempo decorrido
+    const healPercentage = Math.min(
+      healRatePerSecond * timeDiffSeconds,
+      MAX_HP_PERCENT - adjustedCurrentHpPercent
+    );
+    
+    const healAmount = Math.floor((healPercentage / 100) * character.max_hp);
+    const newHp = Math.min(character.max_hp, adjustedCurrentHp + healAmount);
+    
+    console.log(`[AutoHeal] ${character.name}: ${character.hp} -> ${newHp} HP (+${newHp - character.hp}) após ${Math.floor(timeDiffSeconds / 60)}min`);
+    
+    return newHp;
+  }
+
+  /**
+   * Aplicar cura automática em um personagem
+   * @param characterId ID do personagem
+   * @returns Personagem com HP atualizado
+   */
+  static async applyAutoHeal(characterId: string): Promise<ServiceResponse<{ healed: boolean; oldHp: number; newHp: number; character: Character }>> {
+    try {
+      const characterResponse = await this.getCharacter(characterId);
+      if (!characterResponse.success || !characterResponse.data) {
+        return { data: null, error: 'Personagem não encontrado', success: false };
+      }
+
+      const character = characterResponse.data;
+      const currentTime = new Date();
+      const newHp = this.calculateAutoHeal(character, currentTime);
+      
+      // Se não houve cura, retornar sem atualizar
+      if (newHp === character.hp) {
+        return {
+          data: {
+            healed: false,
+            oldHp: character.hp,
+            newHp: character.hp,
+            character
+          },
+          error: null,
+          success: true
+        };
+      }
+
+      // Atualizar HP e last_activity no banco
+      const { error } = await supabase
+        .from('characters')
+        .update({
+          hp: newHp,
+          last_activity: currentTime.toISOString()
+        })
+        .eq('id', characterId);
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      const updatedCharacter = { ...character, hp: newHp, last_activity: currentTime.toISOString() };
+
+      return {
+        data: {
+          healed: true,
+          oldHp: character.hp,
+          newHp,
+          character: updatedCharacter
+        },
+        error: null,
+        success: true
+      };
+    } catch (error) {
+      console.error('Erro ao aplicar cura automática:', error instanceof Error ? error.message : error);
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao aplicar cura automática',
+        success: false
+      };
+    }
+  }
+
+  /**
+   * Atualizar timestamp de última atividade do personagem
+   * @param characterId ID do personagem
+   * @returns Resultado da operação
+   */
+  static async updateLastActivity(characterId: string): Promise<ServiceResponse<null>> {
+    try {
+      const { error } = await supabase
+        .from('characters')
+        .update({
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', characterId);
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      return { data: null, error: null, success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar última atividade:', error instanceof Error ? error.message : error);
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao atualizar última atividade',
+        success: false
+      };
+    }
   }
 } 

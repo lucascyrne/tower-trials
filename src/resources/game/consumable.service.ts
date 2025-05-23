@@ -165,10 +165,10 @@ export class ConsumableService {
             player.active_effects.buffs.push({
               type: 'buff',
               value: consumable.effect_value,
-              duration: 5, // Duração em turnos
-              source_spell: 'consumable'
+              duration: 3, // Duração reduzida para 3 turnos (combo-friendly)
+              source_spell: 'elixir_strength'
             });
-            message = `Ataque aumentado em ${consumable.effect_value} por 5 turnos!`;
+            message = `Ataque aumentado em ${consumable.effect_value} por 3 turnos! Perfeito para combos!`;
           } 
           // Elixir de defesa
           else if (consumable.description.includes('Defesa') || consumable.description.includes('defesa')) {
@@ -176,10 +176,10 @@ export class ConsumableService {
             player.active_effects.buffs.push({
               type: 'buff',
               value: consumable.effect_value,
-              duration: 5,
-              source_spell: 'consumable'
+              duration: 3, // Duração reduzida para 3 turnos (combo-friendly)
+              source_spell: 'elixir_defense'
             });
-            message = `Defesa aumentada em ${consumable.effect_value} por 5 turnos!`;
+            message = `Defesa aumentada em ${consumable.effect_value} por 3 turnos! Resistência temporária!`;
           }
           break;
       }

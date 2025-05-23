@@ -19,6 +19,7 @@ export interface Character {
   updated_at: string;
   equipment_slots?: EquipmentSlots;
   floor: number;
+  last_activity?: string;
 }
 
 export interface CreateCharacterDTO {

@@ -386,12 +386,18 @@ export class GameService {
         const fleeRoll = Math.random();
         
         if (fleeRoll <= fleeChance) {
-          // Fuga bem sucedida
+          // Fuga bem sucedida - resetar para andar 1
+          console.log('[processPlayerAction] Fuga bem-sucedida - resetando para andar 1');
+          
+          // Atualizar o estado do jogo para andar 1
+          newState.player.floor = 1;
           newState.mode = 'battle';
           newState.currentEnemy = null;
-          newState.gameMessage = 'Você conseguiu fugir da batalha!';
+          newState.gameMessage = 'Você conseguiu fugir da batalha! Voltando ao primeiro andar...';
           skipTurn = true;
-          message = 'Você conseguiu fugir da batalha!';
+          message = 'Você conseguiu fugir da batalha! Voltando ao primeiro andar...';
+          
+          // IMPORTANTE: A atualização do banco será feita no game-provider após esta função
         } else {
           // Fuga falhou
           message = 'Você tentou fugir, mas não conseguiu!';
@@ -497,10 +503,10 @@ export class GameService {
               player.active_effects.buffs.push({
                 type: 'buff',
                 value: buffValue,
-                duration: 5, // 5 turnos
-                source_spell: 'consumable'
+                duration: 3, // Duração reduzida para relevância em combos
+                source_spell: 'elixir_strength'
               });
-              message = `Você usou ${consumable.consumable.name} e aumentou seu ataque em ${buffValue}!`;
+              message = `Você usou ${consumable.consumable.name} e aumentou seu ataque em ${buffValue} por 3 turnos!`;
             } 
             // Buff de defesa
             else if (consumable.consumable.description.includes('defesa') || 
@@ -509,10 +515,10 @@ export class GameService {
               player.active_effects.buffs.push({
                 type: 'buff',
                 value: buffValue,
-                duration: 5, // 5 turnos
-                source_spell: 'consumable'
+                duration: 3, // Duração reduzida para relevância em combos
+                source_spell: 'elixir_defense'
               });
-              message = `Você usou ${consumable.consumable.name} e aumentou sua defesa em ${buffValue}!`;
+              message = `Você usou ${consumable.consumable.name} e aumentou sua defesa em ${buffValue} por 3 turnos!`;
             }
             break;
             
@@ -626,9 +632,12 @@ export class GameService {
    * @returns Recompensas calculadas
    */
   static calculateFloorRewards(baseXP: number, baseGold: number, floorType: FloorType): { xp: number; gold: number } {
-    // Reduzir XP e Gold em 60% (multiplicar por 0.4)
-    const reductionFactor = 0.4;
+    // Reduzir Gold em 10%
+    const reductionGoldFactor = 0.9;
     
+    // Reduzir XP em 40%
+    const reductionXpFactor = 0.6;
+
     const multipliers = {
       common: 1,
       elite: 1.5,
@@ -638,8 +647,8 @@ export class GameService {
 
     const multiplier = multipliers[floorType];
     return {
-      xp: Math.floor(baseXP * multiplier * reductionFactor),
-      gold: Math.floor(baseGold * multiplier * reductionFactor)
+      xp: Math.floor(baseXP * multiplier * reductionXpFactor),
+      gold: Math.floor(baseGold * multiplier * reductionGoldFactor)
     };
   }
 

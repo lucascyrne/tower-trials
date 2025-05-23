@@ -445,13 +445,22 @@ export function GameProvider({ children }: GameProviderProps) {
         if (skipTurn) {
           loadingRef.current = false;
           
-          // Se a fuga foi bem-sucedida, reiniciar do andar 1
+          // Se a fuga foi bem-sucedida, processar fora do setState
           if (action === 'flee' && message.includes('conseguiu fugir')) {
-            // Atualizar andar para 1 e redirecionar
-            if (selectedCharacter) {
-              CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
-            }
-            window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
+            // Processar fuga de forma assíncrona
+            setTimeout(async () => {
+              try {
+                console.log('[game-provider] Fuga bem-sucedida - atualizando andar para 1');
+                if (selectedCharacter) {
+                  await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
+                }
+                // Redirecionar para o hub
+                window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
+              } catch (error) {
+                console.error('[game-provider] Erro ao processar fuga:', error);
+                toast.error('Erro ao processar fuga');
+              }
+            }, 100);
           }
           
           return {
@@ -472,6 +481,11 @@ export function GameProvider({ children }: GameProviderProps) {
               try {
                 loadingRef.current = true;
                 console.log('[game-provider] Processando derrota do inimigo');
+                
+                // Atualizar última atividade por causa da vitória
+                if (selectedCharacter) {
+                  await CharacterService.updateLastActivity(selectedCharacter.id);
+                }
                 
                 // Processar a derrota e obter recompensas
                 const updatedState = await GameService.processEnemyDefeat(newState);
@@ -563,6 +577,9 @@ export function GameProvider({ children }: GameProviderProps) {
                 hp: enemyActionState.player.hp,
                 mana: enemyActionState.player.mana,
               });
+              
+              // Atualizar última atividade para marcar que o jogador ainda está ativo
+              await CharacterService.updateLastActivity(selectedCharacter.id);
             }
 
             setState(prev => ({
