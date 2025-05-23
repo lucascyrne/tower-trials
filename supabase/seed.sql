@@ -32,62 +32,62 @@ VALUES
 -- EQUIPAMENTOS
 -- =====================================
 
--- Inserir equipamentos iniciais
-INSERT INTO equipment (name, description, type, rarity, level_requirement, atk_bonus, def_bonus, mana_bonus, speed_bonus, price) VALUES
-    -- Equipamentos Comuns (Nível 1-3)
-    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'common', 1, 5, 0, 0, 1, 150),
-    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'common', 1, 3, 0, 0, 3, 120),
-    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'common', 1, 2, 0, 5, 0, 140),
-    ('Armadura de Couro', 'Proteção básica de couro resistente', 'armor', 'common', 1, 0, 5, 0, 2, 150),
-    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'armor', 'common', 1, 0, 3, 5, 1, 130),
-    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'armor', 'common', 1, 0, 2, 0, 5, 120),
-    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'accessory', 'common', 1, 0, 0, 10, 0, 160),
-    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'accessory', 'common', 1, 0, 3, 3, 0, 150),
-    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'accessory', 'common', 1, 0, 0, 0, 5, 140),
+-- Inserir equipamentos iniciais (com is_unlocked configurado adequadamente)
+INSERT INTO equipment (name, description, type, rarity, level_requirement, atk_bonus, def_bonus, mana_bonus, speed_bonus, price, is_unlocked) VALUES
+    -- Equipamentos Comuns (Nível 1-3) - TODOS DESBLOQUEADOS
+    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'common', 1, 5, 0, 0, 1, 150, true),
+    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'common', 1, 3, 0, 0, 3, 120, true),
+    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'common', 1, 2, 0, 5, 0, 140, true),
+    ('Armadura de Couro', 'Proteção básica de couro resistente', 'armor', 'common', 1, 0, 5, 0, 2, 150, true),
+    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'armor', 'common', 1, 0, 3, 5, 1, 130, true),
+    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'armor', 'common', 1, 0, 2, 0, 5, 120, true),
+    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'accessory', 'common', 1, 0, 0, 10, 0, 160, true),
+    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'accessory', 'common', 1, 0, 3, 3, 0, 150, true),
+    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'accessory', 'common', 1, 0, 0, 0, 5, 140, true),
 
-    -- Equipamentos Incomuns (Nível 5-8)
-    ('Espada de Aço', 'Uma espada bem forjada', 'weapon', 'uncommon', 5, 12, 0, 0, 2, 350),
-    ('Machado de Batalha', 'Arma pesada com boa capacidade de dano', 'weapon', 'uncommon', 5, 15, 0, 0, -1, 380),
-    ('Cajado de Carvalho', 'Canaliza magia com eficiência', 'weapon', 'uncommon', 5, 8, 0, 10, 0, 360),
-    ('Armadura de Malha', 'Armadura reforçada com anéis de metal', 'armor', 'uncommon', 5, 0, 12, 0, 0, 350),
-    ('Manto do Ocultista', 'Manto tecido com fios especiais para magia', 'armor', 'uncommon', 5, 0, 8, 12, 0, 370),
-    ('Armadura de Escamas', 'Proteção feita de escamas de répteis', 'armor', 'uncommon', 5, 0, 10, 0, 3, 330),
-    ('Amuleto Arcano', 'Amplifica o poder mágico', 'accessory', 'uncommon', 5, 0, 0, 20, 0, 390),
-    ('Anel de Força', 'Aumenta o poder físico do usuário', 'accessory', 'uncommon', 5, 8, 0, 0, 0, 380),
-    ('Braceletes de Defesa', 'Oferecem proteção adicional', 'accessory', 'uncommon', 5, 0, 8, 0, 3, 360),
+    -- Equipamentos Incomuns (Nível 5-8) - TODOS DESBLOQUEADOS PARA EARLY-MID GAME
+    ('Espada de Aço', 'Uma espada bem forjada', 'weapon', 'uncommon', 5, 12, 0, 0, 2, 350, true),
+    ('Machado de Batalha', 'Arma pesada com boa capacidade de dano', 'weapon', 'uncommon', 5, 15, 0, 0, -1, 380, true),
+    ('Cajado de Carvalho', 'Canaliza magia com eficiência', 'weapon', 'uncommon', 5, 8, 0, 10, 0, 360, true),
+    ('Armadura de Malha', 'Armadura reforçada com anéis de metal', 'armor', 'uncommon', 5, 0, 12, 0, 0, 350, true),
+    ('Manto do Ocultista', 'Manto tecido com fios especiais para magia', 'armor', 'uncommon', 5, 0, 8, 12, 0, 370, true),
+    ('Armadura de Escamas', 'Proteção feita de escamas de répteis', 'armor', 'uncommon', 5, 0, 10, 0, 3, 330, true),
+    ('Amuleto Arcano', 'Amplifica o poder mágico', 'accessory', 'uncommon', 5, 0, 0, 20, 0, 390, true),
+    ('Anel de Força', 'Aumenta o poder físico do usuário', 'accessory', 'uncommon', 5, 8, 0, 0, 0, 380, true),
+    ('Braceletes de Defesa', 'Oferecem proteção adicional', 'accessory', 'uncommon', 5, 0, 8, 0, 3, 360, true),
 
-    -- Equipamentos Raros (Nível 10-13)
-    ('Lâmina do Dragão', 'Forjada com escamas de dragão', 'weapon', 'rare', 10, 25, 0, 0, 3, 800),
-    ('Arco Élficos', 'Arco reforçado com madeira élfica', 'weapon', 'rare', 10, 20, 0, 5, 10, 780),
-    ('Cetro Arcano', 'Poderosa arma mágica', 'weapon', 'rare', 10, 15, 0, 25, 0, 850),
-    ('Armadura de Placas', 'Proteção completa de metal', 'armor', 'rare', 10, 0, 25, 0, -2, 800),
-    ('Manto Elemental', 'Manto imbuído com magia elemental', 'armor', 'rare', 10, 5, 15, 15, 0, 830),
-    ('Armadura Dracônica', 'Feita de escamas de dragão', 'armor', 'rare', 10, 5, 20, 0, 5, 850),
-    ('Coroa da Sabedoria', 'Aumenta significativamente o poder mágico', 'accessory', 'rare', 10, 5, 5, 30, 0, 900),
-    ('Amuleto do Guardião', 'Oferece grande proteção', 'accessory', 'rare', 10, 0, 20, 10, 0, 880),
-    ('Botas Aladas', 'Botas encantadas que aumentam a velocidade', 'accessory', 'rare', 10, 0, 0, 0, 25, 850),
+    -- Equipamentos Raros (Nível 10-13) - ALGUNS DESBLOQUEADOS PARA MID-GAME
+    ('Lâmina do Dragão', 'Forjada com escamas de dragão', 'weapon', 'rare', 10, 25, 0, 0, 3, 800, true),
+    ('Arco Élficos', 'Arco reforçado com madeira élfica', 'weapon', 'rare', 10, 20, 0, 5, 10, 780, true),
+    ('Cetro Arcano', 'Poderosa arma mágica', 'weapon', 'rare', 10, 15, 0, 25, 0, 850, true),
+    ('Armadura de Placas', 'Proteção completa de metal', 'armor', 'rare', 10, 0, 25, 0, -2, 800, true),
+    ('Manto Elemental', 'Manto imbuído com magia elemental', 'armor', 'rare', 10, 5, 15, 15, 0, 830, true),
+    ('Armadura Dracônica', 'Feita de escamas de dragão', 'armor', 'rare', 10, 5, 20, 0, 5, 850, false), -- Bloqueado
+    ('Coroa da Sabedoria', 'Aumenta significativamente o poder mágico', 'accessory', 'rare', 10, 5, 5, 30, 0, 900, true),
+    ('Amuleto do Guardião', 'Oferece grande proteção', 'accessory', 'rare', 10, 0, 20, 10, 0, 880, true),
+    ('Botas Aladas', 'Botas encantadas que aumentam a velocidade', 'accessory', 'rare', 10, 0, 0, 0, 25, 850, false), -- Bloqueado
 
-    -- Equipamentos Épicos (Nível 15-18)
-    ('Espada do Abismo', 'Lâmina forjada nas profundezas do abismo', 'weapon', 'epic', 15, 40, 0, 10, 5, 1800),
-    ('Martelo de Titã', 'Arma massiva com poder devastador', 'weapon', 'epic', 15, 50, 0, 0, -5, 1900),
-    ('Bastão de Necromante', 'Capaz de canalizar energia necrótica', 'weapon', 'epic', 15, 30, 0, 40, 0, 2000),
-    ('Armadura de Mithril', 'Forjada com o raro metal mithril', 'armor', 'epic', 15, 5, 40, 0, 5, 1800),
-    ('Vestes do Arquimago', 'Vestes imbuídas com magia arcana', 'armor', 'epic', 15, 10, 25, 35, 0, 1900),
-    ('Pele de Behemoth', 'Armadura feita da pele de uma criatura lendária', 'armor', 'epic', 15, 10, 35, 0, 10, 2000),
-    ('Olho de Observador', 'Amuleto feito do olho de uma criatura mística', 'accessory', 'epic', 15, 15, 15, 25, 5, 2100),
-    ('Coração Petrificado', 'Concede resistência sobrenatural', 'accessory', 'epic', 15, 0, 35, 15, 0, 2000),
-    ('Asas Fantasmagóricas', 'Aumentam drasticamente a mobilidade', 'accessory', 'epic', 15, 10, 0, 10, 35, 1900),
+    -- Equipamentos Épicos (Nível 15-18) - MAIORIA BLOQUEADA
+    ('Espada do Abismo', 'Lâmina forjada nas profundezas do abismo', 'weapon', 'epic', 15, 40, 0, 10, 5, 1800, false),
+    ('Martelo de Titã', 'Arma massiva com poder devastador', 'weapon', 'epic', 15, 50, 0, 0, -5, 1900, false),
+    ('Bastão de Necromante', 'Capaz de canalizar energia necrótica', 'weapon', 'epic', 15, 30, 0, 40, 0, 2000, false),
+    ('Armadura de Mithril', 'Forjada com o raro metal mithril', 'armor', 'epic', 15, 5, 40, 0, 5, 1800, false),
+    ('Vestes do Arquimago', 'Vestes imbuídas com magia arcana', 'armor', 'epic', 15, 10, 25, 35, 0, 1900, false),
+    ('Pele de Behemoth', 'Armadura feita da pele de uma criatura lendária', 'armor', 'epic', 15, 10, 35, 0, 10, 2000, false),
+    ('Olho de Observador', 'Amuleto feito do olho de uma criatura mística', 'accessory', 'epic', 15, 15, 15, 25, 5, 2100, false),
+    ('Coração Petrificado', 'Concede resistência sobrenatural', 'accessory', 'epic', 15, 0, 35, 15, 0, 2000, false),
+    ('Asas Fantasmagóricas', 'Aumentam drasticamente a mobilidade', 'accessory', 'epic', 15, 10, 0, 10, 35, 1900, false),
 
-    -- Equipamentos Lendários (Nível 20)
-    ('Excalibur', 'A lendária espada do rei', 'weapon', 'legendary', 20, 80, 20, 20, 20, 5000),
-    ('Mjolnir', 'Martelo forjado por deuses', 'weapon', 'legendary', 20, 100, 0, 0, 10, 5000),
-    ('Cajado de Merlin', 'O lendário cajado do maior mago', 'weapon', 'legendary', 20, 50, 10, 80, 10, 5000),
-    ('Armadura Divina', 'Forjada nos céus, esta armadura é quase impenetrável', 'armor', 'legendary', 20, 20, 80, 20, 0, 5000),
-    ('Manto Celestial', 'Manto tecido com a própria luz das estrelas', 'armor', 'legendary', 20, 20, 50, 70, 10, 5000),
-    ('Pele de Leviatã', 'Armadura feita da pele do lendário leviatã', 'armor', 'legendary', 20, 30, 70, 0, 30, 5000),
-    ('Anel do Poder Supremo', 'Um anel para todos dominar', 'accessory', 'legendary', 20, 40, 40, 40, 0, 5000),
-    ('Amuleto do Tempo', 'Permite manipular o fluxo do tempo', 'accessory', 'legendary', 20, 20, 20, 20, 60, 5000),
-    ('Coração de Fênix', 'Concede poder de regeneração lendário', 'accessory', 'legendary', 20, 30, 30, 50, 20, 5000);
+    -- Equipamentos Lendários (Nível 20) - TODOS BLOQUEADOS
+    ('Excalibur', 'A lendária espada do rei', 'weapon', 'legendary', 20, 80, 20, 20, 20, 5000, false),
+    ('Mjolnir', 'Martelo forjado por deuses', 'weapon', 'legendary', 20, 100, 0, 0, 10, 5000, false),
+    ('Cajado de Merlin', 'O lendário cajado do maior mago', 'weapon', 'legendary', 20, 50, 10, 80, 10, 5000, false),
+    ('Armadura Divina', 'Forjada nos céus, esta armadura é quase impenetrável', 'armor', 'legendary', 20, 20, 80, 20, 0, 5000, false),
+    ('Manto Celestial', 'Manto tecido com a própria luz das estrelas', 'armor', 'legendary', 20, 20, 50, 70, 10, 5000, false),
+    ('Pele de Leviatã', 'Armadura feita da pele do lendário leviatã', 'armor', 'legendary', 20, 30, 70, 0, 30, 5000, false),
+    ('Anel do Poder Supremo', 'Um anel para todos dominar', 'accessory', 'legendary', 20, 40, 40, 40, 0, 5000, false),
+    ('Amuleto do Tempo', 'Permite manipular o fluxo do tempo', 'accessory', 'legendary', 20, 20, 20, 20, 60, 5000, false),
+    ('Coração de Fênix', 'Concede poder de regeneração lendário', 'accessory', 'legendary', 20, 30, 30, 50, 20, 5000, false);
 
 -- =====================================
 -- MONSTROS

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS equipment (
     mana_bonus INTEGER DEFAULT 0,
     speed_bonus INTEGER DEFAULT 0,
     price INTEGER NOT NULL CHECK (price > 0),
+    is_unlocked BOOLEAN DEFAULT FALSE, -- Novo campo para controlar desbloqueio na loja
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -86,7 +87,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Função para comprar equipamento
+-- Função para comprar equipamento (simplificada - sem sistema de pergaminhos por enquanto)
 CREATE OR REPLACE FUNCTION buy_equipment(
     p_character_id UUID,
     p_equipment_id UUID,
@@ -96,14 +97,17 @@ DECLARE
     v_character_gold INTEGER;
     v_character_level INTEGER;
     v_equipment_level INTEGER;
-    v_equipment_type equipment_type;
-    v_equipment_rarity equipment_rarity;
-    v_has_unlock BOOLEAN := FALSE;
+    v_equipment_unlocked BOOLEAN;
 BEGIN
     -- Obter dados do equipamento
-    SELECT level_requirement, type, rarity INTO v_equipment_level, v_equipment_type, v_equipment_rarity
+    SELECT level_requirement, is_unlocked INTO v_equipment_level, v_equipment_unlocked
     FROM equipment
     WHERE id = p_equipment_id;
+    
+    -- Verificar se o equipamento está desbloqueado
+    IF NOT v_equipment_unlocked THEN
+        RAISE EXCEPTION 'Este equipamento ainda não foi desbloqueado';
+    END IF;
     
     -- Verificar se o personagem tem gold suficiente
     SELECT gold, level INTO v_character_gold, v_character_level
@@ -118,65 +122,6 @@ BEGIN
     -- Verificar gold
     IF v_character_gold < p_price THEN
         RAISE EXCEPTION 'Gold insuficiente para comprar o equipamento';
-    END IF;
-    
-    -- Verificar se precisa de desbloqueio especial (raros e épicos)
-    IF v_equipment_rarity = 'rare' OR v_equipment_rarity = 'epic' THEN
-        -- Para equipamentos raros, verificar se usou o pergaminho correspondente
-        IF v_equipment_rarity = 'rare' THEN
-            -- Verificar se usou o pergaminho específico para o tipo
-            IF v_equipment_type = 'weapon' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Arma Rara')
-                    AND quantity = 0 -- Quando usado, quantidade fica 0 mas o registro permanece
-                ) INTO v_has_unlock;
-            ELSIF v_equipment_type = 'armor' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Armadura Rara')
-                    AND quantity = 0
-                ) INTO v_has_unlock;
-            ELSIF v_equipment_type = 'accessory' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Acessório Raro')
-                    AND quantity = 0
-                ) INTO v_has_unlock;
-            END IF;
-        -- Para equipamentos épicos, verificar pergaminho épico
-        ELSIF v_equipment_rarity = 'epic' THEN
-            IF v_equipment_type = 'weapon' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Arma Épica')
-                    AND quantity = 0
-                ) INTO v_has_unlock;
-            ELSIF v_equipment_type = 'armor' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Armadura Épica')
-                    AND quantity = 0
-                ) INTO v_has_unlock;
-            ELSIF v_equipment_type = 'accessory' THEN
-                SELECT EXISTS (
-                    SELECT 1 FROM character_consumables 
-                    WHERE character_id = p_character_id 
-                    AND consumable_id = (SELECT id FROM consumables WHERE name = 'Pergaminho de Acessório Épico')
-                    AND quantity = 0
-                ) INTO v_has_unlock;
-            END IF;
-        END IF;
-        
-        -- Verificar se tem o desbloqueio necessário
-        IF NOT v_has_unlock AND v_equipment_rarity != 'legendary' THEN
-            RAISE EXCEPTION 'Este equipamento precisa ser desbloqueado com um pergaminho especial';
-        END IF;
     END IF;
     
     -- Deduzir gold do personagem
@@ -227,4 +172,63 @@ BEGIN
     WHERE character_id = p_character_id
     AND equipment_id = p_equipment_id;
 END;
-$$ LANGUAGE plpgsql; 
+$$ LANGUAGE plpgsql;
+
+-- Função para desbloquear equipamento (para uso futuro com sistema de pergaminhos)
+CREATE OR REPLACE FUNCTION unlock_equipment(
+    p_equipment_id UUID
+) RETURNS VOID AS $$
+BEGIN
+    UPDATE equipment
+    SET is_unlocked = true
+    WHERE id = p_equipment_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Habilitar RLS
+ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE character_equipment ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS para equipment (leitura pública - dados de referência)
+CREATE POLICY "Leitura pública de equipamentos" ON equipment
+    FOR SELECT 
+    USING (true);
+
+-- Políticas RLS para character_equipment (acesso apenas ao dono do personagem)
+CREATE POLICY "Usuários podem ver equipamentos dos próprios personagens" ON character_equipment
+    FOR SELECT
+    TO authenticated
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+CREATE POLICY "Usuários podem inserir equipamentos nos próprios personagens" ON character_equipment
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+CREATE POLICY "Usuários podem atualizar equipamentos dos próprios personagens" ON character_equipment
+    FOR UPDATE
+    TO authenticated
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ))
+    WITH CHECK (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+CREATE POLICY "Usuários podem deletar equipamentos dos próprios personagens" ON character_equipment
+    FOR DELETE
+    TO authenticated
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+-- Garantir permissões
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated; 

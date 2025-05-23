@@ -277,6 +277,60 @@ CREATE TRIGGER set_updated_at_crafting_ingredients
 BEFORE UPDATE ON crafting_ingredients
 FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
 
+-- ========================================
+-- CONFIGURAR RLS (Row Level Security)
+-- ========================================
+
+-- monster_drops: leitura pública (dados de referência)
+ALTER TABLE monster_drops ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Leitura pública de drops" ON monster_drops
+    FOR SELECT 
+    USING (true);
+
+-- monster_possible_drops: leitura pública (dados de referência)
+ALTER TABLE monster_possible_drops ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Leitura pública de possíveis drops" ON monster_possible_drops
+    FOR SELECT 
+    USING (true);
+
+-- character_drops: acesso apenas ao dono do personagem
+ALTER TABLE character_drops ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Usuários podem ver drops dos próprios personagens" ON character_drops
+    FOR SELECT
+    TO authenticated
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+CREATE POLICY "Usuários podem inserir drops nos próprios personagens" ON character_drops
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+CREATE POLICY "Usuários podem atualizar drops dos próprios personagens" ON character_drops
+    FOR UPDATE
+    TO authenticated
+    USING (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ))
+    WITH CHECK (character_id IN (
+        SELECT id FROM characters WHERE user_id = auth.uid()
+    ));
+
+-- crafting_recipes: leitura pública (dados de referência)
+ALTER TABLE crafting_recipes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Leitura pública de receitas" ON crafting_recipes
+    FOR SELECT 
+    USING (true);
+
+-- crafting_ingredients: leitura pública (dados de referência)
+ALTER TABLE crafting_ingredients ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Leitura pública de ingredientes" ON crafting_ingredients
+    FOR SELECT 
+    USING (true);
+
 -- Garantir permissões corretas
 GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, service_role;

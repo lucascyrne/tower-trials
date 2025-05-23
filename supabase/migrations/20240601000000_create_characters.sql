@@ -318,6 +318,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Função para atualizar o andar atual do personagem
+CREATE OR REPLACE FUNCTION update_character_floor(
+    p_character_id UUID,
+    p_floor INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    -- Validar se o andar é válido
+    IF p_floor < 1 THEN
+        RAISE EXCEPTION 'Andar deve ser pelo menos 1';
+    END IF;
+    
+    -- Atualizar o andar do personagem
+    UPDATE characters
+    SET 
+        floor = p_floor,
+        updated_at = NOW()
+    WHERE id = p_character_id;
+    
+    -- Verificar se o personagem foi encontrado
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Personagem não encontrado';
+    END IF;
+    
+    -- Atualizar também o progresso do jogo se existir
+    UPDATE game_progress
+    SET 
+        current_floor = p_floor,
+        updated_at = NOW()
+    WHERE user_id = (SELECT user_id FROM characters WHERE id = p_character_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Habilitar RLS
 ALTER TABLE characters ENABLE ROW LEVEL SECURITY;
 
@@ -359,4 +392,5 @@ CREATE POLICY "Usuários podem deletar seus próprios personagens" ON characters
 GRANT EXECUTE ON FUNCTION create_character TO authenticated;
 GRANT EXECUTE ON FUNCTION get_user_characters TO authenticated;
 GRANT EXECUTE ON FUNCTION get_character TO authenticated;
-GRANT EXECUTE ON FUNCTION delete_character TO authenticated; 
+GRANT EXECUTE ON FUNCTION delete_character TO authenticated;
+GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated; 
