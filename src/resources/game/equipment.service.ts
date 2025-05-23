@@ -6,60 +6,92 @@ export class EquipmentService {
      * Obter todos os equipamentos disponíveis para um nível
      */
     static async getAvailableEquipment(level: number): Promise<Equipment[]> {
-        const { data, error } = await supabase
-            .from('equipment')
-            .select('*')
-            .lte('level_requirement', level)
-            .order('level_requirement', { ascending: true });
+        try {
+            const { data, error } = await supabase
+                .from('equipment')
+                .select('*')
+                .lte('level_requirement', level)
+                .order('level_requirement', { ascending: true });
 
-        if (error) throw error;
-        return data;
+            if (error) throw error;
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao buscar equipamentos disponíveis:', error);
+            return [];
+        }
     }
 
     /**
      * Obter equipamentos de um personagem
      */
     static async getCharacterEquipment(characterId: string): Promise<CharacterEquipment[]> {
-        const { data, error } = await supabase
-            .from('character_equipment')
-            .select(`
-                *,
-                equipment:equipment_id (*)
-            `)
-            .eq('character_id', characterId);
+        try {
+            if (!characterId) {
+                console.warn('ID do personagem não fornecido');
+                return [];
+            }
 
-        if (error) throw error;
-        return data;
+            const { data, error } = await supabase
+                .from('character_equipment')
+                .select(`
+                    *,
+                    equipment:equipment_id (*)
+                `)
+                .eq('character_id', characterId);
+
+            if (error) throw error;
+            
+            // Filtrar itens que têm equipamento válido
+            return (data || []).filter(item => item && item.equipment);
+        } catch (error) {
+            console.error('Erro ao buscar equipamentos do personagem:', error);
+            return [];
+        }
     }
 
     /**
      * Obter slots de equipamento equipados do personagem
      */
     static async getEquippedSlots(characterId: string): Promise<EquipmentSlots> {
-        const { data, error } = await supabase
-            .from('character_equipment')
-            .select(`
-                *,
-                equipment:equipment_id (*)
-            `)
-            .eq('character_id', characterId)
-            .eq('is_equipped', true);
-
-        if (error) throw error;
-
-        const slots: EquipmentSlots = {
+        const defaultSlots: EquipmentSlots = {
             weapon: null,
             armor: null,
             accessory: null
         };
 
-        data.forEach(item => {
-            if (item.equipment) {
-                slots[item.equipment.type as keyof EquipmentSlots] = item.equipment;
+        try {
+            if (!characterId) {
+                console.warn('ID do personagem não fornecido');
+                return defaultSlots;
             }
-        });
 
-        return slots;
+            const { data, error } = await supabase
+                .from('character_equipment')
+                .select(`
+                    *,
+                    equipment:equipment_id (*)
+                `)
+                .eq('character_id', characterId)
+                .eq('is_equipped', true);
+
+            if (error) throw error;
+
+            const slots: EquipmentSlots = { ...defaultSlots };
+
+            (data || []).forEach(item => {
+                if (item && item.equipment && item.equipment.type) {
+                    const slotType = item.equipment.type as keyof EquipmentSlots;
+                    if (slotType in slots) {
+                        slots[slotType] = item.equipment;
+                    }
+                }
+            });
+
+            return slots;
+        } catch (error) {
+            console.error('Erro ao buscar equipamentos equipados:', error);
+            return defaultSlots;
+        }
     }
 
     /**
@@ -70,13 +102,28 @@ export class EquipmentService {
         equipmentId: string,
         price: number
     ): Promise<boolean> {
-        const { error } = await supabase.rpc('buy_equipment', {
-            p_character_id: characterId,
-            p_equipment_id: equipmentId,
-            p_price: price
-        });
+        try {
+            if (!characterId || !equipmentId) {
+                console.error('Parâmetros inválidos para comprar equipamento');
+                return false;
+            }
 
-        return !error;
+            const { error } = await supabase.rpc('buy_equipment', {
+                p_character_id: characterId,
+                p_equipment_id: equipmentId,
+                p_price: price
+            });
+
+            if (error) {
+                console.error('Erro ao comprar equipamento:', error.message);
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Erro ao comprar equipamento:', error);
+            return false;
+        }
     }
 
     /**
@@ -87,13 +134,28 @@ export class EquipmentService {
         equipmentId: string,
         equip: boolean
     ): Promise<boolean> {
-        const { error } = await supabase.rpc('toggle_equipment', {
-            p_character_id: characterId,
-            p_equipment_id: equipmentId,
-            p_equip: equip
-        });
+        try {
+            if (!characterId || !equipmentId) {
+                console.error('Parâmetros inválidos para equipar/desequipar');
+                return false;
+            }
 
-        return !error;
+            const { error } = await supabase.rpc('toggle_equipment', {
+                p_character_id: characterId,
+                p_equipment_id: equipmentId,
+                p_equip: equip
+            });
+
+            if (error) {
+                console.error('Erro ao equipar/desequipar:', error.message);
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Erro ao equipar/desequipar:', error);
+            return false;
+        }
     }
 
     /**
@@ -103,15 +165,30 @@ export class EquipmentService {
         characterId: string,
         equipmentId: string
     ): Promise<boolean> {
-        // Primeiro desequipar se estiver equipado
-        await this.toggleEquipment(characterId, equipmentId, false);
+        try {
+            if (!characterId || !equipmentId) {
+                console.error('Parâmetros inválidos para vender equipamento');
+                return false;
+            }
 
-        // Então remover o item e dar o gold ao personagem
-        const { error } = await supabase.rpc('sell_equipment', {
-            p_character_id: characterId,
-            p_equipment_id: equipmentId
-        });
+            // Primeiro desequipar se estiver equipado
+            await this.toggleEquipment(characterId, equipmentId, false);
 
-        return !error;
+            // Então remover o item e dar o gold ao personagem
+            const { error } = await supabase.rpc('sell_equipment', {
+                p_character_id: characterId,
+                p_equipment_id: equipmentId
+            });
+
+            if (error) {
+                console.error('Erro ao vender equipamento:', error.message);
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Erro ao vender equipamento:', error);
+            return false;
+        }
     }
 } 

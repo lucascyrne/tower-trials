@@ -19,8 +19,9 @@ export interface UpdateCharacterStatsDTO {
 
 export class CharacterService {
   private static characterCache: Map<string, Character> = new Map();
-  private static lastFetchTimestamp: number = 0;
-  private static CACHE_DURATION = 5000; // 5 segundos
+  private static lastFetchTimestamp: Map<string, number> = new Map();
+  private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
+  private static CACHE_DURATION = 30000; // 30 segundos de cache
 
   /**
    * Buscar todos os personagens do usuário
@@ -31,9 +32,13 @@ export class CharacterService {
     try {
       // Verificar se já buscamos recentemente
       const now = Date.now();
-      if (now - this.lastFetchTimestamp < this.CACHE_DURATION) {
-        const cachedCharacters = Array.from(this.characterCache.values());
+      const userCacheKey = `user_${userId}`;
+      const lastFetch = this.lastFetchTimestamp.get(userCacheKey) || 0;
+      
+      if (now - lastFetch < this.CACHE_DURATION) {
+        const cachedCharacters = Array.from(this.characterCache.values()).filter(char => char.user_id === userId);
         if (cachedCharacters.length > 0) {
+          console.log(`[CharacterService] Usando lista de personagens em cache para usuário ${userId}`);
           return { data: cachedCharacters, error: null, success: true };
         }
       }
@@ -50,7 +55,7 @@ export class CharacterService {
       (data as Character[]).forEach(char => {
         this.characterCache.set(char.id, char);
       });
-      this.lastFetchTimestamp = now;
+      this.lastFetchTimestamp.set(userCacheKey, now);
 
       return { data: data as Character[], error: null, success: true };
     } catch (error) {
@@ -69,13 +74,46 @@ export class CharacterService {
       // Verificar cache primeiro
       const cachedCharacter = this.characterCache.get(characterId);
       const now = Date.now();
+      const lastFetch = this.lastFetchTimestamp.get(characterId) || 0;
       
       // Usar cache somente se estiver dentro do tempo de validade
-      if (cachedCharacter && now - this.lastFetchTimestamp < this.CACHE_DURATION) {
+      if (cachedCharacter && now - lastFetch < this.CACHE_DURATION) {
         console.log(`[CharacterService] Usando personagem em cache: ${cachedCharacter.name} (andar: ${cachedCharacter.floor})`);
         return { data: cachedCharacter, error: null, success: true };
       }
 
+      // Verificar se já existe uma requisição pendente para este personagem
+      if (this.pendingRequests.has(characterId)) {
+        console.log(`[CharacterService] Reutilizando requisição pendente para personagem ${characterId}`);
+        return this.pendingRequests.get(characterId)!;
+      }
+
+      // Criar nova requisição
+      const request = this.fetchCharacterFromServer(characterId);
+      this.pendingRequests.set(characterId, request);
+
+      // Remover do mapa de requisições pendentes quando concluído
+      request.finally(() => {
+        this.pendingRequests.delete(characterId);
+      });
+
+      return request;
+    } catch (error) {
+      console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Buscar personagem do servidor
+   * @private
+   */
+  private static async fetchCharacterFromServer(characterId: string): Promise<ServiceResponse<Character>> {
+    try {
       console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
       const { data, error } = await supabase
         .rpc('get_character', {
@@ -96,7 +134,7 @@ export class CharacterService {
       const character = data as Character;
       console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor})`);
       this.characterCache.set(characterId, character);
-      this.lastFetchTimestamp = now;
+      this.lastFetchTimestamp.set(characterId, Date.now());
 
       return { 
         data: character, 
@@ -104,10 +142,10 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
+      console.error('Erro ao buscar personagem do servidor:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar personagem', 
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
         success: false 
       };
     }
@@ -222,8 +260,8 @@ export class CharacterService {
 
       if (error) throw error;
 
-      // Apenas invalidar o cache específico do personagem, não todo o cache
-      this.characterCache.delete(characterId);
+      // Invalidar cache apenas do personagem específico
+      this.invalidateCharacterCache(characterId);
 
       return { 
         data: { 
@@ -316,14 +354,32 @@ export class CharacterService {
 
       if (error) throw error;
 
-      // Limpar cache após deletar
-      this.characterCache.delete(characterId);
-      this.lastFetchTimestamp = 0;
+      // Invalidar cache do personagem deletado
+      this.invalidateCharacterCache(characterId);
 
       return { error: null };
     } catch (error) {
       console.error('Erro ao deletar personagem:', error instanceof Error ? error.message : error);
       return { error: error instanceof Error ? error.message : 'Erro ao deletar personagem' };
     }
+  }
+
+  /**
+   * Limpar cache de um personagem específico
+   */
+  static invalidateCharacterCache(characterId: string): void {
+    this.characterCache.delete(characterId);
+    this.lastFetchTimestamp.delete(characterId);
+    console.log(`[CharacterService] Cache invalidado para personagem ${characterId}`);
+  }
+
+  /**
+   * Limpar todo o cache
+   */
+  static clearAllCache(): void {
+    this.characterCache.clear();
+    this.lastFetchTimestamp.clear();
+    this.pendingRequests.clear();
+    console.log('[CharacterService] Todo o cache foi limpo');
   }
 } 

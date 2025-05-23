@@ -89,22 +89,6 @@ export function GameProvider({ children }: GameProviderProps) {
         if (response.success && response.data) {
           setCharacters(response.data);
           
-          // Verificar se há um personagem na URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const characterId = urlParams.get('character');
-          
-          if (characterId) {
-            const selectedChar = response.data.find(char => char.id === characterId);
-            if (selectedChar) {
-              // Só carrega o personagem se não houver um estado de jogo ativo
-              if (!state.gameState.player.id) {
-                await selectCharacter(selectedChar);
-              } else {
-                setSelectedCharacter(selectedChar);
-              }
-            }
-          }
-          
           if (response.data.length > 0) {
             setState(prev => ({
               ...prev,
@@ -135,8 +119,9 @@ export function GameProvider({ children }: GameProviderProps) {
       }
     };
 
+    // Só carrega se realmente mudou o usuário
     loadCharacters();
-  }, [user]);
+  }, [user?.id]); // Só user.id como dependência
 
   // Criar novo personagem
   const createCharacter = useCallback(async (name: string) => {
@@ -247,7 +232,7 @@ export function GameProvider({ children }: GameProviderProps) {
         : [];
 
       // Obter dados do andar atual do personagem (usar o andar salvo, não sempre 1)
-      const currentFloor = character.floor || 1; // Failsafe se o andar for undefined ou 0
+      const currentFloor = character.floor || 1;
       const floorData = await GameService.getFloorData(currentFloor);
       if (!floorData) {
         throw new Error(`Erro ao gerar dados do andar ${currentFloor}`);
@@ -271,7 +256,7 @@ export function GameProvider({ children }: GameProviderProps) {
             ...character,
             isPlayerTurn: true,
             specialCooldown: 0,
-            floor: currentFloor, // Usar o andar salvo do personagem
+            floor: currentFloor,
             spells: availableSpells,
             consumables: characterConsumables,
             active_effects: {
@@ -292,6 +277,60 @@ export function GameProvider({ children }: GameProviderProps) {
         description: error instanceof Error ? error.message : 'Erro ao selecionar personagem',
       });
     }
+  }, []);
+
+  // Carregar personagem apenas para o hub (sem preparar estado de batalha)
+  const loadCharacterForHub = useCallback(async (character: Character) => {
+    try {
+      setSelectedCharacter(character);
+      
+      // Apenas carregar dados básicos do personagem para exibição no hub
+      setState(prev => ({
+        ...prev,
+        gameState: {
+          ...initialGameState,
+          mode: 'hub', // Modo específico para hub
+          player: {
+            ...character,
+            isPlayerTurn: true,
+            specialCooldown: 0,
+            floor: character.floor || 1,
+            spells: [],
+            consumables: [],
+            active_effects: {
+              buffs: [],
+              debuffs: [],
+              dots: [],
+              hots: []
+            }
+          },
+          gameMessage: `Bem-vindo ao hub, ${character.name}!`,
+        },
+      }));
+      
+      console.log(`[GameProvider] Personagem ${character.name} carregado para o hub sem chamadas desnecessárias`);
+    } catch (error) {
+      console.error('Erro ao carregar personagem para o hub:', error instanceof Error ? error.message : 'Erro desconhecido');
+      toast.error('Erro', {
+        description: error instanceof Error ? error.message : 'Erro ao carregar personagem',
+      });
+    }
+  }, []);
+
+  // Limpar estado de jogo quando sair da batalha
+  const clearGameState = useCallback(() => {
+    console.log('[GameProvider] Limpando estado de jogo');
+    
+    // Resetar estado para o inicial
+    setState(prev => ({
+      ...prev,
+      gameState: initialGameState,
+      gameMessage: 'Estado do jogo limpo',
+      error: null
+    }));
+    
+    // Limpar personagem selecionado se necessário
+    setSelectedCharacter(null);
   }, []);
 
   // Realizar ação do jogador
@@ -626,6 +665,8 @@ export function GameProvider({ children }: GameProviderProps) {
       selectedCharacter,
       startGame: createCharacter,
       selectCharacter,
+      loadCharacterForHub,
+      clearGameState,
       performAction,
       returnToMenu,
       resetError,
@@ -640,12 +681,6 @@ export function GameProvider({ children }: GameProviderProps) {
       state.gameLog,
       characters,
       selectedCharacter,
-      createCharacter,
-      selectCharacter,
-      performAction,
-      returnToMenu,
-      resetError,
-      addGameLogMessage
     ]
   );
 

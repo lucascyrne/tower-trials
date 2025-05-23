@@ -65,6 +65,8 @@ export interface GameContextType {
   selectedCharacter: Character | null;
   startGame: (name: string) => Promise<void>;
   selectCharacter: (character: Character) => Promise<void>;
+  loadCharacterForHub: (character: Character) => Promise<void>;
+  clearGameState: () => void;
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
   resetError: () => void;
@@ -88,6 +90,8 @@ export const GameContext = createContext<GameContextType>({
   selectedCharacter: null,
   startGame: async () => {},
   selectCharacter: async () => {},
+  loadCharacterForHub: async () => {},
+  clearGameState: () => {},
   performAction: () => {},
   returnToMenu: () => {},
   resetError: () => {},

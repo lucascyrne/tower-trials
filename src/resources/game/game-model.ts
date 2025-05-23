@@ -3,7 +3,7 @@ import { PlayerSpell, ActiveEffects } from './models/spell.model';
 import { MonsterDropChance } from './models/monster.model';
 import { CharacterConsumable } from './models/consumable.model';
 
-export type GameMode = 'menu' | 'battle' | 'gameover';
+export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub';
 export type ActionType = 'attack' | 'defend' | 'special' | 'spell' | 'flee' | 'consumable' | 'continue';
 export type FloorType = 'common' | 'elite' | 'event' | 'boss';
 
