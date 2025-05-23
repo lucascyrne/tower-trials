@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS public.users (
     highest_floor INTEGER NOT NULL DEFAULT 0,
     total_games INTEGER NOT NULL DEFAULT 0,
     total_victories INTEGER NOT NULL DEFAULT 0,
+    total_character_level INTEGER NOT NULL DEFAULT 0,
+    max_character_slots INTEGER NOT NULL DEFAULT 3,
     telefone VARCHAR(20),
     documento VARCHAR(20),
     tipo_pessoa VARCHAR(2) CHECK (tipo_pessoa IN ('PF', 'PJ')),
@@ -34,6 +36,103 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Função para calcular o nível total necessário para um determinado slot
+CREATE OR REPLACE FUNCTION calculate_required_total_level_for_slot(slot_number INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    -- Slots 1-3 são gratuitos
+    IF slot_number <= 3 THEN
+        RETURN 0;
+    END IF;
+    
+    -- Fórmula para slots 4+: (slot - 3) * 15 níveis totais
+    -- 4º slot: 15 níveis totais
+    -- 5º slot: 30 níveis totais  
+    -- 6º slot: 45 níveis totais
+    -- 7º slot: 60 níveis totais
+    -- etc.
+    RETURN (slot_number - 3) * 15;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para calcular quantos slots de personagem um usuário pode ter
+CREATE OR REPLACE FUNCTION calculate_available_character_slots(p_user_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    total_level INTEGER := 0;
+    available_slots INTEGER := 3; -- Mínimo de 3 slots
+    current_slot INTEGER := 4;
+    required_level INTEGER;
+BEGIN
+    -- Calcular nível total de todos os personagens do usuário
+    SELECT COALESCE(SUM(level), 0) 
+    INTO total_level
+    FROM characters 
+    WHERE user_id = p_user_id;
+    
+    -- Verificar quantos slots adicionais podem ser desbloqueados
+    LOOP
+        required_level := calculate_required_total_level_for_slot(current_slot);
+        
+        -- Se o usuário tem nível total suficiente, desbloquear o slot
+        IF total_level >= required_level THEN
+            available_slots := current_slot;
+            current_slot := current_slot + 1;
+        ELSE
+            EXIT; -- Sair do loop quando não conseguir mais desbloquear slots
+        END IF;
+        
+        -- Limite de segurança para evitar loop infinito
+        IF current_slot > 20 THEN
+            EXIT;
+        END IF;
+    END LOOP;
+    
+    RETURN available_slots;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para atualizar o nível total e slots disponíveis do usuário
+CREATE OR REPLACE FUNCTION update_user_character_progression(p_user_id UUID)
+RETURNS TABLE(
+    total_level INTEGER,
+    available_slots INTEGER,
+    slots_unlocked BOOLEAN
+) AS $$
+DECLARE
+    old_slots INTEGER;
+    new_total_level INTEGER;
+    new_available_slots INTEGER;
+BEGIN
+    -- Obter slots atuais
+    SELECT max_character_slots INTO old_slots
+    FROM users WHERE uid = p_user_id;
+    
+    -- Calcular novo nível total
+    SELECT COALESCE(SUM(level), 0)
+    INTO new_total_level
+    FROM characters 
+    WHERE user_id = p_user_id;
+    
+    -- Calcular novos slots disponíveis
+    new_available_slots := calculate_available_character_slots(p_user_id);
+    
+    -- Atualizar na tabela users
+    UPDATE users 
+    SET 
+        total_character_level = new_total_level,
+        max_character_slots = new_available_slots,
+        updated_at = NOW()
+    WHERE uid = p_user_id;
+    
+    -- Retornar informações
+    RETURN QUERY SELECT 
+        new_total_level,
+        new_available_slots,
+        (new_available_slots > old_slots) AS slots_unlocked;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Função RPC para criar perfil de usuário com SECURITY DEFINER
 CREATE OR REPLACE FUNCTION create_user_profile(p_uid UUID, p_username VARCHAR, p_email VARCHAR)
 RETURNS void AS $$
@@ -46,6 +145,8 @@ BEGIN
     highest_floor, 
     total_games, 
     total_victories, 
+    total_character_level,
+    max_character_slots,
     is_active, 
     created_at, 
     updated_at
@@ -57,6 +158,8 @@ BEGIN
     0,
     0,
     0,
+    0,
+    3,
     true,
     NOW(),
     NOW()
@@ -102,4 +205,7 @@ GRANT USAGE ON SEQUENCE public.users_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE public.users_id_seq TO service_role;
 GRANT EXECUTE ON FUNCTION create_user_profile TO anon;
 GRANT EXECUTE ON FUNCTION create_user_profile TO authenticated;
-GRANT EXECUTE ON FUNCTION create_user_profile TO service_role; 
+GRANT EXECUTE ON FUNCTION create_user_profile TO service_role;
+GRANT EXECUTE ON FUNCTION calculate_required_total_level_for_slot TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_available_character_slots TO authenticated;
+GRANT EXECUTE ON FUNCTION update_user_character_progression TO authenticated; 

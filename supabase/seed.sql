@@ -16,25 +16,23 @@ DELETE FROM special_events;
 -- CONSUMÍVEIS
 -- =====================================
 
--- Inserir consumíveis com preços balanceados para escassez controlada
+-- Inserir consumíveis com preços balanceados para progressão sustentável
 INSERT INTO consumables (name, description, type, effect_value, price, craftable)
 VALUES
-    -- POÇÕES DE VIDA (progressão de escassez)
-    ('Poção de Vida Pequena', 'Recupera 20 HP instantaneamente', 'potion', 20, 50, false), -- Acessível mas não barata
-    ('Poção de Vida Média', 'Recupera 50 HP instantaneamente', 'potion', 50, 150, true),   -- 3x mais cara que pequena
-    ('Poção de Vida Grande', 'Recupera 100 HP instantaneamente', 'potion', 100, 400, true), -- Muito cara para mid-game
+    -- POÇÕES DE VIDA (rebalanceadas para acessibilidade)
+    ('Poção de Vida Pequena', 'Recupera 20 HP instantaneamente', 'potion', 20, 15, false), -- Muito mais barata!
+    ('Poção de Vida Média', 'Recupera 50 HP instantaneamente', 'potion', 50, 60, true),   -- Mais acessível
+    ('Poção de Vida Grande', 'Recupera 100 HP instantaneamente', 'potion', 100, 200, true), -- Preço justo para late game
     
-    -- POÇÕES DE MANA (progressão similar)
-    ('Poção de Mana Pequena', 'Recupera 10 Mana instantaneamente', 'potion', 10, 45, false), -- Levemente mais barata que vida
-    ('Poção de Mana Média', 'Recupera 25 Mana instantaneamente', 'potion', 25, 135, true),   -- Proporcional à vida
-    ('Poção de Mana Grande', 'Recupera 50 Mana instantaneamente', 'potion', 50, 350, true),  -- Cara mas menos que vida grande
+    -- POÇÕES DE MANA (acessíveis e proporcionais)
+    ('Poção de Mana Pequena', 'Recupera 10 Mana instantaneamente', 'potion', 10, 12, false), -- Barata para incentivar uso de magias
+    ('Poção de Mana Média', 'Recupera 25 Mana instantaneamente', 'potion', 25, 50, true),   -- Proporcional
+    ('Poção de Mana Grande', 'Recupera 50 Mana instantaneamente', 'potion', 50, 160, true),  -- Mantém valor
     
-    -- UTILITÁRIOS (preços moderados mas importantes)
-    ('Antídoto', 'Remove todos os efeitos negativos', 'antidote', 0, 120, true), -- Caro pois é muito útil
-    
-    -- ELIXIRES (não vendidos na loja - apenas craftáveis)
-    ('Elixir de Força', 'Aumenta o ataque em 8 por 3 turnos', 'buff', 8, 0, true), -- Não vendido na loja
-    ('Elixir de Defesa', 'Aumenta a defesa em 8 por 3 turnos', 'buff', 8, 0, true); -- Não vendido na loja
+    -- UTILITÁRIOS (preços ajustados)
+    ('Antídoto', 'Remove todos os efeitos negativos', 'antidote', 0, 40, true), -- Mais barato para ser viável
+    ('Elixir de Força', 'Aumenta ataque temporariamente em +15', 'buff', 15, 100, true), -- Preço justo
+    ('Elixir de Defesa', 'Aumenta defesa temporariamente em +12', 'buff', 12, 80, true); -- Mais barato que força
 
 -- =====================================
 -- EQUIPAMENTOS
@@ -42,16 +40,16 @@ VALUES
 
 -- Inserir equipamentos iniciais (com is_unlocked configurado adequadamente)
 INSERT INTO equipment (name, description, type, rarity, level_requirement, atk_bonus, def_bonus, mana_bonus, speed_bonus, price, is_unlocked) VALUES
-    -- Equipamentos Comuns (Nível 1-3) - TODOS DESBLOQUEADOS
-    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'common', 1, 5, 0, 0, 1, 150, true),
-    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'common', 1, 3, 0, 0, 3, 120, true),
-    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'common', 1, 2, 0, 5, 0, 140, true),
-    ('Armadura de Couro', 'Proteção básica de couro resistente', 'armor', 'common', 1, 0, 5, 0, 2, 150, true),
-    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'armor', 'common', 1, 0, 3, 5, 1, 130, true),
-    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'armor', 'common', 1, 0, 2, 0, 5, 120, true),
-    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'accessory', 'common', 1, 0, 0, 10, 0, 160, true),
-    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'accessory', 'common', 1, 0, 3, 3, 0, 150, true),
-    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'accessory', 'common', 1, 0, 0, 0, 5, 140, true),
+    -- Equipamentos Básicos (Nível 1) - TODOS DESBLOQUEADOS e mais baratos
+    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'common', 1, 5, 0, 0, 1, 100, true),   -- Era 150, agora 100
+    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'common', 1, 3, 0, 0, 3, 80, true),    -- Era 120, agora 80
+    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'common', 1, 2, 0, 5, 0, 90, true),          -- Era 140, agora 90
+    ('Armadura de Couro', 'Proteção básica de couro resistente', 'armor', 'common', 1, 0, 5, 0, 2, 100, true),   -- Era 150, agora 100
+    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'armor', 'common', 1, 0, 3, 5, 1, 85, true),     -- Era 130, agora 85
+    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'armor', 'common', 1, 0, 2, 0, 5, 80, true),     -- Era 120, agora 80
+    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'accessory', 'common', 1, 0, 0, 10, 0, 110, true),     -- Era 160, agora 110
+    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'accessory', 'common', 1, 0, 3, 3, 0, 100, true),  -- Era 150, agora 100
+    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'accessory', 'common', 1, 0, 0, 0, 5, 90, true),  -- Era 140, agora 90
 
     -- Equipamentos Incomuns (Nível 5-8) - TODOS DESBLOQUEADOS PARA EARLY-MID GAME
     ('Espada de Aço', 'Uma espada bem forjada', 'weapon', 'uncommon', 5, 12, 0, 0, 2, 350, true),
@@ -103,51 +101,51 @@ INSERT INTO equipment (name, description, type, rarity, level_requirement, atk_b
 
 -- Inserir os monstros
 INSERT INTO monsters (name, hp, atk, def, mana, speed, behavior, min_floor, reward_xp, reward_gold) VALUES
--- Monstros Iniciais (Andares 1-5)
-('Slime Verde', 50, 10, 5, 0, 8, 'balanced', 1, 20, 10),
-('Slime Azul', 55, 12, 4, 0, 9, 'aggressive', 1, 22, 12),
-('Rato Gigante', 45, 15, 3, 0, 15, 'aggressive', 1, 25, 15),
-('Goblin', 60, 12, 8, 20, 12, 'balanced', 2, 30, 20),
-('Kobold', 55, 18, 5, 30, 14, 'aggressive', 3, 35, 25),
-('Esqueleto', 70, 14, 10, 0, 10, 'defensive', 4, 40, 30),
-('Lobo Selvagem', 65, 20, 6, 0, 16, 'aggressive', 4, 42, 28),
-('Aranha Venenosa', 60, 16, 7, 15, 17, 'balanced', 5, 45, 32),
+-- Monstros Iniciais (Andares 1-5) - Recompensas MUITO AUMENTADAS
+('Slime Verde', 50, 10, 5, 0, 8, 'balanced', 1, 35, 30),         -- Era 20/10, agora 35/30 (2 poções!)
+('Slime Azul', 55, 12, 4, 0, 9, 'aggressive', 1, 40, 35),       -- Era 22/12, agora 40/35
+('Rato Gigante', 45, 15, 3, 0, 15, 'aggressive', 1, 45, 40),    -- Era 25/15, agora 45/40
+('Goblin', 60, 12, 8, 20, 12, 'balanced', 2, 55, 50),           -- Era 30/20, agora 55/50 (3+ poções!)
+('Kobold', 55, 18, 5, 30, 14, 'aggressive', 3, 65, 60),         -- Era 35/25, agora 65/60
+('Esqueleto', 70, 14, 10, 0, 10, 'defensive', 4, 75, 70),       -- Era 40/30, agora 75/70
+('Lobo Selvagem', 65, 20, 6, 0, 16, 'aggressive', 4, 80, 75),   -- Era 42/28, agora 80/75
+('Aranha Venenosa', 60, 16, 7, 15, 17, 'balanced', 5, 85, 80),  -- Era 45/32, agora 85/80
 
--- Monstros Intermediários (Andares 6-10)
-('Orc', 100, 25, 15, 0, 11, 'aggressive', 6, 60, 40),
-('Zumbi', 120, 20, 20, 0, 8, 'defensive', 7, 70, 45),
-('Harpia', 90, 30, 10, 40, 18, 'aggressive', 8, 80, 50),
-('Golem de Pedra', 150, 15, 30, 0, 7, 'defensive', 9, 90, 55),
-('Mago Corrompido', 80, 40, 5, 100, 13, 'balanced', 10, 100, 60),
-('Lobo Alpha', 110, 35, 12, 0, 18, 'aggressive', 6, 65, 42),
-('Basilisco', 130, 20, 25, 30, 12, 'defensive', 7, 75, 47),
-('Morcego Vampírico', 85, 30, 8, 20, 19, 'aggressive', 8, 78, 48),
-('Armadura Animada', 140, 25, 35, 0, 8, 'defensive', 9, 88, 53),
-('Druida Corrompido', 90, 35, 15, 120, 14, 'balanced', 10, 95, 58),
+-- Monstros Intermediários (Andares 6-10) - Escalonamento equilibrado
+('Orc', 100, 25, 15, 0, 11, 'aggressive', 6, 110, 100),         -- Era 60/40, agora 110/100
+('Zumbi', 120, 20, 20, 0, 8, 'defensive', 7, 125, 115),         -- Era 70/45, agora 125/115
+('Harpia', 90, 30, 10, 40, 18, 'aggressive', 8, 140, 130),      -- Era 80/50, agora 140/130
+('Golem de Pedra', 150, 15, 30, 0, 7, 'defensive', 9, 155, 145),-- Era 90/55, agora 155/145
+('Mago Corrompido', 80, 40, 5, 100, 13, 'balanced', 10, 170, 160), -- Era 100/60, agora 170/160
+('Lobo Alpha', 110, 35, 12, 0, 18, 'aggressive', 6, 115, 105),  -- Era 65/42, agora 115/105
+('Basilisco', 130, 20, 25, 30, 12, 'defensive', 7, 130, 120),   -- Era 75/47, agora 130/120
+('Morcego Vampírico', 85, 30, 8, 20, 19, 'aggressive', 8, 145, 135), -- Era 78/48, agora 145/135
+('Armadura Animada', 140, 25, 35, 0, 8, 'defensive', 9, 160, 150), -- Era 88/53, agora 160/150
+('Druida Corrompido', 90, 35, 15, 120, 14, 'balanced', 10, 175, 165), -- Era 95/58, agora 175/165
 
--- Monstros Avançados (Andares 11-15)
-('Ogro', 200, 40, 25, 0, 9, 'aggressive', 11, 150, 70),
-('Quimera', 180, 45, 20, 60, 16, 'balanced', 12, 170, 75),
-('Hidra', 250, 35, 30, 80, 12, 'defensive', 13, 190, 80),
-('Dragão Jovem', 300, 50, 40, 120, 20, 'aggressive', 14, 220, 90),
-('Lich', 220, 60, 20, 200, 15, 'balanced', 15, 250, 100),
-('Troll da Montanha', 230, 50, 30, 0, 9, 'aggressive', 11, 160, 72),
-('Elemental de Fogo', 190, 55, 15, 150, 17, 'balanced', 12, 180, 78),
-('Elemental de Gelo', 200, 45, 25, 160, 15, 'balanced', 13, 195, 82),
-('Golem de Cristal', 280, 35, 50, 0, 8, 'defensive', 14, 210, 88),
-('Necromante', 200, 70, 15, 250, 14, 'balanced', 15, 260, 105),
+-- Monstros Avançados (Andares 11-15) - Mid-game sustentável
+('Ogro', 200, 40, 25, 0, 9, 'aggressive', 11, 220, 200),        -- Era 150/70, agora 220/200
+('Quimera', 180, 45, 20, 60, 16, 'balanced', 12, 250, 230),     -- Era 170/75, agora 250/230
+('Hidra', 250, 35, 30, 80, 12, 'defensive', 13, 280, 260),      -- Era 190/80, agora 280/260
+('Dragão Jovem', 300, 50, 40, 120, 20, 'aggressive', 14, 320, 300), -- Era 220/90, agora 320/300
+('Lich', 220, 60, 20, 200, 15, 'balanced', 15, 360, 340),       -- Era 250/100, agora 360/340
+('Troll da Montanha', 230, 50, 30, 0, 9, 'aggressive', 11, 230, 210), -- Era 160/72, agora 230/210
+('Elemental de Fogo', 190, 55, 15, 150, 17, 'balanced', 12, 260, 240), -- Era 180/78, agora 260/240
+('Elemental de Gelo', 200, 45, 25, 160, 15, 'balanced', 13, 290, 270), -- Era 195/82, agora 290/270
+('Golem de Cristal', 280, 35, 50, 0, 8, 'defensive', 14, 330, 310), -- Era 210/88, agora 330/310
+('Necromante', 200, 70, 15, 250, 14, 'balanced', 15, 370, 350), -- Era 260/105, agora 370/350
 
--- Monstros End-Game (Andares 16-20)
-('Dragão Adulto', 400, 70, 50, 150, 22, 'aggressive', 16, 300, 120),
-('Titã de Pedra', 500, 50, 70, 0, 8, 'defensive', 17, 330, 130),
-('Demônio Alado', 350, 80, 40, 200, 25, 'aggressive', 18, 360, 140),
-('Golem Ancestral', 600, 60, 90, 0, 7, 'defensive', 19, 390, 150),
-('Dragão Ancião', 700, 100, 80, 300, 26, 'balanced', 20, 500, 200),
-('Imp', 320, 75, 35, 150, 28, 'aggressive', 16, 280, 115),
-('Golem de Lava', 450, 60, 60, 100, 10, 'defensive', 17, 320, 125),
-('Cavaleiro da Morte', 380, 85, 45, 180, 18, 'aggressive', 18, 350, 135),
-('Wyrm Glacial', 550, 70, 65, 200, 20, 'balanced', 19, 380, 145),
-('Dragão Elemental', 750, 110, 70, 350, 30, 'balanced', 20, 550, 250);
+-- Monstros End-Game (Andares 16-20) - Recompensas generosas
+('Dragão Adulto', 400, 70, 50, 150, 22, 'aggressive', 16, 450, 400),   -- Era 300/120, agora 450/400
+('Titã de Pedra', 500, 50, 70, 0, 8, 'defensive', 17, 500, 450),       -- Era 330/130, agora 500/450
+('Demônio Alado', 350, 80, 40, 200, 25, 'aggressive', 18, 550, 500),   -- Era 360/140, agora 550/500
+('Golem Ancestral', 600, 60, 90, 0, 7, 'defensive', 19, 600, 550),     -- Era 390/150, agora 600/550
+('Dragão Ancião', 700, 100, 80, 300, 26, 'balanced', 20, 750, 700),    -- Era 500/200, agora 750/700
+('Imp', 320, 75, 35, 150, 28, 'aggressive', 16, 420, 380),             -- Era 280/115, agora 420/380
+('Golem de Lava', 450, 60, 60, 100, 10, 'defensive', 17, 480, 430),    -- Era 320/125, agora 480/430
+('Cavaleiro da Morte', 380, 85, 45, 180, 18, 'aggressive', 18, 530, 480), -- Era 350/135, agora 530/480
+('Wyrm Glacial', 550, 70, 65, 200, 20, 'balanced', 19, 580, 530),      -- Era 380/145, agora 580/530
+('Dragão Elemental', 750, 110, 70, 350, 30, 'balanced', 20, 800, 800); -- Era 550/250, agora 800/800
 
 -- =====================================
 -- DROPS DE MONSTROS

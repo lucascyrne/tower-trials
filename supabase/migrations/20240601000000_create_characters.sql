@@ -15,6 +15,32 @@ CREATE TABLE IF NOT EXISTS characters (
     def INTEGER NOT NULL,
     speed INTEGER NOT NULL,
     floor INTEGER DEFAULT 1,
+    
+    -- Atributos primários do personagem
+    strength INTEGER NOT NULL DEFAULT 10,        -- Força: aumenta ataque físico e carry weight
+    dexterity INTEGER NOT NULL DEFAULT 10,       -- Destreza: aumenta velocidade e precisão
+    intelligence INTEGER NOT NULL DEFAULT 10,    -- Inteligência: aumenta mana máxima e dano mágico
+    wisdom INTEGER NOT NULL DEFAULT 10,          -- Sabedoria: aumenta regeneração de mana e resistências
+    vitality INTEGER NOT NULL DEFAULT 10,        -- Vitalidade: aumenta HP máximo e resistência
+    luck INTEGER NOT NULL DEFAULT 10,            -- Sorte: aumenta drop rate e chance crítica
+    
+    -- Pontos de atributo disponíveis para distribuir
+    attribute_points INTEGER NOT NULL DEFAULT 0,
+    
+    -- Habilidades específicas (levels que sobem com uso)
+    sword_mastery INTEGER NOT NULL DEFAULT 1,        -- Maestria com espadas
+    axe_mastery INTEGER NOT NULL DEFAULT 1,          -- Maestria com machados  
+    blunt_mastery INTEGER NOT NULL DEFAULT 1,        -- Maestria com armas de concussão
+    defense_mastery INTEGER NOT NULL DEFAULT 1,      -- Maestria em defesa
+    magic_mastery INTEGER NOT NULL DEFAULT 1,        -- Maestria em magia
+    
+    -- XP das habilidades
+    sword_mastery_xp INTEGER NOT NULL DEFAULT 0,
+    axe_mastery_xp INTEGER NOT NULL DEFAULT 0,
+    blunt_mastery_xp INTEGER NOT NULL DEFAULT 0,
+    defense_mastery_xp INTEGER NOT NULL DEFAULT 0,
+    magic_mastery_xp INTEGER NOT NULL DEFAULT 0,
+    
     last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -40,23 +66,145 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Função para calcular stats base por nível
-CREATE OR REPLACE FUNCTION calculate_base_stats(p_level INTEGER)
+-- Função para calcular stats base considerando atributos
+CREATE OR REPLACE FUNCTION calculate_derived_stats(
+    p_level INTEGER,
+    p_strength INTEGER DEFAULT 10,
+    p_dexterity INTEGER DEFAULT 10,
+    p_intelligence INTEGER DEFAULT 10,
+    p_wisdom INTEGER DEFAULT 10,
+    p_vitality INTEGER DEFAULT 10,
+    p_luck INTEGER DEFAULT 10
+)
 RETURNS TABLE (
-    base_hp INTEGER,
-    base_mana INTEGER,
-    base_atk INTEGER,
-    base_def INTEGER,
-    base_speed INTEGER
+    derived_hp INTEGER,
+    derived_max_hp INTEGER,
+    derived_mana INTEGER,
+    derived_max_mana INTEGER,
+    derived_atk INTEGER,
+    derived_def INTEGER,
+    derived_speed INTEGER,
+    derived_critical_chance DECIMAL,
+    derived_critical_damage DECIMAL
 ) AS $$
+DECLARE
+    base_hp INTEGER := 80 + (5 * p_level);
+    base_mana INTEGER := 40 + (3 * p_level);
+    base_atk INTEGER := 15 + (2 * p_level);
+    base_def INTEGER := 8 + p_level;
+    base_speed INTEGER := 8 + p_level;
 BEGIN
     RETURN QUERY
     SELECT
-        100 + (10 * (p_level - 1)) as base_hp,
-        50 + (5 * (p_level - 1)) as base_mana,
-        20 + (2 * (p_level - 1)) as base_atk,
-        10 + (1 * (p_level - 1)) as base_def,
-        10 + (1 * (p_level - 1)) as base_speed;
+        -- HP derivado de Vitality (cada ponto = +8 HP máximo)
+        base_hp + (p_vitality * 8) as derived_hp,
+        base_hp + (p_vitality * 8) as derived_max_hp,
+        
+        -- Mana derivado de Intelligence (cada ponto = +5 mana máximo)
+        base_mana + (p_intelligence * 5) as derived_mana,
+        base_mana + (p_intelligence * 5) as derived_max_mana,
+        
+        -- Ataque derivado de Strength (cada ponto = +2 ataque)
+        base_atk + (p_strength * 2) as derived_atk,
+        
+        -- Defesa derivado de Vitality e Wisdom (cada ponto = +1 defesa)
+        base_def + (p_vitality + p_wisdom) as derived_def,
+        
+        -- Velocidade derivado de Dexterity (cada ponto = +1.5 speed)
+        base_speed + FLOOR(p_dexterity * 1.5) as derived_speed,
+        
+        -- Chance crítica derivada de Luck (cada ponto = +0.5% crítico)
+        ROUND((p_luck * 0.5)::DECIMAL, 2) as derived_critical_chance,
+        
+        -- Dano crítico base (150% + Luck/10)
+        ROUND((1.5 + (p_luck::DECIMAL / 100))::DECIMAL, 2) as derived_critical_damage;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para calcular XP necessário para próximo nível de habilidade
+CREATE OR REPLACE FUNCTION calculate_skill_xp_requirement(current_level INTEGER)
+RETURNS INTEGER AS $$
+BEGIN
+    -- Progressão exponencial similar ao sistema do personagem
+    -- Base: 50 XP * (1.4 ^ level)
+    RETURN FLOOR(50 * POW(1.4, current_level - 1));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para processar ganho de XP de habilidade
+CREATE OR REPLACE FUNCTION add_skill_xp(
+    p_character_id UUID,
+    p_skill_type VARCHAR,
+    p_xp_amount INTEGER
+)
+RETURNS TABLE (
+    skill_leveled_up BOOLEAN,
+    new_skill_level INTEGER,
+    new_skill_xp INTEGER
+) AS $$
+DECLARE
+    current_level INTEGER;
+    current_xp INTEGER;
+    xp_required INTEGER;
+    new_level INTEGER;
+    new_xp INTEGER;
+    leveled_up BOOLEAN := FALSE;
+BEGIN
+    -- Buscar nível e XP atuais da habilidade
+    CASE p_skill_type
+        WHEN 'sword' THEN
+            SELECT sword_mastery, sword_mastery_xp INTO current_level, current_xp
+            FROM characters WHERE id = p_character_id;
+        WHEN 'axe' THEN
+            SELECT axe_mastery, axe_mastery_xp INTO current_level, current_xp
+            FROM characters WHERE id = p_character_id;
+        WHEN 'blunt' THEN
+            SELECT blunt_mastery, blunt_mastery_xp INTO current_level, current_xp
+            FROM characters WHERE id = p_character_id;
+        WHEN 'defense' THEN
+            SELECT defense_mastery, defense_mastery_xp INTO current_level, current_xp
+            FROM characters WHERE id = p_character_id;
+        WHEN 'magic' THEN
+            SELECT magic_mastery, magic_mastery_xp INTO current_level, current_xp
+            FROM characters WHERE id = p_character_id;
+        ELSE
+            RAISE EXCEPTION 'Tipo de habilidade inválida: %', p_skill_type;
+    END CASE;
+    
+    -- Adicionar XP
+    new_xp := current_xp + p_xp_amount;
+    new_level := current_level;
+    
+    -- Verificar se subiu de nível
+    xp_required := calculate_skill_xp_requirement(current_level);
+    
+    WHILE new_xp >= xp_required AND new_level < 100 LOOP
+        new_xp := new_xp - xp_required;
+        new_level := new_level + 1;
+        leveled_up := TRUE;
+        xp_required := calculate_skill_xp_requirement(new_level);
+    END LOOP;
+    
+    -- Atualizar no banco
+    CASE p_skill_type
+        WHEN 'sword' THEN
+            UPDATE characters SET sword_mastery = new_level, sword_mastery_xp = new_xp 
+            WHERE id = p_character_id;
+        WHEN 'axe' THEN
+            UPDATE characters SET axe_mastery = new_level, axe_mastery_xp = new_xp 
+            WHERE id = p_character_id;
+        WHEN 'blunt' THEN
+            UPDATE characters SET blunt_mastery = new_level, blunt_mastery_xp = new_xp 
+            WHERE id = p_character_id;
+        WHEN 'defense' THEN
+            UPDATE characters SET defense_mastery = new_level, defense_mastery_xp = new_xp 
+            WHERE id = p_character_id;
+        WHEN 'magic' THEN
+            UPDATE characters SET magic_mastery = new_level, magic_mastery_xp = new_xp 
+            WHERE id = p_character_id;
+    END CASE;
+    
+    RETURN QUERY SELECT leveled_up, new_level, new_xp;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -205,6 +353,7 @@ DECLARE
     v_character_id UUID;
     v_base_stats RECORD;
     v_character_count INTEGER;
+    v_available_slots INTEGER;
     v_validation RECORD;
     v_formatted_name VARCHAR;
 BEGIN
@@ -227,18 +376,36 @@ BEGIN
         RAISE EXCEPTION 'Você já possui um personagem com este nome';
     END IF;
     
-    -- Verificar limite de personagens
+    -- Contar personagens atuais
     SELECT COUNT(*)
     INTO v_character_count
     FROM characters
     WHERE user_id = p_user_id;
     
-    IF v_character_count >= 3 THEN
-        RAISE EXCEPTION 'Limite máximo de personagens atingido';
+    -- Calcular slots disponíveis baseado no nível total
+    v_available_slots := calculate_available_character_slots(p_user_id);
+    
+    -- Verificar se pode criar mais personagens
+    IF v_character_count >= v_available_slots THEN
+        DECLARE
+            next_slot_level INTEGER;
+        BEGIN
+            next_slot_level := calculate_required_total_level_for_slot(v_available_slots + 1);
+            RAISE EXCEPTION 'Limite de personagens atingido. Para criar o %º personagem, você precisa de % níveis totais entre todos os seus personagens.', 
+                v_available_slots + 1, next_slot_level;
+        END;
     END IF;
 
-    -- Calcular stats iniciais
-    SELECT * INTO v_base_stats FROM calculate_base_stats(1);
+    -- Calcular stats iniciais usando novos atributos
+    SELECT * INTO v_base_stats FROM calculate_derived_stats(
+        1, -- level
+        10, -- strength
+        10, -- dexterity  
+        10, -- intelligence
+        10, -- wisdom
+        10, -- vitality
+        10  -- luck
+    );
     
     -- Inserir novo personagem
     INSERT INTO characters (
@@ -255,7 +422,14 @@ BEGIN
         atk,
         def,
         speed,
-        floor
+        floor,
+        strength,
+        dexterity,
+        intelligence,
+        wisdom,
+        vitality,
+        luck,
+        attribute_points
     )
     VALUES (
         p_user_id,
@@ -264,14 +438,21 @@ BEGIN
         0, -- xp inicial
         calculate_xp_next_level(1), -- xp necessário para level 2
         0, -- gold inicial
-        v_base_stats.base_hp,
-        v_base_stats.base_hp,
-        v_base_stats.base_mana,
-        v_base_stats.base_mana,
-        v_base_stats.base_atk,
-        v_base_stats.base_def,
-        v_base_stats.base_speed,
-        1  -- andar inicial
+        v_base_stats.derived_hp,
+        v_base_stats.derived_max_hp,
+        v_base_stats.derived_mana,
+        v_base_stats.derived_max_mana,
+        v_base_stats.derived_atk,
+        v_base_stats.derived_def,
+        v_base_stats.derived_speed,
+        1,  -- andar inicial
+        10, -- strength inicial
+        10, -- dexterity inicial
+        10, -- intelligence inicial
+        10, -- wisdom inicial
+        10, -- vitality inicial
+        10, -- luck inicial
+        5   -- pontos de atributo iniciais para personalizar build
     )
     RETURNING id INTO v_character_id;
     
@@ -292,7 +473,9 @@ RETURNS TABLE (
     leveled_up BOOLEAN,
     new_level INTEGER,
     new_xp INTEGER,
-    new_xp_next_level INTEGER
+    new_xp_next_level INTEGER,
+    slots_unlocked BOOLEAN,
+    new_available_slots INTEGER
 ) AS $$
 DECLARE
     v_current_level INTEGER;
@@ -301,10 +484,12 @@ DECLARE
     v_leveled_up BOOLEAN := FALSE;
     v_base_stats RECORD;
     v_new_xp INTEGER;
+    v_user_id UUID;
+    v_progression_result RECORD;
 BEGIN
     -- Obter dados atuais do personagem
-    SELECT level, xp, xp_next_level 
-    INTO v_current_level, v_current_xp, v_xp_next_level
+    SELECT level, xp, xp_next_level, user_id
+    INTO v_current_level, v_current_xp, v_xp_next_level, v_user_id
     FROM characters 
     WHERE id = p_character_id;
     
@@ -333,7 +518,7 @@ BEGIN
         -- Atualizar também o progresso do jogo
         UPDATE game_progress
         SET current_floor = p_floor
-        WHERE user_id = (SELECT user_id FROM characters WHERE id = p_character_id);
+        WHERE user_id = v_user_id;
     END IF;
     
     -- Se XP foi fornecido, verificar level up
@@ -374,6 +559,10 @@ BEGIN
                 hp = v_base_stats.base_hp, -- Recupera HP totalmente ao subir de nível
                 mana = v_base_stats.base_mana -- Recupera Mana totalmente ao subir de nível
             WHERE id = p_character_id;
+            
+            -- Atualizar progressão do usuário quando um personagem sobe de nível
+            SELECT * INTO v_progression_result 
+            FROM update_user_character_progression(v_user_id);
         ELSE
             -- Se não subiu de nível, atualizar apenas XP
             UPDATE characters
@@ -383,14 +572,352 @@ BEGIN
         END IF;
     END IF;
     
+    -- Se não houve level up, ainda verificar progressão (para casos onde outros personagens podem ter mudado)
+    IF NOT v_leveled_up THEN
+        SELECT * INTO v_progression_result 
+        FROM update_user_character_progression(v_user_id);
+    END IF;
+    
     RETURN QUERY
     SELECT 
         v_leveled_up,
         v_current_level,
         COALESCE(v_new_xp, v_current_xp) AS new_xp,
-        v_xp_next_level;
+        v_xp_next_level,
+        COALESCE(v_progression_result.slots_unlocked, FALSE) AS slots_unlocked,
+        COALESCE(v_progression_result.available_slots, 3) AS new_available_slots;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Função para distribuir pontos de atributo
+CREATE OR REPLACE FUNCTION distribute_attribute_points(
+    p_character_id UUID,
+    p_strength INTEGER DEFAULT 0,
+    p_dexterity INTEGER DEFAULT 0,
+    p_intelligence INTEGER DEFAULT 0,
+    p_wisdom INTEGER DEFAULT 0,
+    p_vitality INTEGER DEFAULT 0,
+    p_luck INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    message TEXT,
+    new_stats RECORD
+) AS $$
+DECLARE
+    v_character RECORD;
+    v_total_points INTEGER;
+    v_stats RECORD;
+BEGIN
+    -- Validar entrada
+    v_total_points := p_strength + p_dexterity + p_intelligence + p_wisdom + p_vitality + p_luck;
+    
+    IF v_total_points <= 0 THEN
+        RETURN QUERY SELECT FALSE, 'Nenhum ponto foi distribuído'::TEXT, NULL::RECORD;
+        RETURN;
+    END IF;
+    
+    -- Buscar personagem atual
+    SELECT * INTO v_character
+    FROM characters
+    WHERE id = p_character_id;
+    
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, 'Personagem não encontrado'::TEXT, NULL::RECORD;
+        RETURN;
+    END IF;
+    
+    -- Verificar se tem pontos suficientes
+    IF v_character.attribute_points < v_total_points THEN
+        RETURN QUERY SELECT FALSE, 
+            format('Pontos insuficientes. Disponível: %s, Necessário: %s', 
+                v_character.attribute_points, v_total_points)::TEXT, 
+            NULL::RECORD;
+        RETURN;
+    END IF;
+    
+    -- Verificar limites máximos (cap em 50 por atributo)
+    IF (v_character.strength + p_strength) > 50 OR
+       (v_character.dexterity + p_dexterity) > 50 OR
+       (v_character.intelligence + p_intelligence) > 50 OR
+       (v_character.wisdom + p_wisdom) > 50 OR
+       (v_character.vitality + p_vitality) > 50 OR
+       (v_character.luck + p_luck) > 50 THEN
+        RETURN QUERY SELECT FALSE, 'Limite máximo de 50 pontos por atributo'::TEXT, NULL::RECORD;
+        RETURN;
+    END IF;
+    
+    -- Atualizar atributos
+    UPDATE characters
+    SET
+        strength = strength + p_strength,
+        dexterity = dexterity + p_dexterity,
+        intelligence = intelligence + p_intelligence,
+        wisdom = wisdom + p_wisdom,
+        vitality = vitality + p_vitality,
+        luck = luck + p_luck,
+        attribute_points = attribute_points - v_total_points
+    WHERE id = p_character_id;
+    
+    -- Recalcular stats derivados
+    PERFORM recalculate_character_stats(p_character_id);
+    
+    -- Buscar novos stats
+    SELECT * INTO v_stats FROM get_character_full_stats(p_character_id);
+    
+    RETURN QUERY SELECT TRUE, 'Atributos distribuídos com sucesso'::TEXT, v_stats;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para recalcular todos os stats derivados de um personagem
+CREATE OR REPLACE FUNCTION recalculate_character_stats(p_character_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    v_character RECORD;
+    v_stats RECORD;
+BEGIN
+    -- Buscar dados atuais do personagem
+    SELECT * INTO v_character
+    FROM characters
+    WHERE id = p_character_id;
+    
+    -- Calcular novos stats derivados
+    SELECT * INTO v_stats FROM calculate_derived_stats(
+        v_character.level,
+        v_character.strength,
+        v_character.dexterity,
+        v_character.intelligence,
+        v_character.wisdom,
+        v_character.vitality,
+        v_character.luck
+    );
+    
+    -- Calcular diferença de HP/Mana para manter proporção atual
+    DECLARE
+        v_hp_ratio DECIMAL := v_character.hp::DECIMAL / v_character.max_hp;
+        v_mana_ratio DECIMAL := v_character.mana::DECIMAL / v_character.max_mana;
+        v_new_hp INTEGER := CEILING(v_stats.derived_max_hp * v_hp_ratio);
+        v_new_mana INTEGER := CEILING(v_stats.derived_max_mana * v_mana_ratio);
+    BEGIN
+        -- Atualizar stats
+        UPDATE characters
+        SET
+            max_hp = v_stats.derived_max_hp,
+            max_mana = v_stats.derived_max_mana,
+            atk = v_stats.derived_atk,
+            def = v_stats.derived_def,
+            speed = v_stats.derived_speed,
+            hp = LEAST(v_new_hp, v_stats.derived_max_hp),
+            mana = LEAST(v_new_mana, v_stats.derived_max_mana)
+        WHERE id = p_character_id;
+    END;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para obter stats completos do personagem
+CREATE OR REPLACE FUNCTION get_character_full_stats(p_character_id UUID)
+RETURNS TABLE (
+    character_id UUID,
+    name VARCHAR,
+    level INTEGER,
+    xp INTEGER,
+    xp_next_level INTEGER,
+    gold INTEGER,
+    hp INTEGER,
+    max_hp INTEGER,
+    mana INTEGER,
+    max_mana INTEGER,
+    atk INTEGER,
+    def INTEGER,
+    speed INTEGER,
+    strength INTEGER,
+    dexterity INTEGER,
+    intelligence INTEGER,
+    wisdom INTEGER,
+    vitality INTEGER,
+    luck INTEGER,
+    attribute_points INTEGER,
+    critical_chance DECIMAL,
+    critical_damage DECIMAL,
+    sword_mastery INTEGER,
+    axe_mastery INTEGER,
+    blunt_mastery INTEGER,
+    defense_mastery INTEGER,
+    magic_mastery INTEGER,
+    sword_mastery_xp INTEGER,
+    axe_mastery_xp INTEGER,
+    blunt_mastery_xp INTEGER,
+    defense_mastery_xp INTEGER,
+    magic_mastery_xp INTEGER
+) AS $$
+DECLARE
+    v_character RECORD;
+    v_stats RECORD;
+BEGIN
+    -- Buscar dados do personagem
+    SELECT * INTO v_character
+    FROM characters c
+    WHERE c.id = p_character_id;
+    
+    -- Calcular stats derivados
+    SELECT * INTO v_stats FROM calculate_derived_stats(
+        v_character.level,
+        v_character.strength,
+        v_character.dexterity,
+        v_character.intelligence,
+        v_character.wisdom,
+        v_character.vitality,
+        v_character.luck
+    );
+    
+    RETURN QUERY SELECT
+        v_character.id,
+        v_character.name,
+        v_character.level,
+        v_character.xp,
+        v_character.xp_next_level,
+        v_character.gold,
+        v_character.hp,
+        v_character.max_hp,
+        v_character.mana,
+        v_character.max_mana,
+        v_character.atk,
+        v_character.def,
+        v_character.speed,
+        v_character.strength,
+        v_character.dexterity,
+        v_character.intelligence,
+        v_character.wisdom,
+        v_character.vitality,
+        v_character.luck,
+        v_character.attribute_points,
+        v_stats.derived_critical_chance,
+        v_stats.derived_critical_damage,
+        v_character.sword_mastery,
+        v_character.axe_mastery,
+        v_character.blunt_mastery,
+        v_character.defense_mastery,
+        v_character.magic_mastery,
+        v_character.sword_mastery_xp,
+        v_character.axe_mastery_xp,
+        v_character.blunt_mastery_xp,
+        v_character.defense_mastery_xp,
+        v_character.magic_mastery_xp;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para dar pontos de atributo ao subir de nível
+CREATE OR REPLACE FUNCTION grant_attribute_points_on_levelup(
+    p_character_id UUID,
+    p_new_level INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_points_granted INTEGER;
+BEGIN
+    -- Calcular pontos baseado no nível (2 pontos por nível + 1 extra a cada 5 níveis)
+    v_points_granted := 2;
+    IF p_new_level % 5 = 0 THEN
+        v_points_granted := v_points_granted + 1;
+    END IF;
+    
+    -- Adicionar pontos ao personagem
+    UPDATE characters
+    SET attribute_points = attribute_points + v_points_granted
+    WHERE id = p_character_id;
+    
+    RETURN v_points_granted;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Função para verificar limite de personagens dinâmico
+CREATE OR REPLACE FUNCTION check_character_limit(p_user_id UUID)
+RETURNS TABLE(
+    can_create BOOLEAN,
+    current_count INTEGER,
+    available_slots INTEGER,
+    total_level INTEGER,
+    next_slot_required_level INTEGER
+) AS $$
+DECLARE
+    v_current_count INTEGER;
+    v_available_slots INTEGER;
+    v_total_level INTEGER;
+    v_next_required INTEGER;
+BEGIN
+    -- Contar personagens atuais
+    SELECT COUNT(*)
+    INTO v_current_count
+    FROM characters
+    WHERE user_id = p_user_id;
+    
+    -- Calcular slots disponíveis
+    v_available_slots := calculate_available_character_slots(p_user_id);
+    
+    -- Calcular nível total atual
+    SELECT COALESCE(SUM(level), 0)
+    INTO v_total_level
+    FROM characters
+    WHERE user_id = p_user_id;
+    
+    -- Calcular nível necessário para o próximo slot
+    v_next_required := calculate_required_total_level_for_slot(v_available_slots + 1);
+    
+    RETURN QUERY SELECT
+        (v_current_count < v_available_slots) AS can_create,
+        v_current_count,
+        v_available_slots,
+        v_total_level,
+        v_next_required;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Função para buscar informações de progressão do usuário
+CREATE OR REPLACE FUNCTION get_user_character_progression(p_user_id UUID)
+RETURNS TABLE(
+    total_character_level INTEGER,
+    max_character_slots INTEGER,
+    current_character_count INTEGER,
+    next_slot_required_level INTEGER,
+    progress_to_next_slot DECIMAL
+) AS $$
+DECLARE
+    v_total_level INTEGER;
+    v_max_slots INTEGER;
+    v_current_count INTEGER;
+    v_next_required INTEGER;
+    v_progress DECIMAL;
+BEGIN
+    -- Buscar dados do usuário
+    SELECT u.total_character_level, u.max_character_slots
+    INTO v_total_level, v_max_slots
+    FROM users u
+    WHERE u.uid = p_user_id;
+    
+    -- Contar personagens atuais
+    SELECT COUNT(*)
+    INTO v_current_count
+    FROM characters
+    WHERE user_id = p_user_id;
+    
+    -- Calcular nível necessário para próximo slot
+    v_next_required := calculate_required_total_level_for_slot(v_max_slots + 1);
+    
+    -- Calcular progresso (percentual)
+    IF v_next_required > 0 THEN
+        v_progress := LEAST(100.0, (v_total_level::DECIMAL / v_next_required::DECIMAL) * 100.0);
+    ELSE
+        v_progress := 100.0;
+    END IF;
+    
+    RETURN QUERY SELECT
+        v_total_level,
+        v_max_slots,
+        v_current_count,
+        v_next_required,
+        v_progress;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Função para buscar personagens do usuário
 CREATE OR REPLACE FUNCTION get_user_characters(p_user_id UUID)
@@ -420,21 +947,6 @@ BEGIN
     FROM characters c
     WHERE c.user_id = p_user_id
     ORDER BY c.created_at DESC;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Função para verificar limite de personagens
-CREATE OR REPLACE FUNCTION check_character_limit(p_user_id UUID)
-RETURNS BOOLEAN AS $$
-DECLARE
-    character_count INTEGER;
-BEGIN
-    SELECT COUNT(*)
-    INTO character_count
-    FROM characters
-    WHERE user_id = p_user_id;
-    
-    RETURN character_count < 3;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -553,6 +1065,8 @@ GRANT EXECUTE ON FUNCTION get_character TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_character TO authenticated;
 GRANT EXECUTE ON FUNCTION update_character_floor TO authenticated;
 GRANT EXECUTE ON FUNCTION validate_character_name TO authenticated;
+GRANT EXECUTE ON FUNCTION check_character_limit TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_character_progression TO authenticated;
 
 -- =====================================================
 -- SISTEMA DE CURA AUTOMÁTICA
