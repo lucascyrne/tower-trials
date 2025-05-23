@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { CharacterService } from '@/resources/game/character.service';
+import { Character } from '@/resources/game/models/character.model';
 import { toast } from 'sonner';
 import { MapModal } from '@/components/game/MapModal';
 
@@ -316,7 +317,7 @@ export default function GameHubPage() {
         <MapModal
           isOpen={showMapModal}
           onClose={() => setShowMapModal(false)}
-          character={player}
+          character={{ id: player.id, floor: player.floor } as Character}
           onStartFromCheckpoint={handleStartFromCheckpoint}
         />
 
