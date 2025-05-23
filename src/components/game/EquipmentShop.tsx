@@ -1,41 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { Equipment } from '@/resources/game/models/equipment.model';
+import { Consumable } from '@/resources/game/models/consumable.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
+import { ConsumableService } from '@/resources/game/consumable.service';
 import { Character } from '@/resources/game/models/character.model';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sword, Shield, Gem, Coins, HelpCircle, Package, Star, Zap } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sword, Shield, Gem, Coins, HelpCircle, Package, Star, Zap, ShoppingCart, ShoppingBag } from 'lucide-react';
 import { InventoryModal } from './InventoryModal';
 import { toast } from 'sonner';
 
-interface EquipmentShopProps {
+interface GameShopProps {
     character: Character;
     onPurchase: () => void;
 }
 
-export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurchase }) => {
+export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => {
     const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
+    const [availableConsumables, setAvailableConsumables] = useState<Consumable[]>([]);
     const [loading, setLoading] = useState(true);
     const [inventoryOpen, setInventoryOpen] = useState(false);
 
     useEffect(() => {
-        loadAvailableEquipment();
+        loadShopItems();
     }, [character.level]);
 
-    const loadAvailableEquipment = async () => {
+    const loadShopItems = async () => {
         try {
             setLoading(true);
+            
+            // Carregar equipamentos
             const equipment = await EquipmentService.getAvailableEquipment(character.level);
             setAvailableEquipment(equipment);
+
+            // Carregar consumíveis disponíveis na loja (exceto craftáveis que não são vendidos)
+            const consumablesRes = await ConsumableService.getAvailableConsumables();
+            if (consumablesRes.success && consumablesRes.data) {
+                // Filtrar apenas consumíveis que podem ser comprados (price > 0)
+                const shopConsumables = consumablesRes.data.filter(c => 
+                    c.price > 0 && !c.name.includes('Elixir')
+                );
+                setAvailableConsumables(shopConsumables);
+            }
         } catch (error) {
-            console.error('Erro ao carregar equipamentos disponíveis:', error);
-            toast.error('Erro ao carregar equipamentos da loja');
+            console.error('Erro ao carregar itens da loja:', error);
+            toast.error('Erro ao carregar itens da loja');
         } finally {
             setLoading(false);
         }
     };
 
-    const handlePurchase = async (equipment: Equipment) => {
+    const handleEquipmentPurchase = async (equipment: Equipment) => {
         if (character.gold < equipment.price) {
             toast.error('Gold insuficiente para comprar este item!');
             return;
@@ -52,6 +68,28 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
         } catch (error) {
             console.error('Erro ao comprar equipamento:', error);
             toast.error('Erro ao comprar equipamento!');
+        }
+    };
+
+    const handleConsumablePurchase = async (consumable: Consumable, quantity: number = 1) => {
+        const totalPrice = consumable.price * quantity;
+        
+        if (character.gold < totalPrice) {
+            toast.error('Gold insuficiente para comprar este item!');
+            return;
+        }
+
+        try {
+            const result = await ConsumableService.buyConsumable(character.id, consumable.id, quantity);
+            if (result.success) {
+                toast.success(`${quantity}x ${consumable.name} comprado com sucesso!`);
+                onPurchase();
+            } else {
+                toast.error(result.error || 'Erro ao comprar consumível!');
+            }
+        } catch (error) {
+            console.error('Erro ao comprar consumível:', error);
+            toast.error('Erro ao comprar consumível!');
         }
     };
 
@@ -160,7 +198,7 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
                         <span>{equipment.price}</span>
                     </div>
                     <Button
-                        onClick={() => handlePurchase(equipment)}
+                        onClick={() => handleEquipmentPurchase(equipment)}
                         disabled={!canBuy}
                         variant={canBuy ? "default" : "secondary"}
                         className="flex-1 max-w-[120px]"
@@ -174,11 +212,116 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
         );
     };
 
+    const renderConsumableCard = (consumable: Consumable) => {
+        const canAfford1 = character.gold >= consumable.price;
+        const canAfford5 = character.gold >= (consumable.price * 5);
+        const canAfford10 = character.gold >= (consumable.price * 10);
+        const hasLevel = character.level >= (consumable.level_requirement || 1);
+        const canBuy = canAfford1 && hasLevel;
+
+        return (
+            <Card key={consumable.id} className={`p-4 transition-all hover:shadow-lg ${!canBuy ? 'opacity-75' : ''}`}>
+                <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-primary mb-1">{consumable.name}</h3>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                {getConsumableTypeLabel(consumable.type)}
+                            </span>
+                            {!hasLevel && (
+                                <span className="text-xs text-red-400 bg-red-900/50 px-2 py-1 rounded">
+                                    Nível {consumable.level_requirement || 1}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <ShoppingBag className="h-5 w-5 text-blue-400" />
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{consumable.description}</p>
+
+                <div className="space-y-2 mb-4">
+                    {(consumable.level_requirement || 1) > 1 && (
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Nível Requerido:</span>
+                            <span className={hasLevel ? 'text-green-400 font-medium' : 'text-red-400 font-medium'}>
+                                {consumable.level_requirement || 1}
+                            </span>
+                        </div>
+                    )}
+                    {consumable.effect_value > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Efeito:</span>
+                            <span className="text-green-400 font-medium">
+                                {consumable.type === 'potion' ? `+${consumable.effect_value}` : 
+                                 consumable.type === 'antidote' ? 'Remove debuffs' : 
+                                 `+${consumable.effect_value} por 3 turnos`}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-3 pt-3 border-t">
+                    <div className="flex items-center gap-1 text-yellow-400 font-semibold justify-center">
+                        <Coins className="h-4 w-4" />
+                        <span>{consumable.price} gold cada</span>
+                    </div>
+                    
+                    {/* Botões de compra em diferentes quantidades */}
+                    <div className="grid grid-cols-3 gap-2">
+                        <Button
+                            onClick={() => handleConsumablePurchase(consumable, 1)}
+                            disabled={!canBuy}
+                            size="sm"
+                            className="text-xs"
+                        >
+                            1x
+                        </Button>
+                        <Button
+                            onClick={() => handleConsumablePurchase(consumable, 5)}
+                            disabled={!canAfford5 || !hasLevel}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                        >
+                            5x
+                        </Button>
+                        <Button
+                            onClick={() => handleConsumablePurchase(consumable, 10)}
+                            disabled={!canAfford10 || !hasLevel}
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                        >
+                            10x
+                        </Button>
+                    </div>
+                    
+                    {!hasLevel && (
+                        <p className="text-xs text-red-400 text-center">
+                            Requer nível {consumable.level_requirement || 1}
+                        </p>
+                    )}
+                </div>
+            </Card>
+        );
+    };
+
     const getEquipmentTypeLabel = (type: string) => {
         const types = {
             weapon: 'Arma',
             armor: 'Armadura',
             accessory: 'Acessório'
+        };
+        return types[type as keyof typeof types] || type;
+    };
+
+    const getConsumableTypeLabel = (type: string) => {
+        const types = {
+            potion: 'Poção',
+            elixir: 'Elixir',
+            antidote: 'Antídoto',
+            buff: 'Fortalecimento'
         };
         return types[type as keyof typeof types] || type;
     };
@@ -209,7 +352,7 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
         return (
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">Loja de Equipamentos</h2>
+                    <h2 className="text-2xl font-bold">Loja</h2>
                     <div className="flex items-center gap-4">
                         <Button variant="outline" disabled>
                             <Package className="h-4 w-4 mr-2" />
@@ -238,7 +381,7 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
         <>
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">Loja de Equipamentos</h2>
+                    <h2 className="text-2xl font-bold">Loja</h2>
                     <div className="flex items-center gap-4">
                         <Button 
                             variant="outline" 
@@ -255,19 +398,50 @@ export const EquipmentShop: React.FC<EquipmentShopProps> = ({ character, onPurch
                     </div>
                 </div>
 
-                {availableEquipment.length === 0 ? (
-                    <div className="text-center py-12">
-                        <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhum equipamento disponível</h3>
-                        <p className="text-muted-foreground">
-                            Nenhum equipamento foi encontrado para o seu nível atual.
-                        </p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {availableEquipment.map(equipment => renderEquipmentCard(equipment))}
-                    </div>
-                )}
+                <Tabs defaultValue="equipment" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="equipment" className="flex items-center gap-2">
+                            <ShoppingCart className="h-4 w-4" />
+                            Equipamentos ({availableEquipment.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="consumables" className="flex items-center gap-2">
+                            <ShoppingBag className="h-4 w-4" />
+                            Consumíveis ({availableConsumables.length})
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="equipment" className="space-y-4">
+                        {availableEquipment.length === 0 ? (
+                            <div className="text-center py-12">
+                                <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                                <h3 className="text-lg font-semibold mb-2">Nenhum equipamento disponível</h3>
+                                <p className="text-muted-foreground">
+                                    Nenhum equipamento foi encontrado para o seu nível atual.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {availableEquipment.map(equipment => renderEquipmentCard(equipment))}
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="consumables" className="space-y-4">
+                        {availableConsumables.length === 0 ? (
+                            <div className="text-center py-12">
+                                <ShoppingBag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                                <h3 className="text-lg font-semibold mb-2">Nenhum consumível disponível</h3>
+                                <p className="text-muted-foreground">
+                                    A loja não possui consumíveis disponíveis no momento.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {availableConsumables.map(consumable => renderConsumableCard(consumable))}
+                            </div>
+                        )}
+                    </TabsContent>
+                </Tabs>
             </div>
 
             <InventoryModal

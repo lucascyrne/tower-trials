@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Backpack } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
-import { EquipmentPanel } from './EquipmentPanel';
-import { EquipmentShop } from './EquipmentShop';
 import { PlayerInfo } from './PlayerInfo';
 import { EnemyInfo } from './EnemyInfo';
 import { BattleActions } from './BattleActions';
@@ -205,10 +203,6 @@ export default function GameBattle() {
     return 'bg-red-500';
   };
 
-  const handleEquipmentChange = () => {
-    window.location.reload();
-  };
-
   return (
     <>
       <div className="w-full max-w-6xl">
@@ -235,24 +229,6 @@ export default function GameBattle() {
             </CardContent>
           </Card>
         </div>
-
-        {showEquipment !== 'none' && (
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              {showEquipment === 'inventory' ? (
-                <EquipmentPanel 
-                  character={player} 
-                  onEquipmentChange={handleEquipmentChange} 
-                />
-              ) : (
-                <EquipmentShop 
-                  character={player} 
-                  onPurchase={handleEquipmentChange} 
-                />
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         <BattleActions handleAction={handleAction} isPlayerTurn={isPlayerTurn} loading={loading} player={player} />
 
