@@ -1,22 +1,4 @@
-export type EquipmentType = 'weapon' | 'armor' | 'accessory';
-export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
-export interface Equipment {
-  id: string;
-  name: string;
-  description: string;
-  type: EquipmentType;
-  rarity: EquipmentRarity;
-  level_requirement: number;
-  atk_bonus: number;
-  def_bonus: number;
-  mana_bonus: number;
-  speed_bonus: number;
-  price: number;
-  is_unlocked: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type EquipmentType = 'weapon' | 'armor' | 'accessory';export type WeaponSubtype = 'sword' | 'axe' | 'blunt' | 'staff' | 'dagger';export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';export interface Equipment {  id: string;  name: string;  description: string;  type: EquipmentType;  weapon_subtype?: WeaponSubtype;  rarity: EquipmentRarity;  level_requirement: number;  atk_bonus: number;  def_bonus: number;  mana_bonus: number;  speed_bonus: number;  price: number;  is_unlocked: boolean;  created_at: string;  updated_at: string;}
 
 export interface CharacterEquipment {
   id: string;

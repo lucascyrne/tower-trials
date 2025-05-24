@@ -80,6 +80,33 @@ export interface GamePlayer {
   spells: PlayerSpell[];
   consumables?: CharacterConsumable[];
   active_effects: ActiveEffects;
+  
+  // Atributos primários
+  strength?: number;
+  dexterity?: number;
+  intelligence?: number;
+  wisdom?: number;
+  vitality?: number;
+  luck?: number;
+  attribute_points?: number;
+  
+  // Habilidades específicas
+  sword_mastery?: number;
+  axe_mastery?: number;
+  blunt_mastery?: number;
+  defense_mastery?: number;
+  magic_mastery?: number;
+  
+  // XP das habilidades
+  sword_mastery_xp?: number;
+  axe_mastery_xp?: number;
+  blunt_mastery_xp?: number;
+  defense_mastery_xp?: number;
+  magic_mastery_xp?: number;
+  
+  // Stats derivados (calculados)
+  critical_chance?: number;
+  critical_damage?: number;
 }
 
 export interface GameState {
