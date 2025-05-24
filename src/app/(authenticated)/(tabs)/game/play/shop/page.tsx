@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
-import { GameShop } from '@/components/game/EquipmentShop';
+import { GameShop } from '@/components/shop/EquipmentShop';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Character } from '@/resources/game/models/character.model';
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useGame } from '@/resources/game/game-hook';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
-import { InventoryPanel } from '@/components/game/InventoryPanel';
+import { InventoryPanel } from '@/components/inventory/InventoryPanel';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Character } from '@/resources/game/models/character.model';
 
