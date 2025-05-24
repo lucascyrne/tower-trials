@@ -9,6 +9,7 @@ import { ActionType } from '@/resources/game/game-model';
 import { PlayerInfo } from './PlayerInfo';
 import { EnemyInfo } from './EnemyInfo';
 import { BattleActions } from './BattleActions';
+import { PotionSlots } from './PotionSlots';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -32,12 +33,12 @@ export default function GameBattle() {
   const searchParams = useSearchParams();
   const { gameState, performAction, loading, gameLog, addGameLogMessage, selectCharacter } = useGame();
   const { player, currentEnemy, currentFloor, isPlayerTurn, gameMessage } = gameState;
-  const [showEquipment, setShowEquipment] = useState<'none' | 'inventory' | 'shop'>('none');
+  const [showEquipment, setShowEquipment] = useState<'none' | 'inventory'>('none');
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messageProcessedRef = useRef<Set<string>>(new Set());
-  const characterLoadedRef = useRef(false); // Para evitar carregamentos duplicados
+  const characterLoadedRef = useRef(false);
   const [victoryRewards, setVictoryRewards] = useState<BattleRewards>({
     xp: 0,
     gold: 0,
@@ -69,7 +70,6 @@ export default function GameBattle() {
           newLevel: battleRewards.newLevel
         });
         
-        // Mostrar modal imediatamente após receber as recompensas
         setShowVictoryModal(true);
         
         const victoryMessage = `Vitória! Você derrotou ${gameState.currentEnemy?.name || 'o inimigo'} e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
@@ -92,7 +92,6 @@ export default function GameBattle() {
   // Carregamento inicial do personagem
   useEffect(() => {
     const loadSelectedCharacter = async () => {
-      // Evitar carregamentos duplicados do mesmo personagem
       if (characterLoadedRef.current) {
         return;
       }
@@ -130,11 +129,17 @@ export default function GameBattle() {
 
     loadSelectedCharacter();
     
-    // Cleanup function para garantir que não há requisições desnecessárias
     return () => {
       messageProcessedRef.current.clear();
     };
   }, [searchParams]);
+
+  // Função para atualizar stats do jogador após usar poção
+  const handlePlayerStatsUpdate = (newHp: number, newMana: number) => {
+    // Atualizar diretamente no gameState
+    gameState.player.hp = newHp;
+    gameState.player.mana = newMana;
+  };
 
   // Função para retornar à seleção de personagens
   const handleReturnToCharacterSelect = () => {
@@ -154,12 +159,10 @@ export default function GameBattle() {
     );
   }
 
-  // Renderizar evento especial se estiver no modo especial ou se há evento especial ativo
   if (gameState.mode === 'special_event' || gameState.currentSpecialEvent) {
     return <SpecialEventPanel />;
   }
 
-  // Se não há inimigo ou andar, não renderizar a batalha
   if (!currentEnemy || !currentFloor) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
@@ -217,16 +220,29 @@ export default function GameBattle() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <EnemyInfo currentEnemy={currentEnemy} enemyHpPercentage={enemyHpPercentage} getHpColor={getHpColor} />
           <PlayerInfo player={player} playerHpPercentage={playerHpPercentage} playerManaPercentage={playerManaPercentage} getHpColor={getHpColor} />
+          
+          {/* Card de Poções e Equipamentos */}
           <Card className="overflow-hidden">
             <CardHeader className="bg-card/95 pb-2">
-              <CardTitle className="text-center text-lg">Equipamentos</CardTitle>
+              <CardTitle className="text-center text-lg">Arsenal</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-4">
+            <CardContent className="p-4 space-y-4">
+              {/* Slots de Poção em destaque */}
+              <div>
+                <PotionSlots 
+                  player={player}
+                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                  disabled={!isPlayerTurn || loading.performAction}
+                />
+              </div>
+              
+              {/* Botão do Inventário */}
+              <div className="pt-2 border-t border-border">
                 <Button
                   onClick={() => setShowEquipment(showEquipment === 'inventory' ? 'none' : 'inventory')}
-                  className="flex items-center gap-2"
+                  className="w-full flex items-center gap-2"
                   variant={showEquipment === 'inventory' ? 'secondary' : 'outline'}
+                  size="sm"
                 >
                   <Backpack className="h-4 w-4" />
                   Inventário

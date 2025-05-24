@@ -1,6 +1,28 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { CharacterEquipment, EquipmentSlots } from '@/resources/game/models/equipment.model';
-import { CharacterConsumable } from '@/resources/game/models/consumable.model';import { EquipmentService } from '@/resources/game/equipment.service';import { ConsumableService } from '@/resources/game/consumable.service';import { Character } from '@/resources/game/models/character.model';import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';import { Sword, Zap, Sparkles } from 'lucide-react';import { toast } from 'sonner';import { WeaponSlotSelectionModal } from './WeaponSlotSelectionModal';import { QuickPotionBar } from './QuickPotionBar';import { CharacterPaperDoll } from './CharacterPaperDoll';import { EquipmentFilters } from './EquipmentFilters';import { EquipmentCard } from './EquipmentCard';import { ConsumableCard } from './ConsumableCard';import { DropCard } from './DropCard';import { EmptyState } from './EmptyState';import { GoldDisplay } from './GoldDisplay';import { CharacterDrop, EquipmentFilter, WeaponSubtypeFilter, RarityFilter } from './types';interface InventoryPanelProps {    character: Character;    onEquipmentChange: () => void;}
+import { CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { EquipmentService } from '@/resources/game/equipment.service';
+import { ConsumableService } from '@/resources/game/consumable.service';
+import { Character } from '@/resources/game/models/character.model';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sword, Zap, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { WeaponSlotSelectionModal } from './WeaponSlotSelectionModal';
+import { QuickPotionBar } from './QuickPotionBar';
+import { CharacterPaperDoll } from './CharacterPaperDoll';
+import { EquipmentFilters } from './EquipmentFilters';
+import { EquipmentCard } from './EquipmentCard';
+import { ConsumableCard } from './ConsumableCard';
+import { DropCard } from './DropCard';
+import { EmptyState } from './EmptyState';
+import { GoldDisplay } from './GoldDisplay';
+import { PotionSlotManager } from './PotionSlotManager';
+import { CharacterDrop, EquipmentFilter, WeaponSubtypeFilter, RarityFilter } from './types';
+
+interface InventoryPanelProps {
+    character: Character;
+    onEquipmentChange: () => void;
+}
 
 export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEquipmentChange }) => {
     const [equipment, setEquipment] = useState<CharacterEquipment[]>([]);
@@ -72,7 +94,9 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
         } finally {
             setLoading(false);
         }
-        }, [character.id]);    useEffect(() => {
+    }, [character.id]);
+
+    useEffect(() => {
         loadInventory();
     }, []);
 
@@ -239,6 +263,11 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
         setSearchTerm('');
     };
 
+    const handleSlotsUpdate = () => {
+        // Callback para atualizar quando slots são modificados
+        onEquipmentChange();
+    };
+
     if (loading) {
         return (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[70vh]">
@@ -280,6 +309,13 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
                     character={character}
                     consumables={consumables}
                     onConsumableUsed={loadInventory}
+                />
+                
+                {/* Gerenciador de Slots de Poção */}
+                <PotionSlotManager 
+                    characterId={character.id}
+                    consumables={consumables}
+                    onSlotsUpdate={handleSlotsUpdate}
                 />
             </div>
 
