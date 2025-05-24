@@ -3,12 +3,6 @@
 # Script para configurar ambiente LOCAL
 echo "🏗️ Configurando ambiente LOCAL (Docker)..."
 
-# Backup do .env atual se existir
-if [ -f .env ]; then
-    cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
-    echo "📁 Backup do .env atual criado"
-fi
-
 # Criar .env para ambiente LOCAL
 cat > .env << 'EOF'
 # Ambiente LOCAL - Supabase via Docker

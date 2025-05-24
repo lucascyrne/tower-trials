@@ -3,12 +3,6 @@
 # Script para configurar ambiente DEV (remoto)
 echo "🌐 Configurando ambiente DEV (remoto)..."
 
-# Backup do .env atual se existir
-if [ -f .env ]; then
-    cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
-    echo "📁 Backup do .env atual criado"
-fi
-
 # Criar .env para ambiente DEV
 cat > .env << 'EOF'
 # Ambiente DEV - Supabase remoto para desenvolvimento
