@@ -42,7 +42,7 @@ export function EnvironmentIndicator() {
   const config = getEnvironmentConfig();
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
       <div 
         className={`${config.color} text-white px-3 py-1 rounded-full text-xs font-mono flex items-center gap-1 shadow-lg`}
         title={`Ambiente: ${config.label} (${config.description})`}

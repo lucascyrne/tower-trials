@@ -89,6 +89,13 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
   };
 
   const applyBuildSuggestion = (build: CharacterBuild) => {
+    // Se a build já está selecionada, desselecionar
+    if (selectedBuild?.name === build.name) {
+      setSelectedBuild(null);
+      resetDistribution();
+      return;
+    }
+    
     setSelectedBuild(build);
     
     // Distribuir pontos baseado na build sugerida
@@ -167,11 +174,11 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-900 rounded-lg border border-gray-700 max-w-6xl w-full max-h-[90vh] overflow-hidden"
+          className="bg-gray-900 rounded-lg border border-gray-700 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-700">
+          <div className="flex items-center justify-between p-6 border-b border-gray-700 flex-shrink-0">
             <div>
               <h2 className="text-2xl font-bold text-white">Distribuir Atributos</h2>
               <p className="text-gray-400">Pontos disponíveis: <span className="text-yellow-400 font-bold">{remainingPoints}</span></p>
@@ -184,11 +191,11 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
             </button>
           </div>
 
-          <div className="flex flex-col lg:flex-row">
+          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
             {/* Área principal de distribuição */}
-            <div className="flex-1 p-6">
-              {/* Builds sugeridas */}
-              <div className="mb-6">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Builds sugeridas - fixo */}
+              <div className="p-6 border-b border-gray-700 flex-shrink-0">
                 <h3 className="text-lg font-semibold text-white mb-3">Builds Sugeridas</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {PREDEFINED_BUILDS.map((build) => (
@@ -199,84 +206,91 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
                       onClick={() => applyBuildSuggestion(build)}
                       className={`p-3 rounded-lg border transition-all text-left ${
                         selectedBuild?.name === build.name
-                          ? 'border-blue-500 bg-blue-500/10'
+                          ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
                           : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
                       }`}
                     >
                       <div className="font-medium text-white text-sm">{build.name}</div>
                       <div className="text-xs text-gray-400 mt-1">{build.description}</div>
+                      {selectedBuild?.name === build.name && (
+                        <div className="text-xs text-blue-400 mt-2 font-medium">
+                          ✓ Selecionado - Clique para desselecionar
+                        </div>
+                      )}
                     </motion.button>
                   ))}
                 </div>
               </div>
 
-              {/* Controles de atributos */}
-              <div className="space-y-4">
-                {Object.values(AttributeType).map((attribute) => {
-                  const IconComponent = attributeIcons[attribute];
-                  const currentValue = characterStats[attribute];
-                  const distributedValue = distribution[attribute];
-                  const finalValue = currentValue + distributedValue;
-                  
-                  return (
-                    <motion.div
-                      key={attribute}
-                      layout
-                      className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <IconComponent className={`w-6 h-6 ${attributeColors[attribute]}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white capitalize">
-                              {attribute.replace('_', ' ')}
-                            </span>
-                            <span className="text-sm text-gray-400">
-                              {currentValue} → {finalValue}
-                            </span>
+              {/* Controles de atributos - com scroll */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-4">
+                  {Object.values(AttributeType).map((attribute) => {
+                    const IconComponent = attributeIcons[attribute];
+                    const currentValue = characterStats[attribute];
+                    const distributedValue = distribution[attribute];
+                    const finalValue = currentValue + distributedValue;
+                    
+                    return (
+                      <motion.div
+                        key={attribute}
+                        layout
+                        className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          <IconComponent className={`w-6 h-6 ${attributeColors[attribute]}`} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-white capitalize">
+                                {attribute.replace('_', ' ')}
+                              </span>
+                              <span className="text-sm text-gray-400">
+                                {currentValue} → {finalValue}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {getAttributeDescription(attribute)}
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500">
-                            {getAttributeDescription(attribute)}
-                          </p>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleAttributeChange(attribute, -1)}
-                          disabled={distributedValue === 0}
-                          className="w-8 h-8 rounded-full bg-red-600/20 border border-red-500 text-red-400 
-                                   disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600/30 
-                                   transition-colors flex items-center justify-center"
-                        >
-                          <Minus size={16} />
-                        </button>
                         
-                        <span className="w-8 text-center text-white font-medium">
-                          {distributedValue}
-                        </span>
-                        
-                        <button
-                          onClick={() => handleAttributeChange(attribute, 1)}
-                          disabled={remainingPoints === 0 || finalValue >= 50}
-                          className="w-8 h-8 rounded-full bg-green-600/20 border border-green-500 text-green-400 
-                                   disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600/30 
-                                   transition-colors flex items-center justify-center"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleAttributeChange(attribute, -1)}
+                            disabled={distributedValue === 0}
+                            className="w-8 h-8 rounded-full bg-red-600/20 border border-red-500 text-red-400 
+                                     disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600/30 
+                                     transition-colors flex items-center justify-center"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          
+                          <span className="w-8 text-center text-white font-medium">
+                            {distributedValue}
+                          </span>
+                          
+                          <button
+                            onClick={() => handleAttributeChange(attribute, 1)}
+                            disabled={remainingPoints === 0 || finalValue >= 50}
+                            className="w-8 h-8 rounded-full bg-green-600/20 border border-green-500 text-green-400 
+                                     disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600/30 
+                                     transition-colors flex items-center justify-center"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {/* Preview dos stats */}
-            <div className="lg:w-80 p-6 border-l border-gray-700 bg-gray-800/30">
+            <div className="lg:w-80 p-6 border-l border-gray-700 bg-gray-800/30 flex flex-col">
               <h3 className="text-lg font-semibold text-white mb-4">Preview dos Stats</h3>
               
-              <div className="space-y-3">
+              <div className="space-y-3 flex-1">
                 <div className="flex justify-between">
                   <span className="text-gray-400">HP Máximo:</span>
                   <span className="text-white">
@@ -351,7 +365,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-gray-700">
+          <div className="flex items-center justify-between p-6 border-t border-gray-700 flex-shrink-0">
             <button
               onClick={resetDistribution}
               className="flex items-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
