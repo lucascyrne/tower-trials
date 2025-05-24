@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { CharacterConsumable, CraftingRecipe, MonsterDrop } from '@/resources/game/models/consumable.model';
 import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
 
 // Tipos auxiliares para o processamento de receitas
 interface ProcessedIngredient {
@@ -305,12 +306,28 @@ export default function CraftingPage() {
   }
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Crafting</h1>
-        <p className="text-gray-400">
-          Crie poções e elixires com os materiais coletados de monstros
-        </p>
+    <div className="container py-4 sm:py-6">
+      {/* Header padronizado */}
+      <div className="space-y-3 sm:space-y-4 mb-6">
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/game/play/hub?character=${selectedCharacter.id}`)}
+            className="self-start"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Voltar ao Hub</span>
+            <span className="sm:hidden">Voltar</span>
+          </Button>
+          
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Crafting</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Crie poções e elixires com os materiais coletados
+            </p>
+          </div>
+        </div>
       </div>
       
       <Tabs defaultValue="crafting">
@@ -398,12 +415,6 @@ export default function CraftingPage() {
           </div>
         </TabsContent>
       </Tabs>
-      
-      <div className="mt-6 text-center">
-        <Button onClick={() => router.push(`/game/play/hub?character=${selectedCharacter.id}`)}>
-          Voltar ao Hub
-        </Button>
-      </div>
     </div>
   );
 } 

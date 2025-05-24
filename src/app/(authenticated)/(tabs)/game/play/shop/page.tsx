@@ -121,26 +121,27 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-7xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={handleReturnToHub}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao Hub
-          </Button>
-          
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-primary mb-1">
-              Loja de {character.name}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Nível {character.level} • Andar {character.floor}
-            </p>
+        {/* Header padronizado */}
+        <div className="space-y-3 sm:space-y-4 mb-6">
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReturnToHub}
+              className="self-start"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Voltar ao Hub</span>
+              <span className="sm:hidden">Voltar</span>
+            </Button>
+            
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Loja</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {character.name} • Nível {character.level} • Andar {character.floor}
+              </p>
+            </div>
           </div>
-          
-          <div className="w-[120px]"></div> {/* Spacer para centralizar o título */}
         </div>
 
         <Card>

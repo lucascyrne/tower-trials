@@ -10,6 +10,8 @@ import { MapModal } from '@/components/hub/MapModal';
 import { CharacterInfoCard } from '@/components/hub/CharacterInfoCard';
 import { ActionMenuGrid } from '@/components/hub/ActionMenuGrid';
 import { HubNotifications } from '@/components/hub/HubNotifications';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 export default function GameHubPage() {
   const router = useRouter();
@@ -128,6 +130,29 @@ export default function GameHubPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 p-4">
       <div className="w-full max-w-7xl mx-auto space-y-4">
+        {/* Header padronizado */}
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/game/play')}
+              className="self-start"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Trocar Personagem</span>
+              <span className="sm:hidden">Trocar</span>
+            </Button>
+            
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Hub de {player.name}</h1>
+              <p className="text-sm sm:text-base text-slate-300">
+                Andar {player.floor} • Nível {player.level} • {player.gold} Gold
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Notificações */}
         <HubNotifications 
           player={player}

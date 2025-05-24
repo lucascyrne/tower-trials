@@ -150,31 +150,30 @@ export default function CharacterStatsPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header responsivo e elegante */}
         <div className="space-y-4">
-          {/* Linha superior - Navegação e título */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/game/play/hub?character=' + characterId)}
-              className="self-start"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Voltar ao Hub</span>
-              <span className="sm:hidden">Voltar</span>
-            </Button>
-            
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold truncate">
-                Atributos & Habilidades
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Gerencie os stats do seu personagem
-              </p>
+          <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+            <div className="flex flex-col items-start gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/game/play/hub?character=' + characterId)}
+                className="self-start"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Voltar ao Hub</span>
+                <span className="sm:hidden">Voltar</span>
+              </Button>
+              
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                  Atributos & Habilidades
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  Gerencie os stats do seu personagem
+                </p>
+              </div>
             </div>
-          </div>
-          
-          {/* Linha inferior - Botão de distribuir pontos (se disponível) */}
-          {characterStats.attribute_points > 0 && (
+
+            {characterStats.attribute_points > 0 && (
             <div className="flex justify-center sm:justify-end">
               <Button
                 onClick={() => setShowAttributeModal(true)}
@@ -191,6 +190,7 @@ export default function CharacterStatsPage() {
               </Button>
             </div>
           )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

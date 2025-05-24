@@ -4,6 +4,7 @@ import { useAuth } from '@/resources/auth/auth-hook';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useRouter } from 'next/navigation';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { IUser } from '@/resources/user/user-model';
 import { userService } from '@/resources/user/user.service';
@@ -40,6 +42,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [userProfile, setUserProfile] = useState<IUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -138,8 +141,27 @@ export default function ProfilePage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Perfil</h1>
+      {/* Header padronizado */}
+      <div className="space-y-3 sm:space-y-4 mb-6">
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/game')}
+            className="self-start"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Voltar ao Menu</span>
+            <span className="sm:hidden">Voltar</span>
+          </Button>
+          
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Perfil</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Gerencie suas informações pessoais
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6">

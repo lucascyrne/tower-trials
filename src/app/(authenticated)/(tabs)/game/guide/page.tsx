@@ -1,13 +1,39 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function GuidePage() {
+  const router = useRouter();
+
   return (
     <div className="container mx-auto p-4 space-y-4">
-      <h1 className="text-3xl font-bold text-center mb-8">Guia do Tower Trials</h1>
+      {/* Header padronizado */}
+      <div className="space-y-3 sm:space-y-4 mb-6">
+        <div className="flex flex-col gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/game')}
+            className="self-start"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Voltar ao Menu</span>
+            <span className="sm:hidden">Voltar</span>
+          </Button>
+          
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Guia do Tower Trials</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Aprenda tudo sobre o jogo
+            </p>
+          </div>
+        </div>
+      </div>
       
       <Tabs defaultValue="basics" className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">

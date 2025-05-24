@@ -142,36 +142,44 @@ export default function InventoryPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-7xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={handleReturnToHub}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao Hub
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Atualizando...' : 'Atualizar'}
-          </Button>
+        {/* Header padronizado */}
+        <div className="space-y-3 sm:space-y-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-col gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReturnToHub}
+                className="self-start"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Voltar ao Hub</span>
+                <span className="sm:hidden">Voltar</span>
+              </Button>
+              
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold">Inventário</h1>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  {selectedChar.name} • Nível {selectedChar.level} • {selectedChar.gold} Gold
+                </p>
+              </div>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="self-start sm:self-center"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+              <span className="sm:hidden">{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+            </Button>
+          </div>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-center">
-              Inventário de {selectedChar.name}
-              <span className="text-sm font-normal text-muted-foreground block mt-1">
-                Nível {selectedChar.level} • {selectedChar.gold} Gold
-              </span>
-            </CardTitle>
-          </CardHeader>
           <CardContent>
             <InventoryPanel 
               character={selectedChar} 
