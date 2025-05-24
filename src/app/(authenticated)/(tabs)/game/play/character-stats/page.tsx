@@ -148,27 +148,48 @@ export default function CharacterStatsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary p-4">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/game/play/hub?character=' + characterId)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar ao Hub
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">Atributos & Habilidades</h1>
-            <p className="text-muted-foreground">Gerencie os stats do seu personagem</p>
-          </div>
-          {characterStats.attribute_points > 0 && (
+        {/* Header responsivo e elegante */}
+        <div className="space-y-4">
+          {/* Linha superior - Navegação e título */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <Button
-              onClick={() => setShowAttributeModal(true)}
-              className="bg-yellow-600 hover:bg-yellow-700"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/game/play/hub?character=' + characterId)}
+              className="self-start"
             >
-              <Star className="h-4 w-4 mr-2" />
-              Distribuir Pontos ({characterStats.attribute_points})
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Voltar ao Hub</span>
+              <span className="sm:hidden">Voltar</span>
             </Button>
+            
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                Atributos & Habilidades
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Gerencie os stats do seu personagem
+              </p>
+            </div>
+          </div>
+          
+          {/* Linha inferior - Botão de distribuir pontos (se disponível) */}
+          {characterStats.attribute_points > 0 && (
+            <div className="flex justify-center sm:justify-end">
+              <Button
+                onClick={() => setShowAttributeModal(true)}
+                className="bg-yellow-600 hover:bg-yellow-700 w-full sm:w-auto"
+                size="sm"
+              >
+                <Star className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">
+                  Distribuir Pontos ({characterStats.attribute_points})
+                </span>
+                <span className="sm:hidden">
+                  Distribuir ({characterStats.attribute_points})
+                </span>
+              </Button>
+            </div>
           )}
         </div>
 
