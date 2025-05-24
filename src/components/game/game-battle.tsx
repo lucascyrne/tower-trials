@@ -1,9 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Backpack } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
 import { PlayerInfo } from './PlayerInfo';
@@ -33,7 +31,6 @@ export default function GameBattle() {
   const searchParams = useSearchParams();
   const { gameState, performAction, loading, gameLog, addGameLogMessage, selectCharacter } = useGame();
   const { player, currentEnemy, currentFloor, isPlayerTurn, gameMessage } = gameState;
-  const [showEquipment, setShowEquipment] = useState<'none' | 'inventory'>('none');
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -217,42 +214,27 @@ export default function GameBattle() {
       <div className="w-full max-w-6xl">
         <BattleHeader currentFloor={currentFloor} playerLevel={player.level} gameMessage={gameMessage} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <EnemyInfo currentEnemy={currentEnemy} enemyHpPercentage={enemyHpPercentage} getHpColor={getHpColor} />
           <PlayerInfo player={player} playerHpPercentage={playerHpPercentage} playerManaPercentage={playerManaPercentage} getHpColor={getHpColor} />
-          
-          {/* Card de Poções e Equipamentos */}
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-card/95 pb-2">
-              <CardTitle className="text-center text-lg">Arsenal</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              {/* Slots de Poção em destaque */}
-              <div>
-                <PotionSlots 
-                  player={player}
-                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
-                  disabled={!isPlayerTurn || loading.performAction}
-                />
-              </div>
-              
-              {/* Botão do Inventário */}
-              <div className="pt-2 border-t border-border">
-                <Button
-                  onClick={() => setShowEquipment(showEquipment === 'inventory' ? 'none' : 'inventory')}
-                  className="w-full flex items-center gap-2"
-                  variant={showEquipment === 'inventory' ? 'secondary' : 'outline'}
-                  size="sm"
-                >
-                  <Backpack className="h-4 w-4" />
-                  Inventário
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        <BattleActions handleAction={handleAction} isPlayerTurn={isPlayerTurn} loading={loading} player={player} />
+        {/* Interface de Ações com Poções Integradas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Slots de Poção */}
+          <div className="flex justify-center lg:justify-start">
+            <PotionSlots 
+              player={player}
+              onPlayerStatsUpdate={handlePlayerStatsUpdate}
+              disabled={!isPlayerTurn || loading.performAction}
+            />
+          </div>
+          
+          {/* Ações de Batalha */}
+          <div className="lg:col-span-2">
+            <BattleActions handleAction={handleAction} isPlayerTurn={isPlayerTurn} loading={loading} player={player} />
+          </div>
+        </div>
 
         <GameLog gameLog={gameLog} />
       </div>

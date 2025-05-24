@@ -12,7 +12,6 @@ export interface PotionSlot {
   consumable_name: string | null;
   consumable_description: string | null;
   effect_value: number | null;
-  icon: string | null;
 }
 
 export interface SpellSlot {
@@ -23,7 +22,6 @@ export interface SpellSlot {
   mana_cost: number | null;
   damage: number | null;
   spell_type: string | null;
-  icon: string | null;
 }
 
 export interface PotionUseResult {
@@ -55,8 +53,7 @@ export class SlotService {
           consumable_id: null,
           consumable_name: null,
           consumable_description: null,
-          effect_value: null,
-          icon: null
+          effect_value: null
         });
       }
 
@@ -90,8 +87,7 @@ export class SlotService {
           spell_description: null,
           mana_cost: null,
           damage: null,
-          spell_type: null,
-          icon: null
+          spell_type: null
         });
       }
 

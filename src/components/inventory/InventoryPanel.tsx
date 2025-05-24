@@ -5,7 +5,8 @@ import { EquipmentService } from '@/resources/game/equipment.service';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { Character } from '@/resources/game/models/character.model';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sword, Zap, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sword, Zap, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { WeaponSlotSelectionModal } from './WeaponSlotSelectionModal';
 import { QuickPotionBar } from './QuickPotionBar';
@@ -43,9 +44,23 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
     const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Estados para seções expansíveis
+    const [expandedSections, setExpandedSections] = useState({
+        quickAccess: true,
+        potionSlots: true,
+        filters: false
+    });
+
     // Modal de seleção de slot para armas
     const [showSlotModal, setShowSlotModal] = useState(false);
     const [pendingEquipment, setPendingEquipment] = useState<CharacterEquipment | null>(null);
+
+    const toggleSection = (section: keyof typeof expandedSections) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
 
     const loadInventory = useCallback(async () => {
         try {
@@ -293,7 +308,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[70vh]">
-            {/* Coluna esquerda - Paper Doll do Personagem */}
+            {/* Coluna esquerda - Paper Doll do Personagem e Seções Expansíveis */}
             <div className="lg:col-span-4 space-y-4">
                 <CharacterPaperDoll 
                     character={character}
@@ -304,19 +319,53 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
                 {/* Gold Display */}
                 <GoldDisplay gold={character.gold} />
 
-                {/* Acesso Rápido a Poções */}
-                <QuickPotionBar 
-                    character={character}
-                    consumables={consumables}
-                    onConsumableUsed={loadInventory}
-                />
+                {/* Seção de Acesso Rápido - Expansível */}
+                <div className="border border-border rounded-lg bg-card/50">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-between p-4 h-auto"
+                        onClick={() => toggleSection('quickAccess')}
+                    >
+                        <span className="font-medium">Acesso Rápido</span>
+                        {expandedSections.quickAccess ? 
+                            <ChevronUp className="h-4 w-4" /> : 
+                            <ChevronDown className="h-4 w-4" />
+                        }
+                    </Button>
+                    {expandedSections.quickAccess && (
+                        <div className="p-4 pt-0">
+                            <QuickPotionBar 
+                                character={character}
+                                consumables={consumables}
+                                onConsumableUsed={loadInventory}
+                            />
+                        </div>
+                    )}
+                </div>
                 
-                {/* Gerenciador de Slots de Poção */}
-                <PotionSlotManager 
-                    characterId={character.id}
-                    consumables={consumables}
-                    onSlotsUpdate={handleSlotsUpdate}
-                />
+                {/* Seção de Slots de Poção - Expansível */}
+                <div className="border border-border rounded-lg bg-card/50">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-between p-4 h-auto"
+                        onClick={() => toggleSection('potionSlots')}
+                    >
+                        <span className="font-medium">Slots de Batalha (Q, W, E)</span>
+                        {expandedSections.potionSlots ? 
+                            <ChevronUp className="h-4 w-4" /> : 
+                            <ChevronDown className="h-4 w-4" />
+                        }
+                    </Button>
+                    {expandedSections.potionSlots && (
+                        <div className="p-4 pt-0">
+                            <PotionSlotManager 
+                                characterId={character.id}
+                                consumables={consumables}
+                                onSlotsUpdate={handleSlotsUpdate}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Coluna direita - Inventário com Abas */}
@@ -339,18 +388,35 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onEqu
 
                     {/* Aba de Equipamentos */}
                     <TabsContent value="equipment" className="space-y-4">
-                        {/* Barra de filtros */}
-                        <EquipmentFilters
-                            equipmentFilter={equipmentFilter}
-                            weaponSubtypeFilter={weaponSubtypeFilter}
-                            rarityFilter={rarityFilter}
-                            searchTerm={searchTerm}
-                            onEquipmentFilterChange={setEquipmentFilter}
-                            onWeaponSubtypeFilterChange={setWeaponSubtypeFilter}
-                            onRarityFilterChange={setRarityFilter}
-                            onSearchTermChange={setSearchTerm}
-                            onClearFilters={clearFilters}
-                        />
+                        {/* Seção de Filtros - Expansível */}
+                        <div className="border border-border rounded-lg bg-card/50">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-between p-4 h-auto"
+                                onClick={() => toggleSection('filters')}
+                            >
+                                <span className="font-medium">Filtros de Equipamentos</span>
+                                {expandedSections.filters ? 
+                                    <ChevronUp className="h-4 w-4" /> : 
+                                    <ChevronDown className="h-4 w-4" />
+                                }
+                            </Button>
+                            {expandedSections.filters && (
+                                <div className="p-4 pt-0">
+                                    <EquipmentFilters
+                                        equipmentFilter={equipmentFilter}
+                                        weaponSubtypeFilter={weaponSubtypeFilter}
+                                        rarityFilter={rarityFilter}
+                                        searchTerm={searchTerm}
+                                        onEquipmentFilterChange={setEquipmentFilter}
+                                        onWeaponSubtypeFilterChange={setWeaponSubtypeFilter}
+                                        onRarityFilterChange={setRarityFilter}
+                                        onSearchTermChange={setSearchTerm}
+                                        onClearFilters={clearFilters}
+                                    />
+                                </div>
+                            )}
+                        </div>
 
                         {/* Lista de equipamentos */}
                         {filteredEquipment.length === 0 ? (

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { SlotService, PotionSlot } from '@/resources/game/slot.service';
 import { GamePlayer } from '@/resources/game/game-model';
 import { toast } from 'sonner';
-import { Beaker, Keyboard } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 interface PotionSlotsProps {
   player: GamePlayer;
@@ -44,7 +44,7 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
 
     const slot = potionSlots.find(s => s.slot_position === slotPosition);
     if (!slot?.consumable_id) {
-      toast.warning(`Slot ${slotPosition} está vazio`);
+      toast.warning(`Slot ${getSlotKeyBinding(slotPosition)} está vazio`);
       return;
     }
 
@@ -78,6 +78,12 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (disabled || usingSlot !== null) return;
+
+      // Verificar se o usuário está digitando em um input
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true') {
+        return;
+      }
 
       const key = event.key.toLowerCase();
       let slotPosition = 0;
@@ -113,9 +119,13 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
     }
   };
 
-  const getSlotIcon = (slot: PotionSlot) => {
+  const getPotionIcon = (slot: PotionSlot) => {
     if (slot.consumable_id) {
-      return '🧪';
+      // Usar ícone baseado no tipo de poção
+      if (slot.consumable_description?.toLowerCase().includes('mana')) {
+        return '🔵'; // Poção de mana
+      }
+      return '🔴'; // Poção de HP
     }
     return null;
   };
@@ -124,7 +134,7 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
     return (
       <div className="flex gap-2">
         {[1, 2, 3].map(i => (
-          <div key={i} className="w-16 h-16 bg-card border rounded-lg animate-pulse" />
+          <div key={i} className="w-12 h-12 bg-card border rounded-full animate-pulse" />
         ))}
       </div>
     );
@@ -132,12 +142,11 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Keyboard className="h-4 w-4" />
-        <span>Poções (Q, W, E)</span>
+      <div className="text-sm text-muted-foreground text-center">
+        Poções Rápidas
       </div>
       
-      <div className="flex gap-2">
+      <div className="flex justify-center gap-3">
         {potionSlots.map((slot) => {
           const isUsing = usingSlot === slot.slot_position;
           const isEmpty = !slot.consumable_id;
@@ -147,33 +156,28 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
             <div key={slot.slot_position} className="relative">
               <Button
                 variant={isEmpty ? 'outline' : 'default'}
-                size="sm"
-                className={`w-16 h-16 p-1 relative ${
+                size="lg"
+                className={`h-12 w-12 rounded-full p-0 relative ${
                   isEmpty 
-                    ? 'border-dashed border-muted-foreground/30' 
-                    : 'border-solid'
+                    ? 'border-dashed border-muted-foreground/30 bg-transparent hover:bg-muted/20' 
+                    : 'bg-green-600 hover:bg-green-700 border-2 border-green-500'
                 } ${isUsing ? 'opacity-50' : ''}`}
                 onClick={() => handlePotionSlotUse(slot.slot_position)}
                 disabled={disabled || isEmpty || isUsing}
-                title={slot.consumable_name || `Slot ${slot.slot_position} vazio`}
+                title={slot.consumable_name ? `${slot.consumable_name} (+${slot.effect_value})` : `Slot ${keyBinding} vazio`}
               >
                 {isEmpty ? (
-                  <Beaker className="h-6 w-6 text-muted-foreground/50" />
+                  <Plus className="h-4 w-4 text-muted-foreground/50" />
                 ) : (
-                  <div className="flex flex-col items-center gap-1">
+                  <div className="flex flex-col items-center">
                     <div className="text-lg">
-                      {getSlotIcon(slot)}
+                      {getPotionIcon(slot)}
                     </div>
-                    {slot.effect_value && (
-                      <div className="text-xs font-bold">
-                        +{slot.effect_value}
-                      </div>
-                    )}
                   </div>
                 )}
                 
                 {isUsing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                   </div>
                 )}
@@ -187,20 +191,33 @@ export function PotionSlots({ player, onPlayerStatsUpdate, disabled = false }: P
                 {keyBinding}
               </Badge>
               
-              {/* Tooltip com informações da poção */}
-              {!isEmpty && slot.consumable_name && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 opacity-0 hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  <div className="bg-popover text-popover-foreground text-xs p-2 rounded border shadow-md whitespace-nowrap">
-                    <div className="font-medium">{slot.consumable_name}</div>
-                    {slot.consumable_description && (
-                      <div className="text-muted-foreground">{slot.consumable_description}</div>
-                    )}
-                  </div>
-                </div>
+              {/* Efeito visual quando vazio */}
+              {isEmpty && (
+                <Badge 
+                  variant="outline" 
+                  className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 text-xs bg-background/80"
+                >
+                  Vazio
+                </Badge>
+              )}
+              
+              {/* Valor do efeito quando não vazio */}
+              {!isEmpty && slot.effect_value && (
+                <Badge 
+                  variant="secondary" 
+                  className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 text-xs bg-green-100 text-green-800 border-green-300"
+                >
+                  +{slot.effect_value}
+                </Badge>
               )}
             </div>
           );
         })}
+      </div>
+      
+      {/* Instruções */}
+      <div className="text-xs text-muted-foreground text-center mt-1">
+        Configure no Inventário • Teclas Q, W, E
       </div>
     </div>
   );
