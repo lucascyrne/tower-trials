@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { GamePlayer } from '@/resources/game/game-model';
+import { formatLargeNumber } from '@/lib/utils';
 import { 
   User, 
   Star, 
@@ -254,7 +255,9 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   <Gem className="h-4 w-4 text-yellow-400" />
                   <span className="text-sm font-medium text-slate-300">Gold</span>
                 </div>
-                <p className="text-lg font-bold text-yellow-400">{player.gold}</p>
+                <p className="text-lg font-bold text-yellow-400" title={`${player.gold.toLocaleString('pt-BR')} Gold`}>
+                  {formatLargeNumber(player.gold)}
+                </p>
               </div>
             </div>
           </div>

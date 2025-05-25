@@ -10,6 +10,7 @@ import { useAuth } from '@/resources/auth/auth-hook';
 import { RankingService } from '@/resources/game/ranking-service';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
+import { formatLargeNumber } from '@/lib/utils';
 
 export default function GameOver() {
   const router = useRouter();
@@ -97,10 +98,10 @@ export default function GameOver() {
             <div className="font-medium">{player.level}</div>
             
             <div>Gold acumulado:</div>
-            <div className="font-medium">{player.gold.toLocaleString('pt-BR')}</div>
+            <div className="font-medium">{formatLargeNumber(player.gold)}</div>
             
             <div>XP total:</div>
-            <div className="font-medium">{player.xp.toLocaleString('pt-BR')}</div>
+            <div className="font-medium">{formatLargeNumber(player.xp)}</div>
           </div>
         </div>
 

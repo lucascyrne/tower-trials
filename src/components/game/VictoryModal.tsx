@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Coins, Star, Trophy, Sparkles, ShoppingBag, ArrowRight, Home, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatLargeNumber } from '@/lib/utils';
 
 interface VictoryModalProps {
   isOpen: boolean;
@@ -99,7 +100,7 @@ export function VictoryModal({
                 <Coins className="h-6 w-6 text-yellow-400" />
                 <div>
                   <div className="font-semibold">Ouro</div>
-                  <div className="text-2xl font-bold text-primary">+{rewards.gold} Gold</div>
+                  <div className="text-2xl font-bold text-primary">+{formatLargeNumber(rewards.gold)} Gold</div>
                 </div>
               </motion.div>
 

@@ -284,7 +284,7 @@ export function CharacterSelect() {
     <div className="container mx-auto p-4">
       {renderProgressionInfo()}
       
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-2">
         <h1 className="text-3xl font-bold">Seus Personagens</h1>
         <Button 
           onClick={() => setShowCreateDialog(true)}

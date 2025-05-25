@@ -63,7 +63,7 @@ export class RankingService {
   static async getGlobalRanking(
     mode: RankingMode = 'highest_floor',
     limit: number = 10,
-    aliveOnly: boolean = false
+    statusFilter: 'all' | 'alive' | 'dead' = 'all'
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
       let functionName: string;
@@ -82,10 +82,21 @@ export class RankingService {
           functionName = 'get_ranking_by_highest_floor';
       }
 
+      // Converter statusFilter para parâmetros da função
+      let aliveOnly = false;
+      let deadOnly = false;
+      
+      if (statusFilter === 'alive') {
+        aliveOnly = true;
+      } else if (statusFilter === 'dead') {
+        deadOnly = true;
+      }
+
       const { data, error } = await supabase
         .rpc(functionName, {
           p_limit: limit,
-          p_alive_only: aliveOnly
+          p_alive_only: aliveOnly,
+          p_dead_only: deadOnly
         });
 
       if (error) throw error;

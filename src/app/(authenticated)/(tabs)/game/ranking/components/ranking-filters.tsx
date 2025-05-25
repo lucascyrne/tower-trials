@@ -2,21 +2,23 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trophy, TrendingUp, Coins, Users } from 'lucide-react';
+import { Trophy, TrendingUp, Coins, Users, Heart, Skull } from 'lucide-react';
 import { RankingMode } from '@/resources/game/ranking-service';
+
+export type CharacterStatusFilter = 'all' | 'alive' | 'dead';
 
 interface RankingFiltersProps {
   activeMode: RankingMode;
   onModeChange: (mode: RankingMode) => void;
-  aliveOnly: boolean;
-  onAliveFilterChange: (aliveOnly: boolean) => void;
+  statusFilter: CharacterStatusFilter;
+  onStatusFilterChange: (filter: CharacterStatusFilter) => void;
 }
 
 const RankingFilters: React.FC<RankingFiltersProps> = ({
   activeMode,
   onModeChange,
-  aliveOnly,
-  onAliveFilterChange
+  statusFilter,
+  onStatusFilterChange
 }) => {
   const modes = [
     {
@@ -39,11 +41,35 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
     }
   ];
 
+  const statusOptions = [
+    {
+      key: 'all' as CharacterStatusFilter,
+      label: 'Todos',
+      shortLabel: 'Todos',
+      icon: Users,
+      color: 'text-gray-500'
+    },
+    {
+      key: 'alive' as CharacterStatusFilter,
+      label: 'Apenas Vivos',
+      shortLabel: 'Vivos',
+      icon: Heart,
+      color: 'text-green-500'
+    },
+    {
+      key: 'dead' as CharacterStatusFilter,
+      label: 'Apenas Mortos',
+      shortLabel: 'Mortos',
+      icon: Skull,
+      color: 'text-red-500'
+    }
+  ];
+
   return (
     <div className="space-y-4">
       {/* Filtros de Modalidade */}
       <div>
-        <h3 className="text-sm font-medium mb-2">Modalidade</h3>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Modalidade</h3>
         <div className="flex flex-wrap gap-2">
           {modes.map((mode) => {
             const Icon = mode.icon;
@@ -55,9 +81,9 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onModeChange(mode.key)}
-                className={`flex items-center gap-2 ${isActive ? '' : 'hover:bg-muted'}`}
+                className={`flex items-center gap-2 text-xs ${isActive ? '' : 'hover:bg-muted'}`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? 'text-white' : mode.color}`} />
+                <Icon className={`h-3 w-3 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className="hidden sm:inline">{mode.label}</span>
                 <span className="sm:hidden">
                   {mode.key === 'highest_floor' ? 'Andar' : 
@@ -71,27 +97,26 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
 
       {/* Filtro de Status */}
       <div>
-        <h3 className="text-sm font-medium mb-2">Status dos Personagens</h3>
-        <div className="flex gap-2">
-          <Button
-            variant={!aliveOnly ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onAliveFilterChange(false)}
-            className="flex items-center gap-2"
-          >
-            <Users className="h-4 w-4" />
-            Todos
-          </Button>
-          <Button
-            variant={aliveOnly ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onAliveFilterChange(true)}
-            className="flex items-center gap-2"
-          >
-            <Users className="h-4 w-4 text-green-500" />
-            <span className="hidden sm:inline">Apenas Vivos</span>
-            <span className="sm:hidden">Vivos</span>
-          </Button>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Status</h3>
+        <div className="flex flex-wrap gap-2">
+          {statusOptions.map((option) => {
+            const Icon = option.icon;
+            const isActive = statusFilter === option.key;
+            
+            return (
+              <Button
+                key={option.key}
+                variant={isActive ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => onStatusFilterChange(option.key)}
+                className={`flex items-center gap-2 text-xs ${isActive ? '' : 'hover:bg-muted'}`}
+              >
+                <Icon className={`h-3 w-3 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                <span className="hidden sm:inline">{option.label}</span>
+                <span className="sm:hidden">{option.shortLabel}</span>
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { RankingService, RankingEntry, RankingMode } from '@/resources/game/ranking-service';
 import { useAuth } from '@/resources/auth/auth-hook';
-import RankingFilters from './components/ranking-filters';
+import RankingFilters, { CharacterStatusFilter } from './components/ranking-filters';
 import RankingTable from './components/ranking-table';
 import UserStats from './components/user-stats';
 
@@ -30,18 +30,18 @@ export default function RankingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'global' | 'personal'>('global');
   const [rankingMode, setRankingMode] = useState<RankingMode>('highest_floor');
-  const [aliveOnly, setAliveOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<CharacterStatusFilter>('all');
 
   useEffect(() => {
     fetchRankingData();
-  }, [user, rankingMode, aliveOnly]);
+  }, [user, rankingMode, statusFilter]);
 
   const fetchRankingData = async () => {
     try {
       setIsLoading(true);
       
       // Buscar ranking global
-      const globalResponse = await RankingService.getGlobalRanking(rankingMode, 10, aliveOnly);
+      const globalResponse = await RankingService.getGlobalRanking(rankingMode, 10, statusFilter);
       
       if (globalResponse.error) {
         console.error('Erro ao buscar ranking global:', globalResponse.error);
@@ -110,34 +110,34 @@ export default function RankingPage() {
                 {getModeTitle(rankingMode)}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground">
-                {aliveOnly ? 'Apenas personagens vivos' : 'Todos os personagens'}
+                {statusFilter === 'alive' ? 'Apenas personagens vivos' : 
+                 statusFilter === 'dead' ? 'Apenas personagens mortos' : 
+                 'Todos os personagens'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filtros */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Filtros e Estatísticas */}
+          <div className="lg:col-span-1 space-y-4">
             <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold">Filtros</h2>
+              <CardHeader className="pb-3">
+                <h2 className="text-lg font-medium">Filtros</h2>
               </CardHeader>
               <CardContent>
                 <RankingFilters
                   activeMode={rankingMode}
                   onModeChange={setRankingMode}
-                  aliveOnly={aliveOnly}
-                  onAliveFilterChange={setAliveOnly}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
                 />
               </CardContent>
             </Card>
 
             {/* Estatísticas do usuário */}
             {user && userRanking.length > 0 && (
-              <div className="mt-6">
-                <UserStats stats={userStats} userRanking={userRanking} />
-              </div>
+              <UserStats stats={userStats} userRanking={userRanking} />
             )}
           </div>
 

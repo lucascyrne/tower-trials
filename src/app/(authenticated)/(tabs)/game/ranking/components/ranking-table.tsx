@@ -4,6 +4,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trophy, Heart, Skull, TrendingUp, Coins } from 'lucide-react';
 import { RankingEntry, RankingMode } from '@/resources/game/ranking-service';
+import { formatLargeNumber } from '@/lib/utils';
 
 interface RankingTableProps {
   entries: RankingEntry[];
@@ -32,7 +33,7 @@ const RankingTable: React.FC<RankingTableProps> = ({
       case 'level':
         return `Nível ${entry.character_level}`;
       case 'gold':
-        return `${entry.character_gold.toLocaleString('pt-BR')} Gold`;
+        return `${formatLargeNumber(entry.character_gold)} Gold`;
       default:
         return `Andar ${entry.highest_floor}`;
     }
@@ -41,9 +42,9 @@ const RankingTable: React.FC<RankingTableProps> = ({
   const getSecondaryInfo = (entry: RankingEntry, mode: RankingMode): string => {
     switch (mode) {
       case 'highest_floor':
-        return `Nível ${entry.character_level} • ${entry.character_gold.toLocaleString('pt-BR')} Gold`;
+        return `Nível ${entry.character_level} • ${formatLargeNumber(entry.character_gold)} Gold`;
       case 'level':
-        return `Andar ${entry.highest_floor} • ${entry.character_gold.toLocaleString('pt-BR')} Gold`;
+        return `Andar ${entry.highest_floor} • ${formatLargeNumber(entry.character_gold)} Gold`;
       case 'gold':
         return `Andar ${entry.highest_floor} • Nível ${entry.character_level}`;
       default:

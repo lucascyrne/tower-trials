@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, TrendingUp, Coins, Users, Heart, Calendar } from 'lucide-react';
+import { Trophy, TrendingUp, Coins, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { formatLargeNumber } from '@/lib/utils';
 
 interface UserStatsProps {
   stats: {
@@ -22,120 +24,127 @@ interface UserStatsProps {
 }
 
 const UserStats: React.FC<UserStatsProps> = ({ stats, userRanking }) => {
+  const [isStatsExpanded, setIsStatsExpanded] = useState(true);
+  const [isLastRunExpanded, setIsLastRunExpanded] = useState(false);
+  
   const lastRun = userRanking[0];
   
   return (
     <div className="space-y-4">
+      {/* Estatísticas Principais - Minimalista */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Suas Estatísticas</CardTitle>
+        <CardHeader className="pb-3">
+          <Button
+            variant="ghost"
+            className="w-full justify-between p-0 h-auto hover:bg-transparent"
+            onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+          >
+            <CardTitle className="text-lg font-medium">Suas Conquistas</CardTitle>
+            {isStatsExpanded ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-              <Trophy className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{stats.bestFloor}</div>
-              <div className="text-xs text-muted-foreground">Melhor Andar</div>
-            </div>
-            
-            <div className="text-center p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-              <TrendingUp className="h-6 w-6 text-blue-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{stats.bestLevel}</div>
-              <div className="text-xs text-muted-foreground">Maior Nível</div>
-            </div>
-            
-            <div className="text-center p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-              <Coins className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{stats.bestGold.toLocaleString('pt-BR')}</div>
-              <div className="text-xs text-muted-foreground">Mais Rico</div>
-            </div>
-            
-            <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-              <Heart className="h-6 w-6 text-green-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold">{stats.aliveCharacters}</div>
-              <div className="text-xs text-muted-foreground">Personagens Vivos</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {lastRun && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Última Tentativa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Personagem:</span>
-                <div className="font-medium flex items-center gap-2">
-                  {lastRun.character_alive ? (
-                    <Heart className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <span className="h-3 w-3 text-red-500">💀</span>
-                  )}
-                  {lastRun.character_alive ? 'Vivo' : 'Morto'}
+        
+        {isStatsExpanded && (
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Melhor Andar */}
+              <div className="text-center p-4 bg-muted/30 rounded-lg border">
+                <Trophy className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <div className="text-2xl font-bold mb-1">
+                  {stats.bestFloor}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Melhor Andar
                 </div>
               </div>
               
-              <div>
-                <span className="text-muted-foreground">Andar Alcançado:</span>
-                <div className="font-medium">{lastRun.highest_floor}</div>
+              {/* Maior Nível */}
+              <div className="text-center p-4 bg-muted/30 rounded-lg border">
+                <TrendingUp className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                <div className="text-2xl font-bold mb-1">
+                  {stats.bestLevel}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Maior Nível
+                </div>
               </div>
               
-              <div>
-                <span className="text-muted-foreground">Nível Final:</span>
-                <div className="font-medium">{lastRun.character_level}</div>
-              </div>
-              
-              <div>
-                <span className="text-muted-foreground">Ouro Final:</span>
-                <div className="font-medium">{lastRun.character_gold.toLocaleString('pt-BR')}</div>
-              </div>
-              
-              <div className="col-span-2">
-                <span className="text-muted-foreground">Data:</span>
-                <div className="font-medium">
-                  {new Date(lastRun.created_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+              {/* Mais Rico */}
+              <div className="text-center p-4 bg-muted/30 rounded-lg border">
+                <Coins className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
+                                 <div className="text-xl font-bold mb-1" title={`${stats.bestGold.toLocaleString('pt-BR')} Gold`}>
+                   {formatLargeNumber(stats.bestGold)}
+                 </div>
+                <div className="text-xs text-muted-foreground">
+                  Mais Rico
                 </div>
               </div>
             </div>
           </CardContent>
+        )}
+      </Card>
+
+      {/* Última Tentativa - Colapsável */}
+      {lastRun && (
+        <Card>
+          <CardHeader className="pb-3">
+            <Button
+              variant="ghost"
+              className="w-full justify-between p-0 h-auto hover:bg-transparent"
+              onClick={() => setIsLastRunExpanded(!isLastRunExpanded)}
+            >
+              <CardTitle className="text-lg font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Última Tentativa
+              </CardTitle>
+              {isLastRunExpanded ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </Button>
+          </CardHeader>
+          
+          {isLastRunExpanded && (
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {lastRun.character_alive ? (
+                    <span className="text-sm">❤️</span>
+                  ) : (
+                    <span className="text-sm">💀</span>
+                  )}
+                  <div>
+                    <div className="font-medium text-sm">
+                      {lastRun.character_alive ? 'Vivo' : 'Morto'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(lastRun.created_at).toLocaleDateString('pt-BR')}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold">Andar {lastRun.highest_floor}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Nível {lastRun.character_level}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
 
+      {/* Resumo Compacto */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Resumo Geral
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Total de Tentativas:</span>
-              <div className="font-medium">{stats.totalRuns}</div>
-            </div>
-            
-            <div>
-              <span className="text-muted-foreground">Taxa de Sobrevivência:</span>
-              <div className="font-medium">
-                {stats.totalRuns > 0 
-                  ? `${Math.round((stats.aliveCharacters / stats.totalRuns) * 100)}%`
-                  : '0%'
-                }
-              </div>
-            </div>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Total de Tentativas:</span>
+            <span className="font-medium">{stats.totalRuns}</span>
           </div>
         </CardContent>
       </Card>

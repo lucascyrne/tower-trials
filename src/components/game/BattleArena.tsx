@@ -27,6 +27,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { GamePlayer, Enemy } from '@/resources/game/game-model';
+import { formatLargeNumber } from '@/lib/utils';
 
 interface BattleArenaProps {
   player: GamePlayer;
@@ -157,7 +158,7 @@ export function BattleArena({
                       Nv {player.level}
                     </Badge>
                     <Badge variant="outline" className="bg-background/50 text-yellow-400 text-xs px-1 md:px-2">
-                      {player.gold}G
+                      {formatLargeNumber(player.gold)}G
                     </Badge>
                   </div>
                 </div>
