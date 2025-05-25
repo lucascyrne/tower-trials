@@ -582,10 +582,9 @@ export function GameProvider({ children }: GameProviderProps) {
                   gold: updatedState.battleRewards.gold
                 });
                 
-                // Atualizar ranking dinamicamente para personagens vivos (não precisa mais salvar explicitamente)
-                // O sistema dinâmico já considera automaticamente os dados atuais dos personagens vivos
+                // O sistema dinâmico já considera automaticamente os dados atuais dos personagens
                 if (updateResult.success && updateResult.data?.leveled_up) {
-                  console.log(`[game-provider] Personagem ${selectedCharacter.name} subiu de nível - ranking será atualizado dinamicamente`);
+                  console.log(`[game-provider] Personagem ${selectedCharacter.name} subiu de nível - ranking atualizado automaticamente`);
                 }
               }
                 

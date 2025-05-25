@@ -7,7 +7,6 @@ import { Monster, MonsterDropChance } from './models/monster.model';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
-import { RankingService } from './ranking-service';
 import { SpecialEventService } from './special-event.service';
 import { SkillXpGain } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
@@ -228,11 +227,6 @@ export class GameService {
       // Atualizar também o andar na tabela characters
       await CharacterService.updateCharacterFloor(player.id, player.floor);
       
-      // Salvar também no ranking para preservar o recorde histórico
-      if (highestFloor > 0) {
-        await this.saveHighScore(player.name, highestFloor, userId);
-      }
-      
       return { success: true, data: { message: 'Progresso salvo com sucesso' } };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -243,27 +237,7 @@ export class GameService {
     }
   }
   
-  /**
-   * Salva o recorde de andar mais alto no ranking
-   * @private
-   */
-  private static async saveHighScore(playerName: string, highestFloor: number, userId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('game_rankings')
-        .insert({
-          player_name: playerName,
-          highest_floor: highestFloor,
-          user_id: userId
-        });
-      
-      if (error) {
-        console.error('Erro ao salvar no ranking:', error.message);
-      }
-    } catch (error) {
-      console.error('Erro ao salvar no ranking:', error instanceof Error ? error.message : 'Erro desconhecido');
-    }
-  }
+
 
   /**
    * Carregar o progresso do jogo
@@ -935,19 +909,13 @@ export class GameService {
       const updatedState = SpellService.updateSpellCooldowns(gameState);
       
       if (player.hp <= 0) {
-        try {
-          // Salvar a pontuação no ranking antes de deletar o personagem
-          const rankingEntry = {
-            player_name: player.name,
-            highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
-            user_id: player.user_id
-          };
-
-          await RankingService.saveScore(rankingEntry);
-          await CharacterService.deleteCharacter(player.id);
-        } catch (error) {
-          console.error('Erro ao processar morte do personagem:', error);
-        }
+              try {
+        // No sistema dinâmico, apenas deletar o personagem
+        // O ranking é baseado nos dados da tabela characters
+        await CharacterService.deleteCharacter(player.id);
+      } catch (error) {
+        console.error('Erro ao processar morte do personagem:', error);
+      }
 
         return {
           ...updatedState,
@@ -979,17 +947,8 @@ export class GameService {
     
     if (player.hp <= 0) {
       try {
-        // Salvar a pontuação no ranking antes de deletar o personagem
-        const rankingEntry = {
-          player_name: player.name,
-          highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
-          user_id: player.user_id,
-          character_level: player.level,
-          character_gold: player.gold,
-          character_alive: false // Personagem morreu
-        };
-
-        await RankingService.saveScore(rankingEntry);
+        // No sistema dinâmico, apenas deletar o personagem
+        // O ranking é baseado nos dados da tabela characters
         await CharacterService.deleteCharacter(player.id);
       } catch (error) {
         console.error('Erro ao processar morte do personagem:', error);
