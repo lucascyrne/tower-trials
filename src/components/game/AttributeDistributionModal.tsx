@@ -1,29 +1,36 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  AttributeType, 
-  AttributeDistribution, 
-  CharacterStats, 
-  PREDEFINED_BUILDS,
-  getAttributeDescription,
-  CharacterBuild 
-} from '@/resources/game/models/character.model';
-import { X, Plus, Minus, Zap, Heart, Brain, Eye, Star, RotateCcw, Wand2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Star, TrendingUp, Plus, Minus, Save, RotateCcw, Heart, Zap, Sparkles, Eye, Target } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { GamePlayer } from '@/resources/game/game-model';
+import { CharacterService } from '@/resources/game/character.service';
+import { toast } from 'sonner';
 
 interface AttributeDistributionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  characterStats: CharacterStats;
-  onDistributePoints: (distribution: AttributeDistribution) => Promise<void>;
+  character: GamePlayer;
+  onAttributesUpdated?: (updatedCharacter: GamePlayer) => void;
+}
+
+interface AttributeDistribution {
+  strength: number;
+  dexterity: number;
+  intelligence: number;
+  wisdom: number;
+  vitality: number;
+  luck: number;
 }
 
 const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
   isOpen,
   onClose,
-  characterStats,
-  onDistributePoints
+  character,
+  onAttributesUpdated
 }) => {
   const [distribution, setDistribution] = useState<AttributeDistribution>({
     strength: 0,
@@ -33,90 +40,30 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
     vitality: 0,
     luck: 0
   });
-
-  const [selectedBuild, setSelectedBuild] = useState<CharacterBuild | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Resetar distribuição quando o modal abrir
-  useEffect(() => {
-    if (isOpen) {
-      setDistribution({
-        strength: 0,
-        dexterity: 0,
-        intelligence: 0,
-        wisdom: 0,
-        vitality: 0,
-        luck: 0
-      });
-      setSelectedBuild(null);
-    }
-  }, [isOpen]);
+  const [isDistributing, setIsDistributing] = useState(false);
 
   const totalPointsToDistribute = Object.values(distribution).reduce((sum, value) => sum + value, 0);
-  const remainingPoints = characterStats.attribute_points - totalPointsToDistribute;
+  const availablePoints = (character.attribute_points || 0) - totalPointsToDistribute;
 
-  // Ícones para cada atributo
-  const attributeIcons = {
-    [AttributeType.STRENGTH]: Zap,
-    [AttributeType.DEXTERITY]: Eye,
-    [AttributeType.INTELLIGENCE]: Brain,
-    [AttributeType.WISDOM]: Wand2,
-    [AttributeType.VITALITY]: Heart,
-    [AttributeType.LUCK]: Star
-  };
-
-  // Cores para cada atributo
-  const attributeColors = {
-    [AttributeType.STRENGTH]: 'text-red-400',
-    [AttributeType.DEXTERITY]: 'text-green-400',
-    [AttributeType.INTELLIGENCE]: 'text-blue-400',
-    [AttributeType.WISDOM]: 'text-purple-400',
-    [AttributeType.VITALITY]: 'text-pink-400',
-    [AttributeType.LUCK]: 'text-yellow-400'
-  };
-
-  const handleAttributeChange = (attribute: AttributeType, change: number) => {
-    const currentValue = distribution[attribute];
-    const newValue = Math.max(0, currentValue + change);
-    const maxValue = Math.min(50 - characterStats[attribute], remainingPoints + currentValue);
-    
-    if (newValue <= maxValue) {
+  const handleIncrement = (attribute: keyof AttributeDistribution) => {
+    if (availablePoints > 0) {
       setDistribution(prev => ({
         ...prev,
-        [attribute]: newValue
+        [attribute]: prev[attribute] + 1
       }));
     }
   };
 
-  const applyBuildSuggestion = (build: CharacterBuild) => {
-    // Se a build já está selecionada, desselecionar
-    if (selectedBuild?.name === build.name) {
-      setSelectedBuild(null);
-      resetDistribution();
-      return;
+  const handleDecrement = (attribute: keyof AttributeDistribution) => {
+    if (distribution[attribute] > 0) {
+      setDistribution(prev => ({
+        ...prev,
+        [attribute]: prev[attribute] - 1
+      }));
     }
-    
-    setSelectedBuild(build);
-    
-    // Distribuir pontos baseado na build sugerida
-    const pointsPerAttribute = Math.floor(remainingPoints / build.primary_attributes.length);
-    const newDistribution = { ...distribution };
-    
-    // Resetar distribuição atual
-    Object.keys(newDistribution).forEach(key => {
-      newDistribution[key as keyof AttributeDistribution] = 0;
-    });
-    
-    // Distribuir pontos nas características primárias
-    build.primary_attributes.forEach((attr, index) => {
-      const points = index === 0 ? pointsPerAttribute + (remainingPoints % build.primary_attributes.length) : pointsPerAttribute;
-      newDistribution[attr] = Math.min(points, 50 - characterStats[attr]);
-    });
-    
-    setDistribution(newDistribution);
   };
 
-  const resetDistribution = () => {
+  const handleReset = () => {
     setDistribution({
       strength: 0,
       dexterity: 0,
@@ -125,285 +72,278 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       vitality: 0,
       luck: 0
     });
-    setSelectedBuild(null);
   };
 
   const handleSubmit = async () => {
     if (totalPointsToDistribute === 0) return;
     
-    setIsSubmitting(true);
+    setIsDistributing(true);
     try {
-      await onDistributePoints(distribution);
-      onClose();
+      const response = await CharacterService.distributeAttributePoints(character.id, distribution);
+      
+      if (response.success && response.data?.new_stats) {
+        toast.success('Pontos distribuídos com sucesso!');
+        
+        // Atualizar o personagem com os novos stats
+        if (onAttributesUpdated) {
+          const updatedCharacter: GamePlayer = {
+            ...character,
+            ...response.data.new_stats,
+            attribute_points: response.data.new_stats.attribute_points
+          };
+          onAttributesUpdated(updatedCharacter);
+        }
+        
+        handleReset();
+        onClose();
+      } else {
+        toast.error('Erro ao distribuir pontos', {
+          description: response.error || response.data?.message
+        });
+      }
     } catch (error) {
       console.error('Erro ao distribuir pontos:', error);
+      toast.error('Erro ao distribuir pontos');
     } finally {
-      setIsSubmitting(false);
+      setIsDistributing(false);
     }
   };
 
-  // Calcular preview dos stats após distribuição
-  const previewStats = {
-    strength: characterStats.strength + distribution.strength,
-    dexterity: characterStats.dexterity + distribution.dexterity,
-    intelligence: characterStats.intelligence + distribution.intelligence,
-    wisdom: characterStats.wisdom + distribution.wisdom,
-    vitality: characterStats.vitality + distribution.vitality,
-    luck: characterStats.luck + distribution.luck,
-    // Stats derivados estimados
-    hp: characterStats.max_hp + (distribution.vitality * 8),
-    mana: characterStats.max_mana + (distribution.intelligence * 5),
-    atk: characterStats.atk + (distribution.strength * 2),
-    def: characterStats.def + (distribution.vitality + distribution.wisdom),
-    speed: characterStats.speed + Math.floor(distribution.dexterity * 1.5),
-    critical_chance: characterStats.critical_chance + (distribution.luck * 0.5)
+  // Configuração dos atributos
+  const attributeConfig = {
+    strength: {
+      label: 'Força',
+      icon: TrendingUp,
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10',
+      borderColor: 'border-red-500/20',
+      benefit: '+2 Ataque por ponto'
+    },
+    dexterity: {
+      label: 'Destreza', 
+      icon: Zap,
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10',
+      borderColor: 'border-green-500/20',
+      benefit: '+1.5 Velocidade por ponto'
+    },
+    intelligence: {
+      label: 'Inteligência',
+      icon: Sparkles,
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      borderColor: 'border-purple-500/20',
+      benefit: '+5 Mana por ponto'
+    },
+    wisdom: {
+      label: 'Sabedoria',
+      icon: Eye,
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/20',
+      benefit: '+Regeneração por ponto'
+    },
+    vitality: {
+      label: 'Vitalidade',
+      icon: Heart,
+      color: 'text-pink-400',
+      bgColor: 'bg-pink-500/10',
+      borderColor: 'border-pink-500/20',
+      benefit: '+8 HP por ponto'
+    },
+    luck: {
+      label: 'Sorte',
+      icon: Star,
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-500/10',
+      borderColor: 'border-yellow-500/20',
+      benefit: '+Crítico e Drops'
+    }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !character.attribute_points || character.attribute_points === 0) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-gray-900 rounded-lg border border-gray-700 w-full max-w-5xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header responsivo */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-b border-gray-700 flex-shrink-0 gap-2">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">Distribuir Atributos</h2>
-              <p className="text-sm sm:text-base text-gray-400">
-                Pontos disponíveis: <span className="text-yellow-400 font-bold">{remainingPoints}</span>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="text-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="mx-auto w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4"
+          >
+            <Star className="h-8 w-8 text-yellow-500" />
+          </motion.div>
+          
+          <DialogTitle className="text-xl font-bold">
+            Distribuir Pontos de Atributo
+          </DialogTitle>
+          
+          <DialogDescription asChild>
+            <div className="text-center space-y-3">
+              <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400 px-3 py-1">
+                <Star className="h-4 w-4 mr-2" />
+                {availablePoints} pontos disponíveis
+              </Badge>
+              
+              <p className="text-sm text-muted-foreground">
+                Distribua seus pontos estrategicamente para fortalecer seu personagem na torre.
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors self-end sm:self-center"
-            >
-              <X size={24} />
-            </button>
-          </div>
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
-            {/* Área principal de distribuição */}
-            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-              {/* Builds sugeridas - com scroll horizontal em mobile */}
-              <div className="p-4 sm:p-6 border-b border-gray-700 flex-shrink-0">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Builds Sugeridas</h3>
-                <div className="overflow-x-auto">
-                  <div className="flex lg:grid lg:grid-cols-3 gap-3 min-w-max lg:min-w-0">
-                    {PREDEFINED_BUILDS.map((build) => (
-                      <motion.button
-                        key={build.name}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => applyBuildSuggestion(build)}
-                        className={`p-3 rounded-lg border transition-all text-left w-48 lg:w-auto flex-shrink-0 ${
-                          selectedBuild?.name === build.name
-                            ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                            : 'border-gray-600 hover:border-gray-500 bg-gray-800/50'
-                        }`}
-                      >
-                        <div className="font-medium text-white text-sm">{build.name}</div>
-                        <div className="text-xs text-gray-400 mt-1 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{build.description}</div>
-                        {selectedBuild?.name === build.name && (
-                          <div className="text-xs text-blue-400 mt-2 font-medium">
-                            ✓ Selecionado
-                          </div>
-                        )}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Controles de atributos - com scroll otimizado */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-                  {Object.values(AttributeType).map((attribute) => {
-                    const IconComponent = attributeIcons[attribute];
-                    const currentValue = characterStats[attribute];
-                    const distributedValue = distribution[attribute];
-                    const finalValue = currentValue + distributedValue;
-                    
-                    return (
-                      <motion.div
-                        key={attribute}
-                        layout
-                        className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-800/50 rounded-lg border border-gray-700"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${attributeColors[attribute]} flex-shrink-0`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                              <span className="font-medium text-white capitalize text-sm sm:text-base truncate">
-                                {attribute.replace('_', ' ')}
-                              </span>
-                              <span className="text-xs sm:text-sm text-gray-400">
-                                {currentValue} → {finalValue}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                              {getAttributeDescription(attribute)}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                          <button
-                            onClick={() => handleAttributeChange(attribute, -1)}
-                            disabled={distributedValue === 0}
-                            className="w-8 h-8 rounded-full bg-red-600/20 border border-red-500 text-red-400 
-                                     disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-600/30 
-                                     transition-colors flex items-center justify-center flex-shrink-0"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          
-                          <span className="w-8 text-center text-white font-medium text-sm">
-                            {distributedValue}
-                          </span>
-                          
-                          <button
-                            onClick={() => handleAttributeChange(attribute, 1)}
-                            disabled={remainingPoints === 0 || finalValue >= 50}
-                            className="w-8 h-8 rounded-full bg-green-600/20 border border-green-500 text-green-400 
-                                     disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600/30 
-                                     transition-colors flex items-center justify-center flex-shrink-0"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Preview dos stats - colapsível em mobile */}
-            <div className="lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-700 bg-gray-800/30 flex flex-col max-h-80 lg:max-h-none overflow-hidden">
-              <div className="p-4 sm:p-6 flex-shrink-0">
-                <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Preview dos Stats</h3>
-              </div>
+        <motion.div 
+          className="space-y-4 py-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          {/* Atributos com Controles */}
+          <div className="space-y-3">
+            {Object.entries(attributeConfig).map(([key, config]) => {
+              const attribute = key as keyof AttributeDistribution;
+              const currentValue = character[attribute] || 0;
+              const Icon = config.icon;
               
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6">
-                <div className="space-y-2 sm:space-y-3 pb-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">HP Máximo:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.max_hp}
-                      {distribution.vitality > 0 && (
-                        <span className="text-green-400"> → {previewStats.hp}</span>
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Mana Máxima:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.max_mana}
-                      {distribution.intelligence > 0 && (
-                        <span className="text-blue-400"> → {previewStats.mana}</span>
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Ataque:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.atk}
-                      {distribution.strength > 0 && (
-                        <span className="text-red-400"> → {previewStats.atk}</span>
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Defesa:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.def}
-                      {(distribution.vitality > 0 || distribution.wisdom > 0) && (
-                        <span className="text-purple-400"> → {previewStats.def}</span>
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Velocidade:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.speed}
-                      {distribution.dexterity > 0 && (
-                        <span className="text-green-400"> → {previewStats.speed}</span>
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Chance Crítica:</span>
-                    <span className="text-white text-sm">
-                      {characterStats.critical_chance.toFixed(1)}%
-                      {distribution.luck > 0 && (
-                        <span className="text-yellow-400"> → {previewStats.critical_chance.toFixed(1)}%</span>
-                      )}
-                    </span>
-                  </div>
-
-                  {selectedBuild && (
-                    <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                      <h4 className="font-medium text-blue-400 mb-2 text-sm">{selectedBuild.name}</h4>
-                      <p className="text-xs text-gray-300 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{selectedBuild.description}</p>
-                      <div className="mt-2 text-xs text-blue-300">
-                        Estilo: {selectedBuild.playstyle.toUpperCase()}
+              return (
+                <motion.div
+                  key={attribute}
+                  className={`flex items-center gap-3 p-3 rounded-lg border ${config.bgColor} ${config.borderColor}`}
+                  whileHover={{ scale: 1.01 }}
+                >
+                  {/* Ícone e Info */}
+                  <div className="flex items-center gap-3 flex-1">
+                    <Icon className={`h-5 w-5 ${config.color}`} />
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">{config.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {config.benefit}
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
+                  </div>
+
+                  {/* Valor Atual */}
+                  <div className="text-center min-w-[60px]">
+                    <div className="text-sm font-bold">
+                      {currentValue}
+                      {distribution[attribute] > 0 && (
+                        <span className="text-green-400 ml-1">
+                          +{distribution[attribute]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Controles */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => handleDecrement(attribute)}
+                      disabled={distribution[attribute] === 0}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    
+                    <div className="w-8 text-center text-sm font-mono">
+                      {distribution[attribute]}
+                    </div>
+                    
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => handleIncrement(attribute)}
+                      disabled={availablePoints === 0}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
 
-          {/* Footer responsivo */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-6 border-t border-gray-700 flex-shrink-0">
-            <button
-              onClick={resetDistribution}
-              className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors order-2 sm:order-1"
+          {/* Preview dos Melhoramentos */}
+          {totalPointsToDistribute > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="bg-primary/5 border border-primary/20 rounded-lg p-3"
             >
-              <RotateCcw size={16} />
-              <span className="text-sm">Resetar</span>
-            </button>
+              <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Preview dos Melhoramentos
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {distribution.vitality > 0 && (
+                  <div className="flex justify-between">
+                    <span>HP:</span>
+                    <span className="text-green-400">+{distribution.vitality * 8}</span>
+                  </div>
+                )}
+                {distribution.intelligence > 0 && (
+                  <div className="flex justify-between">
+                    <span>Mana:</span>
+                    <span className="text-blue-400">+{distribution.intelligence * 5}</span>
+                  </div>
+                )}
+                {distribution.strength > 0 && (
+                  <div className="flex justify-between">
+                    <span>Ataque:</span>
+                    <span className="text-red-400">+{distribution.strength * 2}</span>
+                  </div>
+                )}
+                {distribution.dexterity > 0 && (
+                  <div className="flex justify-between">
+                    <span>Velocidade:</span>
+                    <span className="text-green-400">+{Math.floor(distribution.dexterity * 1.5)}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Botões de Ação */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
             
-            <div className="flex gap-2 sm:gap-3 order-1 sm:order-2">
-              <button
-                onClick={onClose}
-                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 text-gray-400 hover:text-white transition-colors text-sm"
+            {totalPointsToDistribute > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="flex-1"
               >
-                Cancelar
-              </button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSubmit}
-                disabled={totalPointsToDistribute === 0 || isSubmitting}
-                className="flex-1 sm:flex-none px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
-              >
-                {isSubmitting ? 'Aplicando...' : `Aplicar (${totalPointsToDistribute})`}
-              </motion.button>
-            </div>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Resetar
+              </Button>
+            )}
+            
+            <Button
+              onClick={handleSubmit}
+              disabled={isDistributing || totalPointsToDistribute === 0}
+              className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+            >
+              {isDistributing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Confirmar ({totalPointsToDistribute})
+            </Button>
           </div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      </DialogContent>
+    </Dialog>
   );
 };
 

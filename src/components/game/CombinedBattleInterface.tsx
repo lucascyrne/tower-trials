@@ -111,7 +111,7 @@ export function CombinedBattleInterface({
 
     const slot = potionSlots.find(s => s.slot_position === slotPosition);
     if (!slot?.consumable_id) {
-      toast.warning(`Slot ${getSlotKeyBinding(slotPosition)} está vazio`);
+      toast.warning(`Slot ${getPotionKeyBinding(slotPosition)} está vazio`);
       return;
     }
 
@@ -153,8 +153,27 @@ export function CombinedBattleInterface({
       }
 
       const key = event.key.toLowerCase();
-      let slotPosition = 0;
 
+      // Ações de combate
+      switch (key) {
+        case 'a':
+          event.preventDefault();
+          handleAction('attack');
+          return;
+        case 's':
+          if (player.defenseCooldown === 0) {
+            event.preventDefault();
+            handleAction('defend');
+          }
+          return;
+        case 'd':
+          event.preventDefault();
+          handleAction('flee');
+          return;
+      }
+
+      // Poções
+      let slotPosition = 0;
       switch (key) {
         case 'q':
           slotPosition = 1;
@@ -166,18 +185,29 @@ export function CombinedBattleInterface({
           slotPosition = 3;
           break;
         default:
+          // Magias (1, 2, 3)
+          const spellIndex = parseInt(key) - 1;
+          if (spellIndex >= 0 && spellIndex < Math.min(3, player.spells.length)) {
+            const spell = player.spells[spellIndex];
+            if (player.mana >= spell.mana_cost && spell.current_cooldown === 0) {
+              event.preventDefault();
+              handleAction('spell', spell.id);
+            }
+          }
           return;
       }
 
+      if (slotPosition > 0) {
       event.preventDefault();
       handlePotionSlotUse(slotPosition);
+      }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isDisabled, usingSlot, potionSlots]);
+  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown]);
 
-  const getSlotKeyBinding = (position: number) => {
+  const getPotionKeyBinding = (position: number) => {
     switch (position) {
       case 1: return 'Q';
       case 2: return 'W';
@@ -185,6 +215,8 @@ export function CombinedBattleInterface({
       default: return '';
     }
   };
+
+
 
   const getPotionIcon = (slot: PotionSlot) => {
     if (slot.consumable_id) {
@@ -268,26 +300,166 @@ export function CombinedBattleInterface({
     }
   };
 
+  // Limitar magias a 3 para UI mais enxuta
+  const displaySpells = player.spells.slice(0, 3);
+
   return (
     <>
       <Card className="border-0 bg-card/50 backdrop-blur-sm">
-        <CardContent className="p-6 space-y-6">
-          {/* Seção de Poções Rápidas */}
-          <div className="text-center space-y-4">
-            <div className="text-sm font-medium text-muted-foreground/80">
-              Poções Rápidas
+        <CardContent className="p-3 md:p-3 space-y-3 md:space-y-2">
+          {/* Primeira linha: Ações de Combate (esquerda) + Poções (direita) */}
+          <div className="flex flex-col md:flex-row md:justify-center md:items-start gap-3 md:gap-4">
+            {/* Ações de Combate - Esquerda */}
+            <div className="flex-1 md:max-w-xs md:flex-none">
+              <div className="text-xs font-medium text-muted-foreground/80 mb-2 text-center md:text-left">
+                Ações de Combate
+              </div>
+              <div className="flex justify-center md:justify-start gap-2">
+                <div className="relative">
+                  <Button
+                    onClick={() => handleAction('attack')}
+                    onMouseDown={(e) => handleMouseDown({
+                      title: 'Atacar',
+                      description: 'Realiza um ataque físico contra o inimigo usando sua arma equipada',
+                      stats: [
+                        { label: 'Dano base', value: `${player.atk}` },
+                        { label: 'Tipo', value: 'Físico' },
+                        { label: 'Tecla', value: 'A' }
+                      ]
+                    }, e)}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={(e) => handleTouchStart({
+                      title: 'Atacar',
+                      description: 'Realiza um ataque físico contra o inimigo usando sua arma equipada',
+                      stats: [
+                        { label: 'Dano base', value: `${player.atk}` },
+                        { label: 'Tipo', value: 'Físico' }
+                      ]
+                    }, e)}
+                    onTouchEnd={handleTouchEnd}
+                    disabled={isDisabled}
+                    variant="ghost"
+                    size="lg"
+                    className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200"
+                  >
+                    <Sword className="h-4 w-4 md:h-5 md:w-5 text-red-500/80" />
+                  </Button>
+                  <Badge 
+                    variant="outline" 
+                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                  >
+                    A
+                  </Badge>
+                </div>
+
+                <div className="relative">
+                  <Button
+                    onClick={() => handleAction('defend')}
+                    onMouseDown={(e) => handleMouseDown({
+                      title: player.isDefending ? 'Defendendo' : 'Defender',
+                      description: player.isDefending 
+                        ? 'Você está em posição defensiva, reduzindo o dano recebido' 
+                        : 'Adota uma postura defensiva, reduzindo o dano do próximo ataque',
+                      stats: [
+                        { label: 'Redução de dano', value: '85%' },
+                        { label: 'Cooldown', value: player.defenseCooldown > 0 ? `${player.defenseCooldown} turnos` : 'Disponível' },
+                        { label: 'Tecla', value: 'S' }
+                      ]
+                    }, e)}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={(e) => handleTouchStart({
+                      title: player.isDefending ? 'Defendendo' : 'Defender',
+                      description: player.isDefending 
+                        ? 'Você está em posição defensiva, reduzindo o dano recebido' 
+                        : 'Adota uma postura defensiva, reduzindo o dano do próximo ataque',
+                      stats: [
+                        { label: 'Redução de dano', value: '85%' },
+                        { label: 'Cooldown', value: player.defenseCooldown > 0 ? `${player.defenseCooldown} turnos` : 'Disponível' }
+                      ]
+                    }, e)}
+                    onTouchEnd={handleTouchEnd}
+                    disabled={isDisabled || player.defenseCooldown > 0}
+                    variant="ghost"
+                    size="lg"
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
+                      player.isDefending 
+                        ? 'border-blue-500/50 bg-blue-500/10 shadow-lg shadow-blue-500/20' 
+                        : 'border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/50 shadow-lg shadow-blue-500/10'
+                    }`}
+                  >
+                    <Shield className="h-4 w-4 md:h-5 md:w-5 text-blue-500/80" />
+                    {player.defenseCooldown > 0 && (
+                      <div className="absolute -top-1 -right-1 bg-red-500/90 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center border border-background">
+                        {player.defenseCooldown}
+                      </div>
+                    )}
+                  </Button>
+                  <Badge 
+                    variant="outline" 
+                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                    style={{ display: player.defenseCooldown > 0 ? 'none' : 'flex' }}
+                  >
+                    S
+                  </Badge>
+                </div>
+
+                <div className="relative">
+                  <Button
+                    onClick={() => handleAction('flee')}
+                    onMouseDown={(e) => handleMouseDown({
+                      title: 'Fugir',
+                      description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
+                      stats: [
+                        { label: 'Chance base', value: '70%' },
+                        { label: 'Penalidade', value: 'Possível dano' },
+                        { label: 'Tecla', value: 'D' }
+                      ]
+                    }, e)}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={(e) => handleTouchStart({
+                      title: 'Fugir',
+                      description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
+                      stats: [
+                        { label: 'Chance base', value: '70%' },
+                        { label: 'Penalidade', value: 'Possível dano' }
+                      ]
+                    }, e)}
+                    onTouchEnd={handleTouchEnd}
+                    disabled={isDisabled}
+                    variant="ghost"
+                    size="lg"
+                    className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200"
+                  >
+                    <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-amber-500/80" />
+                  </Button>
+                  <Badge 
+                    variant="outline" 
+                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                  >
+                    D
+                  </Badge>
+                </div>
+              </div>
             </div>
             
-            <div className="flex justify-center gap-3">
+            {/* Poções - Direita */}
+            <div className="flex-1 md:max-w-xs md:flex-none">
+              <div className="text-xs font-medium text-muted-foreground/80 mb-2 text-center md:text-right">
+                Poções Rápidas
+              </div>
+              <div className="flex justify-center md:justify-end gap-2">
               {loadingSlots ? (
                 [1, 2, 3].map(i => (
-                  <div key={i} className="w-14 h-14 bg-muted/20 rounded-xl animate-pulse" />
+                  <div key={i} className="w-12 h-12 md:w-14 md:h-14 bg-muted/20 rounded-xl animate-pulse" />
                 ))
               ) : (
                 potionSlots.map((slot) => {
                   const isUsing = usingSlot === slot.slot_position;
                   const isEmpty = !slot.consumable_id;
-                  const keyBinding = getSlotKeyBinding(slot.slot_position);
+                    const keyBinding = getPotionKeyBinding(slot.slot_position);
                   
                   const tooltipInfo = {
                     title: slot.consumable_name || `Slot ${keyBinding}`,
@@ -302,7 +474,7 @@ export function CombinedBattleInterface({
                     <div key={slot.slot_position} className="relative">
                       <Button
                         variant="ghost"
-                        className={`h-14 w-14 rounded-xl p-2 relative border-2 transition-all duration-200 ${
+                        className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-2 relative border-2 transition-all duration-200 ${
                           isEmpty 
                             ? 'border-dashed border-muted-foreground/20 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/30' 
                             : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10'
@@ -316,7 +488,7 @@ export function CombinedBattleInterface({
                         disabled={isDisabled || isEmpty || isUsing}
                       >
                         {isEmpty ? (
-                          <Plus className="h-5 w-5 text-muted-foreground/40" />
+                          <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
                         ) : (
                           <div className="flex items-center justify-center">
                             {getPotionIcon(slot)}
@@ -325,14 +497,14 @@ export function CombinedBattleInterface({
                         
                         {isUsing && (
                           <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-xl">
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                            <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-2 border-primary border-t-transparent" />
                           </div>
                         )}
                       </Button>
                       
                       <Badge 
                         variant="outline" 
-                        className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30"
+                        className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30"
                       >
                         {keyBinding}
                       </Badge>
@@ -341,138 +513,22 @@ export function CombinedBattleInterface({
                 })
               )}
             </div>
-            
-            <div className="text-xs text-muted-foreground/60">
-              Configure no Inventário • Teclas Q, W, E
             </div>
           </div>
 
-          {/* Divisor */}
-          <div className="border-t border-border/50"></div>
-
-          {/* Seção de Ações Básicas */}
-          <div className="text-center space-y-4">
-            <div className="text-sm font-medium text-muted-foreground/80">
-              Ações de Batalha
-            </div>
-            
-            <div className="flex justify-center gap-4">
-              <Button
-                onClick={() => handleAction('attack')}
-                onMouseDown={(e) => handleMouseDown({
-                  title: 'Atacar',
-                  description: 'Realiza um ataque físico contra o inimigo usando sua arma equipada',
-                  stats: [
-                    { label: 'Dano base', value: `${player.atk}` },
-                    { label: 'Tipo', value: 'Físico' }
-                  ]
-                }, e)}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                onTouchStart={(e) => handleTouchStart({
-                  title: 'Atacar',
-                  description: 'Realiza um ataque físico contra o inimigo usando sua arma equipada',
-                  stats: [
-                    { label: 'Dano base', value: `${player.atk}` },
-                    { label: 'Tipo', value: 'Físico' }
-                  ]
-                }, e)}
-                onTouchEnd={handleTouchEnd}
-                disabled={isDisabled}
-                variant="ghost"
-                size="lg"
-                className="h-14 w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200"
-              >
-                <Sword className="h-5 w-5 text-red-500/80" />
-              </Button>
-
-              <Button
-                onClick={() => handleAction('defend')}
-                onMouseDown={(e) => handleMouseDown({
-                  title: player.isDefending ? 'Defendendo' : 'Defender',
-                  description: player.isDefending 
-                    ? 'Você está em posição defensiva, reduzindo o dano recebido' 
-                    : 'Adota uma postura defensiva, reduzindo o dano do próximo ataque',
-                  stats: [
-                    { label: 'Redução de dano', value: '50%' },
-                    { label: 'Cooldown', value: player.defenseCooldown > 0 ? `${player.defenseCooldown} turnos` : 'Disponível' }
-                  ]
-                }, e)}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                onTouchStart={(e) => handleTouchStart({
-                  title: player.isDefending ? 'Defendendo' : 'Defender',
-                  description: player.isDefending 
-                    ? 'Você está em posição defensiva, reduzindo o dano recebido' 
-                    : 'Adota uma postura defensiva, reduzindo o dano do próximo ataque',
-                  stats: [
-                    { label: 'Redução de dano', value: '50%' },
-                    { label: 'Cooldown', value: player.defenseCooldown > 0 ? `${player.defenseCooldown} turnos` : 'Disponível' }
-                  ]
-                }, e)}
-                onTouchEnd={handleTouchEnd}
-                disabled={isDisabled || player.defenseCooldown > 0}
-                variant="ghost"
-                size="lg"
-                className={`h-14 w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
-                  player.isDefending 
-                    ? 'border-blue-500/50 bg-blue-500/10 shadow-lg shadow-blue-500/20' 
-                    : 'border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/50 shadow-lg shadow-blue-500/10'
-                }`}
-              >
-                <Shield className="h-5 w-5 text-blue-500/80" />
-                {player.defenseCooldown > 0 && (
-                  <div className="absolute -top-1 -right-1 bg-red-500/90 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center border border-background">
-                    {player.defenseCooldown}
-                  </div>
-                )}
-              </Button>
-
-              <Button
-                onClick={() => handleAction('flee')}
-                onMouseDown={(e) => handleMouseDown({
-                  title: 'Fugir',
-                  description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
-                  stats: [
-                    { label: 'Chance base', value: '70%' },
-                    { label: 'Penalidade', value: 'Possível dano' }
-                  ]
-                }, e)}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                onTouchStart={(e) => handleTouchStart({
-                  title: 'Fugir',
-                  description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
-                  stats: [
-                    { label: 'Chance base', value: '70%' },
-                    { label: 'Penalidade', value: 'Possível dano' }
-                  ]
-                }, e)}
-                onTouchEnd={handleTouchEnd}
-                disabled={isDisabled}
-                variant="ghost"
-                size="lg"
-                className="h-14 w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200"
-              >
-                <ArrowLeft className="h-5 w-5 text-amber-500/80" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Seção de Magias */}
-          {player.spells.length > 0 && (
+          {/* Segunda linha: Magias (apenas se houver magias) */}
+          {displaySpells.length > 0 && (
             <>
-              <div className="border-t border-border/50"></div>
-              
-              <div className="text-center space-y-4">
-                <div className="text-sm font-medium text-muted-foreground/80">
+              <div className="border-t border-border/50 pt-2">
+                <div className="text-xs font-medium text-muted-foreground/80 mb-2 text-center">
                   Magias
                 </div>
                 
-                <div className="flex flex-wrap justify-center gap-3">
-                  {player.spells.map((spell) => {
+                <div className="flex justify-center gap-2 md:max-w-md md:mx-auto">
+                  {displaySpells.map((spell, index) => {
                     const canCast = player.mana >= spell.mana_cost && spell.current_cooldown === 0;
                     const spellIcon = getSpellIcon(spell);
+                    const keyBinding = (index + 1).toString();
                     
                     const tooltipInfo = {
                       title: spell.name,
@@ -480,7 +536,8 @@ export function CombinedBattleInterface({
                       stats: [
                         { label: 'Custo de Mana', value: `${spell.mana_cost}` },
                         { label: 'Cooldown', value: spell.current_cooldown > 0 ? `${spell.current_cooldown} turnos` : 'Disponível' },
-                        { label: 'Dano/Efeito', value: `${spell.effect_value}` }
+                        { label: 'Dano/Efeito', value: `${spell.effect_value}` },
+                        { label: 'Tecla', value: keyBinding }
                       ]
                     };
                     
@@ -496,7 +553,7 @@ export function CombinedBattleInterface({
                           disabled={isDisabled || !canCast}
                           variant="ghost"
                           size="lg"
-                          className={`h-12 w-12 rounded-xl p-0 relative border-2 transition-all duration-200 ${
+                          className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
                             canCast
                               ? 'border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10 hover:border-violet-500/50 shadow-lg shadow-violet-500/10'
                               : 'border-muted-foreground/10 bg-muted/5 opacity-50 cursor-not-allowed'
@@ -520,13 +577,27 @@ export function CombinedBattleInterface({
                             {spell.mana_cost}
                           </div>
                         </Button>
+                        
+                        <Badge 
+                          variant="outline" 
+                          className="absolute -top-1 -left-1 md:-top-2 md:-left-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                        >
+                          {keyBinding}
+                        </Badge>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )}
+
+          {/* Dica de atalhos apenas no desktop */}
+          <div className="hidden md:block text-center">
+            <div className="text-xs text-muted-foreground/60">
+              Atalhos: A/S/D (Combate) • Q/W/E (Poções) • 1/2/3 (Magias)
+            </div>
+          </div>
         </CardContent>
       </Card>
 

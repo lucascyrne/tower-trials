@@ -8,13 +8,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Coins, Star, Trophy, Sparkles, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Coins, Star, Trophy, Sparkles, ShoppingBag, ArrowRight, Home, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface VictoryModalProps {
   isOpen: boolean;
   onContinue: () => void;
   onReturnToHub: () => void;
+  onOpenAttributeModal: () => void;
   rewards: {
     xp: number;
     gold: number;
@@ -22,15 +23,18 @@ interface VictoryModalProps {
   };
   leveledUp: boolean;
   newLevel?: number;
+  hasAttributePoints: boolean;
 }
 
 export function VictoryModal({
   isOpen,
   onContinue,
   onReturnToHub,
+  onOpenAttributeModal,
   rewards,
   leveledUp,
-  newLevel
+  newLevel,
+  hasAttributePoints
 }: VictoryModalProps) {
   
   const handleContinue = () => {
@@ -149,20 +153,33 @@ export function VictoryModal({
               )}
             </motion.div>
 
-            <DialogFooter className="flex gap-2 mt-4">
-              <Button 
-                onClick={handleReturnToHub} 
-                variant="outline"
-                className="flex-1 items-center justify-center"
-              >
-                Voltar ao Hub
-              </Button>
-              <Button 
-                onClick={handleContinue}
-                className="flex-1 bg-primary items-center justify-center gap-1"
-              >
-                Continuar <ArrowRight className="h-4 w-4" />
-              </Button>
+            <DialogFooter className="flex flex-col gap-2 mt-4">
+              <div className="flex flex-col gap-2 w-full">
+                {hasAttributePoints && (
+                  <Button
+                    onClick={onOpenAttributeModal}
+                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Distribuir Pontos de Atributo
+                  </Button>
+                )}
+                <Button 
+                  onClick={handleReturnToHub} 
+                  variant="outline"
+                  className="flex-1 items-center justify-center"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Voltar ao Hub
+                </Button>
+                <Button 
+                  onClick={handleContinue}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Continuar
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

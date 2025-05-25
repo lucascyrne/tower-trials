@@ -17,13 +17,14 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { useTheme } from 'next-themes';
 
-const getMenuItemsByRole = (role?: string) => {
+const getMenuItemsByRole = (role?: string, isInGamePages?: boolean) => {
   const baseItems = [
-    {
+    // Só mostrar "Jogar" se não estiver nas páginas de jogo
+    ...(isInGamePages ? [] : [{
       href: '/game',
       icon: Swords,
       label: 'Jogar',
-    },
+    }]),
     {
       href: '/game/ranking',
       icon: Trophy,
@@ -59,7 +60,10 @@ export function Header({ userName }: HeaderProps) {
   const pathname = usePathname();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
-  const menuItems = getMenuItemsByRole(user?.role);
+  
+  // Verificar se está nas páginas de jogo
+  const isInGamePages = pathname.startsWith('/game/play/');
+  const menuItems = getMenuItemsByRole(user?.role, isInGamePages);
 
   return (
     <header className="flex w-full flex-col bg-gradient-to-b from-background/90 to-background/70 border-b border-border">

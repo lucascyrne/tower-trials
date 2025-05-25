@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Skull } from 'lucide-react';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
+import AttributeDistributionModal from './AttributeDistributionModal';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
@@ -31,6 +32,7 @@ export default function GameBattle() {
   const { player, currentEnemy, currentFloor, isPlayerTurn, gameMessage } = gameState;
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
+  const [showAttributeModal, setShowAttributeModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messageProcessedRef = useRef<Set<string>>(new Set());
   const characterLoadedRef = useRef(false);
@@ -83,6 +85,19 @@ export default function GameBattle() {
       setShowDeathModal(true);
     }
   }, [gameState.mode, player.hp]);
+
+  // Listener para abrir modal de atributos
+  useEffect(() => {
+    const handleOpenAttributeModal = () => {
+      setShowAttributeModal(true);
+    };
+
+    window.addEventListener('openAttributeModal', handleOpenAttributeModal);
+    
+    return () => {
+      window.removeEventListener('openAttributeModal', handleOpenAttributeModal);
+    };
+  }, []);
 
   // Carregamento inicial do personagem
   useEffect(() => {
@@ -139,6 +154,12 @@ export default function GameBattle() {
   // Função para retornar à seleção de personagens
   const handleReturnToCharacterSelect = () => {
     router.push('/game/play');
+  };
+
+  // Função para abrir o modal de atributos
+  const handleOpenAttributeModal = () => {
+    setShowAttributeModal(true);
+    setShowVictoryModal(false);
   };
 
   // Componente de carregamento
@@ -236,9 +257,11 @@ export default function GameBattle() {
         isOpen={showVictoryModal}
         onContinue={handleContinueAdventure}
         onReturnToHub={handleReturnToHub}
+        onOpenAttributeModal={handleOpenAttributeModal}
         rewards={victoryRewards}
         leveledUp={victoryRewards.leveledUp}
         newLevel={victoryRewards.newLevel}
+        hasAttributePoints={(player.attribute_points || 0) > 0}
       />
 
       <Dialog open={showDeathModal} onOpenChange={setShowDeathModal}>
@@ -275,6 +298,12 @@ export default function GameBattle() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AttributeDistributionModal 
+        isOpen={showAttributeModal}
+        onClose={() => setShowAttributeModal(false)}
+        character={player}
+      />
     </>
   );
 } 
