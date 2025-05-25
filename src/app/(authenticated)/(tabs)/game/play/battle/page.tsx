@@ -6,11 +6,12 @@ import GameBattle from '@/components/game/game-battle';
 import { useGame } from '@/resources/game/game-hook';
 import { toast } from 'sonner';
 import { withFloorTransition } from '@/components/hocs/floor-transition-hoc';
+import { withGameProtection } from '@/components/hocs/game-protection-hoc';
 
-// Aplicar o HOC ao componente de batalha
+// Aplicar os HOCs ao componente de batalha
 const GameBattleWithTransition = withFloorTransition(GameBattle);
 
-export default function BattlePage() {
+function BattlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading } = useGame();
@@ -91,4 +92,9 @@ export default function BattlePage() {
       </GameBattleWithTransition>
     </div>
   );
-} 
+}
+
+// Aplicar proteção de jogo
+const BattlePageWithProtection = withGameProtection(BattlePage);
+
+export default BattlePageWithProtection; 
