@@ -3,86 +3,168 @@
 import { supabase } from "@/lib/supabase";
 
 export interface RankingEntry {
-  id?: string;
+  id: string;
+  user_id: string;
   player_name: string;
   highest_floor: number;
-  user_id?: string;
-  created_at?: string;
+  character_level: number;
+  character_gold: number;
+  character_alive: boolean;
+  created_at: string;
+}
+
+export interface SaveRankingData {
+  user_id: string;
+  player_name: string;
+  highest_floor: number;
+  character_level?: number;
+  character_gold?: number;
+  character_alive?: boolean;
+}
+
+export type RankingMode = 'highest_floor' | 'level' | 'gold';
+
+interface ServiceResponse<T> {
+  data: T;
+  error: string | null;
 }
 
 export class RankingService {
   /**
-   * Salva uma nova pontuação no ranking
-   * @param entry Dados da pontuação
-   * @returns Resultado da operação
+   * Salvar entrada no ranking
    */
-  static async saveScore(entry: Omit<RankingEntry, 'id' | 'created_at'>): Promise<{ success: boolean; error?: string }> {
+  static async saveScore(data: SaveRankingData): Promise<ServiceResponse<string>> {
     try {
-      // Obter o usuário atual para validação
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Validar se o user_id corresponde ao usuário autenticado
-      if (entry.user_id && user && entry.user_id !== user.id) {
-        return { success: false, error: 'Não é possível salvar pontuação para outro usuário' };
-      }
-
-      const { error } = await supabase
-        .from('game_rankings')
-        .insert({
-          player_name: entry.player_name,
-          highest_floor: entry.highest_floor,
-          user_id: entry.user_id || (user?.id || null), // Usar o ID do usuário atual se disponível
+      const { data: result, error } = await supabase
+        .rpc('save_ranking_entry', {
+          p_user_id: data.user_id,
+          p_player_name: data.player_name,
+          p_highest_floor: data.highest_floor,
+          p_character_level: data.character_level || 1,
+          p_character_gold: data.character_gold || 0,
+          p_character_alive: data.character_alive ?? true
         });
 
       if (error) throw error;
-      return { success: true };
-    } catch (error: unknown) {
-      console.error('Erro ao salvar pontuação:', error instanceof Error ? error.message : 'Erro desconhecido');
-      return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Erro ao salvar no ranking:', error);
+      return { 
+        data: '', 
+        error: error instanceof Error ? error.message : 'Erro ao salvar no ranking' 
+      };
     }
   }
 
   /**
-   * Busca o ranking global ordenado pela maior pontuação
-   * @param limit Limite de resultados (padrão: 10)
-   * @returns Lista de pontuações
+   * Obter ranking global por modalidade
    */
-  static async getGlobalRanking(limit: number = 10): Promise<{ data: RankingEntry[]; error?: string }> {
+  static async getGlobalRanking(
+    mode: RankingMode = 'highest_floor',
+    limit: number = 10,
+    aliveOnly: boolean = false
+  ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
+      let functionName: string;
+      
+      switch (mode) {
+        case 'highest_floor':
+          functionName = 'get_ranking_by_highest_floor';
+          break;
+        case 'level':
+          functionName = 'get_ranking_by_level';
+          break;
+        case 'gold':
+          functionName = 'get_ranking_by_gold';
+          break;
+        default:
+          functionName = 'get_ranking_by_highest_floor';
+      }
+
       const { data, error } = await supabase
-        .from('game_rankings')
-        .select('*')
-        .order('highest_floor', { ascending: false })
-        .limit(limit);
+        .rpc(functionName, {
+          p_limit: limit,
+          p_alive_only: aliveOnly
+        });
 
       if (error) throw error;
-      return { data: data || [] };
-    } catch (error: unknown) {
-      console.error('Erro ao buscar ranking:', error instanceof Error ? error.message : 'Erro desconhecido');
-      return { data: [], error: error instanceof Error ? error.message : 'Erro desconhecido' };
+
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('Erro ao buscar ranking global:', error);
+      return { 
+        data: [], 
+        error: error instanceof Error ? error.message : 'Erro ao buscar ranking' 
+      };
     }
   }
 
   /**
-   * Busca o ranking pessoal de um usuário
-   * @param userId ID do usuário
-   * @param limit Limite de resultados (padrão: 5)
-   * @returns Lista de pontuações do usuário
+   * Obter histórico de ranking do usuário
    */
-  static async getUserRanking(userId: string, limit: number = 5): Promise<{ data: RankingEntry[]; error?: string }> {
+  static async getUserRanking(
+    userId: string,
+    limit: number = 10
+  ): Promise<ServiceResponse<RankingEntry[]>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_ranking_history', {
+          p_user_id: userId,
+          p_limit: limit
+        });
+
+      if (error) throw error;
+
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('Erro ao buscar ranking do usuário:', error);
+      return { 
+        data: [], 
+        error: error instanceof Error ? error.message : 'Erro ao buscar ranking do usuário' 
+      };
+    }
+  }
+
+  /**
+   * Obter estatísticas do usuário
+   */
+  static async getUserStats(userId: string): Promise<ServiceResponse<{
+    bestFloor: number;
+    bestLevel: number;
+    bestGold: number;
+    totalRuns: number;
+    aliveCharacters: number;
+  }>> {
     try {
       const { data, error } = await supabase
         .from('game_rankings')
-        .select('*')
-        .eq('user_id', userId)
-        .order('highest_floor', { ascending: false })
-        .limit(limit);
+        .select('highest_floor, character_level, character_gold, character_alive')
+        .eq('user_id', userId);
 
       if (error) throw error;
-      return { data: data || [] };
-    } catch (error: unknown) {
-      console.error('Erro ao buscar ranking do usuário:', error instanceof Error ? error.message : 'Erro desconhecido');
-      return { data: [], error: error instanceof Error ? error.message : 'Erro desconhecido' };
+
+      const stats = {
+        bestFloor: Math.max(...(data?.map(r => r.highest_floor) || [0])),
+        bestLevel: Math.max(...(data?.map(r => r.character_level) || [1])),
+        bestGold: Math.max(...(data?.map(r => r.character_gold) || [0])),
+        totalRuns: data?.length || 0,
+        aliveCharacters: data?.filter(r => r.character_alive).length || 0
+      };
+
+      return { data: stats, error: null };
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas do usuário:', error);
+      return { 
+        data: {
+          bestFloor: 0,
+          bestLevel: 1,
+          bestGold: 0,
+          totalRuns: 0,
+          aliveCharacters: 0
+        }, 
+        error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas' 
+      };
     }
   }
 } 

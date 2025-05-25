@@ -983,7 +983,10 @@ export class GameService {
         const rankingEntry = {
           player_name: player.name,
           highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
-          user_id: player.user_id
+          user_id: player.user_id,
+          character_level: player.level,
+          character_gold: player.gold,
+          character_alive: false // Personagem morreu
         };
 
         await RankingService.saveScore(rankingEntry);

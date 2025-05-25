@@ -25,15 +25,18 @@ export default function GameOver() {
       setIsSaving(true);
       setIsDeleting(true);
       
-      // Salvar pontuação no ranking
-      const { success: rankingSuccess, error: rankingError } = await RankingService.saveScore({
+      // Salvar pontuação no ranking com informações completas
+      const rankingResponse = await RankingService.saveScore({
         player_name: player.name,
-        highest_floor: player.floor - 1,
-        user_id: user?.id,
+        highest_floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
+        user_id: user?.id || '',
+        character_level: player.level,
+        character_gold: player.gold,
+        character_alive: false // Personagem morreu
       });
 
-      if (!rankingSuccess) {
-        throw new Error(rankingError || 'Erro ao salvar pontuação');
+      if (rankingResponse.error) {
+        throw new Error(rankingResponse.error);
       }
 
       // Deletar personagem (permadeath)
@@ -94,13 +97,19 @@ export default function GameOver() {
             <div className="font-medium">{player.level}</div>
             
             <div>Gold acumulado:</div>
-            <div className="font-medium">{player.gold}</div>
+            <div className="font-medium">{player.gold.toLocaleString('pt-BR')}</div>
+            
+            <div>XP total:</div>
+            <div className="font-medium">{player.xp.toLocaleString('pt-BR')}</div>
           </div>
         </div>
 
         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg">
           <p className="text-sm text-red-400 mb-2">
             <strong>Aviso de Permadeath:</strong> Este personagem será permanentemente deletado ao continuar.
+          </p>
+          <p className="text-xs text-red-300">
+            Suas estatísticas serão salvas no ranking para comparação com outros jogadores.
           </p>
         </div>
       </CardContent>
@@ -122,6 +131,17 @@ export default function GameOver() {
               Aceitar Derrota e Salvar Pontuação
             </span>
           )}
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push('/game/ranking')}
+          className="w-full"
+          disabled={isSaving || isDeleting}
+        >
+          <Trophy className="h-4 w-4 mr-2" />
+          Ver Ranking
         </Button>
       </CardFooter>
     </Card>
