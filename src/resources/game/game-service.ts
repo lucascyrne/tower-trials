@@ -12,6 +12,27 @@ import { SpecialEventService } from './special-event.service';
 import { SkillXpGain } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
 
+// Interface para dados estendidos do monstro
+interface ExtendedMonster extends Monster {
+  strength?: number;
+  dexterity?: number;
+  intelligence?: number;
+  wisdom?: number;
+  vitality?: number;
+  luck?: number;
+  critical_chance?: number;
+  critical_damage?: number;
+  critical_resistance?: number;
+  physical_resistance?: number;
+  magical_resistance?: number;
+  debuff_resistance?: number;
+  physical_vulnerability?: number;
+  magical_vulnerability?: number;
+  primary_trait?: string;
+  secondary_trait?: string;
+  special_abilities?: string[];
+}
+
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
   user_id: string;
@@ -116,7 +137,34 @@ export class GameService {
           debuffs: [],
           dots: [],
           hots: []
-        }
+        },
+        
+        // Atributos primários
+        strength: (monster as ExtendedMonster).strength,
+        dexterity: (monster as ExtendedMonster).dexterity,
+        intelligence: (monster as ExtendedMonster).intelligence,
+        wisdom: (monster as ExtendedMonster).wisdom,
+        vitality: (monster as ExtendedMonster).vitality,
+        luck: (monster as ExtendedMonster).luck,
+        
+        // Propriedades de combate avançadas
+        critical_chance: (monster as ExtendedMonster).critical_chance,
+        critical_damage: (monster as ExtendedMonster).critical_damage,
+        critical_resistance: (monster as ExtendedMonster).critical_resistance,
+        
+        // Resistências
+        physical_resistance: (monster as ExtendedMonster).physical_resistance,
+        magical_resistance: (monster as ExtendedMonster).magical_resistance,
+        debuff_resistance: (monster as ExtendedMonster).debuff_resistance,
+        
+        // Vulnerabilidades
+        physical_vulnerability: (monster as ExtendedMonster).physical_vulnerability,
+        magical_vulnerability: (monster as ExtendedMonster).magical_vulnerability,
+        
+        // Características especiais
+        primary_trait: (monster as ExtendedMonster).primary_trait,
+        secondary_trait: (monster as ExtendedMonster).secondary_trait,
+        special_abilities: (monster as ExtendedMonster).special_abilities || []
       };
     } catch (error) {
       console.error('Erro ao gerar inimigo:', error instanceof Error ? error.message : error);
@@ -864,7 +912,7 @@ export class GameService {
     
     // Calcular dano base do inimigo
     let enemyDamage = MonsterService.calculateDamage(
-      currentEnemy as unknown as Monster,
+      currentEnemy as unknown as ExtendedMonster,
       currentEnemy.attack,
       player.def
     );

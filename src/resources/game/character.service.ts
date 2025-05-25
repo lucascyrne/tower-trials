@@ -212,9 +212,10 @@ export class CharacterService {
     try {
       console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
       const { data, error } = await supabase
-        .rpc('get_character', {
+        .rpc('get_character_full_stats', {
           p_character_id: characterId
-        });
+        })
+        .single();
 
       if (error) throw error;
 
@@ -226,9 +227,67 @@ export class CharacterService {
         };
       }
 
-      // Atualizar cache
-      const character = data as Character;
-      console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor})`);
+      // Converter os dados da função RPC para o formato Character
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fullStatsData = data as any; // Dados da função get_character_full_stats
+      const character: Character = {
+        id: fullStatsData.character_id,
+        user_id: '', // Será preenchido pela função RPC se necessário
+        name: fullStatsData.name,
+        level: fullStatsData.level,
+        xp: fullStatsData.xp,
+        xp_next_level: fullStatsData.xp_next_level,
+        gold: fullStatsData.gold,
+        hp: fullStatsData.hp,
+        max_hp: fullStatsData.max_hp,
+        mana: fullStatsData.mana,
+        max_mana: fullStatsData.max_mana,
+        atk: fullStatsData.atk,
+        def: fullStatsData.def,
+        speed: fullStatsData.speed,
+        floor: 1, // Será preenchido pela função RPC se necessário
+        strength: fullStatsData.strength,
+        dexterity: fullStatsData.dexterity,
+        intelligence: fullStatsData.intelligence,
+        wisdom: fullStatsData.wisdom,
+        vitality: fullStatsData.vitality,
+        luck: fullStatsData.luck,
+        attribute_points: fullStatsData.attribute_points,
+        critical_chance: fullStatsData.critical_chance,
+        critical_damage: fullStatsData.critical_damage,
+        sword_mastery: fullStatsData.sword_mastery,
+        axe_mastery: fullStatsData.axe_mastery,
+        blunt_mastery: fullStatsData.blunt_mastery,
+        defense_mastery: fullStatsData.defense_mastery,
+        magic_mastery: fullStatsData.magic_mastery,
+        sword_mastery_xp: fullStatsData.sword_mastery_xp,
+        axe_mastery_xp: fullStatsData.axe_mastery_xp,
+        blunt_mastery_xp: fullStatsData.blunt_mastery_xp,
+        defense_mastery_xp: fullStatsData.defense_mastery_xp,
+        magic_mastery_xp: fullStatsData.magic_mastery_xp,
+        created_at: '', // Será preenchido se necessário
+        updated_at: '', // Será preenchido se necessário
+        last_activity: undefined
+      };
+
+      // Buscar dados adicionais que não estão na função get_character_full_stats
+      const { data: basicData, error: basicError } = await supabase
+        .rpc('get_character', {
+          p_character_id: character.id
+        })
+        .single();
+
+      if (!basicError && basicData) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const basicCharacterData = basicData as any;
+        character.user_id = basicCharacterData.user_id;
+        character.floor = basicCharacterData.floor;
+        character.created_at = basicCharacterData.created_at;
+        character.updated_at = basicCharacterData.updated_at;
+        character.last_activity = basicCharacterData.last_activity;
+      }
+
+      console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor}) com crítico: ${character.critical_chance}`);
       this.characterCache.set(characterId, character);
       this.lastFetchTimestamp.set(characterId, Date.now());
 

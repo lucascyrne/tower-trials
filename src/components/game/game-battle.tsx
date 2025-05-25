@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
-import { PlayerInfo } from './PlayerInfo';
-import { EnemyInfo } from './EnemyInfo';
+import { BattleArena } from './BattleArena';
 import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
@@ -202,23 +201,24 @@ export default function GameBattle() {
     router.push(`/game/play/hub?character=${gameState.player.id}`);
   };
 
-  const getHpColor = (percentage: number) => {
-    if (percentage > 60) return 'bg-green-500';
-    if (percentage > 30) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
   return (
     <>
       <div className="w-full max-w-6xl">
         <BattleHeader currentFloor={currentFloor} playerLevel={player.level} gameMessage={gameMessage} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <EnemyInfo currentEnemy={currentEnemy} enemyHpPercentage={enemyHpPercentage} getHpColor={getHpColor} />
-          <PlayerInfo player={player} playerHpPercentage={playerHpPercentage} playerManaPercentage={playerManaPercentage} getHpColor={getHpColor} />
+        {/* Arena de Batalha Unificada */}
+        <div className="mb-6">
+          <BattleArena 
+            player={player}
+            currentEnemy={currentEnemy}
+            playerHpPercentage={playerHpPercentage}
+            playerManaPercentage={playerManaPercentage}
+            enemyHpPercentage={enemyHpPercentage}
+            isPlayerTurn={isPlayerTurn}
+          />
         </div>
 
-        {/* Interface de Batalha Unificada */}
+        {/* Interface de Batalha */}
         <div className="mb-6">
           <CombinedBattleInterface 
             handleAction={handleAction}
