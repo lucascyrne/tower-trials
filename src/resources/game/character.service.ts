@@ -1022,4 +1022,50 @@ export class CharacterService {
       };
     }
   }
+
+  /**
+   * Resetar progresso do personagem na torre (volta para andar 1)
+   * @param characterId ID do personagem
+   * @returns Sucesso da operação
+   */
+  static async resetCharacterProgress(characterId: string): Promise<ServiceResponse<null>> {
+    try {
+      // Primeiro buscar os valores máximos do personagem
+      const { data: character, error: fetchError } = await supabase
+        .from('characters')
+        .select('max_hp, max_mana')
+        .eq('id', characterId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error } = await supabase
+        .from('characters')
+        .update({
+          floor: 1,
+          hp: character.max_hp, // Restaurar HP completo
+          mana: character.max_mana, // Restaurar mana completa
+          last_activity: new Date().toISOString()
+        })
+        .eq('id', characterId);
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      return { 
+        data: null, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao resetar progresso do personagem:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao resetar progresso', 
+        success: false 
+      };
+    }
+  }
 } 
