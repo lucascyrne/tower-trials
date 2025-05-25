@@ -582,22 +582,10 @@ export function GameProvider({ children }: GameProviderProps) {
                   gold: updatedState.battleRewards.gold
                 });
                 
-                // Se houve level up, salvar no ranking para personagens vivos
+                // Atualizar ranking dinamicamente para personagens vivos (não precisa mais salvar explicitamente)
+                // O sistema dinâmico já considera automaticamente os dados atuais dos personagens vivos
                 if (updateResult.success && updateResult.data?.leveled_up) {
-                  try {
-                    const { RankingService } = await import('@/resources/game/ranking-service');
-                    await RankingService.saveScore({
-                      user_id: selectedCharacter.user_id,
-                      player_name: selectedCharacter.name,
-                      highest_floor: updatedState.player.floor,
-                      character_level: updatedState.player.level + (updatedState.battleRewards.leveledUp ? 1 : 0),
-                      character_gold: updatedState.player.gold,
-                      character_alive: true
-                    });
-                  } catch (error) {
-                    console.error('Erro ao salvar no ranking:', error);
-                    // Não interromper o fluxo por erro no ranking
-                  }
+                  console.log(`[game-provider] Personagem ${selectedCharacter.name} subiu de nível - ranking será atualizado dinamicamente`);
                 }
               }
                 

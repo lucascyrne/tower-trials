@@ -29,6 +29,14 @@ interface ServiceResponse<T> {
   error: string | null;
 }
 
+interface UserStatsResponse {
+  best_floor: number;
+  best_level: number;
+  best_gold: number;
+  total_runs: number;
+  alive_characters: number;
+}
+
 export class RankingService {
   /**
    * Salvar entrada no ranking
@@ -58,7 +66,7 @@ export class RankingService {
   }
 
   /**
-   * Obter ranking global por modalidade
+   * Obter ranking global por modalidade (dinâmico - inclui personagens vivos e mortos)
    */
   static async getGlobalRanking(
     mode: RankingMode = 'highest_floor',
@@ -70,33 +78,22 @@ export class RankingService {
       
       switch (mode) {
         case 'highest_floor':
-          functionName = 'get_ranking_by_highest_floor';
+          functionName = 'get_dynamic_ranking_by_highest_floor';
           break;
         case 'level':
-          functionName = 'get_ranking_by_level';
+          functionName = 'get_dynamic_ranking_by_level';
           break;
         case 'gold':
-          functionName = 'get_ranking_by_gold';
+          functionName = 'get_dynamic_ranking_by_gold';
           break;
         default:
-          functionName = 'get_ranking_by_highest_floor';
-      }
-
-      // Converter statusFilter para parâmetros da função
-      let aliveOnly = false;
-      let deadOnly = false;
-      
-      if (statusFilter === 'alive') {
-        aliveOnly = true;
-      } else if (statusFilter === 'dead') {
-        deadOnly = true;
+          functionName = 'get_dynamic_ranking_by_highest_floor';
       }
 
       const { data, error } = await supabase
         .rpc(functionName, {
           p_limit: limit,
-          p_alive_only: aliveOnly,
-          p_dead_only: deadOnly
+          p_status_filter: statusFilter
         });
 
       if (error) throw error;
@@ -112,7 +109,7 @@ export class RankingService {
   }
 
   /**
-   * Obter histórico de ranking do usuário
+   * Obter histórico de ranking do usuário (dinâmico - inclui personagens vivos e mortos)
    */
   static async getUserRanking(
     userId: string,
@@ -120,7 +117,7 @@ export class RankingService {
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
       const { data, error } = await supabase
-        .rpc('get_user_ranking_history', {
+        .rpc('get_dynamic_user_ranking_history', {
           p_user_id: userId,
           p_limit: limit
         });
@@ -138,7 +135,7 @@ export class RankingService {
   }
 
   /**
-   * Obter estatísticas do usuário
+   * Obter estatísticas do usuário (dinâmico - inclui personagens vivos e mortos)
    */
   static async getUserStats(userId: string): Promise<ServiceResponse<{
     bestFloor: number;
@@ -149,18 +146,20 @@ export class RankingService {
   }>> {
     try {
       const { data, error } = await supabase
-        .from('game_rankings')
-        .select('highest_floor, character_level, character_gold, character_alive')
-        .eq('user_id', userId);
+        .rpc('get_dynamic_user_stats', {
+          p_user_id: userId
+        })
+        .single();
 
       if (error) throw error;
 
+      const statsData = data as UserStatsResponse | null;
       const stats = {
-        bestFloor: Math.max(...(data?.map(r => r.highest_floor) || [0])),
-        bestLevel: Math.max(...(data?.map(r => r.character_level) || [1])),
-        bestGold: Math.max(...(data?.map(r => r.character_gold) || [0])),
-        totalRuns: data?.length || 0,
-        aliveCharacters: data?.filter(r => r.character_alive).length || 0
+        bestFloor: statsData?.best_floor || 0,
+        bestLevel: statsData?.best_level || 1,
+        bestGold: statsData?.best_gold || 0,
+        totalRuns: statsData?.total_runs || 0,
+        aliveCharacters: statsData?.alive_characters || 0
       };
 
       return { data: stats, error: null };

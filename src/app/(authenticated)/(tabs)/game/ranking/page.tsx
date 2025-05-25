@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { RankingService, RankingEntry, RankingMode } from '@/resources/game/ranking-service';
 import { useAuth } from '@/resources/auth/auth-hook';
-import RankingFilters, { CharacterStatusFilter } from './components/ranking-filters';
-import RankingTable from './components/ranking-table';
-import UserStats from './components/user-stats';
+import RankingFilters, { CharacterStatusFilter } from '../../../../../components/ranking/ranking-filters';
+import RankingTable from '../../../../../components/ranking/ranking-table';
+import UserStats from '../../../../../components/ranking/user-stats';
 
 export default function RankingPage() {
   const router = useRouter();
@@ -40,36 +40,63 @@ export default function RankingPage() {
     try {
       setIsLoading(true);
       
-      // Buscar ranking global
-      const globalResponse = await RankingService.getGlobalRanking(rankingMode, 10, statusFilter);
+      // Buscar ranking global dinâmico
+      const globalResponse = await RankingService.getGlobalRanking(rankingMode, 20, statusFilter);
       
       if (globalResponse.error) {
         console.error('Erro ao buscar ranking global:', globalResponse.error);
+        setRankingData([]);
       } else {
-        setRankingData(globalResponse.data);
+        setRankingData(globalResponse.data || []);
+        console.log(`[RankingPage] Ranking global carregado: ${globalResponse.data?.length || 0} entradas`);
       }
       
       // Buscar dados do usuário se estiver logado
       if (user?.id) {
         const [userRankingResponse, userStatsResponse] = await Promise.all([
-          RankingService.getUserRanking(user.id, 10),
+          RankingService.getUserRanking(user.id, 15),
           RankingService.getUserStats(user.id)
         ]);
         
         if (userRankingResponse.error) {
           console.error('Erro ao buscar ranking do usuário:', userRankingResponse.error);
+          setUserRanking([]);
         } else {
-          setUserRanking(userRankingResponse.data);
+          setUserRanking(userRankingResponse.data || []);
+          console.log(`[RankingPage] Ranking do usuário carregado: ${userRankingResponse.data?.length || 0} entradas`);
         }
         
         if (userStatsResponse.error) {
           console.error('Erro ao buscar estatísticas do usuário:', userStatsResponse.error);
+          setUserStats({
+            bestFloor: 0,
+            bestLevel: 1,
+            bestGold: 0,
+            totalRuns: 0,
+            aliveCharacters: 0
+          });
         } else {
-          setUserStats(userStatsResponse.data);
+          setUserStats(userStatsResponse.data || {
+            bestFloor: 0,
+            bestLevel: 1,
+            bestGold: 0,
+            totalRuns: 0,
+            aliveCharacters: 0
+          });
+          console.log(`[RankingPage] Estatísticas do usuário carregadas:`, userStatsResponse.data);
         }
       }
     } catch (error) {
       console.error('Erro ao buscar dados do ranking:', error);
+      setRankingData([]);
+      setUserRanking([]);
+      setUserStats({
+        bestFloor: 0,
+        bestLevel: 1,
+        bestGold: 0,
+        totalRuns: 0,
+        aliveCharacters: 0
+      });
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +139,7 @@ export default function RankingPage() {
               <p className="text-sm sm:text-base text-muted-foreground">
                 {statusFilter === 'alive' ? 'Apenas personagens vivos' : 
                  statusFilter === 'dead' ? 'Apenas personagens mortos' : 
-                 'Todos os personagens'}
+                 'Todos os personagens'} • Atualização dinâmica
               </p>
             </div>
           </div>
