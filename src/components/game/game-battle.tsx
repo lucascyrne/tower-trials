@@ -6,8 +6,7 @@ import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
 import { PlayerInfo } from './PlayerInfo';
 import { EnemyInfo } from './EnemyInfo';
-import { BattleActions } from './BattleActions';
-import { PotionSlots } from './PotionSlots';
+import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -219,21 +218,15 @@ export default function GameBattle() {
           <PlayerInfo player={player} playerHpPercentage={playerHpPercentage} playerManaPercentage={playerManaPercentage} getHpColor={getHpColor} />
         </div>
 
-        {/* Interface de Ações com Poções Integradas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Slots de Poção */}
-          <div className="flex justify-center lg:justify-start">
-            <PotionSlots 
-              player={player}
-              onPlayerStatsUpdate={handlePlayerStatsUpdate}
-              disabled={!isPlayerTurn || loading.performAction}
-            />
-          </div>
-          
-          {/* Ações de Batalha */}
-          <div className="lg:col-span-2">
-            <BattleActions handleAction={handleAction} isPlayerTurn={isPlayerTurn} loading={loading} player={player} />
-          </div>
+        {/* Interface de Batalha Unificada */}
+        <div className="mb-6">
+          <CombinedBattleInterface 
+            handleAction={handleAction}
+            isPlayerTurn={isPlayerTurn}
+            loading={loading}
+            player={player}
+            onPlayerStatsUpdate={handlePlayerStatsUpdate}
+          />
         </div>
 
         <GameLog gameLog={gameLog} />

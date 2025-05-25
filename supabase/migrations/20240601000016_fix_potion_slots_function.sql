@@ -1,5 +1,9 @@
 -- Migração para corrigir as funções de slots removendo referências à coluna icon
 
+-- Primeiro, remover as funções existentes para poder recriar com nova assinatura
+DROP FUNCTION IF EXISTS get_character_potion_slots(UUID);
+DROP FUNCTION IF EXISTS get_character_spell_slots(UUID);
+
 -- Corrigir função para obter slots de poção do personagem
 CREATE OR REPLACE FUNCTION get_character_potion_slots(p_character_id UUID)
 RETURNS TABLE (
