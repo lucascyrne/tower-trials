@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Trophy, Skull } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { RankingService } from '@/resources/game/ranking-service';
+import { RankingService } from '@/resources/game/ranking.service';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
 import { formatLargeNumber } from '@/lib/utils';

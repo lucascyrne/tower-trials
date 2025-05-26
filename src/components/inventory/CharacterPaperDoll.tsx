@@ -19,10 +19,10 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
 }) => {
   const getSlotIcon = (slotType: keyof EquipmentSlots) => {
     switch (slotType) {
-      case 'main_hand': return <Sword className="h-8 w-8" />;
-      case 'off_hand': return <Shield className="h-8 w-8" />;
-      case 'armor': return <ShirtIcon className="h-8 w-8" />;
-      case 'accessory': return <Gem className="h-8 w-8" />;
+      case 'main_hand': return <Sword className="h-8 w-8 text-red-400" />;
+      case 'off_hand': return <Shield className="h-8 w-8 text-blue-400" />;
+      case 'armor': return <ShirtIcon className="h-8 w-8 text-emerald-400" />;
+      case 'accessory': return <Gem className="h-8 w-8 text-purple-400" />;
     }
   };
 
@@ -37,23 +37,23 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
 
   const getRarityColor = (rarity: Equipment['rarity']) => {
     const colors = {
-      common: 'border-gray-500 bg-gray-500/10 text-gray-300',
-      uncommon: 'border-green-500 bg-green-500/10 text-green-300',
-      rare: 'border-blue-500 bg-blue-500/10 text-blue-300',
-      epic: 'border-purple-500 bg-purple-500/10 text-purple-300',
-      legendary: 'border-yellow-500 bg-yellow-500/10 text-yellow-300'
+      common: 'bg-slate-800/80 text-slate-300 border-slate-600',
+      uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
+      rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
+      epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
+      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
     };
     return colors[rarity];
   };
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-card/95 to-card/80 border-2 border-primary/30">
+    <Card className="p-6 bg-gradient-to-br from-slate-800/95 to-slate-900/95 border-2 border-primary/30 backdrop-blur-sm">
       <div className="text-center mb-6">
-        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
+        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 flex items-center justify-center backdrop-blur-sm">
           <User className="h-10 w-10 text-primary" />
         </div>
         <h3 className="text-xl font-bold text-primary">{character.name}</h3>
-        <p className="text-sm text-muted-foreground">Nível {character.level}</p>
+        <p className="text-sm text-slate-400">Nível {character.level}</p>
       </div>
 
       <div className="space-y-3">
@@ -63,27 +63,27 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
           return (
             <Card 
               key={slotType} 
-              className={`p-4 bg-card/60 border-2 transition-all duration-200 ${
+              className={`p-4 border-2 transition-all duration-200 backdrop-blur-sm ${
                 equipment 
-                  ? 'border-primary/50 hover:border-primary/70' 
-                  : 'border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
+                  ? 'bg-slate-800/60 border-primary/50 hover:border-primary/70 shadow-lg shadow-primary/10' 
+                  : 'bg-slate-800/30 border-dashed border-slate-600/50 hover:border-slate-500/70'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 text-muted-foreground">
+                <div className="flex-shrink-0 text-slate-400">
                   {getSlotIcon(slotType)}
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                  <h4 className="text-sm font-medium text-slate-300 mb-1">
                     {getSlotLabel(slotType)}
                   </h4>
                   {equipment ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-primary">
+                        <p className="text-sm font-semibold text-primary truncate">
                           {equipment.name}
                         </p>
-                        <Badge className={getRarityColor(equipment.rarity)} variant="outline">
+                        <Badge className={`${getRarityColor(equipment.rarity)} text-xs`} variant="outline">
                           {equipment.rarity}
                         </Badge>
                       </div>
@@ -100,15 +100,15 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
                       </div>
                       <Button 
                         size="sm" 
-                        variant="destructive"
+                        variant="outline"
                         onClick={() => onUnequipSlot(slotType)}
-                        className="w-full mt-2 h-7 text-xs"
+                        className="w-full mt-2 h-7 text-xs border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-100"
                       >
                         Desequipar
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">Slot vazio</p>
+                    <p className="text-xs text-slate-500 italic">Slot vazio</p>
                   )}
                 </div>
               </div>
@@ -118,23 +118,23 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
       </div>
 
       {/* Stats do personagem */}
-      <div className="mt-6 pt-4 border-t border-border">
+      <div className="mt-6 pt-4 border-t border-slate-700/50">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">ATK:</span>
-            <span className="font-medium">{character.atk}</span>
+          <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
+            <span className="text-slate-400">ATK:</span>
+            <span className="font-medium text-red-400">{character.atk}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">DEF:</span>
-            <span className="font-medium">{character.def}</span>
+          <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
+            <span className="text-slate-400">DEF:</span>
+            <span className="font-medium text-blue-400">{character.def}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">HP:</span>
-            <span className="font-medium">{character.hp}/{character.max_hp}</span>
+          <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
+            <span className="text-slate-400">HP:</span>
+            <span className="font-medium text-emerald-400">{character.hp}/{character.max_hp}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">MP:</span>
-            <span className="font-medium">{character.mana}/{character.max_mana}</span>
+          <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
+            <span className="text-slate-400">MP:</span>
+            <span className="font-medium text-purple-400">{character.mana}/{character.max_mana}</span>
           </div>
         </div>
       </div>

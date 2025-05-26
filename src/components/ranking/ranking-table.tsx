@@ -3,7 +3,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trophy, Heart, Skull, TrendingUp, Coins } from 'lucide-react';
-import { RankingEntry, RankingMode } from '@/resources/game/ranking-service';
+import { RankingEntry, RankingMode } from '@/resources/game/ranking.service';
 import { formatLargeNumber } from '@/lib/utils';
 
 interface RankingTableProps {

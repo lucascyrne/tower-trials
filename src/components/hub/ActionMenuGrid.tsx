@@ -11,7 +11,8 @@ import {
   Backpack, 
   ArrowLeft, 
   Map,
-  TrendingUp
+  TrendingUp,
+  Shield
 } from 'lucide-react';
 
 interface ActionMenuGridProps {
@@ -21,6 +22,7 @@ interface ActionMenuGridProps {
   onOpenCharacterStats: () => void;
   onOpenShop: () => void;
   onOpenInventory: () => void;
+  onOpenEquipment: () => void;
   onReturnToSelection: () => void;
 }
 
@@ -86,6 +88,7 @@ export function ActionMenuGrid({
   onOpenCharacterStats, 
   onOpenShop, 
   onOpenInventory, 
+  onOpenEquipment,
   onReturnToSelection 
 }: ActionMenuGridProps) {
   const actions = [
@@ -122,10 +125,17 @@ export function ActionMenuGrid({
     },
     {
       title: 'Inventário',
-      description: 'Equipamentos',
+      description: 'Consumíveis',
       icon: Backpack,
       onClick: onOpenInventory,
       accent: 'border-orange-600/30'
+    },
+    {
+      title: 'Equipamentos',
+      description: 'Armas e armaduras',
+      icon: Shield,
+      onClick: onOpenEquipment,
+      accent: 'border-amber-600/30'
     },
     {
       title: 'Trocar',
@@ -137,7 +147,7 @@ export function ActionMenuGrid({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
       {actions.map((action, index) => (
         <ActionCard
           key={index}

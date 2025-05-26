@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Trophy, TrendingUp, Coins, Users, Heart, Skull } from 'lucide-react';
-import { RankingMode } from '@/resources/game/ranking-service';
+import { RankingMode } from '@/resources/game/ranking.service';
 
 export type CharacterStatusFilter = 'all' | 'alive' | 'dead';
 

@@ -5,10 +5,10 @@ import { EquipmentService } from '@/resources/game/equipment.service';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { Character } from '@/resources/game/models/character.model';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sword, Shield, Gem, Package, Sparkles, Coins } from 'lucide-react';
+import { Sword, Shield, Gem, Package, Sparkles, Coins, Heart, Zap, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InventoryModalProps {
@@ -35,6 +35,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
   const [drops, setDrops] = useState<CharacterDrop[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showActions, setShowActions] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && character.id) {
@@ -45,21 +46,15 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   const loadInventory = async () => {
     setLoading(true);
     try {
-      // Carregar equipamentos
-      const equipmentData = await EquipmentService.getCharacterEquipment(character.id);
-      setEquipment(equipmentData);
+      const [equipmentData, consumablesRes, dropsRes] = await Promise.all([
+        EquipmentService.getCharacterEquipment(character.id),
+        ConsumableService.getCharacterConsumables(character.id),
+        ConsumableService.getCharacterDrops(character.id)
+      ]);
 
-      // Carregar consumíveis
-      const consumablesRes = await ConsumableService.getCharacterConsumables(character.id);
-      if (consumablesRes.success && consumablesRes.data) {
-        setConsumables(consumablesRes.data);
-      }
-
-      // Carregar drops
-      const dropsRes = await ConsumableService.getCharacterDrops(character.id);
-      if (dropsRes.success && dropsRes.data) {
-        setDrops(dropsRes.data);
-      }
+      setEquipment(equipmentData || []);
+      setConsumables(consumablesRes.success ? consumablesRes.data || [] : []);
+      setDrops(dropsRes.success ? dropsRes.data || [] : []);
     } catch (error) {
       console.error('Erro ao carregar inventário:', error);
       toast.error('Erro ao carregar inventário');
@@ -68,49 +63,78 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     }
   };
 
-  const handleSellEquipment = async (item: CharacterEquipment) => {
+  const handleEquipmentAction = async (item: CharacterEquipment, action: 'toggle' | 'sell') => {
     if (!item.equipment) return;
 
     try {
-      const success = await EquipmentService.sellEquipment(character.id, item.equipment.id);
-      
-      if (success) {
-        toast.success(`${item.equipment.name} vendido com sucesso!`);
-        onItemSold();
-        loadInventory(); // Recarregar inventário
-      } else {
-        toast.error('Erro ao vender item');
+      if (action === 'toggle') {
+        const success = await EquipmentService.toggleEquipment(
+          character.id,
+          item.equipment.id,
+          !item.is_equipped
+        );
+        
+        if (success) {
+          toast.success(item.is_equipped ? 'Item desequipado!' : 'Item equipado!');
+          loadInventory();
+        }
+      } else if (action === 'sell') {
+        const success = await EquipmentService.sellEquipment(character.id, item.equipment.id);
+        
+        if (success) {
+          toast.success(`${item.equipment.name} vendido!`);
+          onItemSold();
+          loadInventory();
+        }
       }
     } catch (error) {
-      console.error('Erro ao vender equipamento:', error);
-      toast.error('Erro ao vender item');
+      console.error('Erro na ação:', error);
+      toast.error('Erro ao executar ação');
     }
+    setShowActions(null);
   };
 
-  const handleToggleEquip = async (item: CharacterEquipment) => {
-    if (!item.equipment) return;
+  const handleConsumableAction = async (item: CharacterConsumable) => {
+    if (!item.consumable) return;
 
     try {
-      const success = await EquipmentService.toggleEquipment(
+      const response = await ConsumableService.consumeItem(
         character.id,
-        item.equipment.id,
-        !item.is_equipped
+        item.consumable_id,
+        character
       );
-      
-      if (success) {
-        toast.success(
-          item.is_equipped 
-            ? `${item.equipment.name} desequipado!` 
-            : `${item.equipment.name} equipado!`
-        );
-        loadInventory(); // Recarregar para mostrar mudanças
+
+      if (response.success) {
+        toast.success('Item usado com sucesso!');
+        loadInventory();
+        onItemSold(); // Atualizar character
       } else {
-        toast.error('Erro ao equipar/desequipar item');
+        toast.error(response.error || 'Erro ao usar item');
       }
     } catch (error) {
-      console.error('Erro ao equipar/desequipar:', error);
-      toast.error('Erro ao equipar/desequipar item');
+      console.error('Erro ao usar item:', error);
+      toast.error('Erro ao usar item');
     }
+    setShowActions(null);
+  };
+
+  const getRarityColor = (rarity: string) => {
+    const colors = {
+      common: 'text-slate-400',
+      uncommon: 'text-emerald-400',
+      rare: 'text-blue-400',
+      epic: 'text-purple-400',
+      legendary: 'text-amber-400'
+    };
+    return colors[rarity as keyof typeof colors] || colors.common;
+  };
+
+  const getItemIcon = (type: string) => {
+    if (type === 'weapon') return <Sword className="h-4 w-4" />;
+    if (type === 'armor') return <Shield className="h-4 w-4" />;
+    if (type === 'accessory') return <Gem className="h-4 w-4" />;
+    if (type === 'potion') return <Heart className="h-4 w-4" />;
+    return <Package className="h-4 w-4" />;
   };
 
   const getSellPrice = (item: Equipment) => {
@@ -124,29 +148,189 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     return Math.floor(item.price * rarityMultiplier[item.rarity]);
   };
 
-  const getDropSellPrice = (drop: MonsterDrop) => {
-    // Valor base do drop como preço de venda
-    return drop.value || 1;
+  const canUseConsumable = (item: CharacterConsumable): boolean => {
+    if (!item.consumable) return false;
+    
+    if (item.consumable.type === 'potion') {
+      if (item.consumable.description.includes('HP') && character.hp >= character.max_hp) return false;
+      if (item.consumable.description.includes('Mana') && character.mana >= character.max_mana) return false;
+    }
+    
+    return true;
   };
 
-  const getRarityColor = (rarity: Equipment['rarity'] | MonsterDrop['rarity']) => {
-    const colors = {
-      common: 'text-gray-400 bg-gray-900/50',
-      uncommon: 'text-green-400 bg-green-900/50',
-      rare: 'text-blue-400 bg-blue-900/50',
-      epic: 'text-purple-400 bg-purple-900/50',
-      legendary: 'text-yellow-400 bg-yellow-900/50'
-    };
-    return colors[rarity];
+  const renderEquipmentItem = (item: CharacterEquipment) => {
+    if (!item.equipment) return null;
+    
+    const isActive = showActions === item.id;
+    
+    return (
+      <div key={item.id} className="relative">
+        <div
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+            item.is_equipped 
+              ? 'bg-primary/10 border-primary/30' 
+              : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/30'
+          } ${isActive ? 'ring-2 ring-primary/50' : ''}`}
+          onClick={() => setShowActions(isActive ? null : item.id)}
+        >
+          <div className="flex-shrink-0">
+            {getItemIcon(item.equipment.type)}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-200 truncate">
+                {item.equipment.name}
+              </span>
+              {item.is_equipped && (
+                <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                  Equipado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className={getRarityColor(item.equipment.rarity)}>
+                {item.equipment.rarity}
+              </span>
+              {item.equipment.atk_bonus > 0 && (
+                <span className="text-red-400">+{item.equipment.atk_bonus} ATK</span>
+              )}
+              {item.equipment.def_bonus > 0 && (
+                <span className="text-blue-400">+{item.equipment.def_bonus} DEF</span>
+              )}
+            </div>
+          </div>
+          
+          <div className="text-xs text-amber-400">
+            <Coins className="h-3 w-3 inline mr-1" />
+            {getSellPrice(item.equipment)}
+          </div>
+        </div>
+        
+        {isActive && (
+          <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-2 shadow-lg">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={item.is_equipped ? "secondary" : "default"}
+                onClick={() => handleEquipmentAction(item, 'toggle')}
+                className="flex-1 text-xs"
+              >
+                {item.is_equipped ? 'Desequipar' : 'Equipar'}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleEquipmentAction(item, 'sell')}
+                className="flex-1 text-xs"
+              >
+                Vender
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderConsumableItem = (item: CharacterConsumable) => {
+    if (!item.consumable) return null;
+    
+    const isActive = showActions === item.id;
+    const canUse = canUseConsumable(item);
+    
+    return (
+      <div key={item.id} className="relative">
+        <div
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+            canUse 
+              ? 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/30' 
+              : 'bg-slate-800/20 border-slate-700/20 opacity-60'
+          } ${isActive ? 'ring-2 ring-primary/50' : ''}`}
+          onClick={() => canUse && setShowActions(isActive ? null : item.id)}
+        >
+          <div className="flex-shrink-0">
+            {item.consumable.type === 'potion' && item.consumable.description.includes('HP') ? (
+              <Heart className="h-4 w-4 text-red-400" />
+            ) : item.consumable.type === 'potion' && item.consumable.description.includes('Mana') ? (
+              <Zap className="h-4 w-4 text-blue-400" />
+            ) : (
+              <Sparkles className="h-4 w-4 text-purple-400" />
+            )}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-200 truncate">
+                {item.consumable.name}
+              </span>
+              <span className="text-xs bg-slate-700/50 text-slate-300 px-1.5 py-0.5 rounded">
+                x{item.quantity}
+              </span>
+            </div>
+            <div className="text-xs text-slate-400">
+              +{item.consumable.effect_value} {item.consumable.type}
+            </div>
+          </div>
+        </div>
+        
+        {isActive && canUse && (
+          <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-2 shadow-lg">
+            <Button
+              size="sm"
+              onClick={() => handleConsumableAction(item)}
+              className="w-full text-xs"
+            >
+              Usar Agora
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderDropItem = (item: CharacterDrop) => {
+    if (!item.drop) return null;
+    
+    return (
+      <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/30">
+        <div className="flex-shrink-0">
+          <Star className="h-4 w-4 text-purple-400" />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-200 truncate">
+              {item.drop.name}
+            </span>
+            <span className="text-xs bg-slate-700/50 text-slate-300 px-1.5 py-0.5 rounded">
+              x{item.quantity}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className={getRarityColor(item.drop.rarity)}>
+              {item.drop.rarity}
+            </span>
+            <span className="text-amber-400">
+              {item.drop.value} gold cada
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
+          <VisuallyHidden>
+            <DialogTitle>Carregando Inventário</DialogTitle>
+          </VisuallyHidden>
           <div className="flex items-center justify-center p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            <span className="ml-2">Carregando inventário...</span>
+            <span className="ml-2 text-slate-300">Carregando...</span>
           </div>
         </DialogContent>
       </Dialog>
@@ -155,180 +339,75 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Inventário - {character.name}</span>
-            <div className="flex items-center gap-2 text-sm text-yellow-400">
-              <Coins className="h-4 w-4" />
-              <span>{character.gold} gold</span>
+      <DialogContent 
+        className="max-w-md max-h-[80vh] bg-slate-900/95 border-slate-700/50"
+        onClick={(e) => {
+          // Fechar ações se clicar fora
+          if (e.target === e.currentTarget) {
+            setShowActions(null);
+          }
+        }}
+      >
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center justify-between text-slate-100">
+            <span>Inventário</span>
+            <div className="flex items-center gap-2 text-sm">
+              <Coins className="h-4 w-4 text-amber-400" />
+              <span className="text-amber-300">{character.gold}</span>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="equipment" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="equipment" className="flex items-center gap-2">
-              <Sword className="h-4 w-4" />
+          <TabsList className="grid w-full grid-cols-3 bg-slate-800/50">
+            <TabsTrigger value="equipment" className="text-xs">
               Equipamentos ({equipment.length})
             </TabsTrigger>
-            <TabsTrigger value="consumables" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
+            <TabsTrigger value="consumables" className="text-xs">
               Consumíveis ({consumables.length})
             </TabsTrigger>
-            <TabsTrigger value="drops" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Drops ({drops.length})
+            <TabsTrigger value="drops" className="text-xs">
+              Materiais ({drops.length})
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="equipment" className="space-y-4">
-            {equipment.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum equipamento encontrado</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {equipment.map((item) => item.equipment && (
-                  <Card key={item.id} className={`p-4 relative ${item.is_equipped ? 'ring-2 ring-primary' : ''}`}>
-                    {item.is_equipped && (
-                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
-                        Equipado
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold text-sm">{item.equipment.name}</h3>
-                        <span className={`px-2 py-1 rounded text-xs ${getRarityColor(item.equipment.rarity)}`}>
-                          {item.equipment.rarity}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                      {item.equipment.description}
-                    </p>
-
-                    <div className="space-y-1 mb-3">
-                      {item.equipment.atk_bonus > 0 && (
-                        <div className="flex items-center gap-1 text-xs">
-                          <Sword className="h-3 w-3 text-red-400" />
-                          <span>+{item.equipment.atk_bonus}</span>
-                        </div>
-                      )}
-                      {item.equipment.def_bonus > 0 && (
-                        <div className="flex items-center gap-1 text-xs">
-                          <Shield className="h-3 w-3 text-blue-400" />
-                          <span>+{item.equipment.def_bonus}</span>
-                        </div>
-                      )}
-                      {item.equipment.mana_bonus > 0 && (
-                        <div className="flex items-center gap-1 text-xs">
-                          <Gem className="h-3 w-3 text-purple-400" />
-                          <span>+{item.equipment.mana_bonus}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs mb-3">
-                      <span className="text-yellow-400">
-                        Venda: {getSellPrice(item.equipment)} gold
-                      </span>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={item.is_equipped ? "secondary" : "default"}
-                        onClick={() => handleToggleEquip(item)}
-                        className="flex-1 text-xs"
-                      >
-                        {item.is_equipped ? 'Desequipar' : 'Equipar'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleSellEquipment(item)}
-                        className="flex-1 text-xs"
-                      >
-                        Vender
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <TabsContent value="equipment" className="mt-4">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {equipment.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum equipamento</p>
+                </div>
+              ) : (
+                equipment.map(renderEquipmentItem)
+              )}
+            </div>
           </TabsContent>
 
-          <TabsContent value="consumables" className="space-y-4">
-            {consumables.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum consumível encontrado</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {consumables.map((item) => item.consumable && (
-                  <Card key={item.id} className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold text-sm">{item.consumable.name}</h3>
-                        <p className="text-xs text-muted-foreground">Quantidade: {item.quantity}</p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                      {item.consumable.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-yellow-400">
-                        Tipo: {item.consumable.type}
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <TabsContent value="consumables" className="mt-4">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {consumables.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum consumível</p>
+                </div>
+              ) : (
+                consumables.filter(item => item.quantity > 0).map(renderConsumableItem)
+              )}
+            </div>
           </TabsContent>
 
-          <TabsContent value="drops" className="space-y-4">
-            {drops.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum drop encontrado</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {drops.map((item) => item.drop && (
-                  <Card key={item.id} className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold text-sm">{item.drop.name}</h3>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                          <span className={`px-2 py-1 rounded text-xs ${getRarityColor(item.drop.rarity)}`}>
-                            {item.drop.rarity}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                      {item.drop.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-yellow-400">
-                        Valor: {getDropSellPrice(item.drop)} gold cada
-                      </span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <TabsContent value="drops" className="mt-4">
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {drops.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <Star className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhum material</p>
+                </div>
+              ) : (
+                drops.filter(item => item.quantity > 0).map(renderDropItem)
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
