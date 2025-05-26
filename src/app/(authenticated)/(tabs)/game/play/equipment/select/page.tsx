@@ -401,9 +401,9 @@ export default function EquipmentSelectPage() {
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-slate-700 rounded w-64"></div>
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="h-96 bg-slate-700 rounded"></div>
-              <div className="col-span-2 h-96 bg-slate-700 rounded"></div>
+              <div className="lg:col-span-2 h-96 bg-slate-700 rounded"></div>
             </div>
           </div>
         </div>
@@ -433,22 +433,24 @@ export default function EquipmentSelectPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => router.back()}
+              className="self-start"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2">
-                <Sword className="h-8 w-8 text-amber-400" />
-                Selecionar Equipamento
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 flex items-center gap-2">
+                <Sword className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400" />
+                <span className="hidden sm:inline">Selecionar Equipamento</span>
+                <span className="sm:hidden">Equipamentos</span>
               </h1>
-              <p className="text-slate-400">
+              <p className="text-slate-400 text-sm sm:text-base">
                 {character.name} - {getSlotDisplayName(slotType)}
               </p>
             </div>
@@ -456,7 +458,7 @@ export default function EquipmentSelectPage() {
         </div>
 
         {/* Layout Principal */}
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Esquerda - Lista de Equipamentos (1/3) */}
           <div className="space-y-4">
             {/* Filtros e Busca */}
@@ -482,7 +484,7 @@ export default function EquipmentSelectPage() {
                 {/* Filtro por Tipo */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-300">Tipo</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
                     {[
                       { value: 'all', label: 'Todos' },
                       { value: 'weapon', label: 'Armas' },
@@ -527,7 +529,7 @@ export default function EquipmentSelectPage() {
                   Equipamentos ({filteredEquipment.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 max-h-[600px] overflow-y-auto">
+              <CardContent className="space-y-3 max-h-[400px] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                 {filteredEquipment.length === 0 ? (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 mx-auto mb-3 text-slate-600 opacity-50" />
@@ -541,8 +543,8 @@ export default function EquipmentSelectPage() {
           </div>
 
           {/* Coluna Direita - Detalhes do Item (2/3) */}
-          <div className="col-span-2">
-            <Card className="bg-slate-800/50 border-slate-700/50 h-full">
+          <div className="lg:col-span-2">
+            <Card className="bg-slate-800/50 border-slate-700/50 h-full min-h-[400px]">
               <CardHeader>
                 <CardTitle className="text-slate-100">Detalhes do Equipamento</CardTitle>
               </CardHeader>

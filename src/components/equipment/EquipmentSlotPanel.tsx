@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,24 +21,42 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   characterId
 }) => {
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isLongPress, setIsLongPress] = useState(false);
   const router = useRouter();
 
-  const handleMouseDown = (slotType: string) => {
+  const startPress = useCallback((slotType: string) => {
+    setIsLongPress(false);
     const timer = setTimeout(() => {
+      setIsLongPress(true);
       // Navegar para a página de seleção de equipamento
       router.push(`/game/play/equipment/select?character=${characterId}&slot=${slotType}`);
       onSlotLongPress(slotType);
-    }, 800); // 800ms para long press
+    }, 600); // Reduzido para 600ms para melhor responsividade
     setPressTimer(timer);
-  };
+  }, [characterId]);
 
-  const handleMouseUp = (slotType: string, item: Equipment | null) => {
+  const endPress = useCallback((slotType: string, item: Equipment | null) => {
     if (pressTimer) {
       clearTimeout(pressTimer);
       setPressTimer(null);
+    }
+    
+    // Só executa o click se não foi um long press
+    if (!isLongPress) {
       onSlotClick(slotType, item);
     }
-  };
+    
+    // Reset do estado após um pequeno delay
+    setTimeout(() => setIsLongPress(false), 100);
+  }, [pressTimer, isLongPress, onSlotClick]);
+
+  const cancelPress = useCallback(() => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      setPressTimer(null);
+    }
+    setIsLongPress(false);
+  }, [pressTimer]);
 
   const getSlotIcon = (slotType: string, item: Equipment | null) => {
     if (item) {
@@ -94,15 +112,17 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
               isEmpty 
                 ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70' 
                 : `${getRarityColor(item.rarity)} hover:brightness-110 shadow-lg`
-            } hover:scale-[1.02] active:scale-[0.98]`}
-            onMouseDown={() => handleMouseDown(slotType)}
-            onMouseUp={() => handleMouseUp(slotType, item)}
-            onMouseLeave={() => {
-              if (pressTimer) {
-                clearTimeout(pressTimer);
-                setPressTimer(null);
-              }
-            }}
+            } hover:scale-[1.02] active:scale-[0.98] select-none`}
+            // Mouse events
+            onMouseDown={() => startPress(slotType)}
+            onMouseUp={() => endPress(slotType, item)}
+            onMouseLeave={cancelPress}
+            // Touch events
+            onTouchStart={() => startPress(slotType)}
+            onTouchEnd={() => endPress(slotType, item)}
+            onTouchCancel={cancelPress}
+            // Prevent context menu on long press
+            onContextMenu={(e) => e.preventDefault()}
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className={`p-3 rounded-lg ${isEmpty ? 'bg-slate-700/30' : 'bg-black/20'}`}>
@@ -129,7 +149,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           {/* Tooltip sutil */}
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
             <div className="bg-slate-900/90 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 shadow-lg whitespace-nowrap">
-              {isEmpty ? 'Clique e segure para equipar' : 'Clique para detalhes'}
+              {isEmpty ? 'Toque e segure para equipar' : 'Toque para detalhes'}
             </div>
           </div>
         </div>
@@ -148,7 +168,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     }
     
     return (
-      <div className="space-y-3" key={`armor-${index}`}>
+      <div className="space-y-3">
         <label className="text-sm font-medium text-slate-300 block text-center">{slotName}</label>
         <div className="relative group">
           <Button
@@ -173,7 +193,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     const isDisabled = index > 0;
     
     return (
-      <div className="space-y-3" key={`accessory-${index}`}>
+      <div className="space-y-3">
         <label className="text-sm font-medium text-slate-300 block text-center">
           {index === 0 ? 'Anel 1' : index === 1 ? 'Anel 2' : index === 2 ? 'Colar' : 'Amuleto'}
         </label>
@@ -186,15 +206,17 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
                 : isDisabled
                 ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 opacity-60'
                 : 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70 hover:scale-[1.02]'
-            } active:scale-[0.98]`}
-            onMouseDown={() => index === 0 && handleMouseDown('accessory')}
-            onMouseUp={() => index === 0 && handleMouseUp('accessory', equippedSlots.accessory)}
-            onMouseLeave={() => {
-              if (pressTimer) {
-                clearTimeout(pressTimer);
-                setPressTimer(null);
-              }
-            }}
+            } active:scale-[0.98] select-none`}
+            // Mouse events
+            onMouseDown={() => index === 0 && startPress('accessory')}
+            onMouseUp={() => index === 0 && endPress('accessory', equippedSlots.accessory)}
+            onMouseLeave={cancelPress}
+            // Touch events
+            onTouchStart={() => index === 0 && startPress('accessory')}
+            onTouchEnd={() => index === 0 && endPress('accessory', equippedSlots.accessory)}
+            onTouchCancel={cancelPress}
+            // Prevent context menu on long press
+            onContextMenu={(e) => e.preventDefault()}
             disabled={isDisabled}
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -229,7 +251,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           {!isDisabled && (
             <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
               <div className="bg-slate-900/90 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 shadow-lg whitespace-nowrap">
-                {hasItem ? 'Clique para detalhes' : 'Clique e segure para equipar'}
+                {hasItem ? 'Toque para detalhes' : 'Toque e segure para equipar'}
               </div>
             </div>
           )}
@@ -260,7 +282,11 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Armaduras</h3>
           <div className="grid grid-cols-2 gap-6">
-            {[0, 1, 2, 3].map(renderArmorSlot)}
+            {[0, 1, 2, 3].map((index) => (
+              <div key={`armor-slot-${index}`}>
+                {renderArmorSlot(index)}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -268,14 +294,18 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Acessórios</h3>
           <div className="grid grid-cols-2 gap-6">
-            {[0, 1, 2, 3].map(renderAccessorySlot)}
+            {[0, 1, 2, 3].map((index) => (
+              <div key={`accessory-slot-${index}`}>
+                {renderAccessorySlot(index)}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Instruções */}
         <div className="bg-slate-700/30 p-4 rounded-lg">
           <p className="text-sm text-slate-400 text-center">
-            Clique para ver detalhes • Clique e segure para equipar/trocar
+            Toque para ver detalhes • Toque e segure para equipar/trocar
           </p>
         </div>
       </CardContent>
