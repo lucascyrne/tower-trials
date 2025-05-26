@@ -174,6 +174,7 @@ export default function GameHubPage() {
             onOpenCharacterStats={() => router.push(`/game/play/character-stats?character=${player.id}`)}
             onOpenShop={() => router.push(`/game/play/shop?character=${player.id}`)}
             onOpenInventory={() => router.push(`/game/play/inventory?character=${player.id}`)}
+            onOpenEquipment={() => router.push(`/game/play/equipment?character=${player.id}`)}
             onReturnToSelection={() => router.push('/game/play')}
           />
         </div>

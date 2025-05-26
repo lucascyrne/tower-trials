@@ -19,7 +19,7 @@ export default function AuthPage() {
     if (isAuthenticated) {
       router.replace('/game');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated]);
 
   const handleLogin = async (data: LoginFormValues) => {
     try {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { RankingService, RankingEntry, RankingMode } from '@/resources/game/ranking-service';
+import { RankingService, RankingEntry, RankingMode } from '@/resources/game/ranking.service';
 import { useAuth } from '@/resources/auth/auth-hook';
 import RankingFilters, { CharacterStatusFilter } from '../../../../../components/ranking/ranking-filters';
 import RankingTable from '../../../../../components/ranking/ranking-table';

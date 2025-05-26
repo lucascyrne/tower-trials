@@ -92,11 +92,11 @@ export default function InventoryPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-black p-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Carregando Inventário</h2>
-          <p className="text-muted-foreground">Aguarde enquanto carregamos seus itens...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-400 mb-4"></div>
+          <h2 className="text-2xl font-bold mb-2 text-slate-100">Carregando Inventário</h2>
+          <p className="text-slate-400">Aguarde enquanto carregamos seus itens...</p>
         </div>
       </div>
     );
@@ -105,20 +105,20 @@ export default function InventoryPage() {
   // Error state
   if (error || !selectedChar) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-slate-900 to-black p-4">
         <div className="w-full max-w-md text-center">
-          <Card className="p-6">
+          <Card className="p-6 bg-slate-800/50 border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-red-500">Erro ao Carregar Inventário</CardTitle>
+              <CardTitle className="text-red-400">Erro ao Carregar Inventário</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
+              <p className="text-slate-400">
                 {error || 'Não foi possível carregar o personagem selecionado.'}
               </p>
               <div className="flex gap-2">
                 <Button
                   onClick={() => loadSelectedCharacter()}
-                  className="flex-1"
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Tentar Novamente
@@ -126,7 +126,7 @@ export default function InventoryPage() {
                 <Button
                   variant="outline"
                   onClick={() => router.push('/game/play')}
-                  className="flex-1"
+                  className="flex-1 border-slate-600 text-slate-300"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Voltar
@@ -140,53 +140,45 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-      <div className="w-full max-w-7xl">
-        {/* Header padronizado */}
-        <div className="space-y-3 sm:space-y-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex flex-col gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReturnToHub}
-                className="self-start"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Voltar ao Hub</span>
-                <span className="sm:hidden">Voltar</span>
-              </Button>
-              
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">Inventário</h1>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  {selectedChar.name} • Nível {selectedChar.level} • {selectedChar.gold} Gold
-                </p>
-              </div>
-            </div>
-            
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-black">
+      <div className="container mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="self-start sm:self-center"
+              onClick={handleReturnToHub}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
             >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
-              <span className="sm:hidden">{refreshing ? 'Atualizando...' : 'Atualizar'}</span>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar ao Hub
             </Button>
+            
+            <div>
+              <h1 className="text-3xl font-bold text-slate-100">Inventário</h1>
+              <p className="text-slate-400">
+                {selectedChar.name} • Nível {selectedChar.level}
+              </p>
+            </div>
           </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Atualizando...' : 'Atualizar'}
+          </Button>
         </div>
 
-        <Card>
-          <CardContent>
-            <InventoryPanel 
-              character={selectedChar} 
-              onEquipmentChange={handleInventoryChange} 
-            />
-          </CardContent>
-        </Card>
+        <InventoryPanel 
+          character={selectedChar} 
+          onInventoryChange={handleInventoryChange} 
+        />
       </div>
     </div>
   );

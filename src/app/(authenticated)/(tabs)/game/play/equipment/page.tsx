@@ -1,0 +1,200 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { CharacterService } from '@/resources/game/character.service';
+import { EquipmentService } from '@/resources/game/equipment.service';
+import { Character } from '@/resources/game/models/character.model';
+import { EquipmentSlots, CharacterEquipment, Equipment } from '@/resources/game/models/equipment.model';
+import { CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { ConsumableService } from '@/resources/game/consumable.service';
+import { PotionSlotManager } from '@/components/inventory/PotionSlotManager';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Shield, Sword } from 'lucide-react';
+import { toast } from 'sonner';
+import Link from 'next/link';
+import { EquipmentDetailsPanel } from '@/components/equipment/EquipmentDetailsPanel';
+import { EquipmentSlotPanel } from '@/components/equipment/EquipmentSlotPanel';
+
+export default function EquipmentPage() {
+  const searchParams = useSearchParams();
+  const characterId = searchParams.get('character');
+  
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [equippedSlots, setEquippedSlots] = useState<EquipmentSlots>({
+    main_hand: null,
+    off_hand: null,
+    armor: null,
+    accessory: null
+  });
+  const [, setCharacterEquipment] = useState<CharacterEquipment[]>([]);
+  const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Carregar dados do personagem
+  useEffect(() => {
+    const loadCharacterData = async () => {
+      if (!characterId) return;
+      
+      try {
+        setLoading(true);
+        
+        // Carregar personagem
+        const charResponse = await CharacterService.getCharacter(characterId);
+        if (charResponse.success && charResponse.data) {
+          setCharacter(charResponse.data);
+        }
+        
+        // Carregar equipamentos equipados
+        const slotsData = await EquipmentService.getEquippedSlots(characterId);
+        setEquippedSlots(slotsData);
+        
+        // Carregar equipamentos do inventário
+        const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
+        setCharacterEquipment(equipmentData);
+        
+        // Carregar consumíveis
+        const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
+        if (consumablesResponse.success && consumablesResponse.data) {
+          setConsumables(consumablesResponse.data);
+        }
+        
+      } catch (error) {
+        console.error('Erro ao carregar dados do equipamento:', error);
+        toast.error('Erro ao carregar equipamentos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCharacterData();
+  }, [characterId]);
+
+  const handleSlotClick = (slotType: string, item: Equipment | null) => {
+    setSelectedSlot(slotType);
+    setSelectedItem(item);
+  };
+
+  const handleSlotLongPress = (slotType: string) => {
+    // TODO: Implementar navegação para subpágina de seleção
+    console.log('Long press on slot:', slotType);
+  };
+
+  const refreshEquipment = async () => {
+    if (!characterId) return;
+    
+    try {
+      const slotsData = await EquipmentService.getEquippedSlots(characterId);
+      setEquippedSlots(slotsData);
+      
+      const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
+      setCharacterEquipment(equipmentData);
+    } catch (error) {
+      console.error('Erro ao atualizar equipamentos:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-slate-700 rounded w-64"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-96 bg-slate-700 rounded"></div>
+              <div className="h-96 bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!character) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-slate-100 mb-4">Personagem não encontrado</h1>
+            <Link href="/game/play/hub">
+              <Button>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar ao Hub
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href={`/game/play/hub?character=${characterId}`}>
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2">
+                <Shield className="h-8 w-8 text-amber-400" />
+                Equipamentos
+              </h1>
+              <p className="text-slate-400">{character.name} - Nível {character.level}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Layout Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Painel Esquerdo - Slots de Equipamento */}
+          <div className="space-y-6">
+            <EquipmentSlotPanel
+              equippedSlots={equippedSlots}
+              onSlotClick={handleSlotClick}
+              onSlotLongPress={handleSlotLongPress}
+              characterId={characterId!}
+            />
+            
+            {/* Slots de Poção */}
+            <Card className="bg-slate-800/50 border-slate-700/50">
+              <CardHeader>
+                <CardTitle className="text-slate-100 flex items-center gap-2">
+                  <Sword className="h-5 w-5 text-blue-400" />
+                  Slots de Poções
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PotionSlotManager
+                  characterId={characterId!}
+                  consumables={consumables}
+                  onSlotsUpdate={() => {
+                    // Recarregar consumíveis se necessário
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Painel Direito - Detalhes do Item */}
+          <div>
+            <EquipmentDetailsPanel
+              selectedItem={selectedItem}
+              selectedSlot={selectedSlot}
+              character={character}
+              onEquipmentChange={refreshEquipment}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+} 

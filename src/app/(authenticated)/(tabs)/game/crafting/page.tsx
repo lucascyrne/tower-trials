@@ -119,7 +119,7 @@ export default function CraftingPage() {
     } else if (!characterId && characters.length > 0) {
       router.push(`/game/crafting?character=${characters[0].id}`);
     }
-  }, [mounted, characters, selectedCharacter, searchParams, router, selectCharacter]);
+  }, [mounted, characters, selectedCharacter, searchParams]);
 
   // Carregar receitas e inventário
   useEffect(() => {

@@ -144,14 +144,10 @@ export default function ShopPage() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <GameShop 
-              character={character} 
-              onPurchase={handleTransactionComplete} 
-            />
-          </CardContent>
-        </Card>
+        <GameShop 
+          character={character} 
+          onPurchase={handleTransactionComplete} 
+        />
       </div>
     </div>
   );

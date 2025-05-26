@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature';
 import { userService } from '@/resources/user/user.service';
-import { RankingService, RankingEntry } from '@/resources/game/ranking-service';
+import { RankingService, RankingEntry } from '@/resources/game/ranking.service';
 
 interface PageProps {
   params: Promise<{ id: string }>;
