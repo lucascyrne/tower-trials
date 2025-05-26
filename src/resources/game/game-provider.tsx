@@ -3,7 +3,7 @@
 import React, { ReactNode, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActionType, GameContextState, GameLoadingState, GameState } from './game-model';
 import { GameContext, GameContextType, initialGameState } from './game-context';
-import { GameService } from './game-service';
+import { GameService } from './game.service';
 import { CharacterService } from './character.service';
 import { Character } from './models/character.model';
 import { useAuth } from '../auth/auth-hook';

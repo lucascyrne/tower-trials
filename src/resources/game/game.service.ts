@@ -910,8 +910,8 @@ export class GameService {
       
       if (player.hp <= 0) {
               try {
-        // No sistema dinâmico, apenas deletar o personagem
-        // O ranking é baseado nos dados da tabela characters
+          // Marcar personagem como morto (não deletar)
+          // O personagem permanece no ranking mas não fica disponível para jogar
         await CharacterService.deleteCharacter(player.id);
       } catch (error) {
         console.error('Erro ao processar morte do personagem:', error);
@@ -947,8 +947,8 @@ export class GameService {
     
     if (player.hp <= 0) {
       try {
-        // No sistema dinâmico, apenas deletar o personagem
-        // O ranking é baseado nos dados da tabela characters
+        // Marcar personagem como morto (não deletar)
+        // O personagem permanece no ranking mas não fica disponível para jogar
         await CharacterService.deleteCharacter(player.id);
       } catch (error) {
         console.error('Erro ao processar morte do personagem:', error);

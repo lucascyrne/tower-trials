@@ -265,6 +265,7 @@ export class CharacterService {
         blunt_mastery_xp: fullStatsData.blunt_mastery_xp,
         defense_mastery_xp: fullStatsData.defense_mastery_xp,
         magic_mastery_xp: fullStatsData.magic_mastery_xp,
+        is_alive: true, // Será atualizado se necessário
         created_at: '', // Será preenchido se necessário
         updated_at: '', // Será preenchido se necessário
         last_activity: undefined

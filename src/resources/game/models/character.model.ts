@@ -67,6 +67,9 @@ export interface Character {
   critical_chance?: number;
   critical_damage?: number;
   
+  // Status do personagem
+  is_alive?: boolean;
+  
   last_activity?: string;
   created_at: string;
   updated_at: string;
