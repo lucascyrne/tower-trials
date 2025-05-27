@@ -391,11 +391,17 @@ export function GameProvider({ children }: GameProviderProps) {
               
               // Atualizar o andar no banco de dados
               if (selectedCharacter) {
-                await CharacterService.updateCharacterFloor(
+                console.log(`[game-provider] Atualizando andar no banco: ${selectedCharacter.name} (${selectedCharacter.id}) -> andar ${updatedState.player.floor}`);
+                const updateResult = await CharacterService.updateCharacterFloor(
                   selectedCharacter.id, 
                   updatedState.player.floor
                 );
-                console.log(`[game-provider] Andar ${updatedState.player.floor} persistido no banco`);
+                
+                if (updateResult.success) {
+                  console.log(`[game-provider] ✅ Andar ${updatedState.player.floor} persistido no banco com sucesso`);
+                } else {
+                  console.error(`[game-provider] ❌ Erro ao persistir andar no banco:`, updateResult.error);
+                }
               }
               
               // Atualizar o estado do jogo

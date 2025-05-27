@@ -94,7 +94,8 @@ export class RankingService {
         .rpc(functionName, {
           p_limit: limit,
           p_status_filter: statusFilter
-        });
+        })
+        .select('*');
 
       if (error) throw error;
 
@@ -120,7 +121,8 @@ export class RankingService {
         .rpc('get_dynamic_user_ranking_history', {
           p_user_id: userId,
           p_limit: limit
-        });
+        })
+        .select('*');
 
       if (error) throw error;
 
@@ -149,6 +151,7 @@ export class RankingService {
         .rpc('get_dynamic_user_stats', {
           p_user_id: userId
         })
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -174,6 +177,52 @@ export class RankingService {
           aliveCharacters: 0
         }, 
         error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas' 
+      };
+    }
+  }
+
+  /**
+   * Função de teste para verificar se o ranking está funcionando
+   */
+  static async testRankingSystem(userId?: string): Promise<ServiceResponse<Array<{
+    test_name: string;
+    result: string;
+    details: string;
+  }>>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('test_ranking_system', {
+          p_user_id: userId || null
+        });
+
+      if (error) throw error;
+
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('Erro ao testar sistema de ranking:', error);
+      return { 
+        data: [], 
+        error: error instanceof Error ? error.message : 'Erro ao testar ranking' 
+      };
+    }
+  }
+
+  /**
+   * Função para forçar sincronização de todos os rankings
+   */
+  static async syncAllRankings(): Promise<ServiceResponse<string>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('refresh_all_rankings');
+
+      if (error) throw error;
+
+      return { data: data || 'Sincronização concluída', error: null };
+    } catch (error) {
+      console.error('Erro ao sincronizar rankings:', error);
+      return { 
+        data: '', 
+        error: error instanceof Error ? error.message : 'Erro ao sincronizar rankings' 
       };
     }
   }

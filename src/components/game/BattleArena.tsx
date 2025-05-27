@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { GamePlayer, Enemy } from '@/resources/game/game-model';
 import { formatLargeNumber } from '@/lib/utils';
+import { ThiefIdleAnimation } from './ThiefIdleAnimation';
 
 interface BattleArenaProps {
   player: GamePlayer;
@@ -125,12 +126,15 @@ export function BattleArena({
               {/* Player Avatar & Basic Info - Compacto */}
               <div className="text-center">
                 <div className="relative inline-block mb-2 md:mb-4">
-                  <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center text-2xl md:text-4xl lg:text-5xl transition-all duration-500 ${
+                  <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center transition-all duration-500 overflow-hidden ${
                     isPlayerTurn 
                       ? 'border-blue-500 shadow-xl md:shadow-2xl shadow-blue-500/40 scale-105 md:scale-110' 
                       : 'border-blue-500/30 scale-100'
                   }`}>
-                    🧙‍♂️
+                    <ThiefIdleAnimation 
+                      size={64} 
+                      className="scale-75 md:scale-100 lg:scale-110" 
+                    />
                   </div>
                   {isPlayerTurn && (
                     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2">

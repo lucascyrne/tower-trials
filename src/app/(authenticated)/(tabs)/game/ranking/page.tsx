@@ -36,6 +36,31 @@ export default function RankingPage() {
     fetchRankingData();
   }, [user, rankingMode, statusFilter]);
 
+  // Função para forçar atualização do ranking
+  const refreshRanking = async () => {
+    console.log('[RankingPage] Forçando atualização do ranking...');
+    await fetchRankingData();
+  };
+
+  // Função para testar o sistema de ranking
+  const testRankingSystem = async () => {
+    console.log('[RankingPage] Testando sistema de ranking...');
+    try {
+      const testResult = await RankingService.testRankingSystem(user?.id);
+      if (testResult.error) {
+        console.error('Erro no teste:', testResult.error);
+      } else {
+        console.log('Resultado do teste:', testResult.data);
+        // Mostrar resultado no console para debug
+        testResult.data.forEach((test) => {
+          console.log(`${test.test_name}: ${test.result} - ${test.details}`);
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao executar teste:', error);
+    }
+  };
+
   const fetchRankingData = async () => {
     try {
       setIsLoading(true);
@@ -132,15 +157,67 @@ export default function RankingPage() {
               <span className="sm:hidden">Voltar</span>
             </Button>
             
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">
-                {getModeTitle(rankingMode)}
-              </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                {statusFilter === 'alive' ? 'Apenas personagens vivos' : 
-                 statusFilter === 'dead' ? 'Apenas personagens mortos' : 
-                 'Todos os personagens'} • Atualização dinâmica
-              </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold">
+                  {getModeTitle(rankingMode)}
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  {statusFilter === 'alive' ? 'Apenas personagens vivos' : 
+                   statusFilter === 'dead' ? 'Apenas personagens mortos' : 
+                   'Todos os personagens'} • Atualização dinâmica
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshRanking}
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
+                  <svg 
+                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                    />
+                  </svg>
+                  <span className="hidden sm:inline">Atualizar</span>
+                </Button>
+                
+                {process.env.NODE_ENV === 'development' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={testRankingSystem}
+                    disabled={isLoading}
+                    className="flex items-center gap-2"
+                  >
+                    <svg 
+                      className="h-4 w-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Testar</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
