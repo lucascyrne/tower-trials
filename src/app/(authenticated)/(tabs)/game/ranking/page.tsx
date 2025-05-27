@@ -65,8 +65,17 @@ export default function RankingPage() {
     try {
       setIsLoading(true);
       
+      console.log(`[RankingPage] Iniciando busca de dados - modo: ${rankingMode}, filtro: ${statusFilter}`);
+      
       // Buscar ranking global dinâmico
       const globalResponse = await RankingService.getGlobalRanking(rankingMode, 20, statusFilter);
+      
+      console.log(`[RankingPage] Resposta do ranking global:`, {
+        success: !globalResponse.error,
+        error: globalResponse.error,
+        dataLength: globalResponse.data?.length || 0,
+        data: globalResponse.data
+      });
       
       if (globalResponse.error) {
         console.error('Erro ao buscar ranking global:', globalResponse.error);
@@ -74,6 +83,19 @@ export default function RankingPage() {
       } else {
         setRankingData(globalResponse.data || []);
         console.log(`[RankingPage] Ranking global carregado: ${globalResponse.data?.length || 0} entradas`);
+        
+        // Log detalhado dos dados recebidos
+        if (globalResponse.data && globalResponse.data.length > 0) {
+          console.log(`[RankingPage] Primeiros 5 personagens do ranking:`, 
+            globalResponse.data.slice(0, 5).map(entry => ({
+              name: entry.player_name,
+              floor: entry.highest_floor,
+              level: entry.character_level,
+              alive: entry.character_alive,
+              user_id: entry.user_id
+            }))
+          );
+        }
       }
       
       // Buscar dados do usuário se estiver logado

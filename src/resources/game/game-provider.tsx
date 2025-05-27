@@ -381,28 +381,13 @@ export function GameProvider({ children }: GameProviderProps) {
               // Limpar cache do jogo
               GameService.clearAllCaches();
               
-              // Avançar para o próximo andar
+              // Avançar para o próximo andar (a persistência já é feita dentro da função)
               const updatedState = await GameService.advanceToNextFloor({
                 ...prev.gameState,
                 battleRewards: null
               });
               
               console.log(`[game-provider] advanceToNextFloor concluído - novo andar: ${updatedState.player.floor}`);
-              
-              // Atualizar o andar no banco de dados
-              if (selectedCharacter) {
-                console.log(`[game-provider] Atualizando andar no banco: ${selectedCharacter.name} (${selectedCharacter.id}) -> andar ${updatedState.player.floor}`);
-                const updateResult = await CharacterService.updateCharacterFloor(
-                  selectedCharacter.id, 
-                  updatedState.player.floor
-                );
-                
-                if (updateResult.success) {
-                  console.log(`[game-provider] ✅ Andar ${updatedState.player.floor} persistido no banco com sucesso`);
-                } else {
-                  console.error(`[game-provider] ❌ Erro ao persistir andar no banco:`, updateResult.error);
-                }
-              }
               
               // Atualizar o estado do jogo
               setState(currentState => ({

@@ -111,6 +111,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 4. OTIMIZAR FUNÇÃO get_dynamic_ranking_by_highest_floor
 -- =====================================
 
+-- Remover função existente primeiro para evitar conflitos
+DROP FUNCTION IF EXISTS get_dynamic_ranking_by_highest_floor(INTEGER, TEXT);
+
 -- Versão final otimizada da função principal de ranking
 CREATE OR REPLACE FUNCTION get_dynamic_ranking_by_highest_floor(
     p_limit INTEGER DEFAULT 10,

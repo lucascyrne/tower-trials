@@ -74,6 +74,8 @@ export class RankingService {
     statusFilter: 'all' | 'alive' | 'dead' = 'all'
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
+      console.log(`[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, limite: ${limit}`);
+      
       let functionName: string;
       
       switch (mode) {
@@ -90,14 +92,21 @@ export class RankingService {
           functionName = 'get_dynamic_ranking_by_highest_floor';
       }
 
+      console.log(`[RankingService] Chamando função: ${functionName}`);
+
       const { data, error } = await supabase
         .rpc(functionName, {
           p_limit: limit,
           p_status_filter: statusFilter
-        })
-        .select('*');
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[RankingService] Erro na função ${functionName}:`, error);
+        throw error;
+      }
+
+      console.log(`[RankingService] Dados recebidos:`, data?.length || 0, 'entradas');
+      console.log(`[RankingService] Primeiras 3 entradas:`, data?.slice(0, 3));
 
       return { data: data || [], error: null };
     } catch (error) {
@@ -117,14 +126,20 @@ export class RankingService {
     limit: number = 10
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
+      console.log(`[RankingService] Buscando histórico do usuário: ${userId}, limite: ${limit}`);
+      
       const { data, error } = await supabase
         .rpc('get_dynamic_user_ranking_history', {
           p_user_id: userId,
           p_limit: limit
-        })
-        .select('*');
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[RankingService] Erro no histórico do usuário:`, error);
+        throw error;
+      }
+
+      console.log(`[RankingService] Histórico do usuário recebido:`, data?.length || 0, 'entradas');
 
       return { data: data || [], error: null };
     } catch (error) {
@@ -147,14 +162,18 @@ export class RankingService {
     aliveCharacters: number;
   }>> {
     try {
+      console.log(`[RankingService] Buscando estatísticas do usuário: ${userId}`);
+      
       const { data, error } = await supabase
         .rpc('get_dynamic_user_stats', {
           p_user_id: userId
         })
-        .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[RankingService] Erro nas estatísticas do usuário:`, error);
+        throw error;
+      }
 
       const statsData = data as UserStatsResponse | null;
       const stats = {
@@ -164,6 +183,8 @@ export class RankingService {
         totalRuns: statsData?.total_runs || 0,
         aliveCharacters: statsData?.alive_characters || 0
       };
+
+      console.log(`[RankingService] Estatísticas do usuário recebidas:`, stats);
 
       return { data: stats, error: null };
     } catch (error) {

@@ -987,6 +987,26 @@ export class GameService {
       console.log(`[advanceToNextFloor] INÍCIO - Avançando do andar ${player.floor} para ${nextFloorNumber}`);
       console.log(`[advanceToNextFloor] Player atual:`, { name: player.name, level: player.level, hp: player.hp });
       
+      // CRÍTICO: Persistir o novo andar no banco de dados IMEDIATAMENTE
+      console.log(`[advanceToNextFloor] 🔄 Persistindo andar ${nextFloorNumber} no banco de dados...`);
+      try {
+        const { CharacterService } = await import('./character.service');
+        const updateResult = await CharacterService.updateCharacterFloor(
+          player.id, 
+          nextFloorNumber
+        );
+        
+        if (updateResult.success) {
+          console.log(`[advanceToNextFloor] ✅ Andar ${nextFloorNumber} persistido com sucesso no banco`);
+        } else {
+          console.error(`[advanceToNextFloor] ❌ Erro ao persistir andar no banco:`, updateResult.error);
+          // Não falhar a transição por causa disso, mas logar o erro
+        }
+      } catch (dbError) {
+        console.error(`[advanceToNextFloor] ❌ Erro crítico ao persistir andar:`, dbError);
+        // Continuar mesmo com erro de persistência para não quebrar o jogo
+      }
+      
       // Limpar cache para garantir dados atualizados
       this.clearAllCaches();
       console.log(`[advanceToNextFloor] Cache limpo`);

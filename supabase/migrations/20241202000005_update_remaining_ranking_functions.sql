@@ -5,6 +5,10 @@
 -- 1. FUNÇÃO OTIMIZADA PARA RANKING POR NÍVEL
 -- =====================================
 
+-- Remover funções existentes primeiro para evitar conflitos
+DROP FUNCTION IF EXISTS get_best_character_per_user_by_level(INTEGER, TEXT);
+DROP FUNCTION IF EXISTS get_dynamic_ranking_by_level(INTEGER, TEXT);
+
 -- Função para obter o melhor personagem de cada usuário por nível
 CREATE OR REPLACE FUNCTION get_best_character_per_user_by_level(
     p_limit INTEGER DEFAULT 10,
@@ -63,7 +67,7 @@ BEGIN
 END;
 $$;
 
--- Atualizar função principal de ranking por nível
+-- Criar função principal de ranking por nível
 CREATE OR REPLACE FUNCTION get_dynamic_ranking_by_level(
     p_limit INTEGER DEFAULT 10,
     p_status_filter TEXT DEFAULT 'all'
@@ -89,6 +93,10 @@ $$;
 -- =====================================
 -- 2. FUNÇÃO OTIMIZADA PARA RANKING POR OURO
 -- =====================================
+
+-- Remover funções existentes primeiro para evitar conflitos
+DROP FUNCTION IF EXISTS get_best_character_per_user_by_gold(INTEGER, TEXT);
+DROP FUNCTION IF EXISTS get_dynamic_ranking_by_gold(INTEGER, TEXT);
 
 -- Função para obter o melhor personagem de cada usuário por ouro
 CREATE OR REPLACE FUNCTION get_best_character_per_user_by_gold(
@@ -148,7 +156,7 @@ BEGIN
 END;
 $$;
 
--- Atualizar função principal de ranking por ouro
+-- Criar função principal de ranking por ouro
 CREATE OR REPLACE FUNCTION get_dynamic_ranking_by_gold(
     p_limit INTEGER DEFAULT 10,
     p_status_filter TEXT DEFAULT 'all'
@@ -175,7 +183,10 @@ $$;
 -- 3. FUNÇÃO OTIMIZADA PARA HISTÓRICO DO USUÁRIO
 -- =====================================
 
--- Atualizar função de histórico do usuário para ser mais eficiente
+-- Remover função existente primeiro para evitar conflitos
+DROP FUNCTION IF EXISTS get_dynamic_user_ranking_history(UUID, INTEGER);
+
+-- Criar função de histórico do usuário para ser mais eficiente
 CREATE OR REPLACE FUNCTION get_dynamic_user_ranking_history(
     p_user_id UUID,
     p_limit INTEGER DEFAULT 10
@@ -216,7 +227,10 @@ $$;
 -- 4. FUNÇÃO OTIMIZADA PARA ESTATÍSTICAS DO USUÁRIO
 -- =====================================
 
--- Atualizar função de estatísticas do usuário
+-- Remover função existente primeiro para evitar conflito de tipo
+DROP FUNCTION IF EXISTS get_dynamic_user_stats(UUID);
+
+-- Criar função de estatísticas do usuário
 CREATE OR REPLACE FUNCTION get_dynamic_user_stats(p_user_id UUID)
 RETURNS TABLE(
     best_floor INTEGER,
