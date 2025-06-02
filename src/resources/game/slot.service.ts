@@ -99,29 +99,91 @@ export class SlotService {
   }
 
   /**
-   * Configurar slot de poção
+   * Configurar slot de poção com validação de duplicatas
    */
   static async setPotionSlot(
     characterId: string, 
     slotPosition: number, 
-    consumableId: string | null
+    consumableId: string
   ): Promise<ServiceResponse<null>> {
     try {
-      const { error } = await supabase
+      console.log(`[SlotService] Configurando slot ${slotPosition} com consumível ${consumableId}`);
+      
+      const { data, error } = await supabase
         .rpc('set_potion_slot', {
           p_character_id: characterId,
           p_slot_position: slotPosition,
           p_consumable_id: consumableId
-        });
+        })
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[SlotService] Erro no RPC set_potion_slot:', error.message);
+        throw error;
+      }
 
+      // A função RPC agora retorna JSON com success e error
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (!result.success) {
+        console.warn(`[SlotService] Operação falhou: ${result.error}`);
+        return { 
+          data: null, 
+          error: result.error || 'Erro ao configurar slot de poção', 
+          success: false 
+        };
+      }
+
+      console.log(`[SlotService] Slot ${slotPosition} configurado com sucesso`);
       return { data: null, error: null, success: true };
     } catch (error) {
       console.error('Erro ao configurar slot de poção:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao configurar slot de poção', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Limpar slot de poção
+   */
+  static async clearPotionSlot(characterId: string, slotPosition: number): Promise<ServiceResponse<null>> {
+    try {
+      console.log(`[SlotService] Limpando slot ${slotPosition}`);
+      
+      const { data, error } = await supabase
+        .rpc('clear_potion_slot', {
+          p_character_id: characterId,
+          p_slot_position: slotPosition
+        })
+        .single();
+
+      if (error) {
+        console.error('[SlotService] Erro no RPC clear_potion_slot:', error.message);
+        throw error;
+      }
+
+      // A função RPC agora retorna JSON com success e error
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (!result.success) {
+        console.warn(`[SlotService] Falha ao limpar slot: ${result.error}`);
+        return { 
+          data: null, 
+          error: result.error || 'Erro ao limpar slot de poção', 
+          success: false 
+        };
+      }
+
+      console.log(`[SlotService] Slot ${slotPosition} limpo com sucesso`);
+      return { data: null, error: null, success: true };
+    } catch (error) {
+      console.error('Erro ao limpar slot de poção:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao limpar slot de poção', 
         success: false 
       };
     }
@@ -182,13 +244,6 @@ export class SlotService {
         success: false 
       };
     }
-  }
-
-  /**
-   * Limpar slot de poção
-   */
-  static async clearPotionSlot(characterId: string, slotPosition: number): Promise<ServiceResponse<null>> {
-    return this.setPotionSlot(characterId, slotPosition, null);
   }
 
   /**
