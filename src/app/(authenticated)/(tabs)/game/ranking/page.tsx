@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,8 @@ import { useAuth } from '@/resources/auth/auth-hook';
 import RankingFilters, { CharacterStatusFilter } from '../../../../../components/ranking/ranking-filters';
 import RankingTable from '../../../../../components/ranking/ranking-table';
 import UserStats from '../../../../../components/ranking/user-stats';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function RankingPage() {
   const router = useRouter();
@@ -31,10 +33,46 @@ export default function RankingPage() {
   const [activeTab, setActiveTab] = useState<'global' | 'personal'>('global');
   const [rankingMode, setRankingMode] = useState<RankingMode>('highest_floor');
   const [statusFilter, setStatusFilter] = useState<CharacterStatusFilter>('all');
+  const [nameFilter, setNameFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Debounce para o filtro de nome
+  const [debouncedNameFilter, setDebouncedNameFilter] = useState('');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedNameFilter(nameFilter);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [nameFilter]);
+
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rankingMode, statusFilter, debouncedNameFilter]);
 
   useEffect(() => {
     fetchRankingData();
-  }, [user, rankingMode, statusFilter]);
+  }, [user, rankingMode, statusFilter, debouncedNameFilter, currentPage]);
+
+  // Função para buscar total de entradas e calcular páginas
+  const fetchTotalCount = useCallback(async () => {
+    try {
+      const countResponse = await RankingService.countRankingEntries(statusFilter, debouncedNameFilter);
+      if (countResponse.data !== null) {
+        const totalEntries = countResponse.data;
+        const calculatedTotalPages = Math.max(1, Math.ceil(totalEntries / ITEMS_PER_PAGE));
+        setTotalPages(calculatedTotalPages);
+        
+        console.log(`[RankingPage] Total de entradas: ${totalEntries}, páginas: ${calculatedTotalPages}`);
+      }
+    } catch (error) {
+      console.error('Erro ao contar entradas:', error);
+      setTotalPages(1);
+    }
+  }, [statusFilter, debouncedNameFilter]);
 
   // Função para forçar atualização do ranking
   const refreshRanking = async () => {
@@ -65,10 +103,19 @@ export default function RankingPage() {
     try {
       setIsLoading(true);
       
-      console.log(`[RankingPage] Iniciando busca de dados - modo: ${rankingMode}, filtro: ${statusFilter}`);
+      console.log(`[RankingPage] Iniciando busca de dados - modo: ${rankingMode}, filtro: ${statusFilter}, nome: ${debouncedNameFilter}, página: ${currentPage}`);
+      
+      // Buscar contagem total primeiro
+      await fetchTotalCount();
       
       // Buscar ranking global dinâmico
-      const globalResponse = await RankingService.getGlobalRanking(rankingMode, 20, statusFilter);
+      const globalResponse = await RankingService.getGlobalRanking(
+        rankingMode, 
+        ITEMS_PER_PAGE, 
+        statusFilter, 
+        debouncedNameFilter,
+        currentPage
+      );
       
       console.log(`[RankingPage] Resposta do ranking global:`, {
         success: !globalResponse.error,
@@ -162,6 +209,32 @@ export default function RankingPage() {
     }
   };
 
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const getFilterDescription = (): string => {
+    let description = '';
+    
+    if (statusFilter === 'alive') {
+      description += 'Apenas personagens vivos';
+    } else if (statusFilter === 'dead') {
+      description += 'Apenas personagens mortos';
+    } else {
+      description += 'Todos os personagens';
+    }
+    
+    if (debouncedNameFilter) {
+      description += ` • Filtro: "${debouncedNameFilter}"`;
+    }
+    
+    description += ` • Página ${currentPage} de ${totalPages}`;
+    
+    return description;
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-6xl">
@@ -185,9 +258,7 @@ export default function RankingPage() {
                   {getModeTitle(rankingMode)}
                 </h1>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                  {statusFilter === 'alive' ? 'Apenas personagens vivos' : 
-                   statusFilter === 'dead' ? 'Apenas personagens mortos' : 
-                   'Todos os personagens'} • Atualização dinâmica
+                  {getFilterDescription()} • Atualização dinâmica
                 </p>
               </div>
               
@@ -257,6 +328,12 @@ export default function RankingPage() {
                   onModeChange={setRankingMode}
                   statusFilter={statusFilter}
                   onStatusFilterChange={setStatusFilter}
+                  nameFilter={nameFilter}
+                  onNameFilterChange={setNameFilter}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  isLoading={isLoading}
                 />
               </CardContent>
             </Card>
