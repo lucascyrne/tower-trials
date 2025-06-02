@@ -31,6 +31,8 @@ interface CombinedBattleInterfaceProps {
   loading: { performAction: boolean };
   player: GamePlayer;
   onPlayerStatsUpdate: (newHp: number, newMana: number) => void;
+  currentEnemy?: { hp: number; maxHp: number; name: string } | null;
+  battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean } | null;
 }
 
 interface TooltipInfo {
@@ -75,7 +77,9 @@ export function CombinedBattleInterface({
   isPlayerTurn, 
   loading, 
   player, 
-  onPlayerStatsUpdate 
+  onPlayerStatsUpdate,
+  currentEnemy,
+  battleRewards
 }: CombinedBattleInterfaceProps) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -85,6 +89,9 @@ export function CombinedBattleInterface({
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isDisabled = !isPlayerTurn || loading.performAction;
+  
+  // Verificar se deve mostrar botão de próximo andar
+  const shouldShowNextFloorButton = Boolean(currentEnemy && currentEnemy.hp <= 0 && battleRewards);
 
   const loadPotionSlots = async () => {
     try {
@@ -307,6 +314,42 @@ export function CombinedBattleInterface({
     <>
       <Card className="border-0 bg-card/50 backdrop-blur-sm">
         <CardContent className="p-3 md:p-3 space-y-3 md:space-y-2">
+          
+          {/* Botão de Próximo Andar - Aparece quando inimigo está morto */}
+          {shouldShowNextFloorButton && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/20 rounded-xl">
+              <div className="text-center space-y-3">
+                <div className="text-sm text-green-400 font-medium">
+                  🎉 Vitória! Inimigo derrotado
+                </div>
+                <Button
+                  onClick={() => handleAction('continue')}
+                  disabled={loading.performAction}
+                  size="lg"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105"
+                >
+                  {loading.performAction ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      Avançando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowLeft className="h-4 w-4 mr-2 rotate-180" />
+                      Avançar para o Próximo Andar
+                    </>
+                  )}
+                </Button>
+                <div className="text-xs text-muted-foreground">
+                  Recompensas: +{battleRewards?.xp} XP, +{battleRewards?.gold} Gold
+                  {battleRewards?.drops && battleRewards.drops.length > 0 && (
+                    <>, +{battleRewards.drops.length} item{battleRewards.drops.length > 1 ? 's' : ''}</>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Primeira linha: Ações de Combate (esquerda) + Poções (direita) */}
           <div className="flex flex-col md:flex-row md:justify-center md:items-start gap-3 md:gap-4">
             {/* Ações de Combate - Esquerda */}
@@ -338,7 +381,7 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled}
+                    disabled={isDisabled || shouldShowNextFloorButton}
                     variant="ghost"
                     size="lg"
                     className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200"
@@ -380,7 +423,7 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled || player.defenseCooldown > 0}
+                    disabled={isDisabled || player.defenseCooldown > 0 || shouldShowNextFloorButton}
                     variant="ghost"
                     size="lg"
                     className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
@@ -428,7 +471,7 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled}
+                    disabled={isDisabled || shouldShowNextFloorButton}
                     variant="ghost"
                     size="lg"
                     className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200"
@@ -485,7 +528,7 @@ export function CombinedBattleInterface({
                         onMouseLeave={handleMouseLeave}
                         onTouchStart={(e) => handleTouchStart(tooltipInfo, e)}
                         onTouchEnd={handleTouchEnd}
-                        disabled={isDisabled || isEmpty || isUsing}
+                        disabled={isDisabled || isEmpty || isUsing || shouldShowNextFloorButton}
                       >
                         {isEmpty ? (
                           <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
@@ -550,7 +593,7 @@ export function CombinedBattleInterface({
                           onMouseLeave={handleMouseLeave}
                           onTouchStart={(e) => handleTouchStart(tooltipInfo, e)}
                           onTouchEnd={handleTouchEnd}
-                          disabled={isDisabled || !canCast}
+                          disabled={isDisabled || !canCast || shouldShowNextFloorButton}
                           variant="ghost"
                           size="lg"
                           className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
