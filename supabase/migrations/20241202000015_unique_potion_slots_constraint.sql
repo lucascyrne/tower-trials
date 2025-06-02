@@ -27,6 +27,10 @@ UNIQUE (character_id, consumable_id);
 CREATE INDEX IF NOT EXISTS idx_character_potion_slots_lookup 
 ON character_potion_slots(character_id, slot_position);
 
+-- Remover funções existentes para permitir alteração do tipo de retorno
+DROP FUNCTION IF EXISTS set_potion_slot(UUID, INTEGER, UUID);
+DROP FUNCTION IF EXISTS clear_potion_slot(UUID, INTEGER);
+
 -- Atualizar função RPC para definir slot de poção com validação
 CREATE OR REPLACE FUNCTION set_potion_slot(
     p_character_id UUID,
