@@ -247,6 +247,8 @@ export default function GameBattle() {
             loading={loading}
             player={player}
             onPlayerStatsUpdate={handlePlayerStatsUpdate}
+            currentEnemy={currentEnemy}
+            battleRewards={gameState.battleRewards}
           />
         </div>
 
