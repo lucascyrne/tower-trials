@@ -56,10 +56,31 @@ export default function EquipmentPage() {
         const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
         setCharacterEquipment(equipmentData);
         
-        // Carregar consumíveis
+        // Carregar consumíveis com log detalhado
+        console.log('[EquipmentPage] Carregando consumíveis para personagem:', characterId);
         const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
+        console.log('[EquipmentPage] Resposta dos consumíveis:', consumablesResponse);
+        
         if (consumablesResponse.success && consumablesResponse.data) {
+          console.log('[EquipmentPage] Consumíveis carregados com sucesso:', consumablesResponse.data);
+          console.log('[EquipmentPage] Total de consumíveis:', consumablesResponse.data.length);
+          
+          // Log detalhado de cada consumível
+          consumablesResponse.data.forEach((consumable, index) => {
+            console.log(`[EquipmentPage] Consumível ${index + 1}:`, {
+              id: consumable.id,
+              consumable_id: consumable.consumable_id,
+              quantity: consumable.quantity,
+              consumable_name: consumable.consumable?.name,
+              consumable_type: consumable.consumable?.type,
+              hasConsumableData: !!consumable.consumable
+            });
+          });
+          
           setConsumables(consumablesResponse.data);
+        } else {
+          console.error('[EquipmentPage] Erro ao carregar consumíveis:', consumablesResponse.error);
+          setConsumables([]);
         }
         
       } catch (error) {
@@ -94,6 +115,25 @@ export default function EquipmentPage() {
       setCharacterEquipment(equipmentData);
     } catch (error) {
       console.error('Erro ao atualizar equipamentos:', error);
+    }
+  };
+
+  // Função específica para recarregar consumíveis
+  const refreshConsumables = async () => {
+    if (!characterId) return;
+    
+    try {
+      console.log('[EquipmentPage] Recarregando consumíveis...');
+      const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
+      
+      if (consumablesResponse.success && consumablesResponse.data) {
+        console.log('[EquipmentPage] Consumíveis recarregados:', consumablesResponse.data.length);
+        setConsumables(consumablesResponse.data);
+      } else {
+        console.error('[EquipmentPage] Erro ao recarregar consumíveis:', consumablesResponse.error);
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar consumíveis:', error);
     }
   };
 
@@ -176,9 +216,7 @@ export default function EquipmentPage() {
                 <PotionSlotManager
                   characterId={characterId!}
                   consumables={consumables}
-                  onSlotsUpdate={() => {
-                    // Recarregar consumíveis se necessário
-                  }}
+                  onSlotsUpdate={refreshConsumables}
                 />
               </CardContent>
             </Card>
