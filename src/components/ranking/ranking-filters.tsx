@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Trophy, TrendingUp, Coins, Users, Heart, Skull } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Trophy, TrendingUp, Coins, Users, Heart, Skull, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RankingMode } from '@/resources/game/ranking.service';
 
 export type CharacterStatusFilter = 'all' | 'alive' | 'dead';
@@ -12,13 +13,25 @@ interface RankingFiltersProps {
   onModeChange: (mode: RankingMode) => void;
   statusFilter: CharacterStatusFilter;
   onStatusFilterChange: (filter: CharacterStatusFilter) => void;
+  nameFilter: string;
+  onNameFilterChange: (name: string) => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  isLoading?: boolean;
 }
 
 const RankingFilters: React.FC<RankingFiltersProps> = ({
   activeMode,
   onModeChange,
   statusFilter,
-  onStatusFilterChange
+  onStatusFilterChange,
+  nameFilter,
+  onNameFilterChange,
+  currentPage,
+  totalPages,
+  onPageChange,
+  isLoading = false
 }) => {
   const modes = [
     {
@@ -81,6 +94,7 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onModeChange(mode.key)}
+                disabled={isLoading}
                 className={`flex items-center gap-2 text-xs ${isActive ? '' : 'hover:bg-muted'}`}
               >
                 <Icon className={`h-3 w-3 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
@@ -109,6 +123,7 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
                 variant={isActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onStatusFilterChange(option.key)}
+                disabled={isLoading}
                 className={`flex items-center gap-2 text-xs ${isActive ? '' : 'hover:bg-muted'}`}
               >
                 <Icon className={`h-3 w-3 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
@@ -119,6 +134,58 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
           })}
         </div>
       </div>
+
+      {/* Filtro por Nome */}
+      <div>
+        <h3 className="text-sm font-medium mb-2 text-muted-foreground">Buscar Jogador</h3>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Digite o nome do jogador..."
+            value={nameFilter}
+            onChange={(e) => onNameFilterChange(e.target.value)}
+            disabled={isLoading}
+            className="pl-10 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div>
+          <h3 className="text-sm font-medium mb-2 text-muted-foreground">Páginas</h3>
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || isLoading}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Anterior</span>
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </span>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages || isLoading}
+              className="flex items-center gap-2"
+            >
+              <span className="hidden sm:inline">Próxima</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

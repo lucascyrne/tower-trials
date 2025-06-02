@@ -551,6 +551,29 @@ export class CharacterService {
       // Obter dados do personagem antes de deletar para invalidar cache do usuário
       const character = await this.getCharacter(characterId);
       
+      // Se o personagem existe e tem progresso, salvar no ranking histórico primeiro
+      if (character.success && character.data && character.data.floor > 0) {
+        console.log(`[CharacterService] Salvando personagem ${character.data.name} no ranking histórico antes de deletar`);
+        
+        try {
+          // Usar a nova função para salvar no ranking histórico
+          const { error: rankingError } = await supabase
+            .rpc('save_ranking_entry_on_death', {
+              p_character_id: characterId
+            });
+          
+          if (rankingError) {
+            console.error('Erro ao salvar no ranking histórico:', rankingError);
+            // Continua com a deleção mesmo se falhar o ranking
+          } else {
+            console.log(`[CharacterService] Personagem ${character.data.name} salvo no ranking histórico com sucesso`);
+          }
+        } catch (rankingError) {
+          console.error('Erro ao salvar no ranking histórico:', rankingError);
+          // Continua com a deleção mesmo se falhar o ranking
+        }
+      }
+
       // Deletar o personagem usando a função RPC do banco
       const { error } = await supabase
         .rpc('delete_character', {
@@ -567,6 +590,7 @@ export class CharacterService {
         this.invalidateUserCache(character.data.user_id);
       }
 
+      console.log(`[CharacterService] Personagem deletado com sucesso: ${characterId}`);
       return { error: null };
     } catch (error) {
       console.error('Erro ao deletar personagem:', error instanceof Error ? error.message : error);

@@ -71,10 +71,13 @@ export class RankingService {
   static async getGlobalRanking(
     mode: RankingMode = 'highest_floor',
     limit: number = 10,
-    statusFilter: 'all' | 'alive' | 'dead' = 'all'
+    statusFilter: 'all' | 'alive' | 'dead' = 'all',
+    nameFilter: string = '',
+    page: number = 1
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
-      console.log(`[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, limite: ${limit}`);
+      const offset = (page - 1) * limit;
+      console.log(`[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, nome: ${nameFilter}, página: ${page}, limite: ${limit}`);
       
       let functionName: string;
       
@@ -97,7 +100,9 @@ export class RankingService {
       const { data, error } = await supabase
         .rpc(functionName, {
           p_limit: limit,
-          p_status_filter: statusFilter
+          p_status_filter: statusFilter,
+          p_name_filter: nameFilter,
+          p_offset: offset
         });
 
       if (error) {
@@ -114,6 +119,39 @@ export class RankingService {
       return { 
         data: [], 
         error: error instanceof Error ? error.message : 'Erro ao buscar ranking' 
+      };
+    }
+  }
+
+  /**
+   * Contar total de entradas do ranking
+   */
+  static async countRankingEntries(
+    statusFilter: 'all' | 'alive' | 'dead' = 'all',
+    nameFilter: string = ''
+  ): Promise<ServiceResponse<number>> {
+    try {
+      console.log(`[RankingService] Contando entradas - filtro: ${statusFilter}, nome: ${nameFilter}`);
+      
+      const { data, error } = await supabase
+        .rpc('count_ranking_entries', {
+          p_status_filter: statusFilter,
+          p_name_filter: nameFilter
+        });
+
+      if (error) {
+        console.error(`[RankingService] Erro ao contar entradas:`, error);
+        throw error;
+      }
+
+      console.log(`[RankingService] Total de entradas: ${data}`);
+
+      return { data: data || 0, error: null };
+    } catch (error) {
+      console.error('Erro ao contar entradas do ranking:', error);
+      return { 
+        data: 0, 
+        error: error instanceof Error ? error.message : 'Erro ao contar entradas' 
       };
     }
   }
