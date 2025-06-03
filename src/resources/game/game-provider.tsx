@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode, useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { ActionType, GameContextState, GameLoadingState, GameState } from './game-model';
+import { ActionType, GameContextState, GameLoadingState } from './game-model';
 import { GameContext, GameContextType, initialGameState } from './game-context';
 import { GameService } from './game.service';
 import { CharacterService } from './character.service';
@@ -75,6 +75,42 @@ export function GameProvider({ children }: GameProviderProps) {
       };
     });
   }, []);
+
+  // CRÍTICO: Monitorar morte do personagem e redirecionar imediatamente
+  useEffect(() => {
+    if (state.gameState.mode === 'gameover' && state.gameState.characterDeleted) {
+      console.log('[GameProvider] Personagem morreu e foi deletado - redirecionando imediatamente');
+      
+      // Exibir toast de notificação sobre permadeath
+      toast.error('Permadeath!', {
+        description: `${state.gameState.player.name} foi perdido permanentemente. Redirecionando...`,
+        duration: 3000
+      });
+      
+      // Limpar estado do personagem selecionado
+      setSelectedCharacter(null);
+      
+      // Limpar cache do personagem morto
+      if (state.gameState.player.id) {
+        CharacterService.invalidateCharacterCache(state.gameState.player.id);
+      }
+      
+      // Recarregar lista de personagens
+      if (user?.id) {
+        CharacterService.getUserCharacters(user.id).then((response) => {
+          if (response.success && response.data) {
+            setCharacters(response.data);
+          }
+        });
+      }
+      
+      // Redirecionamento forçado após pequeno delay para mostrar a notificação
+      setTimeout(() => {
+        console.log('[GameProvider] Executando redirecionamento forçado para /game/play');
+        window.location.href = '/game/play';
+      }, 2000);
+    }
+  }, [state.gameState.mode, state.gameState.characterDeleted, state.gameState.player.name, state.gameState.player.id, user?.id]);
 
   // Carregar personagens do usuário
   useEffect(() => {
@@ -388,6 +424,12 @@ export function GameProvider({ children }: GameProviderProps) {
       return;
     }
     
+    // CRÍTICO: Bloquear todas as ações se o personagem está morto
+    if (state.gameState.mode === 'gameover') {
+      console.warn(`[game-provider] Ação '${action}' bloqueada - personagem está morto`);
+      return;
+    }
+    
     loadingRef.current = true;
     updateLoading('performAction', true);
     
@@ -551,248 +593,338 @@ export function GameProvider({ children }: GameProviderProps) {
           return prev;
         }
 
-        const { newState, skipTurn, message } = GameService.processPlayerAction(
-          action, 
-          prev.gameState,
-          spellId,
-          consumableId
-        );
-        
-        console.log(`[game-provider] processPlayerAction retornou - skipTurn: ${skipTurn}, message: "${message}"`);
-        
-        // CRÍTICO: Detectar se um consumível foi usado e propagar a atualização
-        if (action === 'consumable' && !skipTurn && newState.player.consumables) {
-          console.log('[game-provider] Ação de consumível processada - atualizando estado dos consumáveis');
-          
-          // Forçar re-render criando nova referência do array de consumáveis
-          newState.player.consumables = [...newState.player.consumables];
-        }
-        
-        if (skipTurn) {
-          loadingRef.current = false;
-          
-          // Se a fuga foi bem-sucedida, processar fora do setState
-          if (action === 'flee' && message.includes('conseguiu fugir')) {
-            // Processar fuga de forma assíncrona
-            setTimeout(async () => {
-              try {
-                console.log('[game-provider] Fuga bem-sucedida - atualizando andar para 1');
-                if (selectedCharacter) {
-                  await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
-                }
-                // Redirecionar para o hub
-                window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
-              } catch (error) {
-                console.error('[game-provider] Erro ao processar fuga:', error);
-                toast.error('Erro ao processar fuga');
-              }
-            }, 100);
-          }
-          
-          return {
-            ...prev,
-            gameState: {
-              ...prev.gameState,
-              gameMessage: message,
-            },
-          };
-        }
-
-        if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
-          // Processar derrota do inimigo apenas se ainda não temos recompensas e não estamos processando
-          if (!prev.gameState.battleRewards && !processingDefeat) {
-            setProcessingDefeat(true);
-            
-            (async () => {
-              try {
-                loadingRef.current = true;
-                console.log('[game-provider] Processando derrota do inimigo');
-                
-                // Atualizar última atividade por causa da vitória
-                if (selectedCharacter) {
-                  await CharacterService.updateLastActivity(selectedCharacter.id);
-                }
-                
-                // Processar a derrota e obter recompensas
-                const updatedState = await GameService.processEnemyDefeat(newState);
-                
-                // Verificar se realmente obtivemos recompensas (evitar processamento de estado inválido)
-                if (!updatedState.battleRewards) {
-                  console.warn('[game-provider] Processamento de derrota não gerou recompensas válidas');
-                  return;
-                }
-                
-                // Atualizar stats do personagem
-                if (selectedCharacter && updatedState.battleRewards) {
-                  // Conceder XP de forma segura
-                  if (updatedState.battleRewards.xp > 0) {
-                    await CharacterService.grantSecureXP(selectedCharacter.id, updatedState.battleRewards.xp, 'combat');
-                  }
-                  
-                  // Conceder gold de forma segura
-                  if (updatedState.battleRewards.gold > 0) {
-                    await CharacterService.grantSecureGold(selectedCharacter.id, updatedState.battleRewards.gold, 'combat');
-                  }
-                }
-                
-                // Atualizar estado com recompensas
-                setState(currentState => ({
-                  ...currentState,
-                  gameState: updatedState
-                }));
-                
-              } catch (error) {
-                console.error('[game-provider] Erro ao processar derrota do inimigo:', error);
-              } finally {
-                loadingRef.current = false;
-                setProcessingDefeat(false);
-              }
-            })();
-          }
-          
-          // Retornar estado intermediário
-          return {
-            ...prev,
-            gameState: {
-              ...prev.gameState,
-              gameMessage: 'Você derrotou o inimigo!'
-            }
-          };
-        }
-
-        // Se não há inimigo atual, não processar ações de combate
-        if (!newState.currentEnemy) {
-          console.log('[game-provider] Nenhum inimigo atual - ignorando ação de combate');
-          return {
-            ...prev,
-            gameState: {
-              ...prev.gameState,
-              gameMessage: message
-            }
-          };
-        }
-
-        const updatedState = {
-          ...newState,
-          isPlayerTurn: false,
-          gameMessage: message,
-        };
-        
-        const processEnemyTurn = async (currentState: GameState) => {
+        // Processar ação do jogador de forma assíncrona
+        setTimeout(async () => {
           try {
-            const enemyActionState = await GameService.processEnemyAction(
-              currentState,
-              action === 'defend'
+            const actionResult = await GameService.processPlayerAction(
+              action, 
+              prev.gameState,
+              spellId,
+              consumableId
             );
 
-            // Se o inimigo foi derrotado por efeitos ao longo do tempo, processar a vitória
-            if (enemyActionState.currentEnemy && enemyActionState.currentEnemy.hp <= 0) {
-              console.log('[game-provider] Inimigo derrotado por efeitos ao longo do tempo - processando vitória');
+            const { newState, skipTurn, message, skillXpGains, skillMessages } = actionResult;
+            
+            console.log(`[game-provider] processPlayerAction retornou - skipTurn: ${skipTurn}, message: "${message}"`);
+            
+            // Processar XP de habilidades se houver
+            if (skillXpGains && skillXpGains.length > 0 && selectedCharacter) {
+              try {
+                console.log('[game-provider] Aplicando XP de habilidades:', skillXpGains);
+                
+                for (const skillGain of skillXpGains) {
+                  await CharacterService.addSkillXp(
+                    selectedCharacter.id,
+                    skillGain.skill,
+                    skillGain.xp
+                  );
+                }
+                
+                // Adicionar mensagens de habilidade ao log
+                if (skillMessages) {
+                  skillMessages.forEach(skillMsg => {
+                    addGameLogMessage(skillMsg, 'skill_xp');
+                  });
+                }
+              } catch (error) {
+                console.error('[game-provider] Erro ao aplicar XP de habilidades:', error);
+                // Continuar sem XP de habilidades em caso de erro
+              }
+            }
+            
+            // CRÍTICO: Detectar se um consumível foi usado e propagar a atualização
+            if (action === 'consumable' && !skipTurn && newState.player.consumables) {
+              console.log('[game-provider] Ação de consumível processada - atualizando estado dos consumáveis');
               
-              // Processar derrota de forma síncrona para garantir que tenhamos as recompensas
-              const defeatState = await GameService.processEnemyDefeat(enemyActionState);
-              
-              // Atualizar estado com recompensas
-              setState(prev => ({
-                ...prev,
-                gameState: defeatState
-              }));
-              
+              // Forçar re-render criando nova referência do array de consumáveis
+              newState.player.consumables = [...newState.player.consumables];
+            }
+            
+            if (skipTurn) {
               loadingRef.current = false;
+              updateLoading('performAction', false);
+              
+              // Se a fuga foi bem-sucedida, processar fora do setState
+              if (action === 'flee' && message.includes('conseguiu fugir')) {
+                // Processar fuga de forma assíncrona
+                setTimeout(async () => {
+                  try {
+                    console.log('[game-provider] Fuga bem-sucedida - atualizando andar para 1');
+                    if (selectedCharacter) {
+                      await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
+                    }
+                    // Redirecionar para o hub
+                    window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
+                  } catch (error) {
+                    console.error('[game-provider] Erro ao processar fuga:', error);
+                    toast.error('Erro ao processar fuga');
+                  }
+                }, 100);
+              }
+              
+              setState(currentState => ({
+                ...currentState,
+                gameState: {
+                  ...currentState.gameState,
+                  gameMessage: message,
+                },
+              }));
               return;
             }
 
-            // Atualizar HP e Mana do personagem
-            if (selectedCharacter) {
-              await CharacterService.updateCharacterHpMana(
-                selectedCharacter.id,
-                enemyActionState.player.hp,
-                enemyActionState.player.mana
-              );
-            }
-
-            // Adicionar mensagem da ação do inimigo ao log
-            if (enemyActionState.gameMessage && enemyActionState.gameMessage.trim() !== '') {
-              // Determinar o tipo de mensagem baseado no conteúdo
-              let messageType: 'enemy_action' | 'damage' | 'healing' = 'enemy_action';
-              
-              if (enemyActionState.gameMessage.includes('causou') && enemyActionState.gameMessage.includes('dano')) {
-                messageType = 'damage';
-              } else if (enemyActionState.gameMessage.includes('recuperou') && enemyActionState.gameMessage.includes('HP')) {
-                messageType = 'healing';
+            if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
+              // Processar derrota do inimigo apenas se ainda não temos recompensas e não estamos processando
+              if (!prev.gameState.battleRewards && !processingDefeat) {
+                setProcessingDefeat(true);
+                
+                try {
+                  loadingRef.current = true;
+                  console.log('[game-provider] Processando derrota do inimigo');
+                  
+                  // Atualizar última atividade por causa da vitória
+                  if (selectedCharacter) {
+                    await CharacterService.updateLastActivity(selectedCharacter.id);
+                  }
+                  
+                  // Processar a derrota e obter recompensas
+                  const updatedState = await GameService.processEnemyDefeat(newState);
+                  
+                  // Verificar se realmente obtivemos recompensas (evitar processamento de estado inválido)
+                  if (!updatedState.battleRewards) {
+                    console.warn('[game-provider] Processamento de derrota não gerou recompensas válidas');
+                    return;
+                  }
+                  
+                  // Atualizar stats do personagem
+                  if (selectedCharacter && updatedState.battleRewards) {
+                    // Conceder XP de forma segura
+                    if (updatedState.battleRewards.xp > 0) {
+                      await CharacterService.grantSecureXP(selectedCharacter.id, updatedState.battleRewards.xp, 'combat');
+                    }
+                    
+                    // Conceder gold de forma segura
+                    if (updatedState.battleRewards.gold > 0) {
+                      await CharacterService.grantSecureGold(selectedCharacter.id, updatedState.battleRewards.gold, 'combat');
+                    }
+                  }
+                  
+                  // Atualizar estado com recompensas
+                  setState(currentState => ({
+                    ...currentState,
+                    gameState: updatedState
+                  }));
+                  
+                } catch (error) {
+                  console.error('[game-provider] Erro ao processar derrota do inimigo:', error);
+                } finally {
+                  loadingRef.current = false;
+                  setProcessingDefeat(false);
+                }
               }
               
-              addGameLogMessage(enemyActionState.gameMessage, messageType);
+              // Atualizar estado com mensagem
+              setState(currentState => ({
+                ...currentState,
+                gameState: {
+                  ...currentState.gameState,
+                  gameMessage: 'Você derrotou o inimigo!'
+                }
+              }));
+              
+              loadingRef.current = false;
+              updateLoading('performAction', false);
+              return;
             }
 
-            setState(prev => ({
-              ...prev,
-              gameState: enemyActionState
+            // Se não há inimigo atual, não processar ações de combate
+            if (!newState.currentEnemy) {
+              console.log('[game-provider] Nenhum inimigo atual - ignorando ação de combate');
+              setState(currentState => ({
+                ...currentState,
+                gameState: {
+                  ...currentState.gameState,
+                  gameMessage: message
+                }
+              }));
+              
+              loadingRef.current = false;
+              updateLoading('performAction', false);
+              return;
+            }
+
+            const updatedState = {
+              ...newState,
+              isPlayerTurn: false,
+              gameMessage: message,
+            };
+            
+            // Processar turno do inimigo
+            setTimeout(async () => {
+              try {
+                const enemyActionResult = await GameService.processEnemyAction(
+                  updatedState,
+                  action === 'defend'
+                );
+
+                const { newState: enemyActionState, skillXpGains: enemySkillXpGains, skillMessages: enemySkillMessages } = enemyActionResult;
+
+                // Processar XP de habilidades do turno do inimigo (defesa)
+                if (enemySkillXpGains && enemySkillXpGains.length > 0 && selectedCharacter) {
+                  try {
+                    console.log('[game-provider] Aplicando XP de defesa do turno do inimigo:', enemySkillXpGains);
+                    
+                    for (const skillGain of enemySkillXpGains) {
+                      await CharacterService.addSkillXp(
+                        selectedCharacter.id,
+                        skillGain.skill,
+                        skillGain.xp
+                      );
+                    }
+                    
+                    // Adicionar mensagens de habilidade ao log
+                    if (enemySkillMessages) {
+                      enemySkillMessages.forEach(skillMsg => {
+                        addGameLogMessage(skillMsg, 'skill_xp');
+                      });
+                    }
+                  } catch (error) {
+                    console.error('[game-provider] Erro ao aplicar XP de defesa:', error);
+                    // Continuar sem XP de habilidades em caso de erro
+                  }
+                }
+
+                // CRÍTICO: Verificar se o personagem morreu e redirecionar imediatamente
+                if (enemyActionState.mode === 'gameover') {
+                  console.log('[game-provider] Personagem morreu durante turno do inimigo');
+                  
+                  // Atualizar estado com a morte
+                  setState(prev => ({
+                    ...prev,
+                    gameState: enemyActionState
+                  }));
+                  
+                  loadingRef.current = false;
+                  updateLoading('performAction', false);
+                  // O redirecionamento será feito pelo useEffect que monitora characterDeleted
+                  return;
+                }
+
+                // Se o inimigo foi derrotado por efeitos ao longo do tempo, processar a vitória
+                if (enemyActionState.currentEnemy && enemyActionState.currentEnemy.hp <= 0) {
+                  console.log('[game-provider] Inimigo derrotado por efeitos ao longo do tempo - processando vitória');
+                  
+                  // Processar derrota de forma síncrona para garantir que tenhamos as recompensas
+                  const defeatState = await GameService.processEnemyDefeat(enemyActionState);
+                  
+                  // Atualizar estado com recompensas
+                  setState(prev => ({
+                    ...prev,
+                    gameState: defeatState
+                  }));
+                  
+                  loadingRef.current = false;
+                  updateLoading('performAction', false);
+                  return;
+                }
+
+                // Atualizar HP e Mana do personagem
+                if (selectedCharacter) {
+                  await CharacterService.updateCharacterHpMana(
+                    selectedCharacter.id,
+                    enemyActionState.player.hp,
+                    enemyActionState.player.mana
+                  );
+                }
+
+                // Adicionar mensagem da ação do inimigo ao log
+                if (enemyActionState.gameMessage && enemyActionState.gameMessage.trim() !== '') {
+                  // Determinar o tipo de mensagem baseado no conteúdo
+                  let messageType: 'enemy_action' | 'damage' | 'healing' = 'enemy_action';
+                  
+                  if (enemyActionState.gameMessage.includes('causou') && enemyActionState.gameMessage.includes('dano')) {
+                    messageType = 'damage';
+                  } else if (enemyActionState.gameMessage.includes('recuperou') && enemyActionState.gameMessage.includes('HP')) {
+                    messageType = 'healing';
+                  }
+                  
+                  addGameLogMessage(enemyActionState.gameMessage, messageType);
+                }
+
+                setState(prev => ({
+                  ...prev,
+                  gameState: enemyActionState
+                }));
+              } catch (error) {
+                console.error('Erro ao processar turno do inimigo:', error);
+                toast.error('Erro ao processar turno do inimigo');
+              } finally {
+                loadingRef.current = false;
+                updateLoading('performAction', false);
+              }
+            }, 1000);
+
+            // Atualizar estado inicial
+            setState(currentState => ({
+              ...currentState,
+              gameState: updatedState,
             }));
-          } catch (error) {
-            console.error('Erro ao processar turno do inimigo:', error);
-            toast.error('Erro ao processar turno do inimigo');
-          } finally {
-            loadingRef.current = false;
-          }
-        };
 
-        setTimeout(() => {
-          if (updatedState.mode === 'battle') {
-            processEnemyTurn(updatedState);
-          } else {
-            loadingRef.current = false;
-          }
-        }, 1000);
-
-        // Quando o jogador ataca, adicionar mensagem de forma mais controlada
-        if (action === 'attack' && prev.gameState.currentEnemy) {
-          const enemyName = prev.gameState.currentEnemy.name;
-          const attackMessage = `${prev.gameState.player.name} atacou ${enemyName}.`;
-          
-          // Verificar se esta mensagem já existe no log recente
-          const recentLogs = prev.gameLog.slice(-3);
-          const isDuplicate = recentLogs.some(log => log.text === attackMessage);
-          
-          if (!isDuplicate) {
-            addGameLogMessage(attackMessage, 'battle');
-          }
-        }
-
-        // Adicionar mensagem específica para defesa
-        if (action === 'defend' && !message.includes('cooldown')) {
-          addGameLogMessage('Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.', 'battle');
-        }
-
-        // Ao processar mensagens de ação, evitar duplicações
-        if (message && message.trim() !== '' && !messageProcessedRef.current) {
-          messageProcessedRef.current = true;
-          
-          // Filtrar mensagens que não queremos mostrar no log
-          if (!message.includes('conseguiu fugir') && 
-              !message.includes('Nenhum consumível') && 
-              !message.includes('insuficiente') &&
-              !message.includes('assume uma postura defensiva')) { // Evitar duplicação da mensagem de defesa
-            
-            // Verificar se é uma mensagem duplicada
-            const recentLogs = prev.gameLog.slice(-3);
-            const isDuplicate = recentLogs.some(log => log.text === message);
-            
-            if (!isDuplicate) {
-              addGameLogMessage(message, 'battle');
+            // Quando o jogador ataca, adicionar mensagem de forma mais controlada
+            if (action === 'attack' && prev.gameState.currentEnemy) {
+              const enemyName = prev.gameState.currentEnemy.name;
+              const attackMessage = `${prev.gameState.player.name} atacou ${enemyName}.`;
+              
+              // Verificar se esta mensagem já existe no log recente
+              const recentLogs = prev.gameLog.slice(-3);
+              const isDuplicate = recentLogs.some(log => log.text === attackMessage);
+              
+              if (!isDuplicate) {
+                addGameLogMessage(attackMessage, 'battle');
+              }
             }
-          }
-          
-          // Resetar a flag após um curto período
-          setTimeout(() => {
-            messageProcessedRef.current = false;
-          }, 300); // Aumentar o tempo para garantir que não processe a mesma mensagem múltiplas vezes
-        }
 
-        return {
-          ...prev,
-          gameState: updatedState,
-        };
+            // Adicionar mensagem específica para defesa
+            if (action === 'defend' && !message.includes('cooldown')) {
+              addGameLogMessage('Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.', 'battle');
+            }
+
+            // Ao processar mensagens de ação, evitar duplicações
+            if (message && message.trim() !== '' && !messageProcessedRef.current) {
+              messageProcessedRef.current = true;
+              
+              // Filtrar mensagens que não queremos mostrar no log
+              if (!message.includes('conseguiu fugir') && 
+                  !message.includes('Nenhum consumível') && 
+                  !message.includes('insuficiente') &&
+                  !message.includes('assume uma postura defensiva')) { // Evitar duplicação da mensagem de defesa
+                
+                // Verificar se é uma mensagem duplicada
+                const recentLogs = prev.gameLog.slice(-3);
+                const isDuplicate = recentLogs.some(log => log.text === message);
+                
+                if (!isDuplicate) {
+                  addGameLogMessage(message, 'battle');
+                }
+              }
+              
+              // Resetar a flag após um curto período
+              setTimeout(() => {
+                messageProcessedRef.current = false;
+              }, 300); // Aumentar o tempo para garantir que não processe a mesma mensagem múltiplas vezes
+            }
+          } catch (error) {
+            console.error('Erro ao processar ação:', error instanceof Error ? error.message : 'Erro desconhecido');
+            loadingRef.current = false;
+            updateLoading('performAction', false);
+            
+            setState(currentState => ({
+              ...currentState,
+              error: error instanceof Error ? error.message : 'Erro ao processar ação',
+            }));
+          }
+        }, 100);
+
+        return prev;
       } catch (error) {
         console.error('Erro ao processar ação:', error instanceof Error ? error.message : 'Erro desconhecido');
         loadingRef.current = false;
@@ -804,7 +936,7 @@ export function GameProvider({ children }: GameProviderProps) {
         updateLoading('performAction', false);
       }
     });
-  }, [selectedCharacter]);
+  }, [selectedCharacter, state.gameState.mode]);
 
   // Voltar ao menu principal
   const returnToMenu = useCallback(() => {

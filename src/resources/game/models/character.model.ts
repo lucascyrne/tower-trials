@@ -225,6 +225,22 @@ export interface CharacterStats {
   blunt_mastery_xp: number;
   defense_mastery_xp: number;
   magic_mastery_xp: number;
+  
+  // Stats base (sem equipamentos) para exibição de bônus
+  base_hp?: number;
+  base_max_hp?: number;
+  base_mana?: number;
+  base_max_mana?: number;
+  base_atk?: number;
+  base_def?: number;
+  base_speed?: number;
+  
+  // Bônus de equipamentos para exibição
+  equipment_hp_bonus?: number;
+  equipment_mana_bonus?: number;
+  equipment_atk_bonus?: number;
+  equipment_def_bonus?: number;
+  equipment_speed_bonus?: number;
 }
 
 // Interface para resultado de ganho de XP de habilidade

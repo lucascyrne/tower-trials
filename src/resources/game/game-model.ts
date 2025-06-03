@@ -135,6 +135,22 @@ export interface GamePlayer {
   // Stats derivados (calculados)
   critical_chance?: number;
   critical_damage?: number;
+  
+  // Stats base (sem equipamentos) para exibição de bônus
+  base_hp?: number;
+  base_max_hp?: number;
+  base_mana?: number;
+  base_max_mana?: number;
+  base_atk?: number;
+  base_def?: number;
+  base_speed?: number;
+  
+  // Bônus de equipamentos para exibição
+  equipment_hp_bonus?: number;
+  equipment_mana_bonus?: number;
+  equipment_atk_bonus?: number;
+  equipment_def_bonus?: number;
+  equipment_speed_bonus?: number;
 }
 
 export interface GameState {
@@ -148,6 +164,7 @@ export interface GameState {
   highestFloor: number;
   selectedSpell: PlayerSpell | null;
   battleRewards: BattleRewards | null;
+  characterDeleted?: boolean;
 }
 
 export interface GameLoadingState {

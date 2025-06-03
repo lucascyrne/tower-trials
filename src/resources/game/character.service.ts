@@ -14,6 +14,7 @@ import {
 import { EquipmentService } from './equipment.service';
 import { NameValidationService } from './name-validation.service';
 import { supabase } from '@/lib/supabase';
+import { GamePlayer } from './game-model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -1021,31 +1022,219 @@ export class CharacterService {
   }
 
   /**
-   * Obter stats completos do personagem incluindo atributos e habilidades
-   * @param characterId ID do personagem
-   * @returns Stats completos do personagem
+   * Obter stats completos do personagem incluindo bônus de equipamentos
    */
   static async getCharacterStats(characterId: string): Promise<ServiceResponse<CharacterStats>> {
     try {
       const { data, error } = await supabase
-        .rpc('get_character_full_stats', {
+        .rpc('get_character_detailed_stats', {
           p_character_id: characterId
-        })
-        .single();
+        });
 
       if (error) throw error;
 
-      return { 
-        data: data as CharacterStats, 
-        error: null, 
-        success: true 
+      if (!data || data.length === 0) {
+        return {
+          success: false,
+          error: 'Personagem não encontrado',
+          data: null
+        };
+      }
+
+      const charData = data[0];
+      
+      const characterStats: CharacterStats = {
+        level: charData.level,
+        xp: charData.xp,
+        xp_next_level: charData.xp_next_level,
+        gold: charData.gold,
+        hp: charData.final_hp,
+        max_hp: charData.final_max_hp,
+        mana: charData.final_mana,
+        max_mana: charData.final_max_mana,
+        atk: charData.final_atk,
+        def: charData.final_def,
+        speed: charData.final_speed,
+        
+        // Atributos primários
+        strength: charData.strength,
+        dexterity: charData.dexterity,
+        intelligence: charData.intelligence,
+        wisdom: charData.wisdom,
+        vitality: charData.vitality,
+        luck: charData.luck,
+        attribute_points: charData.attribute_points,
+        
+        // Stats derivados
+        critical_chance: Math.min(75, charData.luck * 0.5),
+        critical_damage: 1.5 + (charData.luck / 100),
+        
+        // Habilidades (buscar separadamente se necessário)
+        sword_mastery: 1,
+        axe_mastery: 1,
+        blunt_mastery: 1,
+        defense_mastery: 1,
+        magic_mastery: 1,
+        
+        sword_mastery_xp: 0,
+        axe_mastery_xp: 0,
+        blunt_mastery_xp: 0,
+        defense_mastery_xp: 0,
+        magic_mastery_xp: 0,
+        
+        // Dados extras para exibição
+        base_hp: charData.base_hp,
+        base_max_hp: charData.base_max_hp,
+        base_mana: charData.base_mana,
+        base_max_mana: charData.base_max_mana,
+        base_atk: charData.base_atk,
+        base_def: charData.base_def,
+        base_speed: charData.base_speed,
+        equipment_hp_bonus: charData.equipment_hp_bonus,
+        equipment_mana_bonus: charData.equipment_mana_bonus,
+        equipment_atk_bonus: charData.equipment_atk_bonus,
+        equipment_def_bonus: charData.equipment_def_bonus,
+        equipment_speed_bonus: charData.equipment_speed_bonus
+      };
+
+      return {
+        success: true,
+        error: null,
+        data: characterStats
       };
     } catch (error) {
-      console.error('Erro ao buscar stats do personagem:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar stats', 
-        success: false 
+      console.error('Erro ao buscar stats do personagem:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Obter personagem com stats detalhados para o jogo
+   */
+  static async getCharacterForGame(characterId: string): Promise<ServiceResponse<GamePlayer>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_character_detailed_stats', {
+          p_character_id: characterId
+        });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return {
+          success: false,
+          error: 'Personagem não encontrado',
+          data: null
+        };
+      }
+
+      const charData = data[0];
+      
+      // Buscar habilidades
+      const { data: skillData } = await supabase
+        .from('characters')
+        .select(`
+          sword_mastery,
+          axe_mastery,
+          blunt_mastery,
+          defense_mastery,
+          magic_mastery,
+          sword_mastery_xp,
+          axe_mastery_xp,
+          blunt_mastery_xp,
+          defense_mastery_xp,
+          magic_mastery_xp
+        `)
+        .eq('id', characterId)
+        .single();
+      
+      const gamePlayer: GamePlayer = {
+        id: charData.character_id,
+        user_id: '', // Will be set by game context
+        name: charData.name,
+        level: charData.level,
+        xp: charData.xp,
+        xp_next_level: charData.xp_next_level,
+        gold: charData.gold,
+        hp: charData.final_hp,
+        max_hp: charData.final_max_hp,
+        mana: charData.final_mana,
+        max_mana: charData.final_max_mana,
+        atk: charData.final_atk,
+        def: charData.final_def,
+        speed: charData.final_speed,
+        created_at: '',
+        updated_at: '',
+        isPlayerTurn: true,
+        specialCooldown: 0,
+        defenseCooldown: 0,
+        isDefending: false,
+        floor: charData.floor,
+        spells: [],
+        consumables: [],
+        active_effects: {
+          buffs: [],
+          debuffs: [],
+          dots: [],
+          hots: []
+        },
+        
+        // Atributos primários
+        strength: charData.strength,
+        dexterity: charData.dexterity,
+        intelligence: charData.intelligence,
+        wisdom: charData.wisdom,
+        vitality: charData.vitality,
+        luck: charData.luck,
+        attribute_points: charData.attribute_points,
+        
+        // Habilidades
+        sword_mastery: skillData?.sword_mastery || 1,
+        axe_mastery: skillData?.axe_mastery || 1,
+        blunt_mastery: skillData?.blunt_mastery || 1,
+        defense_mastery: skillData?.defense_mastery || 1,
+        magic_mastery: skillData?.magic_mastery || 1,
+        
+        sword_mastery_xp: skillData?.sword_mastery_xp || 0,
+        axe_mastery_xp: skillData?.axe_mastery_xp || 0,
+        blunt_mastery_xp: skillData?.blunt_mastery_xp || 0,
+        defense_mastery_xp: skillData?.defense_mastery_xp || 0,
+        magic_mastery_xp: skillData?.magic_mastery_xp || 0,
+        
+        // Stats derivados
+        critical_chance: Math.min(75, charData.luck * 0.5),
+        critical_damage: 1.5 + (charData.luck / 100),
+        
+        // Dados extras para exibição de bônus
+        base_hp: charData.base_hp,
+        base_max_hp: charData.base_max_hp,
+        base_mana: charData.base_mana,
+        base_max_mana: charData.base_max_mana,
+        base_atk: charData.base_atk,
+        base_def: charData.base_def,
+        base_speed: charData.base_speed,
+        equipment_hp_bonus: charData.equipment_hp_bonus,
+        equipment_mana_bonus: charData.equipment_mana_bonus,
+        equipment_atk_bonus: charData.equipment_atk_bonus,
+        equipment_def_bonus: charData.equipment_def_bonus,
+        equipment_speed_bonus: charData.equipment_speed_bonus
+      };
+
+      return {
+        success: true,
+        error: null,
+        data: gamePlayer
+      };
+    } catch (error) {
+      console.error('Erro ao buscar personagem para o jogo:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        data: null
       };
     }
   }

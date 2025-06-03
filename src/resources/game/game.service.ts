@@ -10,6 +10,10 @@ import { CharacterService } from './character.service';
 import { SpecialEventService } from './special-event.service';
 import { SkillXpGain } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
+import { CemeteryService } from './cemetery.service';
+import { SkillXpService } from './skill-xp.service';
+import { EquipmentService } from './equipment.service';
+import { PlayerSpell, SpellEffectType } from './models/spell.model';
 
 // Interface para dados estendidos do monstro
 interface ExtendedMonster extends Monster {
@@ -64,6 +68,22 @@ interface GameProgressEntry {
   highest_floor: number;
   created_at: string;
   updated_at: string;
+}
+
+interface CharacterSpell {
+  spell_id: string;
+  current_cooldown: number;
+  spell: {
+    id: string;
+    name: string;
+    description: string;
+    mana_cost: number;
+    cooldown: number;
+    effect_type: string;
+    effect_value: number;
+    target_type: string;
+    element: string;
+  }[];
 }
 
 export class GameService {
@@ -338,21 +358,21 @@ export class GameService {
    * @param action Tipo de ação
    * @param gameState Estado atual do jogo
    * @param spellId ID da magia (opcional)
-   * @param consumableId ID do consumável (opcional)
+   * @param consumableId ID do consumível (opcional)
    * @returns Novo estado do jogo e resultado da ação
    */
-  static processPlayerAction(
+  static async processPlayerAction(
     action: ActionType, 
     gameState: GameState,
     spellId?: string,
     consumableId?: string
-  ): { 
+  ): Promise<{ 
     newState: GameState;
     skipTurn: boolean;
     message: string;
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
-  } {
+  }> {
     const { player, currentEnemy } = gameState;
     
     console.log(`[processPlayerAction] Processando ação: '${action}'`);
@@ -383,6 +403,7 @@ export class GameService {
     let message = '';
     const newState = { ...gameState };
     let skipTurn = false;
+    const skillXpGains: SkillXpGain[] = [];
     
     // Resetar flag de poção usada no início de cada turno do jogador
     if (player.isPlayerTurn && !player.potionUsedThisTurn) {
@@ -400,6 +421,19 @@ export class GameService {
         damage = this.calculateDamage(player.atk, currentEnemy.defense);
         currentEnemy.hp = Math.max(0, currentEnemy.hp - damage);
         message = `Você atacou e causou ${damage} de dano!`;
+        
+        // NOVO: Calcular XP de habilidade de ataque
+        try {
+          // Buscar equipamentos do personagem para determinar tipo de arma
+          const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+          const equipmentSlots = equipmentSlotsResponse || null;
+          
+          const attackSkillXp = SkillXpService.calculateAttackSkillXp(equipmentSlots, damage);
+          skillXpGains.push(...attackSkillXp);
+        } catch (error) {
+          console.warn('[processPlayerAction] Erro ao calcular XP de ataque:', error);
+          // Continuar sem XP de habilidade em caso de erro
+        }
         
         // Adicionar verificação explícita de derrota do inimigo
         if (currentEnemy.hp <= 0) {
@@ -420,6 +454,18 @@ export class GameService {
         player.isDefending = true;
         player.defenseCooldown = 4; // Cooldown de 4 turnos
         message = 'Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.';
+        
+        // NOVO: Calcular XP de habilidade de defesa
+        try {
+          const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+          const equipmentSlots = equipmentSlotsResponse || null;
+          
+          const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, 0);
+          skillXpGains.push(...defenseSkillXp);
+        } catch (error) {
+          console.warn('[processPlayerAction] Erro ao calcular XP de defesa:', error);
+          // Continuar sem XP de habilidade em caso de erro
+        }
         break;
 
       case 'flee':
@@ -497,6 +543,11 @@ export class GameService {
         if (spellIndex !== -1) {
           player.spells[spellIndex].current_cooldown = spell.cooldown;
         }
+        
+        // NOVO: Calcular XP de habilidade de magia
+        const spellDamage = spell.effect_value || 0; // Assumir que effect_value é o dano da magia
+        const magicSkillXp = SkillXpService.calculateMagicSkillXp(spell.mana_cost, spellDamage);
+        skillXpGains.push(...magicSkillXp);
         
         message = spellResult.message;
         break;
@@ -612,7 +663,12 @@ export class GameService {
       // Não usamos skipTurn para permitir que o processamento de derrota continue
     }
 
-    return { newState, skipTurn, message };
+    // Gerar mensagens de habilidade se há ganhos de XP
+    const skillMessages = skillXpGains.length > 0 
+      ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
+      : undefined;
+
+    return { newState, skipTurn, message, skillXpGains, skillMessages };
   }
 
   /**
@@ -883,13 +939,18 @@ export class GameService {
    * @param playerDefendAction Indica se o jogador usou a ação de defesa (DEPRECATED)
    * @returns Novo estado do jogo após a ação do inimigo
    */
-  static async processEnemyAction(gameState: GameState, playerDefendAction: boolean): Promise<GameState> {
+  static async processEnemyAction(gameState: GameState, playerDefendAction: boolean): Promise<{
+    newState: GameState;
+    skillXpGains?: SkillXpGain[];
+    skillMessages?: string[];
+  }> {
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
-      return { ...gameState, isPlayerTurn: true };
+      return { newState: { ...gameState, isPlayerTurn: true } };
     }
 
     const enemy = gameState.currentEnemy;
     const player = gameState.player;
+    const skillXpGains: SkillXpGain[] = [];
     
     // Processar efeitos contínuos no inimigo (DoTs, buffs, etc.)
     SpellService.processOverTimeEffects(enemy);
@@ -897,9 +958,11 @@ export class GameService {
     // Se o inimigo morreu por efeitos ao longo do tempo
     if (enemy.hp <= 0) {
       return {
-        ...gameState,
-        isPlayerTurn: true,
-        gameMessage: `${enemy.name} foi derrotado por efeitos ao longo do tempo!`
+        newState: {
+          ...gameState,
+          isPlayerTurn: true,
+          gameMessage: `${enemy.name} foi derrotado por efeitos ao longo do tempo!`
+        }
       };
     }
 
@@ -925,30 +988,104 @@ export class GameService {
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(damage * 0.15); // 85% de redução
           message = `${enemy.name} atacou, mas você reduziu o dano de ${damage} para ${actualDamage} com sua defesa!`;
+          
+          // NOVO: XP de defesa extra por bloquear efetivamente
+          try {
+            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlots = equipmentSlotsResponse || null;
+            const blockedDamage = damage - actualDamage;
+            
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, blockedDamage);
+            skillXpGains.push(...defenseSkillXp);
+          } catch (error) {
+            console.warn('[processEnemyAction] Erro ao calcular XP de defesa:', error);
+          }
         } else {
           actualDamage = damage;
           message = `${enemy.name} atacou e causou ${actualDamage} de dano!`;
+          
+          // NOVO: XP de defesa menor por receber ataque (experiência passiva)
+          try {
+            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlots = equipmentSlotsResponse || null;
+            
+            // XP reduzido por ser um ataque não bloqueado
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, Math.floor(actualDamage * 0.3));
+            skillXpGains.push(...defenseSkillXp);
+          } catch (error) {
+            console.warn('[processEnemyAction] Erro ao calcular XP de defesa passiva:', error);
+          }
         }
         
         // Aplicar dano
         const newHp = Math.max(0, player.hp - actualDamage);
         
-        // Verificar se o jogador morreu
+        // CRÍTICO: Verificar se o jogador morreu e processar permadeath
         if (newHp <= 0) {
-          return {
-            ...gameState,
-            player: {
-              ...player,
-              hp: 0,
-              isDefending: false
-            },
-            mode: 'gameover',
-            isPlayerTurn: true,
-            gameMessage: `${message} Você foi derrotado!`
-          };
+          console.log(`[GameService] Jogador ${player.name} morreu - iniciando processo de permadeath`);
+          
+          try {
+            // Matar o personagem permanentemente
+            const deathResult = await CemeteryService.killCharacter(
+              player.id,
+              'Battle defeat',
+              enemy.name
+            );
+            
+            if (deathResult.success) {
+              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
+              
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
+                  characterDeleted: true // Flag para indicar que o personagem foi deletado
+                }
+              };
+            } else {
+              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
+              // Em caso de erro, ainda processar como morte mas sem deletar
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado!`
+                }
+              };
+            }
+          } catch (error) {
+            console.error(`[GameService] Erro crítico ao processar morte:`, error);
+            // Fallback em caso de erro crítico
+            return {
+              newState: {
+                ...gameState,
+                player: {
+                  ...player,
+                  hp: 0,
+                  isDefending: false
+                },
+                mode: 'gameover',
+                isPlayerTurn: true,
+                gameMessage: `${message} Você foi derrotado!`
+              }
+            };
+          }
         }
         
-        return {
+        const resultState = {
           ...gameState,
           player: {
             ...player,
@@ -960,6 +1097,13 @@ export class GameService {
           gameMessage: message
         };
 
+        // Gerar mensagens de habilidade
+        const skillMessages = skillXpGains.length > 0 
+          ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
+          : undefined;
+
+        return { newState: resultState, skillXpGains, skillMessages };
+
       case 'spell':
         // Inimigo usa magia
         const spellDamage = Math.floor(enemy.attack * 1.2);
@@ -969,6 +1113,18 @@ export class GameService {
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(spellDamage * 0.15);
           message = `${enemy.name} lançou uma magia, mas você reduziu o dano de ${spellDamage} para ${actualDamage} com sua defesa!`;
+          
+          // XP de defesa por bloquear magia (menor que físico)
+          try {
+            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlots = equipmentSlotsResponse || null;
+            const blockedDamage = Math.floor((spellDamage - actualDamage) * 0.5); // Menor XP para defesa mágica
+            
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, blockedDamage);
+            skillXpGains.push(...defenseSkillXp);
+          } catch (error) {
+            console.warn('[processEnemyAction] Erro ao calcular XP de defesa mágica:', error);
+          }
         } else {
           actualDamage = spellDamage;
           message = `${enemy.name} lançou uma magia e causou ${actualDamage} de dano mágico!`;
@@ -976,26 +1132,84 @@ export class GameService {
         
         const newSpellHp = Math.max(0, player.hp - actualDamage);
         
-        // Verificar se o jogador morreu
+        // CRÍTICO: Verificar se o jogador morreu e processar permadeath
         if (newSpellHp <= 0) {
-          return {
-            ...gameState,
-            player: {
-              ...player,
-              hp: 0,
-              isDefending: false
-            },
-            currentEnemy: {
-              ...enemy,
-              mana: Math.max(0, enemy.mana - spellCost)
-            },
-            mode: 'gameover',
-            isPlayerTurn: true,
-            gameMessage: `${message} Você foi derrotado!`
-          };
+          console.log(`[GameService] Jogador ${player.name} morreu por magia - iniciando processo de permadeath`);
+          
+          try {
+            // Matar o personagem permanentemente
+            const deathResult = await CemeteryService.killCharacter(
+              player.id,
+              'Battle defeat',
+              enemy.name
+            );
+            
+            if (deathResult.success) {
+              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
+              
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  currentEnemy: {
+                    ...enemy,
+                    mana: Math.max(0, enemy.mana - spellCost)
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
+                  characterDeleted: true // Flag para indicar que o personagem foi deletado
+                }
+              };
+            } else {
+              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
+              // Em caso de erro, ainda processar como morte mas sem deletar
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  currentEnemy: {
+                    ...enemy,
+                    mana: Math.max(0, enemy.mana - spellCost)
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado!`
+                }
+              };
+            }
+          } catch (error) {
+            console.error(`[GameService] Erro crítico ao processar morte por magia:`, error);
+            // Fallback em caso de erro crítico
+            return {
+              newState: {
+                ...gameState,
+                player: {
+                  ...player,
+                  hp: 0,
+                  isDefending: false
+                },
+                currentEnemy: {
+                  ...enemy,
+                  mana: Math.max(0, enemy.mana - spellCost)
+                },
+                mode: 'gameover',
+                isPlayerTurn: true,
+                gameMessage: `${message} Você foi derrotado!`
+              }
+            };
+          }
         }
         
-        return {
+        const spellResultState = {
           ...gameState,
           player: {
             ...player,
@@ -1011,6 +1225,12 @@ export class GameService {
           gameMessage: message
         };
 
+        const spellSkillMessages = skillXpGains.length > 0 
+          ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
+          : undefined;
+
+        return { newState: spellResultState, skillXpGains, skillMessages: spellSkillMessages };
+
       case 'special':
         // Habilidade especial baseada no comportamento
         switch (enemy.behavior) {
@@ -1024,17 +1244,19 @@ export class GameService {
             const healAmount = Math.floor(enemy.maxHp * 0.15);
             const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
             return {
-              ...gameState,
-              player: {
-                ...player,
-                potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
-              },
-              currentEnemy: {
-                ...enemy,
-                hp: newEnemyHp
-              },
-              isPlayerTurn: true,
-              gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
+              newState: {
+                ...gameState,
+                player: {
+                  ...player,
+                  potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+                },
+                currentEnemy: {
+                  ...enemy,
+                  hp: newEnemyHp
+                },
+                isPlayerTurn: true,
+                gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
+              }
             };
           default:
             damage = Math.floor(enemy.attack * 1.3);
@@ -1042,24 +1264,94 @@ export class GameService {
             message = `${enemy.name} usou uma habilidade especial e causou ${actualDamage} de dano!`;
         }
         
-        const newSpecialHp = Math.max(0, player.hp - actualDamage);
-        
-        // Verificar se o jogador morreu
-        if (newSpecialHp <= 0) {
-          return {
-            ...gameState,
-            player: {
-              ...player,
-              hp: 0,
-              isDefending: false
-            },
-            mode: 'gameover',
-            isPlayerTurn: true,
-            gameMessage: `${message} Você foi derrotado!`
-          };
+        // XP de defesa por receber habilidade especial
+        if (actualDamage > 0) {
+          try {
+            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlots = equipmentSlotsResponse || null;
+            
+            if (player.isDefending || playerDefendAction) {
+              const blockedDamage = damage - actualDamage;
+              const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, blockedDamage);
+              skillXpGains.push(...defenseSkillXp);
+            } else {
+              // XP passivo reduzido
+              const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, Math.floor(actualDamage * 0.2));
+              skillXpGains.push(...defenseSkillXp);
+            }
+          } catch (error) {
+            console.warn('[processEnemyAction] Erro ao calcular XP de defesa especial:', error);
+          }
         }
         
-        return {
+        const newSpecialHp = Math.max(0, player.hp - actualDamage);
+        
+        // CRÍTICO: Verificar se o jogador morreu e processar permadeath
+        if (newSpecialHp <= 0) {
+          console.log(`[GameService] Jogador ${player.name} morreu por habilidade especial - iniciando processo de permadeath`);
+          
+          try {
+            // Matar o personagem permanentemente
+            const deathResult = await CemeteryService.killCharacter(
+              player.id,
+              'Battle defeat',
+              enemy.name
+            );
+            
+            if (deathResult.success) {
+              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
+              
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
+                  characterDeleted: true // Flag para indicar que o personagem foi deletado
+                }
+              };
+            } else {
+              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
+              // Em caso de erro, ainda processar como morte mas sem deletar
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    hp: 0,
+                    isDefending: false
+                  },
+                  mode: 'gameover',
+                  isPlayerTurn: true,
+                  gameMessage: `${message} Você foi derrotado!`
+                }
+              };
+            }
+          } catch (error) {
+            console.error(`[GameService] Erro crítico ao processar morte por habilidade especial:`, error);
+            // Fallback em caso de erro crítico
+            return {
+              newState: {
+                ...gameState,
+                player: {
+                  ...player,
+                  hp: 0,
+                  isDefending: false
+                },
+                mode: 'gameover',
+                isPlayerTurn: true,
+                gameMessage: `${message} Você foi derrotado!`
+              }
+            };
+          }
+        }
+        
+        const specialResultState = {
           ...gameState,
           player: {
             ...player,
@@ -1071,14 +1363,22 @@ export class GameService {
           gameMessage: message
         };
 
+        const specialSkillMessages = skillXpGains.length > 0 
+          ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
+          : undefined;
+
+        return { newState: specialResultState, skillXpGains, skillMessages: specialSkillMessages };
+
       default:
         return { 
-          ...gameState, 
-          player: {
-            ...gameState.player,
-            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
-          },
-          isPlayerTurn: true
+          newState: { 
+            ...gameState, 
+            player: {
+              ...gameState.player,
+              potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+            },
+            isPlayerTurn: true
+          }
         };
     }
   }
@@ -1289,6 +1589,65 @@ export class GameService {
         gameMessage: 'Erro ao interagir com o evento especial. Tente novamente.',
         isPlayerTurn: true
       };
+    }
+  }
+
+  /**
+   * Carregar personagem com todos os dados necessários para o jogo
+   */
+  static async loadPlayerForGame(characterId: string): Promise<GamePlayer> {
+    try {
+      // Usar o novo método que retorna stats detalhados com bônus de equipamentos
+      const characterResponse = await CharacterService.getCharacterForGame(characterId);
+      
+      if (!characterResponse.success || !characterResponse.data) {
+        throw new Error(characterResponse.error || 'Personagem não encontrado');
+      }
+
+      const character = characterResponse.data;
+
+      // Carregar magias do personagem
+      const { data: spells } = await supabase
+        .from('character_spells')
+        .select(`
+          spell_id,
+          current_cooldown,
+          spell:spells(*)
+        `)
+        .eq('character_id', characterId);
+
+      // Converter para PlayerSpell[]
+      const playerSpells: PlayerSpell[] = (spells || []).map((cs: CharacterSpell) => ({
+        id: cs.spell[0].id,
+        name: cs.spell[0].name,
+        description: cs.spell[0].description,
+        mana_cost: cs.spell[0].mana_cost,
+        cooldown: cs.spell[0].cooldown,
+        current_cooldown: cs.current_cooldown,
+        effect_type: cs.spell[0].effect_type as SpellEffectType,
+        effect_value: cs.spell[0].effect_value,
+        duration: 0 // Add missing required property
+      }));
+
+      // Carregar consumíveis (se necessário)
+      const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
+      const consumables = consumablesResponse.success ? consumablesResponse.data || [] : [];
+
+      // Retornar GamePlayer completo com todos os dados
+      return {
+        ...character,
+        spells: playerSpells,
+        consumables,
+        active_effects: {
+          buffs: [],
+          debuffs: [],
+          dots: [],
+          hots: []
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao carregar personagem para o jogo:', error);
+      throw error;
     }
   }
 } 
