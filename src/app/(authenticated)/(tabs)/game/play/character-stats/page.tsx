@@ -33,6 +33,7 @@ import {
   calculateSkillXpRequired
 } from '@/resources/game/models/character.model';
 import { motion, AnimatePresence } from 'framer-motion';
+import { StatCard } from '@/components/ui/stat-display';
 
 interface AttributeDistribution {
   strength: number;
@@ -423,83 +424,81 @@ export default function CharacterStatsPage() {
                 <Award className="h-5 w-5" />
                 Stats Derivados
               </CardTitle>
+              <div className="mt-2 p-3 bg-muted/30 rounded-lg">
+                <div className="text-sm font-medium mb-2 text-muted-foreground">Fórmulas de Cálculo:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground font-mono">
+                  <div><span className="text-red-400">HP:</span> (80 + 5×Nível) + Vitalidade×8</div>
+                  <div><span className="text-blue-400">Mana:</span> (40 + 3×Nível) + Inteligência×5</div>
+                  <div><span className="text-red-400">Ataque:</span> (15 + 2×Nível) + Força×2</div>
+                  <div><span className="text-blue-400">Defesa:</span> (8 + Nível) + Vitalidade + Sabedoria</div>
+                  <div><span className="text-yellow-400">Velocidade:</span> (8 + Nível) + Destreza×1.5</div>
+                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.5%</div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Heart className="h-4 w-4 text-red-400" />
-                    <span className="text-sm font-medium">HP Máximo</span>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {characterStats.max_hp}
-                    {distribution.vitality > 0 && (
-                      <span className="text-green-400 text-lg ml-1">
-                        +{distribution.vitality * 8}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <StatCard
+                  label="HP Máximo"
+                  value={characterStats.max_hp}
+                  baseValue={characterStats.base_max_hp}
+                  equipmentBonus={characterStats.equipment_hp_bonus}
+                  icon={<Heart className="h-4 w-4 text-red-400" />}
+                  color="text-red-400"
+                  size="lg"
+                />
                 
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Brain className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium">Mana Máxima</span>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {characterStats.max_mana}
-                    {distribution.intelligence > 0 && (
-                      <span className="text-blue-400 text-lg ml-1">
-                        +{distribution.intelligence * 5}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <StatCard
+                  label="Mana Máxima"
+                  value={characterStats.max_mana}
+                  baseValue={characterStats.base_max_mana}
+                  equipmentBonus={characterStats.equipment_mana_bonus}
+                  icon={<Brain className="h-4 w-4 text-blue-400" />}
+                  color="text-blue-400"
+                  size="lg"
+                />
 
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sword className="h-4 w-4 text-red-400" />
-                    <span className="text-sm font-medium">Ataque</span>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {characterStats.atk}
-                    {distribution.strength > 0 && (
-                      <span className="text-red-400 text-lg ml-1">
-                        +{distribution.strength * 2}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <StatCard
+                  label="Ataque"
+                  value={characterStats.atk}
+                  baseValue={characterStats.base_atk}
+                  equipmentBonus={characterStats.equipment_atk_bonus}
+                  icon={<Sword className="h-4 w-4 text-red-400" />}
+                  color="text-red-400"
+                  size="lg"
+                />
 
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium">Defesa</span>
-                  </div>
-                  <div className="text-2xl font-bold">{characterStats.def}</div>
-                </div>
+                <StatCard
+                  label="Defesa"
+                  value={characterStats.def}
+                  baseValue={characterStats.base_def}
+                  equipmentBonus={characterStats.equipment_def_bonus}
+                  icon={<Shield className="h-4 w-4 text-blue-400" />}
+                  color="text-blue-400"
+                  size="lg"
+                />
 
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Zap className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-medium">Velocidade</span>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {characterStats.speed}
-                    {distribution.dexterity > 0 && (
-                      <span className="text-green-400 text-lg ml-1">
-                        +{Math.floor(distribution.dexterity * 1.5)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <StatCard
+                  label="Velocidade"
+                  value={characterStats.speed}
+                  baseValue={characterStats.base_speed}
+                  equipmentBonus={characterStats.equipment_speed_bonus}
+                  icon={<Zap className="h-4 w-4 text-yellow-400" />}
+                  color="text-yellow-400"
+                  size="lg"
+                />
 
                 <div className="bg-card p-3 rounded-lg border">
                   <div className="flex items-center gap-2 mb-1">
                     <Star className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-medium">Crítico</span>
+                    <span className="text-sm font-medium text-yellow-400">Crítico</span>
                   </div>
-                  <div className="text-2xl font-bold">{characterStats.critical_chance.toFixed(1)}%</div>
+                  <div className="text-2xl font-bold text-yellow-400">
+                    {characterStats.critical_chance.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Baseado na Sorte ({characterStats.luck})
+                  </div>
                 </div>
               </div>
             </CardContent>

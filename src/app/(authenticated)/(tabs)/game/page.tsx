@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/resources/auth/auth-hook';
 import Link from 'next/link';
-import { Info, X } from 'lucide-react';
+import { Info, X, Skull } from 'lucide-react';
 import GameInfo from '@/components/game/game-info';
 
 export default function GamePage() {
@@ -68,6 +68,18 @@ export default function GamePage() {
             >
               Ranking
             </Button>
+
+            {user && (
+              <Button 
+                onClick={() => router.push('/game/cemetery')}
+                className="w-full py-4 text-base border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300" 
+                variant="ghost"
+                size="lg"
+              >
+                <Skull className="h-5 w-5 mr-2" />
+                Cemitério
+              </Button>
+            )}
           </CardContent>
           
           <CardFooter className="flex justify-between">
