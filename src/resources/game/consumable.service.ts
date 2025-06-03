@@ -308,7 +308,7 @@ export class ConsumableService {
   }
 
   /**
-   * Adicionar drops ao inventário do personagem
+   * FUNÇÃO SEGURA: Adicionar drops ao inventário do personagem via sistema de combate
    * @param characterId ID do personagem
    * @param drops Lista de drops obtidos
    * @returns Resultado da operação
@@ -316,55 +316,51 @@ export class ConsumableService {
   static async addDropsToInventory(
     characterId: string,
     drops: { drop_id: string; quantity: number }[]
-  ): Promise<ServiceResponse<null>> {
+  ): Promise<ServiceResponse<number>> {
     try {
-      // Processar os drops em lote em vez de um por um
       if (drops.length === 0) {
-        return { data: null, error: null, success: true };
+        return { data: 0, error: null, success: true };
       }
       
-      // Usar Promise.allSettled para não interromper todo o processo se um falhar
-      const results = await Promise.allSettled(drops.map(async (drop) => {
-        try {
-          const { error } = await supabase.rpc('add_monster_drop', {
-            p_character_id: characterId,
-            p_drop_id: drop.drop_id,
-            p_quantity: drop.quantity
-          });
-
-          if (error) {
-            // Se for um erro de chave duplicada, já foi tratado no backend
-            if (error.code === '23505') {
-              console.warn(`Drop já existe para o personagem. Usando fallback SQL.`);
-              return { success: true };
-            }
-            throw error;
-          }
-          
-          return { success: true };
-        } catch (err) {
-          console.error(`Erro ao adicionar drop ${drop.drop_id}:`, err);
-          return { success: false, error: err };
-        }
+      // Converter drops para o formato JSONB esperado pela função segura
+      const dropsJson = drops.map(drop => ({
+        drop_id: drop.drop_id,
+        quantity: drop.quantity
       }));
       
-      // Verificar se algum drop falhou totalmente
-      const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+      console.log(`[ConsumableService] Processando ${drops.length} drops via função segura`);
       
-      if (failures.length > 0) {
-        console.warn(`${failures.length} de ${drops.length} drops falharam ao serem adicionados.`);
-        // Se falhar parcialmente, ainda é considerado sucesso, mas logamos o erro
-        return { 
-          data: null, 
-          error: null, 
-          success: true 
-        };
-      }
+      // Importar o cliente admin apenas quando necessário
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      // Usar o cliente admin para acessar a função restrita
+      const { data, error } = await supabaseAdmin
+        .rpc('secure_process_combat_drops', {
+          p_character_id: characterId,
+          p_drops: dropsJson
+        })
+        .single();
 
-      return { data: null, error: null, success: true };
+      if (error) {
+        console.error('Erro na função secure_process_combat_drops:', error);
+        throw error;
+      }
+      
+      const dropsProcessed = data as number;
+      console.log(`[ConsumableService] ${dropsProcessed} drops processados com sucesso`);
+
+      return { 
+        data: dropsProcessed, 
+        error: null, 
+        success: true 
+      };
     } catch (error) {
-      console.error('Erro ao adicionar drops:', error instanceof Error ? error.message : error);
-      return { data: null, error: 'Erro ao adicionar drops', success: false };
+      console.error('Erro ao processar drops:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao processar drops', 
+        success: false 
+      };
     }
   }
 

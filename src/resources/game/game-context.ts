@@ -3,6 +3,7 @@ import { ActionType, GameState, GamePlayer } from './game-model';
 import { GAME_CONSTANTS } from './models/character.model';
 import { ActiveEffects } from './models/spell.model';
 import { Character } from './models/character.model';
+import { CharacterConsumable } from './models/consumable.model';
 
 const initialActiveEffects: ActiveEffects = {
   buffs: [],
@@ -63,7 +64,7 @@ export interface GameContextType {
   };
   error: string | null;
   gameMessage: string;
-  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' }[];
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' | 'enemy_action' | 'player_action' | 'damage' | 'healing' }[];
   characters: Character[];
   selectedCharacter: Character | null;
   startGame: (name: string) => Promise<void>;
@@ -73,8 +74,10 @@ export interface GameContextType {
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
   resetError: () => void;
-  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up') => void;
+  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' | 'enemy_action' | 'player_action' | 'damage' | 'healing') => void;
   saveProgress: () => Promise<void>;
+  updatePlayerStats: (hp: number, mana: number) => void;
+  updatePlayerConsumables: (consumables: CharacterConsumable[]) => void;
 }
 
 // Criar o contexto
@@ -99,5 +102,7 @@ export const GameContext = createContext<GameContextType>({
   returnToMenu: () => {},
   resetError: () => {},
   addGameLogMessage: () => {},
-  saveProgress: async () => {}
+  saveProgress: async () => {},
+  updatePlayerStats: () => {},
+  updatePlayerConsumables: () => {}
 }); 

@@ -430,40 +430,37 @@ export class CharacterService {
   }
 
   /**
-   * Atualizar stats do personagem
+   * FUNÇÃO SEGURA: Conceder XP com validações anti-cheat
    * @param characterId ID do personagem
-   * @param stats Stats a serem atualizados
-   * @returns Resultado da atualização com informações de progressão
+   * @param xpAmount Quantidade de XP
+   * @param source Fonte do XP (combat, quest, etc.)
+   * @returns Resultado da operação
    */
-  static async updateCharacterStats(
+  static async grantSecureXP(
     characterId: string,
-    stats: UpdateCharacterStatsDTO
+    xpAmount: number,
+    source: string = 'combat'
   ): Promise<ServiceResponse<UpdateCharacterStatsResult>> {
     try {
-      // Se temos o parâmetro floor, atualizamos separadamente
-      if (stats.floor !== undefined) {
-        await this.updateCharacterFloor(characterId, stats.floor);
-      }
+      // Importar o cliente admin apenas quando necessário
+      const { supabaseAdmin } = await import('@/lib/supabase');
       
-      const { data, error } = await supabase
-        .rpc('update_character_stats', {
+      const { data, error } = await supabaseAdmin
+        .rpc('secure_grant_xp', {
           p_character_id: characterId,
-          p_xp: stats.xp,
-          p_gold: stats.gold,
-          p_hp: stats.hp,
-          p_mana: stats.mana,
-        });
+          p_xp_amount: xpAmount,
+          p_source: source
+        })
+        .single();
 
       if (error) throw error;
 
-      // Atualizar também o last_activity para marcar atividade recente
-      await this.updateLastActivity(characterId);
-
-      // Invalidar cache apenas do personagem específico
+      // Invalidar cache do personagem específico
       this.invalidateCharacterCache(characterId);
 
-      // Se houve level up, também invalidar cache do usuário para atualizar progressão
-      if (data.leveled_up || data.slots_unlocked) {
+      // Se houve level up ou slots desbloqueados, invalidar cache do usuário
+      const result = data as UpdateCharacterStatsResult;
+      if (result.leveled_up || result.slots_unlocked) {
         const character = await this.getCharacter(characterId);
         if (character.success && character.data) {
           this.invalidateUserCache(character.data.user_id);
@@ -471,56 +468,153 @@ export class CharacterService {
       }
 
       return { 
-        data: data as UpdateCharacterStatsResult, 
+        data: result, 
         error: null, 
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao atualizar stats:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao atualizar stats', success: false };
+      console.error('Erro ao conceder XP:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao conceder XP', 
+        success: false 
+      };
     }
   }
 
   /**
-   * Atualizar o andar atual do personagem
+   * FUNÇÃO SEGURA: Conceder gold com validações anti-cheat
    * @param characterId ID do personagem
-   * @param floor Número do andar
+   * @param goldAmount Quantidade de gold
+   * @param source Fonte do gold (combat, quest, etc.)
+   * @returns Novo total de gold
+   */
+  static async grantSecureGold(
+    characterId: string,
+    goldAmount: number,
+    source: string = 'combat'
+  ): Promise<ServiceResponse<number>> {
+    try {
+      // Importar o cliente admin apenas quando necessário
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      const { data, error } = await supabaseAdmin
+        .rpc('secure_grant_gold', {
+          p_character_id: characterId,
+          p_gold_amount: goldAmount,
+          p_source: source
+        })
+        .single();
+
+      if (error) throw error;
+
+      // Invalidar cache do personagem específico
+      this.invalidateCharacterCache(characterId);
+
+      return { 
+        data: data as number, 
+        error: null, 
+        success: true 
+      };
+    } catch (error) {
+      console.error('Erro ao conceder gold:', error instanceof Error ? error.message : error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao conceder gold', 
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * FUNÇÃO SEGURA: Atualizar HP e Mana com validação de limites
+   * APENAS para uso interno do servidor - não exposta via RPC
+   * @param characterId ID do personagem
+   * @param hp Novo HP (opcional)
+   * @param mana Nova mana (opcional)
    * @returns Resultado da operação
    */
-  static async updateCharacterFloor(characterId: string, floor: number): Promise<ServiceResponse<null>> {
+  static async updateCharacterHpMana(
+    characterId: string,
+    hp?: number,
+    mana?: number
+  ): Promise<ServiceResponse<null>> {
     try {
-      console.log(`[CharacterService] updateCharacterFloor - ID: ${characterId}, Andar: ${floor}`);
-      
-      // Verificar cache para evitar atualizações redundantes
-      const cachedCharacter = this.characterCache.get(characterId);
-      if (cachedCharacter && (cachedCharacter as Character).floor === floor) {
-        console.log(`[CharacterService] Andar já está atualizado para ${floor}, ignorando atualização`);
-        return { data: null, error: null, success: true };
+      if (!characterId) {
+        return { success: false, error: 'ID do personagem é obrigatório', data: null };
+      }
+
+      // CRÍTICO: Garantir que os valores sejam sempre inteiros
+      const integerHp = hp !== undefined ? Math.floor(Number(hp)) : undefined;
+      const integerMana = mana !== undefined ? Math.floor(Number(mana)) : undefined;
+
+      // Validar valores se fornecidos
+      if (integerHp !== undefined && (integerHp < 0 || integerHp > 9999)) {
+        return { success: false, error: 'Valor de HP inválido', data: null };
       }
       
-      console.log(`[CharacterService] Chamando RPC update_character_floor...`);
+      if (integerMana !== undefined && (integerMana < 0 || integerMana > 9999)) {
+        return { success: false, error: 'Valor de Mana inválido', data: null };
+      }
+
+      const { error } = await supabase.rpc('internal_update_character_hp_mana', {
+        p_character_id: characterId,
+        p_hp: integerHp,
+        p_mana: integerMana
+      });
+
+      if (error) {
+        console.error('Erro ao atualizar HP/Mana:', error);
+        return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
+      }
+
+      // Invalidar cache do personagem
+      this.invalidateCharacterCache(characterId);
+
+      return { success: true, error: null, data: null };
+    } catch (error) {
+      console.error('Erro ao atualizar HP/Mana do personagem:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido ao atualizar HP/Mana', 
+        data: null 
+      };
+    }
+  }
+
+  /**
+   * FUNÇÃO SEGURA: Avançar andar do personagem com validação
+   * @param characterId ID do personagem
+   * @param newFloor Novo andar
+   * @returns Resultado da operação
+   */
+  static async updateCharacterFloor(characterId: string, newFloor: number): Promise<ServiceResponse<null>> {
+    try {
+      console.log(`[CharacterService] Atualizando andar seguramente - ID: ${characterId}, Andar: ${newFloor}`);
       
-      // Usar a função RPC dedicada para atualizar o andar
-      const { error } = await supabase
-        .rpc('update_character_floor', {
+      // Importar o cliente admin apenas quando necessário
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      const { error } = await supabaseAdmin
+        .rpc('secure_advance_floor', {
           p_character_id: characterId,
-          p_floor: floor
+          p_new_floor: newFloor
         });
 
       if (error) {
-        console.error('[CharacterService] Erro na RPC update_character_floor:', error.message);
+        console.error('[CharacterService] Erro na função secure_advance_floor:', error.message);
         throw error;
       }
 
-      // Apenas invalidar o cache específico do personagem
-      this.characterCache.delete(characterId);
+      // Invalidar cache do personagem específico
+      this.invalidateCharacterCache(characterId);
 
-      console.log(`[CharacterService] Andar atualizado com sucesso para ${floor}`);
+      console.log(`[CharacterService] Andar atualizado com segurança para ${newFloor}`);
       
       return { data: null, error: null, success: true };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('[CharacterService] Erro crítico ao atualizar andar:', errorMsg);
+      console.error('[CharacterService] Erro ao atualizar andar:', errorMsg);
       return { 
         data: null, 
         error: errorMsg, 
@@ -641,20 +735,13 @@ export class CharacterService {
    */
   static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<{ floor: number; description: string }[]>> {
     try {
-      // Obter o personagem para saber o andar mais alto alcançado
-      const characterResponse = await this.getCharacter(characterId);
-      if (!characterResponse.success || !characterResponse.data) {
-        return { data: null, error: 'Personagem não encontrado', success: false };
-      }
-      
-      const character = characterResponse.data;
-      const highestFloor = character.floor;
+      console.log(`[CharacterService] Obtendo checkpoints para personagem ${characterId}`);
       
       try {
-        // Tentar usar a função RPC
+        // Tentar usar a nova função RPC específica para personagens
         const { data, error } = await supabase
-          .rpc('get_unlocked_checkpoints', {
-            p_highest_floor: highestFloor
+          .rpc('get_character_unlocked_checkpoints', {
+            p_character_id: characterId
           });
 
         if (!error && data) {
@@ -662,26 +749,61 @@ export class CharacterService {
             floor: row.floor_number,
             description: row.description
           }));
+          
+          console.log(`[CharacterService] Checkpoints obtidos via RPC:`, checkpoints);
           return { data: checkpoints, error: null, success: true };
+        } else if (error) {
+          console.warn(`[CharacterService] Erro na RPC get_character_unlocked_checkpoints:`, error);
+          // Continuar para fallback
         }
       } catch (rpcError) {
-        console.warn('Função RPC não disponível, usando fallback:', rpcError);
+        console.warn('[CharacterService] Função RPC não disponível, usando fallback:', rpcError);
       }
 
-      // Fallback: gerar checkpoints manualmente
+      // Fallback: obter o personagem e calcular checkpoints manualmente
+      console.log(`[CharacterService] Usando fallback para calcular checkpoints`);
+      
+      const characterResponse = await this.getCharacter(characterId);
+      if (!characterResponse.success || !characterResponse.data) {
+        return { data: null, error: 'Personagem não encontrado', success: false };
+      }
+      
+      const character = characterResponse.data;
+      
+      // Usar highest_floor se disponível, senão usar floor atual
+      const highestFloor = Math.max(
+        character.floor, 
+        ('highest_floor' in character ? (character as unknown as { highest_floor: number }).highest_floor : character.floor) || character.floor
+      );
+      
+      console.log(`[CharacterService] Andar atual: ${character.floor}, Highest floor: ${highestFloor}`);
+      
+      // Gerar checkpoints manualmente com nova lógica
       const checkpoints: { floor: number; description: string }[] = [];
       
       // Sempre incluir o andar 1
       checkpoints.push({ floor: 1, description: 'Andar 1 - Início da Torre' });
       
-      // Adicionar checkpoints a cada 10 andares até o andar mais alto
-      for (let floor = 10; floor <= highestFloor; floor += 10) {
-        checkpoints.push({
-          floor,
-          description: `Andar ${floor} - Checkpoint de Chefe`
-        });
+      // Adicionar checkpoints pós-boss: 11, 21, 31, 41, 51, etc.
+      // Só incluir se o jogador passou do boss correspondente
+      for (let i = 1; i <= 100; i++) { // Até 100 bosses (andar 1000)
+        const bossFloor = i * 10;
+        const checkpointFloor = bossFloor + 1;
+        
+        // Se o jogador passou do boss (está no andar do checkpoint ou além)
+        if (highestFloor >= checkpointFloor) {
+          checkpoints.push({
+            floor: checkpointFloor,
+            description: `Andar ${checkpointFloor} - Checkpoint Pós-Boss`
+          });
+          console.log(`[CharacterService] Checkpoint ${checkpointFloor} desbloqueado (passou do boss ${bossFloor})`);
+        } else {
+          // Se não passou deste boss, não há mais checkpoints
+          break;
+        }
       }
 
+      console.log(`[CharacterService] Checkpoints finais calculados:`, checkpoints);
       return { data: checkpoints, error: null, success: true };
     } catch (error) {
       console.error('Erro ao obter checkpoints:', error instanceof Error ? error.message : error);
@@ -697,8 +819,11 @@ export class CharacterService {
    */
   static async startFromCheckpoint(characterId: string, checkpointFloor: number): Promise<ServiceResponse<null>> {
     try {
-      // Verificar se o checkpoint é válido (deve ser múltiplo de 10 ou andar 1)
-      if (checkpointFloor !== 1 && checkpointFloor % 10 !== 0) {
+      // Verificar se o checkpoint é válido (andar 1 ou andares pós-boss: 11, 21, 31, etc.)
+      const isValidCheckpoint = checkpointFloor === 1 || 
+                               (checkpointFloor > 10 && (checkpointFloor - 1) % 10 === 0);
+      
+      if (!isValidCheckpoint) {
         return { data: null, error: 'Checkpoint inválido', success: false };
       }
       
@@ -713,7 +838,7 @@ export class CharacterService {
         return { data: null, error: 'Checkpoint não desbloqueado', success: false };
       }
       
-      // Atualizar o andar do personagem
+      // Atualizar o andar do personagem usando a função segura
       const updateResponse = await this.updateCharacterFloor(characterId, checkpointFloor);
       return updateResponse;
     } catch (error) {
@@ -833,17 +958,14 @@ export class CharacterService {
         };
       }
 
-      // Atualizar HP e Mana no banco
-      const { error } = await supabase
-        .from('characters')
-        .update({
-          hp: hp,
-          mana: mana,
-          last_activity: currentTime.toISOString()
-        })
-        .eq('id', characterId);
+      // Atualizar HP e Mana no banco usando função segura
+      const updateResult = await this.updateCharacterHpMana(characterId, hp, mana);
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Erro ao atualizar HP/Mana');
+      }
 
-      if (error) throw error;
+      // Atualizar timestamp de atividade
+      await this.updateLastActivity(characterId);
 
       // Invalidar cache do personagem
       this.invalidateCharacterCache(characterId);
@@ -878,11 +1000,9 @@ export class CharacterService {
   static async updateLastActivity(characterId: string): Promise<ServiceResponse<null>> {
     try {
       const { error } = await supabase
-        .from('characters')
-        .update({
-          last_activity: new Date().toISOString()
-        })
-        .eq('id', characterId);
+        .rpc('update_character_activity', {
+          p_character_id: characterId
+        });
 
       if (error) throw error;
 
@@ -1055,29 +1175,21 @@ export class CharacterService {
    */
   static async resetCharacterProgress(characterId: string): Promise<ServiceResponse<null>> {
     try {
-      // Primeiro buscar os valores máximos do personagem
-      const { data: character, error: fetchError } = await supabase
-        .from('characters')
-        .select('max_hp, max_mana')
-        .eq('id', characterId)
-        .single();
+      // Usar a função segura para resetar para andar 1
+      const result = await this.updateCharacterFloor(characterId, 1);
+      if (!result.success) {
+        return result;
+      }
 
-      if (fetchError) throw fetchError;
-
-      const { error } = await supabase
-        .from('characters')
-        .update({
-          floor: 1,
-          hp: character.max_hp, // Restaurar HP completo
-          mana: character.max_mana, // Restaurar mana completa
-          last_activity: new Date().toISOString()
-        })
-        .eq('id', characterId);
-
-      if (error) throw error;
-
-      // Invalidar cache do personagem
-      this.invalidateCharacterCache(characterId);
+      // Atualizar HP e mana para máximo usando função segura
+      const character = await this.getCharacter(characterId);
+      if (character.success && character.data) {
+        await this.updateCharacterHpMana(
+          characterId, 
+          character.data.max_hp, 
+          character.data.max_mana
+        );
+      }
 
       return { 
         data: null, 

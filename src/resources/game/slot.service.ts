@@ -219,29 +219,66 @@ export class SlotService {
   }
 
   /**
-   * Usar poção de um slot específico
+   * Consumir poção do slot
    */
   static async consumePotionFromSlot(
     characterId: string, 
     slotPosition: number
   ): Promise<ServiceResponse<PotionUseResult>> {
     try {
-      const { data, error } = await supabase
-        .rpc('use_potion_from_slot', {
+      if (!characterId) {
+        return { success: false, error: 'ID do personagem é obrigatório', data: null };
+      }
+
+      if (slotPosition < 1 || slotPosition > 3) {
+        return { success: false, error: 'Posição do slot inválida (1-3)', data: null };
+      }
+
+      // Usar o cliente admin para chamar a função segura
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      const { data, error } = await supabaseAdmin
+        .rpc('consume_potion_from_slot', {
           p_character_id: characterId,
           p_slot_position: slotPosition
-        })
-        .single();
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao consumir poção do slot:', error);
+        return { 
+          success: false, 
+          error: error.message || 'Erro ao usar poção', 
+          data: null 
+        };
+      }
 
-      return { data: data as PotionUseResult, error: null, success: true };
-    } catch (error) {
-      console.error('Erro ao usar poção do slot:', error instanceof Error ? error.message : error);
+      if (!data) {
+        return { 
+          success: false, 
+          error: 'Nenhum resultado retornado', 
+          data: null 
+        };
+      }
+
+      // CRÍTICO: Garantir que os valores sejam sempre inteiros
+      const result: PotionUseResult = {
+        success: data.success,
+        message: data.message,
+        new_hp: Math.floor(Number(data.new_hp)),
+        new_mana: Math.floor(Number(data.new_mana))
+      };
+
       return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao usar poção', 
-        success: false 
+        success: true, 
+        error: null, 
+        data: result 
+      };
+    } catch (error) {
+      console.error('Erro ao consumir poção do slot:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido', 
+        data: null 
       };
     }
   }

@@ -107,6 +107,7 @@ export interface GamePlayer {
   spells: PlayerSpell[];
   consumables?: CharacterConsumable[];
   active_effects: ActiveEffects;
+  potionUsedThisTurn?: boolean;
   
   // Atributos primários
   strength?: number;
@@ -167,7 +168,7 @@ export interface GameContextState {
   loading: GameLoadingState;
   error: string | null;
   gameMessage: string | null;
-  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'skill_xp' | 'level_up' | 'equipment' }[];
+  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'skill_xp' | 'level_up' | 'equipment' | 'enemy_action' | 'player_action' | 'damage' | 'healing' }[];
 }
 
 export interface BattleActionResult {

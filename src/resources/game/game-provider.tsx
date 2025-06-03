@@ -10,6 +10,7 @@ import { useAuth } from '../auth/auth-hook';
 import { toast } from 'sonner';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
+import { CharacterConsumable } from './models/consumable.model';
 
 interface GameProviderProps {
   children: ReactNode;
@@ -57,7 +58,7 @@ export function GameProvider({ children }: GameProviderProps) {
   }, []);
 
   // Função para adicionar mensagens ao log do jogo
-  const addGameLogMessage = useCallback((message: string, type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' = 'system') => {
+  const addGameLogMessage = useCallback((message: string, type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' | 'enemy_action' | 'player_action' | 'damage' | 'healing' = 'system') => {
     // Verificar se a mensagem já existe nas últimas 5 entradas do log para evitar duplicação
     setState(prev => {
       const recentLogs = prev.gameLog.slice(-5);
@@ -180,6 +181,7 @@ export function GameProvider({ children }: GameProviderProps) {
                 isDefending: false,
                 floor: 1,
                 spells: initialSpells,
+                potionUsedThisTurn: false,
                 active_effects: {
                   buffs: [],
                   debuffs: [],
@@ -263,6 +265,7 @@ export function GameProvider({ children }: GameProviderProps) {
             floor: currentFloor,
             spells: availableSpells,
             consumables: characterConsumables,
+            potionUsedThisTurn: false,
             active_effects: {
               buffs: [],
               debuffs: [],
@@ -303,6 +306,7 @@ export function GameProvider({ children }: GameProviderProps) {
             floor: character.floor || 1,
             spells: [],
             consumables: [],
+            potionUsedThisTurn: false,
             active_effects: {
               buffs: [],
               debuffs: [],
@@ -321,6 +325,40 @@ export function GameProvider({ children }: GameProviderProps) {
         description: error instanceof Error ? error.message : 'Erro ao carregar personagem',
       });
     }
+  }, []);
+
+  // Função para atualizar stats do jogador de forma reativa
+  const updatePlayerStats = useCallback((hp: number, mana: number) => {
+    console.log(`[GameProvider] Atualizando stats do jogador: HP ${hp}, Mana ${mana}`);
+    
+    setState(prev => ({
+      ...prev,
+      gameState: {
+        ...prev.gameState,
+        player: {
+          ...prev.gameState.player,
+          hp: Math.floor(hp),
+          mana: Math.floor(mana),
+          potionUsedThisTurn: true
+        }
+      }
+    }));
+  }, []);
+
+  // Função para atualizar consumáveis do jogador de forma reativa
+  const updatePlayerConsumables = useCallback((consumables: CharacterConsumable[]) => {
+    console.log(`[GameProvider] Atualizando consumáveis do jogador:`, consumables.length);
+    
+    setState(prev => ({
+      ...prev,
+      gameState: {
+        ...prev.gameState,
+        player: {
+          ...prev.gameState.player,
+          consumables: [...consumables] // Criar nova referência para forçar re-render
+        }
+      }
+    }));
   }, []);
 
   // Limpar estado de jogo quando sair da batalha
@@ -445,11 +483,21 @@ export function GameProvider({ children }: GameProviderProps) {
               
               // Atualizar stats do personagem no banco se houve mudanças
               if (selectedCharacter && updatedState.player) {
-                await CharacterService.updateCharacterStats(selectedCharacter.id, {
-                  hp: updatedState.player.hp,
-                  mana: updatedState.player.mana,
-                  gold: updatedState.player.gold - prev.gameState.player.gold // Apenas o gold ganho
-                });
+                // Atualizar HP e Mana se mudaram
+                if (updatedState.player.hp !== prev.gameState.player.hp || 
+                    updatedState.player.mana !== prev.gameState.player.mana) {
+                  await CharacterService.updateCharacterHpMana(
+                    selectedCharacter.id,
+                    updatedState.player.hp,
+                    updatedState.player.mana
+                  );
+                }
+                
+                // Atualizar gold se ganhou
+                const goldGained = updatedState.player.gold - prev.gameState.player.gold;
+                if (goldGained > 0) {
+                  await CharacterService.grantSecureGold(selectedCharacter.id, goldGained, 'combat');
+                }
               }
               
               setState(currentState => ({
@@ -512,6 +560,14 @@ export function GameProvider({ children }: GameProviderProps) {
         
         console.log(`[game-provider] processPlayerAction retornou - skipTurn: ${skipTurn}, message: "${message}"`);
         
+        // CRÍTICO: Detectar se um consumível foi usado e propagar a atualização
+        if (action === 'consumable' && !skipTurn && newState.player.consumables) {
+          console.log('[game-provider] Ação de consumível processada - atualizando estado dos consumáveis');
+          
+          // Forçar re-render criando nova referência do array de consumáveis
+          newState.player.consumables = [...newState.player.consumables];
+        }
+        
         if (skipTurn) {
           loadingRef.current = false;
           
@@ -566,18 +622,18 @@ export function GameProvider({ children }: GameProviderProps) {
                   return;
                 }
                 
-                              // Atualizar stats do personagem
-              if (selectedCharacter && updatedState.battleRewards) {
-                const updateResult = await CharacterService.updateCharacterStats(selectedCharacter.id, {
-                  xp: updatedState.battleRewards.xp,
-                  gold: updatedState.battleRewards.gold
-                });
-                
-                // O sistema dinâmico já considera automaticamente os dados atuais dos personagens
-                if (updateResult.success && updateResult.data?.leveled_up) {
-                  console.log(`[game-provider] Personagem ${selectedCharacter.name} subiu de nível - ranking atualizado automaticamente`);
+                // Atualizar stats do personagem
+                if (selectedCharacter && updatedState.battleRewards) {
+                  // Conceder XP de forma segura
+                  if (updatedState.battleRewards.xp > 0) {
+                    await CharacterService.grantSecureXP(selectedCharacter.id, updatedState.battleRewards.xp, 'combat');
+                  }
+                  
+                  // Conceder gold de forma segura
+                  if (updatedState.battleRewards.gold > 0) {
+                    await CharacterService.grantSecureGold(selectedCharacter.id, updatedState.battleRewards.gold, 'combat');
+                  }
                 }
-              }
                 
                 // Atualizar estado com recompensas
                 setState(currentState => ({
@@ -648,13 +704,25 @@ export function GameProvider({ children }: GameProviderProps) {
 
             // Atualizar HP e Mana do personagem
             if (selectedCharacter) {
-              await CharacterService.updateCharacterStats(selectedCharacter.id, {
-                hp: enemyActionState.player.hp,
-                mana: enemyActionState.player.mana,
-              });
+              await CharacterService.updateCharacterHpMana(
+                selectedCharacter.id,
+                enemyActionState.player.hp,
+                enemyActionState.player.mana
+              );
+            }
+
+            // Adicionar mensagem da ação do inimigo ao log
+            if (enemyActionState.gameMessage && enemyActionState.gameMessage.trim() !== '') {
+              // Determinar o tipo de mensagem baseado no conteúdo
+              let messageType: 'enemy_action' | 'damage' | 'healing' = 'enemy_action';
               
-              // Atualizar última atividade para marcar que o jogador ainda está ativo
-              await CharacterService.updateLastActivity(selectedCharacter.id);
+              if (enemyActionState.gameMessage.includes('causou') && enemyActionState.gameMessage.includes('dano')) {
+                messageType = 'damage';
+              } else if (enemyActionState.gameMessage.includes('recuperou') && enemyActionState.gameMessage.includes('HP')) {
+                messageType = 'healing';
+              }
+              
+              addGameLogMessage(enemyActionState.gameMessage, messageType);
             }
 
             setState(prev => ({
@@ -769,7 +837,9 @@ export function GameProvider({ children }: GameProviderProps) {
       returnToMenu,
       resetError,
       addGameLogMessage,
-      saveProgress: async () => {}
+      saveProgress: async () => {},
+      updatePlayerStats,
+      updatePlayerConsumables
     }),
     [
       state.gameState,
@@ -779,6 +849,8 @@ export function GameProvider({ children }: GameProviderProps) {
       state.gameLog,
       characters,
       selectedCharacter,
+      updatePlayerStats,
+      updatePlayerConsumables
     ]
   );
 

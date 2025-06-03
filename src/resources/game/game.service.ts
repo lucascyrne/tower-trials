@@ -329,7 +329,8 @@ export class GameService {
    * @returns Valor do dano calculado
    */
   static calculateDamage(attackerAttack: number, defenderDefense: number): number {
-    return Math.max(0, attackerAttack - defenderDefense / 2);
+    // CRÍTICO: Garantir que o dano seja sempre um inteiro
+    return Math.floor(Math.max(0, attackerAttack - defenderDefense / 2));
   }
 
   /**
@@ -382,6 +383,11 @@ export class GameService {
     let message = '';
     const newState = { ...gameState };
     let skipTurn = false;
+    
+    // Resetar flag de poção usada no início de cada turno do jogador
+    if (player.isPlayerTurn && !player.potionUsedThisTurn) {
+      player.potionUsedThisTurn = false;
+    }
     
     // Reduzir cooldown de defesa no início do turno
     if (player.defenseCooldown > 0) {
@@ -502,6 +508,13 @@ export class GameService {
           break;
         }
 
+        // Verificar se já foi usada uma poção neste turno
+        if (player.potionUsedThisTurn) {
+          message = 'Você já usou uma poção neste turno!';
+          skipTurn = true;
+          break;
+        }
+
         const consumable = player.consumables.find(c => c.consumable_id === consumableId);
         if (!consumable || !consumable.consumable || consumable.quantity <= 0) {
           message = 'Consumível não encontrado ou sem unidades disponíveis!';
@@ -512,6 +525,9 @@ export class GameService {
         // Aplicar efeito do consumível
         switch (consumable.consumable.type) {
           case 'potion':
+            // Marcar que uma poção foi usada neste turno
+            player.potionUsedThisTurn = true;
+            
             // Poção de HP
             if (consumable.consumable.description.includes('HP') || 
                 consumable.consumable.description.includes('Vida')) {
@@ -528,6 +544,9 @@ export class GameService {
             break;
             
           case 'antidote':
+            // Marcar que uma poção foi usada neste turno (antídotos também contam)
+            player.potionUsedThisTurn = true;
+            
             // Remover efeitos negativos
             player.active_effects.debuffs = [];
             player.active_effects.dots = [];
@@ -535,6 +554,9 @@ export class GameService {
             break;
             
           case 'buff':
+            // Marcar que uma poção foi usada neste turno (elixires também contam)
+            player.potionUsedThisTurn = true;
+            
             // Aplicar buff temporário
             const buffValue = consumable.consumable.effect_value;
             
@@ -570,7 +592,7 @@ export class GameService {
             break;
         }
 
-        // Reduzir quantidade do consumível
+        // Reduzir quantidade do consumível apenas se foi usado com sucesso
         if (!skipTurn) {
           const consumableIndex = player.consumables.findIndex(c => c.consumable_id === consumableId);
           if (consumableIndex !== -1) {
@@ -862,116 +884,203 @@ export class GameService {
    * @returns Novo estado do jogo após a ação do inimigo
    */
   static async processEnemyAction(gameState: GameState, playerDefendAction: boolean): Promise<GameState> {
-    const { player, currentEnemy } = gameState;
+    if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
+      return { ...gameState, isPlayerTurn: true };
+    }
+
+    const enemy = gameState.currentEnemy;
+    const player = gameState.player;
     
-    if (!currentEnemy) {
+    // Processar efeitos contínuos no inimigo (DoTs, buffs, etc.)
+    SpellService.processOverTimeEffects(enemy);
+    
+    // Se o inimigo morreu por efeitos ao longo do tempo
+    if (enemy.hp <= 0) {
       return {
         ...gameState,
         isPlayerTurn: true,
+        gameMessage: `${enemy.name} foi derrotado por efeitos ao longo do tempo!`
       };
     }
 
-    // Processar efeitos ao longo do tempo no inimigo
-    const enemyEffectMessages = SpellService.processOverTimeEffects(currentEnemy);
-    if (currentEnemy.hp <= 0) {
-      return {
-        ...gameState,
-        gameMessage: 'O inimigo foi derrotado pelos efeitos ao longo do tempo!',
-        isPlayerTurn: true,
-      };
+    // Determinar ação do inimigo
+    let actionType: 'attack' | 'spell' | 'special' = 'attack';
+    
+    // IA básica do inimigo
+    if (enemy.mana >= 10 && Math.random() < 0.3) {
+      actionType = 'spell';
+    } else if (Math.random() < 0.1) {
+      actionType = 'special';
     }
 
-    // Processar efeitos ao longo do tempo no jogador
-    const playerEffectMessages = SpellService.processOverTimeEffects(player);
-    
-    // Calcular dano base do inimigo
-    let enemyDamage = MonsterService.calculateDamage(
-      currentEnemy as unknown as ExtendedMonster,
-      currentEnemy.attack,
-      player.def
-    );
-    
-    // Aplicar redução de dano se o jogador está defendendo
-    if (player.isDefending) {
-      const originalDamage = enemyDamage;
-      enemyDamage = Math.floor(enemyDamage * 0.15); // Reduz 85% do dano
-      
-      // Resetar estado de defesa após o ataque
-      player.isDefending = false;
-      
-      // Adicionar mensagem explicativa sobre a defesa
-      const effectMessages = [...enemyEffectMessages, ...playerEffectMessages];
-      const effectMessage = effectMessages.length > 0 ? effectMessages.join(' ') + ' ' : '';
-      
-      player.hp = Math.max(0, player.hp - enemyDamage);
-      
-      // Atualizar cooldowns das magias
-      const updatedState = SpellService.updateSpellCooldowns(gameState);
-      
-      if (player.hp <= 0) {
-              try {
-          // Marcar personagem como morto (não deletar)
-          // O personagem permanece no ranking mas não fica disponível para jogar
-        await CharacterService.deleteCharacter(player.id);
-      } catch (error) {
-        console.error('Erro ao processar morte do personagem:', error);
-      }
+    let message = '';
+    let damage = 0;
+    let actualDamage = 0;
 
+    switch (actionType) {
+      case 'attack':
+        damage = this.calculateDamage(enemy.attack, player.def);
+        
+        // Aplicar resistência de defesa se jogador está defendendo
+        if (player.isDefending || playerDefendAction) {
+          actualDamage = Math.floor(damage * 0.15); // 85% de redução
+          message = `${enemy.name} atacou, mas você reduziu o dano de ${damage} para ${actualDamage} com sua defesa!`;
+        } else {
+          actualDamage = damage;
+          message = `${enemy.name} atacou e causou ${actualDamage} de dano!`;
+        }
+        
+        // Aplicar dano
+        const newHp = Math.max(0, player.hp - actualDamage);
+        
+        // Verificar se o jogador morreu
+        if (newHp <= 0) {
+          return {
+            ...gameState,
+            player: {
+              ...player,
+              hp: 0,
+              isDefending: false
+            },
+            mode: 'gameover',
+            isPlayerTurn: true,
+            gameMessage: `${message} Você foi derrotado!`
+          };
+        }
+        
         return {
-          ...updatedState,
-          mode: 'gameover',
-          gameMessage: `Você foi derrotado no Andar ${player.floor}!`,
-          player,
+          ...gameState,
+          player: {
+            ...player,
+            hp: newHp,
+            isDefending: false, // Remover estado de defesa após ser atacado
+            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+          },
           isPlayerTurn: true,
+          gameMessage: message
         };
-      }
-      
-      return {
-        ...updatedState,
-        gameMessage: `${effectMessage}Sua defesa bloqueou a maior parte do ataque! O inimigo causou apenas ${enemyDamage} de dano (${originalDamage - enemyDamage} bloqueado)!`,
-        player,
-        isPlayerTurn: true,
-      };
-    }
-    
-    // Aplicar dano normal se não estava defendendo
-    player.hp = Math.max(0, player.hp - enemyDamage);
-    
-    // Resetar defesa modificada (lógica antiga) - não mais usada
-    if (playerDefendAction) {
-      player.def = defaultPlayer.def;
-    }
-    
-    // Atualizar cooldowns das magias
-    const updatedState = SpellService.updateSpellCooldowns(gameState);
-    
-    if (player.hp <= 0) {
-      try {
-        // Marcar personagem como morto (não deletar)
-        // O personagem permanece no ranking mas não fica disponível para jogar
-        await CharacterService.deleteCharacter(player.id);
-      } catch (error) {
-        console.error('Erro ao processar morte do personagem:', error);
-      }
 
-      return {
-        ...updatedState,
-        mode: 'gameover',
-        gameMessage: `Você foi derrotado no Andar ${player.floor}!`,
-        player,
-        isPlayerTurn: true,
-      };
-    }
+      case 'spell':
+        // Inimigo usa magia
+        const spellDamage = Math.floor(enemy.attack * 1.2);
+        const spellCost = 10;
+        
+        // Aplicar resistência de defesa se jogador está defendendo
+        if (player.isDefending || playerDefendAction) {
+          actualDamage = Math.floor(spellDamage * 0.15);
+          message = `${enemy.name} lançou uma magia, mas você reduziu o dano de ${spellDamage} para ${actualDamage} com sua defesa!`;
+        } else {
+          actualDamage = spellDamage;
+          message = `${enemy.name} lançou uma magia e causou ${actualDamage} de dano mágico!`;
+        }
+        
+        const newSpellHp = Math.max(0, player.hp - actualDamage);
+        
+        // Verificar se o jogador morreu
+        if (newSpellHp <= 0) {
+          return {
+            ...gameState,
+            player: {
+              ...player,
+              hp: 0,
+              isDefending: false
+            },
+            currentEnemy: {
+              ...enemy,
+              mana: Math.max(0, enemy.mana - spellCost)
+            },
+            mode: 'gameover',
+            isPlayerTurn: true,
+            gameMessage: `${message} Você foi derrotado!`
+          };
+        }
+        
+        return {
+          ...gameState,
+          player: {
+            ...player,
+            hp: newSpellHp,
+            isDefending: false,
+            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+          },
+          currentEnemy: {
+            ...enemy,
+            mana: Math.max(0, enemy.mana - spellCost)
+          },
+          isPlayerTurn: true,
+          gameMessage: message
+        };
 
-    const effectMessages = [...enemyEffectMessages, ...playerEffectMessages];
-    const effectMessage = effectMessages.length > 0 ? effectMessages.join(' ') + ' ' : '';
-    
-    return {
-      ...updatedState,
-      gameMessage: `${effectMessage}O inimigo atacou e causou ${enemyDamage} de dano!`,
-      player,
-      isPlayerTurn: true,
-    };
+      case 'special':
+        // Habilidade especial baseada no comportamento
+        switch (enemy.behavior) {
+          case 'aggressive':
+            damage = Math.floor(enemy.attack * 1.5);
+            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+            message = `${enemy.name} usou Ataque Furioso e causou ${actualDamage} de dano!`;
+            break;
+          case 'defensive':
+            // Inimigo se cura
+            const healAmount = Math.floor(enemy.maxHp * 0.15);
+            const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+            return {
+              ...gameState,
+              player: {
+                ...player,
+                potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+              },
+              currentEnemy: {
+                ...enemy,
+                hp: newEnemyHp
+              },
+              isPlayerTurn: true,
+              gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
+            };
+          default:
+            damage = Math.floor(enemy.attack * 1.3);
+            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+            message = `${enemy.name} usou uma habilidade especial e causou ${actualDamage} de dano!`;
+        }
+        
+        const newSpecialHp = Math.max(0, player.hp - actualDamage);
+        
+        // Verificar se o jogador morreu
+        if (newSpecialHp <= 0) {
+          return {
+            ...gameState,
+            player: {
+              ...player,
+              hp: 0,
+              isDefending: false
+            },
+            mode: 'gameover',
+            isPlayerTurn: true,
+            gameMessage: `${message} Você foi derrotado!`
+          };
+        }
+        
+        return {
+          ...gameState,
+          player: {
+            ...player,
+            hp: newSpecialHp,
+            isDefending: false,
+            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+          },
+          isPlayerTurn: true,
+          gameMessage: message
+        };
+
+      default:
+        return { 
+          ...gameState, 
+          player: {
+            ...gameState.player,
+            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+          },
+          isPlayerTurn: true
+        };
+    }
   }
 
   /**
@@ -1077,6 +1186,10 @@ export class GameService {
         gameMessage = `Você chegou ao ${nextFloor.description}.`;
       }
       
+      // CRÍTICO: Garantir que HP e Mana sejam sempre inteiros
+      const newHp = Math.floor(Math.min(player.max_hp, player.hp + baseRecovery));
+      const newMana = Math.floor(Math.min(player.max_mana, player.mana + manaRecovery));
+      
       // Criar o novo estado com o próximo andar
       const newState: GameState = {
         ...gameState,
@@ -1084,8 +1197,8 @@ export class GameService {
         player: {
           ...player,
           floor: nextFloorNumber,
-          hp: Math.min(player.max_hp, player.hp + baseRecovery),
-          mana: Math.min(player.max_mana, player.mana + manaRecovery)
+          hp: newHp,
+          mana: newMana
         },
         currentEnemy: nextEnemy,
         currentSpecialEvent: nextSpecialEvent,
