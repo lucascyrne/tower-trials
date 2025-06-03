@@ -95,6 +95,9 @@ export function CombinedBattleInterface({
   const isDisabled = !isPlayerTurn || loading.performAction;
   const potionUsedThisTurn = player.potionUsedThisTurn || false;
   
+  // CRÍTICO: Verificar se o personagem está morto
+  const isPlayerDead = player.hp <= 0;
+  
   // Verificar se deve mostrar botão de próximo andar
   const shouldShowNextFloorButton = Boolean(currentEnemy && currentEnemy.hp <= 0 && battleRewards);
 
@@ -127,7 +130,8 @@ export function CombinedBattleInterface({
 
   // Função para usar poção do slot
   const handlePotionSlotUse = async (slotPosition: number) => {
-    if (isDisabled || usingSlot !== null) return;
+    // CRÍTICO: Bloquear uso de poções se personagem está morto
+    if (isPlayerDead || isDisabled || usingSlot !== null) return;
 
     const slot = potionSlots.find(s => s.slot_position === slotPosition);
     if (!slot?.consumable_id) {
@@ -218,7 +222,8 @@ export function CombinedBattleInterface({
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (isDisabled || usingSlot !== null) return;
+      // CRÍTICO: Bloquear atalhos se personagem está morto
+      if (isPlayerDead || isDisabled || usingSlot !== null) return;
 
       // Verificar se o usuário está digitando em um input
       const target = event.target as HTMLElement;
@@ -377,11 +382,22 @@ export function CombinedBattleInterface({
 
   return (
     <>
-      <Card className="border-0 bg-card/50 backdrop-blur-sm">
+      {/* CRÍTICO: Overlay bloqueando interface se personagem morto */}
+      {isPlayerDead && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+          <div className="text-center space-y-3">
+            <div className="text-red-400 text-2xl animate-pulse">💀</div>
+            <div className="text-red-400 font-bold text-lg">Personagem Morto</div>
+            <div className="text-muted-foreground text-sm">Interface bloqueada</div>
+          </div>
+        </div>
+      )}
+      
+      <Card className="border-0 bg-card/50 backdrop-blur-sm relative">
         <CardContent className="p-3 md:p-3 space-y-3 md:space-y-2">
           
           {/* Botão de Próximo Andar - Aparece quando inimigo está morto */}
-          {shouldShowNextFloorButton && (
+          {shouldShowNextFloorButton && !isPlayerDead && (
             <div className="mb-4 p-4 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/20 rounded-xl">
               <div className="text-center space-y-3">
                 <div className="text-sm text-green-400 font-medium">
@@ -389,7 +405,7 @@ export function CombinedBattleInterface({
                 </div>
                 <Button
                   onClick={() => handleAction('continue')}
-                  disabled={loading.performAction}
+                  disabled={loading.performAction || isPlayerDead}
                   size="lg"
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105"
                 >
@@ -446,10 +462,12 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled || shouldShowNextFloorButton}
+                    disabled={isDisabled || shouldShowNextFloorButton || isPlayerDead}
                     variant="ghost"
                     size="lg"
-                    className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200"
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200 ${
+                      isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
+                    }`}
                   >
                     <Sword className="h-4 w-4 md:h-5 md:w-5 text-red-500/80" />
                   </Button>
@@ -488,14 +506,14 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled || player.defenseCooldown > 0 || shouldShowNextFloorButton}
+                    disabled={isDisabled || player.defenseCooldown > 0 || shouldShowNextFloorButton || isPlayerDead}
                     variant="ghost"
                     size="lg"
                     className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
                       player.isDefending 
                         ? 'border-blue-500/50 bg-blue-500/10 shadow-lg shadow-blue-500/20' 
                         : 'border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/50 shadow-lg shadow-blue-500/10'
-                    }`}
+                    } ${isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''}`}
                   >
                     <Shield className="h-4 w-4 md:h-5 md:w-5 text-blue-500/80" />
                     {player.defenseCooldown > 0 && (
@@ -536,10 +554,12 @@ export function CombinedBattleInterface({
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled || shouldShowNextFloorButton}
+                    disabled={isDisabled || shouldShowNextFloorButton || isPlayerDead}
                     variant="ghost"
                     size="lg"
-                    className="h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200"
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200 ${
+                      isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
+                    }`}
                   >
                     <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-amber-500/80" />
                   </Button>
@@ -620,14 +640,16 @@ export function CombinedBattleInterface({
                               : isPotionDisabled
                                 ? 'border-orange-500/30 bg-orange-500/5 opacity-50 cursor-not-allowed'
                                 : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10'
-                        } ${isUsing ? 'opacity-50' : ''} ${hasUsedAnimation ? 'animate-pulse scale-110' : ''}`}
+                        } ${isUsing ? 'opacity-50' : ''} ${hasUsedAnimation ? 'animate-pulse scale-110' : ''} ${
+                          isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
+                        }`}
                         onClick={() => handlePotionSlotUse(slot.slot_position)}
                         onMouseDown={(e) => handleMouseDown(tooltipInfo, e)}
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseLeave}
                         onTouchStart={(e) => handleTouchStart(tooltipInfo, e)}
                         onTouchEnd={handleTouchEnd}
-                        disabled={isDisabled || isEmpty || isUsing || shouldShowNextFloorButton || isPotionDisabled || isOutOfStock}
+                        disabled={isDisabled || isEmpty || isUsing || shouldShowNextFloorButton || isPotionDisabled || isOutOfStock || isPlayerDead}
                       >
                         {isEmpty ? (
                           <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
@@ -737,14 +759,14 @@ export function CombinedBattleInterface({
                           onMouseLeave={handleMouseLeave}
                           onTouchStart={(e) => handleTouchStart(tooltipInfo, e)}
                           onTouchEnd={handleTouchEnd}
-                          disabled={isDisabled || !canCast || shouldShowNextFloorButton}
+                          disabled={isDisabled || !canCast || shouldShowNextFloorButton || isPlayerDead}
                           variant="ghost"
                           size="lg"
                           className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
                             canCast
                               ? 'border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10 hover:border-violet-500/50 shadow-lg shadow-violet-500/10'
                               : 'border-muted-foreground/10 bg-muted/5 opacity-50 cursor-not-allowed'
-                          }`}
+                          } ${isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''}`}
                         >
                           <div className={canCast ? 'text-violet-500/80' : 'text-muted-foreground/50'}>
                             {spellIcon}
@@ -782,7 +804,7 @@ export function CombinedBattleInterface({
           {/* Dica de atalhos apenas no desktop */}
           <div className="hidden md:block text-center">
             <div className="text-xs text-muted-foreground/60">
-              Atalhos: A/S/D (Combate) • Q/W/E (Poções) • 1/2/3 (Magias)
+              {isPlayerDead ? 'Interface bloqueada - Personagem morto' : 'Atalhos: A/S/D (Combate) • Q/W/E (Poções) • 1/2/3 (Magias)'}
             </div>
           </div>
         </CardContent>

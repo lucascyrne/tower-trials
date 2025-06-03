@@ -12,7 +12,8 @@ import {
   ArrowLeft, 
   Map,
   TrendingUp,
-  Shield
+  Shield,
+  Skull
 } from 'lucide-react';
 
 interface ActionMenuGridProps {
@@ -23,6 +24,7 @@ interface ActionMenuGridProps {
   onOpenShop: () => void;
   onOpenInventory: () => void;
   onOpenEquipment: () => void;
+  onOpenCemetery: () => void;
   onReturnToSelection: () => void;
 }
 
@@ -89,6 +91,7 @@ export function ActionMenuGrid({
   onOpenShop, 
   onOpenInventory, 
   onOpenEquipment,
+  onOpenCemetery,
   onReturnToSelection 
 }: ActionMenuGridProps) {
   const actions = [
@@ -138,6 +141,13 @@ export function ActionMenuGrid({
       accent: 'border-amber-600/30'
     },
     {
+      title: 'Cemitério',
+      description: 'Personagens mortos',
+      icon: Skull,
+      onClick: onOpenCemetery,
+      accent: 'border-red-600/30'
+    },
+    {
       title: 'Trocar',
       description: 'Outro personagem',
       icon: ArrowLeft,
@@ -147,7 +157,7 @@ export function ActionMenuGrid({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
       {actions.map((action, index) => (
         <ActionCard
           key={index}

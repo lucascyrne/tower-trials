@@ -2,28 +2,28 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { GamePlayer } from '@/resources/game/game-model';
-import { formatLargeNumber } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 import { 
-  User, 
-  Star, 
+  Heart, 
+  Zap, 
   Sword, 
   Shield, 
+  Star, 
   Crown, 
-  Gem,
-  Zap,
-  Heart,
-  Sparkles,
   ChevronDown,
   ChevronUp,
+  Sparkles,
   Axe,
   Hammer,
-  Wand2,
-  ShieldCheck
+  Target,
+  User,
+  Gem,
 } from 'lucide-react';
+import { StatDisplay } from '@/components/ui/stat-display';
+import { GamePlayer } from '@/resources/game/game-model';
+import { formatLargeNumber } from '@/lib/utils';
 
 interface CharacterInfoCardProps {
   player: GamePlayer;
@@ -36,44 +36,6 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   const hpProgress = (player.hp / player.max_hp) * 100;
   const manaProgress = (player.mana / player.max_mana) * 100;
 
-  // Habilidades com ícones e cores
-  const skills = [
-    {
-      name: 'Espada',
-      level: player.sword_mastery || 1,
-      icon: Sword,
-      color: 'text-slate-400',
-      bgColor: 'bg-slate-900'
-    },
-    {
-      name: 'Machado',
-      level: player.axe_mastery || 1,
-      icon: Axe,
-      color: 'text-amber-400',
-      bgColor: 'bg-amber-900'
-    },
-    {
-      name: 'Maça',
-      level: player.blunt_mastery || 1,
-      icon: Hammer,
-      color: 'text-stone-400',
-      bgColor: 'bg-stone-900'
-    },
-    {
-      name: 'Magia',
-      level: player.magic_mastery || 1,
-      icon: Wand2,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-900'
-    },
-    {
-      name: 'Defesa',
-      level: player.defense_mastery || 1,
-      icon: ShieldCheck,
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-900'
-    }
-  ];
 
   // Atributos primários com ícones
   const primaryAttributes = [
@@ -132,6 +94,39 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
     if (manaProgress >= 30) return 'bg-cyan-600';
     return 'bg-indigo-600';
   };
+
+  // Função para obter ícone de habilidade
+  const getSkillIcon = (skill: string) => {
+    switch (skill) {
+      case 'sword_mastery': return <Sword className="h-4 w-4 text-red-400" />;
+      case 'axe_mastery': return <Axe className="h-4 w-4 text-orange-400" />;
+      case 'blunt_mastery': return <Hammer className="h-4 w-4 text-yellow-400" />;
+      case 'defense_mastery': return <Shield className="h-4 w-4 text-blue-400" />;
+      case 'magic_mastery': return <Sparkles className="h-4 w-4 text-purple-400" />;
+      default: return <Target className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  // Função para obter nome de habilidade traduzido
+  const getSkillName = (skill: string) => {
+    switch (skill) {
+      case 'sword_mastery': return 'Maestria com Espadas';
+      case 'axe_mastery': return 'Maestria com Machados';
+      case 'blunt_mastery': return 'Maestria com Armas Pesadas';
+      case 'defense_mastery': return 'Maestria em Defesa';
+      case 'magic_mastery': return 'Maestria Mágica';
+      default: return skill;
+    }
+  };
+
+  // Obter habilidades do personagem
+  const characterSkills = [
+    { key: 'sword_mastery', level: player.sword_mastery || 1, xp: player.sword_mastery_xp || 0 },
+    { key: 'axe_mastery', level: player.axe_mastery || 1, xp: player.axe_mastery_xp || 0 },
+    { key: 'blunt_mastery', level: player.blunt_mastery || 1, xp: player.blunt_mastery_xp || 0 },
+    { key: 'defense_mastery', level: player.defense_mastery || 1, xp: player.defense_mastery_xp || 0 },
+    { key: 'magic_mastery', level: player.magic_mastery || 1, xp: player.magic_mastery_xp || 0 }
+  ].filter(skill => skill.level > 1 || skill.xp > 0); // Só mostrar habilidades com progresso
 
   return (
     <Card className="w-full bg-slate-900/80 border-slate-700 shadow-xl">
@@ -214,37 +209,71 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Combat Stats</h3>
             
+            {/* Stats principais em grid */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Sword className="h-4 w-4 text-red-400" />
-                  <span className="text-sm font-medium text-slate-300">ATK</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1">
+                    <Sword className="h-4 w-4 text-red-400" />
+                    <span className="text-muted-foreground">ATK</span>
+                  </div>
+                  <span className="font-bold text-red-400">
+                    <StatDisplay 
+                      value={player.atk}
+                      baseValue={player.base_atk}
+                      equipmentBonus={player.equipment_atk_bonus}
+                      className="text-red-400"
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-red-400">{player.atk}</p>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1">
+                    <Shield className="h-4 w-4 text-blue-400" />
+                    <span className="text-muted-foreground">DEF</span>
+                  </div>
+                  <span className="font-bold text-blue-400">
+                    <StatDisplay 
+                      value={player.def}
+                      baseValue={player.base_def}
+                      equipmentBonus={player.equipment_def_bonus}
+                      className="text-blue-400"
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </span>
+                </div>
               </div>
-              
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-slate-300">DEF</span>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1">
+                    <Zap className="h-4 w-4 text-yellow-400" />
+                    <span className="text-muted-foreground">SPD</span>
+                  </div>
+                  <span className="font-bold text-yellow-400">
+                    <StatDisplay 
+                      value={player.speed}
+                      baseValue={player.base_speed}
+                      equipmentBonus={player.equipment_speed_bonus}
+                      className="text-yellow-400"
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-blue-400">{player.def}</p>
-              </div>
-              
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-green-400" />
-                  <span className="text-sm font-medium text-slate-300">VEL</span>
+                
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 text-amber-400" />
+                    <span className="text-muted-foreground">CRIT</span>
+                  </div>
+                  <span className="font-bold text-amber-400">
+                    {(player.critical_chance || 0).toFixed(1)}%
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-green-400">{player.speed}</p>
-              </div>
-              
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                <div className="flex items-center gap-2">
-                  <Crown className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm font-medium text-slate-300">Andar</span>
-                </div>
-                <p className="text-lg font-bold text-purple-400">{player.floor}</p>
               </div>
             </div>
             
@@ -308,19 +337,40 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
             <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Habilidades de Combate</h3>
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {skills.map((skill) => {
-                const Icon = skill.icon;
+              {characterSkills.map((skill) => {
+                // Calcular XP necessário para o próximo nível (fórmula simples)
+                const nextLevelXp = skill.level * 100;
+                const currentLevelXp = (skill.level - 1) * 100;
+                const skillXpProgress = skill.xp - currentLevelXp;
+                const skillXpNeeded = nextLevelXp - currentLevelXp;
+                const skillXpPercentage = Math.max(0, Math.min(100, (skillXpProgress / skillXpNeeded) * 100));
+
                 return (
                   <div 
-                    key={skill.name}
-                    className={`${skill.bgColor} p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors`}
+                    key={skill.key}
+                    className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <Icon className={`h-5 w-5 ${skill.color}`} />
-                      <span className="text-xs font-medium text-slate-400 text-center">{skill.name}</span>
-                      <Badge variant="outline" className={`${skill.color} border-current bg-transparent text-xs`}>
+                      <div className="flex items-center justify-center">
+                        {getSkillIcon(skill.key)}
+                      </div>
+                      <span className="text-xs font-medium text-slate-400 text-center">{getSkillName(skill.key)}</span>
+                      <Badge variant="outline" className="border-current bg-transparent text-xs">
                         Nv. {skill.level}
                       </Badge>
+                      {skill.xp > 0 && (
+                        <div className="w-full">
+                          <div className="w-full h-1 bg-slate-600 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+                              style={{ width: `${skillXpPercentage}%` }}
+                            />
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 text-center">
+                            {skillXpProgress}/{skillXpNeeded} XP
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

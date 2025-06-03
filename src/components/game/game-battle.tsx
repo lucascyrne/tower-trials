@@ -9,7 +9,7 @@ import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Skull } from 'lucide-react';
+import { Skull, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
 import AttributeDistributionModal from './AttributeDistributionModal';
@@ -93,9 +93,18 @@ export default function GameBattle() {
   // Verificação de game over
   useEffect(() => {
     if (gameState.mode === 'gameover' && player.hp <= 0) {
+      console.log('[GameBattle] Personagem morreu - exibindo modal de morte');
       setShowDeathModal(true);
+      
+      // CRÍTICO: Se o personagem foi deletado, bloquear completamente a interface
+      if (gameState.characterDeleted) {
+        console.log('[GameBattle] Personagem foi deletado permanentemente');
+        
+        // Adicionar mensagem ao log sobre permadeath
+        addGameLogMessage(`${player.name} foi perdido permanentemente. O sistema de Permadeath está ativo.`, 'system');
+      }
     }
-  }, [gameState.mode, player.hp]);
+  }, [gameState.mode, player.hp, gameState.characterDeleted, player.name]);
 
   // Listener para abrir modal de atributos
   useEffect(() => {
@@ -231,6 +240,12 @@ export default function GameBattle() {
 
   // Função para executar ações do jogador
   const handleAction = async (action: ActionType, spellId?: string) => {
+    // CRÍTICO: Bloquear todas as ações se o personagem está morto
+    if (gameState.mode === 'gameover') {
+      console.warn('[GameBattle] Ação bloqueada - personagem está morto');
+      return;
+    }
+    
     if (!isPlayerTurn) return;
     
     await performAction(action, spellId);
@@ -307,31 +322,67 @@ export default function GameBattle() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-500">
               <Skull className="h-6 w-6" />
-              Seu Personagem Morreu
+              {gameState.characterDeleted ? 'Permadeath - Personagem Perdido' : 'Seu Personagem Morreu'}
             </DialogTitle>
             <DialogDescription className="text-base space-y-4">
               <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg space-y-3">
                 <p className="text-sm">
                   <strong>{player.name}</strong> foi derrotado no Andar {player.floor}...
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Infelizmente, devido ao sistema de Permadeath, seu personagem foi perdido para sempre. 
-                  Todos os itens, equipamentos e progressos foram perdidos.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Mas não desista! Crie um novo personagem e tente novamente, 
-                  usando a experiência adquirida para chegar ainda mais longe.
-                </p>
+                {gameState.characterDeleted ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Devido ao sistema de <strong>Permadeath</strong>, seu personagem foi perdido para sempre. 
+                      Todos os itens, equipamentos e progressos foram perdidos.
+                    </p>
+                    <p className="text-sm text-yellow-400 font-medium">
+                      Seus dados foram movidos para o cemitério onde você pode revisar sua jornada.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Mas não desista! Crie um novo personagem e tente novamente, 
+                      usando a experiência adquirida para chegar ainda mais longe.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Ocorreu um erro ao processar a morte do personagem. 
+                    Tente novamente ou entre em contato com o suporte.
+                  </p>
+                )}
               </div>
+              {gameState.characterDeleted && (
+                <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
+                  <p className="text-xs text-blue-400">
+                    💀 <strong>Estatísticas da Jornada:</strong><br/>
+                    • Nível alcançado: {player.level}<br/>
+                    • Andar mais alto: {player.floor}<br/>
+                    • Gold acumulado: {player.gold}<br/>
+                    • XP total: {player.xp}
+                  </p>
+                </div>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-2">
+            {gameState.characterDeleted && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Navegar para o cemitério primeiro
+                  window.location.href = '/game/cemetery';
+                }}
+                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Ver Cemitério
+              </Button>
+            )}
             <Button
               variant="destructive"
               onClick={handleReturnToCharacterSelect}
             >
               <Skull className="h-4 w-4 mr-2" />
-              Criar Novo Personagem
+              {gameState.characterDeleted ? 'Criar Novo Personagem' : 'Voltar à Seleção'}
             </Button>
           </div>
         </DialogContent>

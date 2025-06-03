@@ -29,6 +29,7 @@ import {
 import { GamePlayer, Enemy } from '@/resources/game/game-model';
 import { formatLargeNumber } from '@/lib/utils';
 import { ThiefIdleAnimation } from './ThiefIdleAnimation';
+import { StatDisplay } from '@/components/ui/stat-display';
 
 interface BattleArenaProps {
   player: GamePlayer;
@@ -287,15 +288,39 @@ export function BattleArena({
               <div className="grid grid-cols-3 gap-1 md:gap-2">
                 <div className="bg-red-500/10 border border-red-500/20 rounded p-1 md:p-2 text-center">
                   <Sword className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-red-400" />
-                  <div className="text-xs font-bold text-red-400">{player.atk}</div>
+                  <div className="text-xs font-bold text-red-400">
+                    <StatDisplay 
+                      value={player.atk}
+                      baseValue={player.base_atk}
+                      equipmentBonus={player.equipment_atk_bonus}
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </div>
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded p-1 md:p-2 text-center">
                   <Shield className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-blue-400" />
-                  <div className="text-xs font-bold text-blue-400">{player.def}</div>
+                  <div className="text-xs font-bold text-blue-400">
+                    <StatDisplay 
+                      value={player.def}
+                      baseValue={player.base_def}
+                      equipmentBonus={player.equipment_def_bonus}
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </div>
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-1 md:p-2 text-center">
                   <Zap className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-yellow-400" />
-                  <div className="text-xs font-bold text-yellow-400">{player.speed}</div>
+                  <div className="text-xs font-bold text-yellow-400">
+                    <StatDisplay 
+                      value={player.speed}
+                      baseValue={player.base_speed}
+                      equipmentBonus={player.equipment_speed_bonus}
+                      size="sm"
+                      showTooltip={true}
+                    />
+                  </div>
                 </div>
               </div>
 
