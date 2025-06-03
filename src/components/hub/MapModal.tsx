@@ -40,20 +40,32 @@ export const MapModal: React.FC<MapModalProps> = ({
   const loadCheckpoints = async () => {
     setLoading(true);
     try {
+      console.log(`[MapModal] Carregando checkpoints para personagem ${character.name} (ID: ${character.id})`);
+      console.log(`[MapModal] Andar atual do personagem: ${character.floor}`);
+      
       const response = await CharacterService.getUnlockedCheckpoints(character.id);
+      
+      console.log(`[MapModal] Resposta do CharacterService:`, response);
+      
       if (response.success && response.data) {
+        console.log(`[MapModal] Checkpoints carregados:`, response.data);
         setCheckpoints(response.data);
-        // Selecionar o primeiro checkpoint por padrão
+        
+        // Selecionar o checkpoint mais alto por padrão (normalmente o andar atual)
         if (response.data.length > 0) {
-          setSelectedCheckpoint(response.data[0].floor);
+          const currentFloorCheckpoint = response.data.find(cp => cp.floor === character.floor);
+          const defaultCheckpoint = currentFloorCheckpoint ? currentFloorCheckpoint.floor : response.data[response.data.length - 1].floor;
+          setSelectedCheckpoint(defaultCheckpoint);
+          console.log(`[MapModal] Checkpoint selecionado por padrão: ${defaultCheckpoint}`);
         }
       } else {
+        console.error(`[MapModal] Erro ao carregar checkpoints:`, response.error);
         toast.error('Erro ao carregar checkpoints', {
           description: response.error
         });
       }
     } catch (error) {
-      console.error('Erro ao carregar checkpoints:', error);
+      console.error('[MapModal] Erro ao carregar checkpoints:', error);
       toast.error('Erro ao carregar checkpoints');
     } finally {
       setLoading(false);
@@ -80,14 +92,22 @@ export const MapModal: React.FC<MapModalProps> = ({
 
   const getCheckpointIcon = (floor: number) => {
     if (floor === 1) return <Play className="h-5 w-5" />;
-    if (floor % 10 === 0) return <Crown className="h-5 w-5" />;
+    // Checkpoints pós-boss (11, 21, 31, etc.) são santuários seguros
+    if (floor > 1 && (floor - 1) % 10 === 0) return <Crown className="h-5 w-5" />;
     return <Map className="h-5 w-5" />;
   };
 
   const getCheckpointColor = (floor: number) => {
-    if (floor === 1) return 'bg-green-500';
-    if (floor % 10 === 0) return 'bg-purple-500';
+    if (floor === 1) return 'bg-green-500'; // Início - verde
+    // Checkpoints pós-boss são dourados (conquistados após vitória épica)
+    if (floor > 1 && (floor - 1) % 10 === 0) return 'bg-yellow-500';
     return 'bg-blue-500';
+  };
+
+  const getCheckpointLabel = (floor: number) => {
+    if (floor === 1) return 'Início da aventura';
+    if (floor > 1 && (floor - 1) % 10 === 0) return 'Santuário Pós-Boss';
+    return 'Checkpoint';
   };
 
   return (
@@ -136,12 +156,7 @@ export const MapModal: React.FC<MapModalProps> = ({
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="text-xs text-muted-foreground">
-                        {checkpoint.floor === 1 
-                          ? 'Início da aventura' 
-                          : checkpoint.floor % 10 === 0 
-                            ? 'Checkpoint de Chefe' 
-                            : 'Checkpoint'
-                        }
+                        {getCheckpointLabel(checkpoint.floor)}
                       </div>
                       {character.floor === checkpoint.floor && (
                         <div className="text-xs text-green-600 font-medium mt-1">

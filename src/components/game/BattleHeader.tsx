@@ -9,10 +9,9 @@ interface BattleHeaderProps {
     minLevel: number;
   };
   playerLevel: number;
-  gameMessage: string;
 }
 
-export function BattleHeader({ currentFloor, playerLevel, gameMessage }: BattleHeaderProps) {
+export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
   const getFloorIcon = (type: FloorType) => {
     switch (type) {
       case 'boss': return '👑';
@@ -36,11 +35,10 @@ export function BattleHeader({ currentFloor, playerLevel, gameMessage }: BattleH
           )}
         </div>
         {playerLevel < currentFloor.minLevel && (
-          <div className="text-yellow-500 text-sm mb-2">
+          <div className="text-yellow-500 text-sm">
             ⚠️ Nível recomendado: {currentFloor.minLevel}
           </div>
         )}
-        <p className="text-foreground/80">{gameMessage}</p>
       </div>
     </div>
   );

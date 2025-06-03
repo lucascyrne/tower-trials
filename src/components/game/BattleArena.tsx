@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -37,6 +37,16 @@ interface BattleArenaProps {
   playerManaPercentage: number;
   enemyHpPercentage: number;
   isPlayerTurn: boolean;
+  onDamageDealt?: (damage: number, isPlayer: boolean, isCritical?: boolean, damageType?: string) => void;
+}
+
+interface FloatingDamage {
+  id: string;
+  damage: number;
+  isPlayer: boolean;
+  isCritical: boolean;
+  damageType: string;
+  timestamp: number;
 }
 
 export function BattleArena({ 
@@ -45,10 +55,53 @@ export function BattleArena({
   playerHpPercentage, 
   playerManaPercentage, 
   enemyHpPercentage, 
-  isPlayerTurn 
+  isPlayerTurn,
 }: BattleArenaProps) {
   const [showPlayerDetails, setShowPlayerDetails] = useState(false);
   const [showEnemyDetails, setShowEnemyDetails] = useState(false);
+  const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);
+
+  // Detectar mudanças de HP para mostrar dano flutuante
+  const [previousPlayerHp, setPreviousPlayerHp] = useState(player.hp);
+  const [previousEnemyHp, setPreviousEnemyHp] = useState(currentEnemy.hp);
+
+  useEffect(() => {
+    // Detectar dano no jogador
+    if (player.hp < previousPlayerHp) {
+      const damage = previousPlayerHp - player.hp;
+      showFloatingDamage(damage, true, false, 'physical');
+    }
+    setPreviousPlayerHp(player.hp);
+  }, [player.hp, previousPlayerHp]);
+
+  useEffect(() => {
+    // Detectar dano no inimigo
+    if (currentEnemy.hp < previousEnemyHp) {
+      const damage = previousEnemyHp - currentEnemy.hp;
+      const isCritical = damage > (player.atk * 1.5); // Detectar crítico simples
+      showFloatingDamage(damage, false, isCritical, 'physical');
+    }
+    setPreviousEnemyHp(currentEnemy.hp);
+  }, [currentEnemy.hp, previousEnemyHp, player.atk]);
+
+  const showFloatingDamage = (damage: number, isPlayer: boolean, isCritical: boolean, damageType: string) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    const newDamage: FloatingDamage = {
+      id,
+      damage,
+      isPlayer,
+      isCritical,
+      damageType,
+      timestamp: Date.now()
+    };
+
+    setFloatingDamages(prev => [...prev, newDamage]);
+
+    // Remover após animação
+    setTimeout(() => {
+      setFloatingDamages(prev => prev.filter(d => d.id !== id));
+    }, 2000);
+  };
 
   const translateBehavior = (behavior: string) => {
     const translations = {
@@ -124,7 +177,7 @@ export function BattleArena({
             {/* Player Side */}
             <div className="space-y-2 md:space-y-4">
               {/* Player Avatar & Basic Info - Compacto */}
-              <div className="text-center">
+              <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">
                   <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center transition-all duration-500 overflow-hidden ${
                     isPlayerTurn 
@@ -166,6 +219,31 @@ export function BattleArena({
                     </Badge>
                   </div>
                 </div>
+
+                {/* Floating Damage for Player */}
+                {floatingDamages
+                  .filter(d => d.isPlayer)
+                  .map(damage => (
+                    <div
+                      key={damage.id}
+                      className={`absolute pointer-events-none z-20 font-bold text-lg animate-damage-float ${
+                        damage.isCritical
+                          ? 'text-red-400 text-2xl animate-damage-critical'
+                          : 'text-red-300'
+                      }`}
+                      style={{
+                        left: '50%',
+                        top: '20%',
+                        transform: 'translateX(-50%)',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                      }}
+                    >
+                      -{damage.damage}
+                      {damage.isCritical && (
+                        <span className="ml-1 text-yellow-400 text-sm">CRÍTICO!</span>
+                      )}
+                    </div>
+                  ))}
               </div>
 
               {/* Player Health & Mana - Compacto */}
@@ -236,14 +314,34 @@ export function BattleArena({
                 {/* Extended Player Details - Apenas Desktop */}
                 {showPlayerDetails && (
                   <div className="space-y-3 pt-2 border-t border-border/50 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div className="bg-background/20 rounded p-2">
-                        <div className="text-muted-foreground">XP Atual</div>
-                        <div className="font-medium">{player.xp}</div>
+                    {/* XP Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 text-yellow-500" />
+                          <span className="font-medium text-xs text-muted-foreground">Experiência</span>
+                        </div>
+                        <div className="text-xs font-bold">
+                          <span className="text-yellow-400">{formatLargeNumber(player.xp)}</span>
+                          <span className="text-muted-foreground mx-1">/</span>
+                          <span className="text-muted-foreground">{formatLargeNumber(player.xp_next_level)}</span>
+                        </div>
                       </div>
-                      <div className="bg-background/20 rounded p-2">
-                        <div className="text-muted-foreground">Próximo Nível</div>
-                        <div className="font-medium">{player.xp_next_level}</div>
+                      <div className="relative">
+                        <Progress 
+                          value={(player.xp / player.xp_next_level) * 100} 
+                          className="h-2"
+                          style={{
+                            background: 'rgba(0,0,0,0.2)'
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Nível {player.level}</span>
+                        <span className="text-yellow-400 font-medium">
+                          -{formatLargeNumber(player.xp_next_level - player.xp)} para nv {player.level + 1}
+                        </span>
                       </div>
                     </div>
                     
@@ -372,7 +470,7 @@ export function BattleArena({
             {/* Enemy Side */}
             <div className="space-y-2 md:space-y-4">
               {/* Enemy Avatar & Basic Info - Compacto */}
-              <div className="text-center">
+              <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">
                   <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 md:border-3 flex items-center justify-center text-2xl md:text-4xl lg:text-5xl transition-all duration-500 ${
                     !isPlayerTurn 
@@ -404,6 +502,31 @@ export function BattleArena({
                     </Badge>
                   </div>
                 </div>
+
+                {/* Floating Damage for Enemy */}
+                {floatingDamages
+                  .filter(d => !d.isPlayer)
+                  .map(damage => (
+                    <div
+                      key={damage.id}
+                      className={`absolute pointer-events-none z-20 font-bold text-lg animate-damage-float ${
+                        damage.isCritical
+                          ? 'text-orange-400 text-2xl animate-damage-critical'
+                          : 'text-orange-300'
+                      }`}
+                      style={{
+                        left: '50%',
+                        top: '20%',
+                        transform: 'translateX(-50%)',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                      }}
+                    >
+                      -{damage.damage}
+                      {damage.isCritical && (
+                        <span className="ml-1 text-yellow-400 text-sm">CRÍTICO!</span>
+                      )}
+                    </div>
+                  ))}
               </div>
 
               {/* Enemy Health - Compacto */}

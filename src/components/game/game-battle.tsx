@@ -13,9 +13,11 @@ import { Skull } from 'lucide-react';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
 import AttributeDistributionModal from './AttributeDistributionModal';
+import { CharacterConsumable } from '@/resources/game/models/consumable.model';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
+import { CharacterService } from '@/resources/game/character.service';
 
 interface BattleRewards {
   xp: number;
@@ -28,8 +30,17 @@ interface BattleRewards {
 export default function GameBattle() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { gameState, performAction, loading, gameLog, addGameLogMessage, selectCharacter } = useGame();
-  const { player, currentEnemy, currentFloor, isPlayerTurn, gameMessage } = gameState;
+  const { 
+    gameState, 
+    performAction, 
+    loading,
+    selectCharacter,
+    addGameLogMessage,
+    updatePlayerStats,
+    updatePlayerConsumables,
+    gameLog
+  } = useGame();
+  const { player, currentEnemy, currentFloor, isPlayerTurn } = gameState;
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
@@ -116,7 +127,6 @@ export default function GameBattle() {
 
       try {
         console.log(`[GameBattle] Carregando personagem: ${characterId}`);
-        const { CharacterService } = await import('@/resources/game/character.service');
         const response = await CharacterService.getCharacter(characterId);
         
         if (response.success && response.data) {
@@ -124,7 +134,7 @@ export default function GameBattle() {
           await selectCharacter(response.data);
         } else {
           toast.error('Erro ao carregar personagem', {
-            description: response.error
+            description: response.error || 'Erro desconhecido'
           });
           router.push('/game/play');
         }
@@ -144,11 +154,36 @@ export default function GameBattle() {
     };
   }, [searchParams]);
 
+  // Função para atualizar consumáveis do jogador
+  const handlePlayerConsumablesUpdate = (consumables: CharacterConsumable[]) => {
+    console.log(`[game-battle] Atualizando consumáveis do jogador:`, consumables.length);
+    updatePlayerConsumables(consumables);
+  };
+
   // Função para atualizar stats do jogador após usar poção
   const handlePlayerStatsUpdate = (newHp: number, newMana: number) => {
-    // Atualizar diretamente no gameState
-    gameState.player.hp = newHp;
-    gameState.player.mana = newMana;
+    console.log(`[game-battle] Atualizando stats do jogador: HP ${newHp}, Mana ${newMana}`);
+    
+    // CRÍTICO: Usar a função do contexto para atualizar stats
+    // Isso força a atualização reativa em toda a aplicação
+    updatePlayerStats(newHp, newMana);
+    
+    // Também atualizar no banco de dados de forma assíncrona
+    if (gameState.player.id) {
+      CharacterService.updateCharacterHpMana(gameState.player.id, newHp, newMana)
+        .then((result) => {
+          if (result.success) {
+            console.log('[game-battle] Stats do personagem atualizados no banco com sucesso');
+          } else {
+            console.error('[game-battle] Erro ao atualizar stats no banco:', result.error);
+            toast.error('Erro ao atualizar status do personagem');
+          }
+        })
+        .catch((error: Error) => {
+          console.error('[game-battle] Erro ao atualizar stats:', error);
+          toast.error('Erro ao atualizar status do personagem');
+        });
+    }
   };
 
   // Função para retornar à seleção de personagens
@@ -225,7 +260,7 @@ export default function GameBattle() {
   return (
     <>
       <div className="w-full max-w-6xl">
-        <BattleHeader currentFloor={currentFloor} playerLevel={player.level} gameMessage={gameMessage} />
+        <BattleHeader currentFloor={currentFloor} playerLevel={player.level} />
 
         {/* Arena de Batalha Unificada */}
         <div className="mb-6">
@@ -247,6 +282,7 @@ export default function GameBattle() {
             loading={loading}
             player={player}
             onPlayerStatsUpdate={handlePlayerStatsUpdate}
+            onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
             currentEnemy={currentEnemy}
             battleRewards={gameState.battleRewards}
           />
