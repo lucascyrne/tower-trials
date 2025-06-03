@@ -12,7 +12,8 @@ const getSupabaseConfig = () => {
       // Ambiente local (Docker)
       return {
         url: env.NEXT_PUBLIC_SUPABASE_LOCAL_URL || 'http://127.0.0.1:54321',
-        anonKey: env.NEXT_PUBLIC_SUPABASE_LOCAL_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+        anonKey: env.NEXT_PUBLIC_SUPABASE_LOCAL_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+        serviceRoleKey: env.NEXT_PUBLIC_SERVICE_ROLE || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
       };
     
     case Environment.DEV:
@@ -21,7 +22,8 @@ const getSupabaseConfig = () => {
       // Ambientes remotos (DEV/PROD usam as mesmas URLs por enquanto)
       return {
         url: env.NEXT_PUBLIC_SUPABASE_URL,
-        anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        anonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        serviceRoleKey: env.NEXT_PUBLIC_SERVICE_ROLE
       };
   }
 };
@@ -39,6 +41,14 @@ export const supabase = createBrowserClient(config.url, config.anonKey, {
 
 // Cliente para uso no servidor
 export const supabaseServer = createClient(config.url, config.anonKey);
+
+// Cliente com service_role para funções administrativas (uso restrito)
+export const supabaseAdmin = createClient(config.url, config.serviceRoleKey || '', {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Função para criar cliente no middleware (SSR)
 export const createServerClientHelper = (cookieStore: {

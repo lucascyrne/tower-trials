@@ -94,3 +94,165 @@
     @apply bg-background text-foreground antialiased transition-colors duration-300;
   }
 }
+
+/* Animações para danos flutuantes - Tema Dark Fantasy */
+@keyframes damage-float {
+  0% {
+    transform: translateX(-50%) translateY(0px) scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    transform: translateX(-50%) translateY(-5px) scale(1.1);
+    opacity: 1;
+  }
+  20% {
+    transform: translateX(-50%) translateY(-15px) scale(1);
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(-50%) translateY(-80px) scale(0.9);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-120px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes damage-critical {
+  0% {
+    transform: translateX(-50%) translateY(0px) scale(0.5) rotate(-5deg);
+    opacity: 0;
+  }
+  15% {
+    transform: translateX(-50%) translateY(-10px) scale(1.3) rotate(2deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translateX(-50%) translateY(-20px) scale(1.1) rotate(-1deg);
+    opacity: 1;
+  }
+  35% {
+    transform: translateX(-50%) translateY(-30px) scale(1.2) rotate(1deg);
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(-50%) translateY(-90px) scale(0.8) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-140px) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+.animate-damage-float {
+  animation: damage-float 2s ease-out forwards;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+}
+
+.animate-damage-critical {
+  animation: damage-critical 2.5s ease-out forwards;
+  user-select: none;
+  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 24px rgba(220, 38, 38, 0.6));
+}
+
+/* Animações de feedback para uso de poções */
+@keyframes potion-use-success {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes potion-disabled-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+.animate-potion-use {
+  animation: potion-use-success 0.6s ease-in-out;
+}
+
+.animate-potion-disabled {
+  animation: potion-disabled-shake 0.5s ease-in-out;
+}
+
+/* Melhor animação de pulse para elementos em uso */
+.animate-using {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --tw-pulse-from: rgba(34, 197, 94, 0.2);
+  --tw-pulse-to: rgba(34, 197, 94, 0.4);
+}
+
+/* Indicador visual de item indisponível */
+.item-disabled {
+  position: relative;
+  opacity: 0.5;
+}
+
+.item-disabled::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 2px;
+  background: #ef4444;
+  transform: translate(-50%, -50%) rotate(45deg);
+  z-index: 1;
+}
+
+.item-disabled::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 2px;
+  background: #ef4444;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  z-index: 1;
+}
+
+/* Animação de contador atualizado */
+@keyframes counter-update {
+  0% {
+    transform: scale(1);
+    color: inherit;
+  }
+  50% {
+    transform: scale(1.3);
+    color: #22c55e;
+  }
+  100% {
+    transform: scale(1);
+    color: inherit;
+  }
+}
+
+.animate-counter-update {
+  animation: counter-update 0.4s ease-in-out;
+}
