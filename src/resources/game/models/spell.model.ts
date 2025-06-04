@@ -9,6 +9,7 @@ export interface Spell {
   cooldown: number;
   effect_value: number;
   duration: number;
+  unlocked_at_level: number;
 }
 
 export interface PlayerSpell extends Spell {

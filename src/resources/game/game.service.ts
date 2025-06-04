@@ -1,40 +1,16 @@
 'use client';
 
-import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType, SpecialEvent } from './game-model';
-import { defaultPlayer } from './game-context';
+import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType } from './game-model';
 import { MonsterService } from './monster.service';
-import { Monster, MonsterDropChance } from './models/monster.model';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
-import { SpecialEventService } from './special-event.service';
-import { SkillXpGain } from './skill-xp.service';
+import { SkillXpGain, SkillXpService } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
 import { CemeteryService } from './cemetery.service';
-import { SkillXpService } from './skill-xp.service';
 import { EquipmentService } from './equipment.service';
 import { PlayerSpell, SpellEffectType } from './models/spell.model';
-
-// Interface para dados estendidos do monstro
-interface ExtendedMonster extends Monster {
-  strength?: number;
-  dexterity?: number;
-  intelligence?: number;
-  wisdom?: number;
-  vitality?: number;
-  luck?: number;
-  critical_chance?: number;
-  critical_damage?: number;
-  critical_resistance?: number;
-  physical_resistance?: number;
-  magical_resistance?: number;
-  debuff_resistance?: number;
-  physical_vulnerability?: number;
-  magical_vulnerability?: number;
-  primary_trait?: string;
-  secondary_trait?: string;
-  special_abilities?: string[];
-}
+import { SkillType } from './models/character.model';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -83,6 +59,7 @@ interface CharacterSpell {
     effect_value: number;
     target_type: string;
     element: string;
+    unlocked_at_level: number;
   }[];
 }
 
@@ -111,82 +88,18 @@ export class GameService {
    */
   static async generateEnemy(floor: number): Promise<Enemy | null> {
     try {
-      // Validar o andar - não pode ser menor que 1
-      if (floor < 1) {
-        console.error(`[GameService] Tentativa de gerar inimigo para andar inválido: ${floor}, usando andar 1`);
-        floor = 1; // Failsafe para garantir andar mínimo válido
-      }
-      
-      const monsterResponse = await MonsterService.getMonsterForFloor(floor);
-      
-      if (!monsterResponse.success || !monsterResponse.data) {
-        throw new Error(monsterResponse.error || 'Erro ao gerar monstro');
+      const { data, error } = await supabase.rpc('generate_enemy', {
+        floor_number: floor
+      });
+
+      if (error) {
+        console.error('Erro ao gerar inimigo:', error);
+        return null;
       }
 
-      const monster = monsterResponse.data;
-
-      // Obter drops possíveis
-      const { data: possibleDrops } = await supabase
-        .rpc('get_monster_drops', { p_monster_id: monster.id });
-
-      const monsterDrops = possibleDrops ? possibleDrops.map((drop: MonsterDropChance) => ({
-        drop_id: drop.drop_id,
-        drop_chance: drop.drop_chance,
-        min_quantity: drop.min_quantity,
-        max_quantity: drop.max_quantity
-      })) : [];
-
-      return {
-        id: parseInt(monster.id),
-        name: monster.name,
-        level: floor,
-        hp: monster.hp,
-        maxHp: monster.hp,
-        attack: monster.atk,
-        defense: monster.def,
-        speed: monster.speed,
-        image: '👾',
-        behavior: monster.behavior,
-        mana: monster.mana,
-        reward_xp: monster.reward_xp,
-        reward_gold: monster.reward_gold,
-        possible_drops: monsterDrops,
-        active_effects: {
-          buffs: [],
-          debuffs: [],
-          dots: [],
-          hots: []
-        },
-        
-        // Atributos primários
-        strength: (monster as ExtendedMonster).strength,
-        dexterity: (monster as ExtendedMonster).dexterity,
-        intelligence: (monster as ExtendedMonster).intelligence,
-        wisdom: (monster as ExtendedMonster).wisdom,
-        vitality: (monster as ExtendedMonster).vitality,
-        luck: (monster as ExtendedMonster).luck,
-        
-        // Propriedades de combate avançadas
-        critical_chance: (monster as ExtendedMonster).critical_chance,
-        critical_damage: (monster as ExtendedMonster).critical_damage,
-        critical_resistance: (monster as ExtendedMonster).critical_resistance,
-        
-        // Resistências
-        physical_resistance: (monster as ExtendedMonster).physical_resistance,
-        magical_resistance: (monster as ExtendedMonster).magical_resistance,
-        debuff_resistance: (monster as ExtendedMonster).debuff_resistance,
-        
-        // Vulnerabilidades
-        physical_vulnerability: (monster as ExtendedMonster).physical_vulnerability,
-        magical_vulnerability: (monster as ExtendedMonster).magical_vulnerability,
-        
-        // Características especiais
-        primary_trait: (monster as ExtendedMonster).primary_trait,
-        secondary_trait: (monster as ExtendedMonster).secondary_trait,
-        special_abilities: (monster as ExtendedMonster).special_abilities || []
-      };
+      return data as Enemy;
     } catch (error) {
-      console.error('Erro ao gerar inimigo:', error instanceof Error ? error.message : error);
+      console.error('Erro na função generateEnemy:', error);
       return null;
     }
   }
@@ -198,62 +111,46 @@ export class GameService {
    * @returns Resultado da operação
    */
   static async saveGameProgress(gameState: GameState, userId: string): Promise<GameResponse> {
+    const { player, currentFloor } = gameState;
+    
+    const progressData: SaveProgressData = {
+      user_id: userId,
+      player_name: player.name,
+      current_floor: player.floor,
+      hp: player.hp,
+      max_hp: player.max_hp,
+      attack: player.atk,
+      defense: player.def,
+      highest_floor: Math.max(player.floor, currentFloor?.floorNumber || 1)
+    };
+
     try {
-      if (!userId) {
-        return { success: false, error: 'Usuário não autenticado' };
+      const { data, error } = await supabase
+        .from('game_progress')
+        .upsert(progressData)
+        .select();
+
+      if (error) {
+        console.error('Erro ao salvar progresso:', error);
+        return {
+          success: false,
+          error: error.message,
+          data: null
+        };
       }
 
-      // Verificar se o usuário está autenticado e corresponde ao ID fornecido
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.id !== userId) {
-        return { success: false, error: 'Usuário não autenticado ou ID inválido' };
-      }
-
-      const { player, highestFloor } = gameState;
-      
-      const saveData: SaveProgressData = {
-        user_id: userId,
-        player_name: player.name,
-        current_floor: player.floor,
-        hp: player.hp,
-        max_hp: player.max_hp,
-        attack: player.atk,
-        defense: player.def,
-        highest_floor: highestFloor,
+      return {
+        success: true,
+        error: undefined,
+        data: data[0] as GameProgressEntry
       };
-
-      // Verificar se já existe um progresso para este usuário
-      const { data: existingProgress, error: queryError } = await supabase
-        .from('game_progress')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (queryError && queryError.code !== 'PGRST116') { // PGRST116 = not found
-        throw queryError;
-      }
-
-      // Upsert - atualiza se existir, cria se não existir
-      const { error } = await supabase
-        .from('game_progress')
-        .upsert({
-          id: existingProgress?.id,
-          ...saveData,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) throw error;
-      
-      // Atualizar também o andar na tabela characters
-      await CharacterService.updateCharacterFloor(player.id, player.floor);
-      
-      return { success: true, data: { message: 'Progresso salvo com sucesso' } };
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Erro ao salvar progresso:', error.message);
-        return { success: false, error: error.message };
-      }
-      return { success: false, error: 'Erro desconhecido ao salvar progresso' };
+    } catch (error) {
+      console.error('Erro geral ao salvar:', error instanceof Error ? error.message : error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        data: null
+      };
     }
   }
   
@@ -266,78 +163,33 @@ export class GameService {
    */
   static async loadGameProgress(userId: string): Promise<GameResponse> {
     try {
-      if (!userId) {
-        return { success: false, error: 'Usuário não autenticado' };
-      }
-
       const { data, error } = await supabase
         .from('game_progress')
         .select('*')
         .eq('user_id', userId)
-        .maybeSingle(); // Usando maybeSingle() em vez de single()
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
-      if (error) throw error;
-      
-      if (!data) {
-        // Retorna dados iniciais quando o jogador não tem progresso salvo
-        return { 
-          success: true, 
-          data: {
-            player: defaultPlayer,
-            highestFloor: 0
-          }
+      if (error) {
+        console.error('Erro ao carregar progresso:', error);
+        return {
+          success: false,
+          error: error.message,
+          data: null
         };
       }
 
-      const progress = data as GameProgressEntry;
-      
-      // Converter o progresso do banco para o formato do jogo
-      const player: GamePlayer = {
-        id: progress.id,
-        user_id: progress.user_id,
-        name: progress.player_name,
-        level: progress.level,
-        xp: progress.xp,
-        xp_next_level: progress.xp_next_level,
-        gold: progress.gold,
-        hp: progress.hp,
-        max_hp: progress.max_hp,
-        mana: progress.mana,
-        max_mana: progress.max_mana,
-        atk: progress.atk,
-        def: progress.def,
-        speed: progress.speed,
-        created_at: progress.created_at,
-        updated_at: progress.updated_at,
-        isPlayerTurn: true,
-        specialCooldown: 0,
-        defenseCooldown: 0,
-        isDefending: false,
-        floor: progress.current_floor,
-        spells: [],
-        active_effects: {
-          buffs: [],
-          debuffs: [],
-          dots: [],
-          hots: []
-        }
+      return {
+        success: true,
+        error: undefined,
+        data: data[0] as GameProgressEntry || null
       };
-
-      return { 
-        success: true, 
-        data: {
-          player,
-          highestFloor: progress.highest_floor
-        }
-      };
-    } catch (error: unknown) {
-      console.error('Erro ao carregar progresso:', error instanceof Error ? error.message : 'Erro desconhecido');
-      return { 
-        success: true, // Mudando para success=true com dados padrão para evitar mostrar erro
-        data: {
-          player: defaultPlayer,
-          highestFloor: 0
-        }
+    } catch (error) {
+      console.error('Erro geral ao carregar:', error instanceof Error ? error.message : error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        data: null
       };
     }
   }
@@ -349,8 +201,10 @@ export class GameService {
    * @returns Valor do dano calculado
    */
   static calculateDamage(attackerAttack: number, defenderDefense: number): number {
-    // CRÍTICO: Garantir que o dano seja sempre um inteiro
-    return Math.floor(Math.max(0, attackerAttack - defenderDefense / 2));
+    // Fórmula básica: dano = ataque - (defesa * 0.5)
+    // Dano mínimo de 1
+    const baseDamage = attackerAttack - (defenderDefense * 0.5);
+    return Math.max(1, Math.floor(baseDamage));
   }
 
   /**
@@ -374,301 +228,233 @@ export class GameService {
     skillMessages?: string[];
   }> {
     const { player, currentEnemy } = gameState;
-    
-    console.log(`[processPlayerAction] Processando ação: '${action}'`);
-    console.log(`[processPlayerAction] currentEnemy:`, currentEnemy?.name || 'null');
-    console.log(`[processPlayerAction] battleRewards:`, !!gameState.battleRewards);
-    
-    // Verificação especial para ação 'continue' - pode ser executada sem inimigo
-    if (action === 'continue') {
-      console.log(`[processPlayerAction] Ação 'continue' detectada - processando...`);
-      return {
-        newState: gameState,
-        skipTurn: true,
-        message: 'Avançando para o próximo andar...'
-      };
-    }
-    
-    // Para todas as outras ações, garantir que currentEnemy não é null
-    if (!currentEnemy) {
-      console.warn(`[processPlayerAction] Tentativa de executar ação '${action}' sem inimigo atual`);
-      return {
-        newState: gameState,
-        skipTurn: true,
-        message: 'Nenhum inimigo encontrado'
-      };
-    }
-    
-    let damage = 0;
     let message = '';
-    const newState = { ...gameState };
     let skipTurn = false;
     const skillXpGains: SkillXpGain[] = [];
-    
-    // Resetar flag de poção usada no início de cada turno do jogador
-    if (player.isPlayerTurn && !player.potionUsedThisTurn) {
-      player.potionUsedThisTurn = false;
+    const skillMessages: string[] = [];
+
+    if (!currentEnemy) {
+      return {
+        newState: gameState,
+        skipTurn: true,
+        message: 'Nenhum inimigo para atacar!',
+        skillXpGains,
+        skillMessages
+      };
     }
-    
-    // Reduzir cooldown de defesa no início do turno
-    if (player.defenseCooldown > 0) {
-      player.defenseCooldown--;
-    }
-    
-    // Processar a ação do jogador
+
+    const newState = { ...gameState };
+
+    // Resetar flag de poção usada no início do turno
+    newState.player.potionUsedThisTurn = false;
+
     switch (action) {
       case 'attack':
-        damage = this.calculateDamage(player.atk, currentEnemy.defense);
-        currentEnemy.hp = Math.max(0, currentEnemy.hp - damage);
-        message = `Você atacou e causou ${damage} de dano!`;
+        const damage = this.calculateDamage(player.atk, currentEnemy.defense);
+        newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damage);
+        message = `Você atacou ${currentEnemy.name} e causou ${damage} de dano!`;
         
-        // NOVO: Calcular XP de habilidade de ataque
-        try {
-          // Buscar equipamentos do personagem para determinar tipo de arma
-          const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
-          const equipmentSlots = equipmentSlotsResponse || null;
-          
-          const attackSkillXp = SkillXpService.calculateAttackSkillXp(equipmentSlots, damage);
-          skillXpGains.push(...attackSkillXp);
-        } catch (error) {
-          console.warn('[processPlayerAction] Erro ao calcular XP de ataque:', error);
-          // Continuar sem XP de habilidade em caso de erro
-        }
-        
-        // Adicionar verificação explícita de derrota do inimigo
-        if (currentEnemy.hp <= 0) {
-          message = `Você atacou, causou ${damage} de dano e derrotou ${currentEnemy.name}!`;
-          console.log(`[processPlayerAction] Inimigo ${currentEnemy.name} derrotado - HP: ${currentEnemy.hp}`);
+        // Ganhar XP de maestria com espada baseado no dano causado
+        const swordXpGain = Math.floor(damage * 0.1); // 10% do dano como XP
+        if (swordXpGain > 0) {
+          skillXpGains.push({
+            skill: SkillType.SWORD_MASTERY,
+            xp: swordXpGain,
+            reason: 'combat_attack'
+          });
+          skillMessages.push(`+${swordXpGain} XP de Maestria com Espadas`);
         }
         break;
-      
+
       case 'defend':
-        // Verificar se a defesa está em cooldown
         if (player.defenseCooldown > 0) {
-          message = `Defesa em cooldown: ${player.defenseCooldown} turnos restantes.`;
-          skipTurn = true;
-          break;
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: `Defesa em cooldown! Aguarde ${player.defenseCooldown} turnos.`,
+            skillXpGains,
+            skillMessages
+          };
         }
         
-        // Ativar defesa estratégica
-        player.isDefending = true;
-        player.defenseCooldown = 4; // Cooldown de 4 turnos
-        message = 'Você assume uma postura defensiva! O próximo ataque receberá 85% menos dano.';
+        newState.player.isDefending = true;
+        newState.player.defenseCooldown = 3; // 3 turnos de cooldown
+        message = 'Você assume uma postura defensiva!';
         
-        // NOVO: Calcular XP de habilidade de defesa
-        try {
-          const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
-          const equipmentSlots = equipmentSlotsResponse || null;
-          
-          const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, 0);
-          skillXpGains.push(...defenseSkillXp);
-        } catch (error) {
-          console.warn('[processPlayerAction] Erro ao calcular XP de defesa:', error);
-          // Continuar sem XP de habilidade em caso de erro
-        }
+        // Ganhar XP de maestria de defesa
+        const defenseXpGain = 5; // XP fixo por uso da defesa
+        skillXpGains.push({
+          skill: SkillType.DEFENSE_MASTERY,
+          xp: defenseXpGain,
+          reason: 'combat_defense'
+        });
         break;
 
       case 'flee':
-        // Nova fórmula de chance de fuga:
-        // - Chance base de 70%
-        // - Bônus de até 20% baseado na velocidade relativa
-        // - Penalidade de 10% por andar de diferença (mais difícil fugir de andares muito acima)
-        const baseFleeChance = 0.7;
-        const speedBonus = Math.min(0.2, (player.speed / (currentEnemy.speed || 1)) * 0.2);
-        const floorPenalty = Math.max(0, (currentEnemy.level - player.level) * 0.1);
-        const fleeChance = Math.min(0.9, Math.max(0.4, baseFleeChance + speedBonus - floorPenalty));
-        const fleeRoll = Math.random();
-        
-        if (fleeRoll <= fleeChance) {
-          // Fuga bem sucedida - resetar para andar 1
-          console.log('[processPlayerAction] Fuga bem-sucedida - resetando para andar 1');
-          
-          // Atualizar o estado do jogo para andar 1
-          newState.player.floor = 1;
-          newState.mode = 'battle';
-          newState.currentEnemy = null;
-          newState.gameMessage = 'Você conseguiu fugir da batalha! Voltando ao primeiro andar...';
+        const fleeChance = Math.random();
+        if (fleeChance > 0.7) {
+          // 30% de chance de fugir
+          message = `Você conseguiu fugir de ${currentEnemy.name}!`;
           skipTurn = true;
-          message = 'Você conseguiu fugir da batalha! Voltando ao primeiro andar...';
-          
-          // IMPORTANTE: A atualização do banco será feita no game-provider após esta função
         } else {
-          // Fuga falhou
-          message = 'Você tentou fugir, mas não conseguiu!';
+          // Falha na fuga, recebe dano
+          const fleeDamage = Math.floor(currentEnemy.attack * 0.3);
+          newState.player.hp = Math.max(0, player.hp - fleeDamage);
+          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano!`;
         }
         break;
-      
+
       case 'spell':
         if (!spellId) {
-          message = 'Nenhuma magia selecionada!';
-          skipTurn = true;
-          break;
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: 'Nenhuma magia especificada!',
+            skillXpGains,
+            skillMessages
+          };
         }
-
+        
         const spell = player.spells.find(s => s.id === spellId);
         if (!spell) {
-          message = 'Magia não encontrada!';
-          skipTurn = true;
-          break;
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: 'Magia não encontrada!',
+            skillXpGains,
+            skillMessages
+          };
         }
-
-        if (spell.current_cooldown > 0) {
-          message = `Magia em cooldown: ${spell.current_cooldown} turnos restantes.`;
-          skipTurn = true;
-          break;
-        }
-
+        
         if (player.mana < spell.mana_cost) {
-          message = 'Mana insuficiente!';
-          skipTurn = true;
-          break;
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: 'Mana insuficiente!',
+            skillXpGains,
+            skillMessages
+          };
         }
-
-        // Garantir que o inimigo existe antes de aplicar o efeito da magia
-        if (!currentEnemy) {
-          message = 'Nenhum inimigo encontrado!';
-          skipTurn = true;
-          break;
+        
+        if (spell.current_cooldown > 0) {
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: `${spell.name} está em cooldown por ${spell.current_cooldown} turnos!`,
+            skillXpGains,
+            skillMessages
+          };
         }
-
-        const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
-        if (!spellResult.success) {
-          message = spellResult.message;
-          skipTurn = true;
-          break;
-        }
-
-        // Atualizar cooldown da magia
-        const spellIndex = player.spells.findIndex(s => s.id === spellId);
+        
+        // Consumir mana
+        newState.player.mana -= spell.mana_cost;
+        
+        // Aplicar cooldown
+        const spellIndex = newState.player.spells.findIndex(s => s.id === spellId);
         if (spellIndex !== -1) {
-          player.spells[spellIndex].current_cooldown = spell.cooldown;
+          newState.player.spells[spellIndex].current_cooldown = spell.cooldown;
         }
         
-        // NOVO: Calcular XP de habilidade de magia
-        const spellDamage = spell.effect_value || 0; // Assumir que effect_value é o dano da magia
-        const magicSkillXp = SkillXpService.calculateMagicSkillXp(spell.mana_cost, spellDamage);
-        skillXpGains.push(...magicSkillXp);
-        
+        // Aplicar efeito da magia
+        const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
         message = spellResult.message;
+        
+        if (!spellResult.success) {
+          skipTurn = true;
+        }
+        
+        // Ganhar XP de maestria mágica baseado no custo de mana
+        const magicXpGain = Math.floor(spell.mana_cost * 0.2); // 20% do custo de mana como XP
+        if (magicXpGain > 0) {
+          skillXpGains.push({
+            skill: SkillType.MAGIC_MASTERY,
+            xp: magicXpGain,
+            reason: 'combat_spell'
+          });
+          skillMessages.push(`+${magicXpGain} XP de Maestria Mágica`);
+        }
         break;
-      
+
       case 'consumable':
-        if (!consumableId || !player.consumables) {
-          message = 'Nenhum consumível selecionado!';
-          skipTurn = true;
-          break;
+        if (!consumableId) {
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: 'Nenhum consumível especificado!',
+            skillXpGains,
+            skillMessages
+          };
         }
-
-        // Verificar se já foi usada uma poção neste turno
-        if (player.potionUsedThisTurn) {
-          message = 'Você já usou uma poção neste turno!';
-          skipTurn = true;
-          break;
+        
+        // Encontrar o consumível no inventário
+        const consumable = player.consumables?.find(c => c.consumable_id === consumableId);
+        if (!consumable || consumable.quantity <= 0) {
+          return {
+            newState: gameState,
+            skipTurn: true,
+            message: 'Consumível não encontrado ou sem quantidade!',
+            skillXpGains,
+            skillMessages
+          };
         }
-
-        const consumable = player.consumables.find(c => c.consumable_id === consumableId);
-        if (!consumable || !consumable.consumable || consumable.quantity <= 0) {
-          message = 'Consumível não encontrado ou sem unidades disponíveis!';
-          skipTurn = true;
-          break;
-        }
-
-        // Aplicar efeito do consumível
-        switch (consumable.consumable.type) {
-          case 'potion':
-            // Marcar que uma poção foi usada neste turno
-            player.potionUsedThisTurn = true;
-            
-            // Poção de HP
-            if (consumable.consumable.description.includes('HP') || 
-                consumable.consumable.description.includes('Vida')) {
-              const oldHp = player.hp;
-              player.hp = Math.min(player.max_hp, player.hp + consumable.consumable.effect_value);
-              message = `Você usou ${consumable.consumable.name} e recuperou ${player.hp - oldHp} de HP!`;
-            } 
-            // Poção de Mana
-            else if (consumable.consumable.description.includes('Mana')) {
-              const oldMana = player.mana;
-              player.mana = Math.min(player.max_mana, player.mana + consumable.consumable.effect_value);
-              message = `Você usou ${consumable.consumable.name} e recuperou ${player.mana - oldMana} de Mana!`;
-            }
-            break;
-            
-          case 'antidote':
-            // Marcar que uma poção foi usada neste turno (antídotos também contam)
-            player.potionUsedThisTurn = true;
-            
-            // Remover efeitos negativos
-            player.active_effects.debuffs = [];
-            player.active_effects.dots = [];
-            message = `Você usou ${consumable.consumable.name} e removeu todos os efeitos negativos!`;
-            break;
-            
-          case 'buff':
-            // Marcar que uma poção foi usada neste turno (elixires também contam)
-            player.potionUsedThisTurn = true;
-            
-            // Aplicar buff temporário
-            const buffValue = consumable.consumable.effect_value;
-            
-            // Buff de ataque
-            if (consumable.consumable.description.includes('ataque') || 
-                consumable.consumable.description.includes('Força')) {
-              player.atk += buffValue;
-              player.active_effects.buffs.push({
-                type: 'buff',
-                value: buffValue,
-                duration: 3, // Duração reduzida para relevância em combos
-                source_spell: 'elixir_strength'
-              });
-              message = `Você usou ${consumable.consumable.name} e aumentou seu ataque em ${buffValue} por 3 turnos!`;
-            } 
-            // Buff de defesa
-            else if (consumable.consumable.description.includes('defesa') || 
-                     consumable.consumable.description.includes('Defesa')) {
-              player.def += buffValue;
-              player.active_effects.buffs.push({
-                type: 'buff',
-                value: buffValue,
-                duration: 3, // Duração reduzida para relevância em combos
-                source_spell: 'elixir_defense'
-              });
-              message = `Você usou ${consumable.consumable.name} e aumentou sua defesa em ${buffValue} por 3 turnos!`;
-            }
-            break;
-            
-          default:
-            message = 'Este tipo de consumível não pode ser usado em batalha!';
-            skipTurn = true;
-            break;
-        }
-
-        // Reduzir quantidade do consumível apenas se foi usado com sucesso
-        if (!skipTurn) {
-          const consumableIndex = player.consumables.findIndex(c => c.consumable_id === consumableId);
+        
+        // Aplicar efeito do consumível (implementação simplificada)
+        // Assumindo que é uma poção de cura por agora
+        const healAmount = 50; // Valor fixo por enquanto
+        const oldHp = player.hp;
+        newState.player.hp = Math.min(player.max_hp, player.hp + healAmount);
+        const actualHeal = newState.player.hp - oldHp;
+        
+        // Reduzir quantidade do consumível
+        if (newState.player.consumables) {
+          const consumableIndex = newState.player.consumables.findIndex(c => c.consumable_id === consumableId);
           if (consumableIndex !== -1) {
-            player.consumables[consumableIndex].quantity -= 1;
+            newState.player.consumables[consumableIndex].quantity -= 1;
+            if (newState.player.consumables[consumableIndex].quantity <= 0) {
+              newState.player.consumables.splice(consumableIndex, 1);
+            }
           }
         }
+        
+        // Marcar que uma poção foi usada neste turno
+        newState.player.potionUsedThisTurn = true;
+        
+        message = `Você usou ${consumable.consumable?.name || 'Item'} e recuperou ${actualHeal} HP!`;
         break;
-      
+
       default:
-        message = 'Ação inválida';
-        skipTurn = true;
-    }
-    
-    // Após o switch, adicionar verificação explícita de inimigo derrotado (apenas se há inimigo)
-    if (currentEnemy && currentEnemy.hp <= 0) {
-      console.log('[processPlayerAction] Inimigo derrotado após processamento da ação');
-      // Não usamos skipTurn para permitir que o processamento de derrota continue
+        return {
+          newState: gameState,
+          skipTurn: true,
+          message: 'Ação inválida!',
+          skillXpGains,
+          skillMessages
+        };
     }
 
-    // Gerar mensagens de habilidade se há ganhos de XP
-    const skillMessages = skillXpGains.length > 0 
-      ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
-      : undefined;
+    // Reduzir cooldown de defesa se ativo
+    if (newState.player.defenseCooldown > 0) {
+      newState.player.defenseCooldown--;
+    }
 
-    return { newState, skipTurn, message, skillXpGains, skillMessages };
+    // Processar efeitos ao longo do tempo no jogador
+    if (newState.player.active_effects) {
+      const playerMessages = SpellService.processOverTimeEffects(newState.player);
+      if (playerMessages.length > 0) {
+        message += ' ' + playerMessages.join(' ');
+      }
+    }
+
+    // Resetar defesa após o turno
+    newState.player.isDefending = false;
+
+    return {
+      newState,
+      skipTurn,
+      message,
+      skillXpGains,
+      skillMessages
+    };
   }
 
   /**
@@ -677,69 +463,34 @@ export class GameService {
    * @returns Dados do andar formatados
    */
   static async getFloorData(floorNumber: number): Promise<Floor | null> {
+    // Verificar cache primeiro
+    const now = Date.now();
+    const cachedFloor = this.floorCache.get(floorNumber);
+    const cacheExpiry = this.floorCacheExpiry.get(floorNumber);
+    
+    if (cachedFloor && cacheExpiry && now < cacheExpiry) {
+      return cachedFloor;
+    }
+
     try {
-      // Validar número do andar
-      if (floorNumber <= 0) {
-        console.error(`Tentativa de obter dados de andar inválido: ${floorNumber}`);
-        return null;
-      }
-
-      console.log(`[getFloorData] Solicitando dados do andar ${floorNumber}`);
-
-      // Verificar cache
-      const now = Date.now();
-      const cachedFloor = this.floorCache.get(floorNumber);
-      const cacheExpiry = this.floorCacheExpiry.get(floorNumber) || 0;
-      
-      if (cachedFloor && now < cacheExpiry) {
-        console.log(`[getFloorData] Usando dados em cache para o andar ${floorNumber}`);
-        return cachedFloor;
-      }
-
-      // Buscar dados do andar no servidor
-      const { data, error } = await supabase
-        .rpc('get_floor_data', { p_floor_number: floorNumber })
-        .single();
+      const { data, error } = await supabase.rpc('get_floor_data', {
+        floor_number: floorNumber
+      });
 
       if (error) {
-        console.error(`[getFloorData] Erro ao obter andar ${floorNumber}:`, error.message);
-        throw error;
-      }
-      
-      if (!data) {
-        console.error(`[getFloorData] Nenhum dado retornado para o andar ${floorNumber}`);
+        console.error('Erro ao obter dados do andar:', error);
         return null;
       }
 
-      const floorData = data as {
-        floor_number: number;
-        type: FloorType;
-        is_checkpoint: boolean;
-        min_level: number;
-        description: string;
-      };
-
-      // Validar dados recebidos
-      if (floorData.floor_number !== floorNumber) {
-        console.warn(`[getFloorData] Discrepância no número do andar: solicitado=${floorNumber}, recebido=${floorData.floor_number}`);
+      if (data) {
+        // Cache por 10 segundos
+        this.floorCache.set(floorNumber, data);
+        this.floorCacheExpiry.set(floorNumber, now + this.FLOOR_CACHE_DURATION);
       }
 
-      const floor = {
-        floorNumber: floorData.floor_number,
-        type: floorData.type,
-        isCheckpoint: floorData.is_checkpoint,
-        minLevel: floorData.min_level,
-        description: floorData.description
-      };
-
-      // Atualizar cache
-      this.floorCache.set(floorNumber, floor);
-      this.floorCacheExpiry.set(floorNumber, now + this.FLOOR_CACHE_DURATION);
-
-      console.log(`[getFloorData] Obtidos dados do andar ${floorNumber}: ${floor.description}`);
-      return floor;
+      return data as Floor;
     } catch (error) {
-      console.error(`[getFloorData] Erro crítico ao obter dados do andar ${floorNumber}:`, error instanceof Error ? error.message : error);
+      console.error('Erro na função getFloorData:', error);
       return null;
     }
   }
@@ -752,21 +503,27 @@ export class GameService {
    * @returns Recompensas calculadas
    */
   static calculateFloorRewards(baseXP: number, baseGold: number, floorType: FloorType): { xp: number; gold: number } {
-    // Ajustes de balanceamento: reduzir apenas 20% do XP para manter progressão
-    const reductionXpFactor = 0.8; // Reduzido de 0.6 para 0.8
-    const reductionGoldFactor = 1.0; // Removida redução do gold
-
-    const multipliers = {
-      common: 1,
-      elite: 1.5,
-      event: 2,
-      boss: 3
-    };
-
-    const multiplier = multipliers[floorType];
+    let multiplier = 1;
+    
+    switch (floorType) {
+      case 'boss':
+        multiplier = 2.5;
+        break;
+      case 'elite':
+        multiplier = 1.8;
+        break;
+      case 'event':
+        multiplier = 1.2;
+        break;
+      case 'common':
+      default:
+        multiplier = 1;
+        break;
+    }
+    
     return {
-      xp: Math.floor(baseXP * multiplier * reductionXpFactor),
-      gold: Math.floor(baseGold * multiplier * reductionGoldFactor)
+      xp: Math.floor(baseXP * multiplier),
+      gold: Math.floor(baseGold * multiplier)
     };
   }
 
@@ -776,133 +533,70 @@ export class GameService {
    * @returns Novo estado do jogo após a derrota do inimigo
    */
   static async processEnemyDefeat(gameState: GameState): Promise<GameState> {
-    try {
-      const { player, currentEnemy, currentFloor } = gameState;
-      
-      // Criar ID único para esta tentativa de processamento
-      const defeatId = `${currentEnemy?.name}-${currentEnemy?.hp}-${player.floor}-${Date.now()}`;
-      console.log(`[processEnemyDefeat] Iniciando processamento ${defeatId}`);
-      
-      // Validações rigorosas para evitar processamento duplicado
-      if (!currentEnemy) {
-        console.warn('[processEnemyDefeat] Nenhum inimigo encontrado');
-        return gameState;
-      }
-      
-      if (currentEnemy.hp > 0) {
-        console.warn('[processEnemyDefeat] Tentativa de processar inimigo que ainda não foi derrotado');
-        return gameState;
-      }
-      
-      // CRÍTICO: Evitar processamento duplicado verificando se já temos recompensas
-      if (gameState.battleRewards) {
-        console.warn(`[processEnemyDefeat] Tentativa de processar derrota de inimigo que já possui recompensas - ignorando (${defeatId})`);
-        return gameState;
-      }
-      
-      // Atualizar o recorde se necessário
-      const highestFloor = Math.max(gameState.highestFloor, player.floor);
-      
-      // Processar drops do monstro (se houver)
-      let obtainedDrops: { name: string; quantity: number }[] = [];
-      
-      if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
-        // Processar os drops obtidos
-        const levelMultiplier = 1 + (currentEnemy.level * 0.01);
-        let floorMultiplier = 1.0;
-        
-        if (currentFloor) {
-          switch (currentFloor.type) {
-            case 'elite': floorMultiplier = 1.2; break;
-            case 'event': floorMultiplier = 1.3; break;
-            case 'boss': floorMultiplier = 1.5; break;
-            default: floorMultiplier = 1.0;
-          }
-        }
-        
-        const dropsResult = ConsumableService.processMonsterDrops(
-          currentEnemy.level, 
-          currentEnemy.possible_drops,
-          levelMultiplier * floorMultiplier
-        );
-        
-        // Adicionar drops ao inventário do jogador
-        if (dropsResult.length > 0) {
-          try {
-            await ConsumableService.addDropsToInventory(player.id, dropsResult);
-            const dropNames = await this.getDropNames(dropsResult);
-            obtainedDrops = dropNames.map((name, index) => ({
-              name,
-              quantity: dropsResult[index].quantity
-            }));
-          } catch (error) {
-            console.error('[processEnemyDefeat] Erro ao processar drops:', error);
-            // Continua o fluxo mesmo se houver erro nos drops
-          }
-        }
-      }
-      
-      // Calcular recompensas baseadas no tipo do andar
-      let rewards = { xp: currentEnemy.reward_xp, gold: currentEnemy.reward_gold };
-      if (currentFloor) {
-        rewards = this.calculateFloorRewards(rewards.xp, rewards.gold, currentFloor.type);
-      }
-      
-      // Verificar se subiu de nível
-      const oldLevel = player.level;
-      const newXp = player.xp + rewards.xp;
-      const leveledUp = newXp >= player.xp_next_level;
-      let updatedSpells = [...player.spells];
-
-      if (leveledUp) {
-        try {
-          const spellsResponse = await SpellService.getAvailableSpells(oldLevel + 1);
-          if (spellsResponse.success && spellsResponse.data) {
-            const newSpells = spellsResponse.data
-              .filter(spell => !player.spells.some(ps => ps.id === spell.id))
-              .map(spell => ({ ...spell, current_cooldown: 0 }));
-            updatedSpells = [...player.spells, ...newSpells];
-          }
-        } catch (error) {
-          console.error('[processEnemyDefeat] Erro ao carregar novas magias:', error);
-          // Continuar sem adicionar novas magias em caso de erro
-        }
-      }
-      
-      // Criar o estado após vitória com as recompensas
-      const updatedState = {
-        ...gameState,
-        player: {
-          ...player,
-          xp: newXp,
-          gold: player.gold + rewards.gold,
-          spells: updatedSpells
-        },
-        isPlayerTurn: true,
-        gameMessage: 'Inimigo derrotado! Colete suas recompensas.',
-        highestFloor,
-        battleRewards: {
-          xp: rewards.xp,
-          gold: rewards.gold,
-          drops: obtainedDrops,
-          leveledUp,
-          newLevel: leveledUp ? oldLevel + 1 : undefined
-        }
-      };
-      
-      // Debug log para confirmar processamento
-      console.log(`[processEnemyDefeat] Vitória processada com sucesso (${defeatId}) - recompensas definidas no andar ${player.floor}`);
-      
-      return updatedState;
-    } catch (error) {
-      console.error('[processEnemyDefeat] Erro não tratado:', error);
-      // Retornar o estado atual com uma mensagem de erro para evitar travamento
-      return {
-        ...gameState,
-        gameMessage: 'Ocorreu um erro ao processar a batalha. Tente novamente.',
-        isPlayerTurn: true
-      };
+    const { player, currentEnemy, currentFloor } = gameState;
+    
+    if (!currentEnemy || !currentFloor) {
+      return gameState;
     }
+
+    // Calcular recompensas base
+    const baseXP = currentEnemy.reward_xp || 10;
+    const baseGold = currentEnemy.reward_gold || 5;
+    
+    // Aplicar multiplicadores baseados no tipo de andar
+    const { xp, gold } = this.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
+    
+    // Verificar se houve level up
+    let leveledUp = false;
+    let newLevel = player.level;
+    
+    const newXP = player.xp + xp;
+    if (newXP >= player.xp_next_level) {
+      leveledUp = true;
+      newLevel = player.level + 1;
+    }
+
+    // Simular drops (implementação básica)
+    const drops: { name: string; quantity: number }[] = [];
+    
+    // 30% de chance de drop básico
+    if (Math.random() < 0.3) {
+      drops.push({
+        name: "Poção de Vida Menor",
+        quantity: 1
+      });
+    }
+    
+    // Boss tem chance de drops especiais
+    if (currentFloor.type === 'boss' && Math.random() < 0.8) {
+      drops.push({
+        name: "Item Épico",
+        quantity: 1
+      });
+    }
+
+    // Processar nome dos drops
+    let dropNames: string[] = [];
+    if (drops.length > 0) {
+      dropNames = drops.map(d => d.name);
+    }
+
+    const battleRewards = {
+      xp,
+      gold,
+      drops: dropNames.map((name, index) => ({
+        name,
+        quantity: drops[index]?.quantity || 1
+      })),
+      leveledUp,
+      newLevel: leveledUp ? newLevel : undefined
+    };
+
+    return {
+      ...gameState,
+      battleRewards,
+      currentEnemy: null // Remove inimigo após derrota
+    };
   }
 
   /**
@@ -912,25 +606,29 @@ export class GameService {
    * @returns Nomes dos drops formatados
    */
   private static async getDropNames(drops: { drop_id: string; quantity: number }[]): Promise<string[]> {
-    const result: string[] = [];
-    
-    for (const drop of drops) {
-      try {
-        const { data, error } = await supabase
-          .from('monster_drops')
-          .select('name')
-          .eq('id', drop.drop_id)
-          .single();
-        
-        if (!error && data) {
-          result.push(`${data.name} (${drop.quantity})`);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar nome do drop:', error);
+    if (drops.length === 0) return [];
+
+    try {
+      const dropIds = drops.map(d => d.drop_id);
+      
+      const { data, error } = await supabase
+        .from('consumables')
+        .select('id, name')
+        .in('id', dropIds);
+
+      if (error) {
+        console.error('Erro ao buscar nomes dos drops:', error);
+        return drops.map(d => `Item ${d.drop_id}`);
       }
+
+      return drops.map(drop => {
+        const item = data?.find(d => d.id === drop.drop_id);
+        return item?.name || `Item ${drop.drop_id}`;
+      });
+    } catch (error) {
+      console.error('Erro ao processar drops:', error);
+      return drops.map(d => `Item ${d.drop_id}`);
     }
-    
-    return result;
   }
 
   /**
@@ -1389,143 +1087,87 @@ export class GameService {
    * @returns Novo estado com o próximo andar
    */
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
+    const { player } = gameState;
+    const nextFloor = player.floor + 1;
+    
+    console.log(`[GameService] Avançando do andar ${player.floor} para ${nextFloor}`);
+
     try {
-      const { player } = gameState;
-      const nextFloorNumber = player.floor + 1;
-      
-      console.log(`[advanceToNextFloor] INÍCIO - Avançando do andar ${player.floor} para ${nextFloorNumber}`);
-      console.log(`[advanceToNextFloor] Player atual:`, { name: player.name, level: player.level, hp: player.hp });
-      
-      // CRÍTICO: Persistir o novo andar no banco de dados IMEDIATAMENTE
-      console.log(`[advanceToNextFloor] 🔄 Persistindo andar ${nextFloorNumber} no banco de dados...`);
-      try {
-        const { CharacterService } = await import('./character.service');
-        const updateResult = await CharacterService.updateCharacterFloor(
-          player.id, 
-          nextFloorNumber
-        );
-        
-        if (updateResult.success) {
-          console.log(`[advanceToNextFloor] ✅ Andar ${nextFloorNumber} persistido com sucesso no banco`);
-        } else {
-          console.error(`[advanceToNextFloor] ❌ Erro ao persistir andar no banco:`, updateResult.error);
-          // Não falhar a transição por causa disso, mas logar o erro
-        }
-      } catch (dbError) {
-        console.error(`[advanceToNextFloor] ❌ Erro crítico ao persistir andar:`, dbError);
-        // Continuar mesmo com erro de persistência para não quebrar o jogo
-      }
-      
-      // Limpar cache para garantir dados atualizados
+      // Atualizar andar no banco de dados ANTES de gerar novos dados
+      await CharacterService.updateCharacterFloor(player.id, nextFloor);
+      console.log(`[GameService] Andar atualizado no banco: ${nextFloor}`);
+
+      // Limpar caches para garantir dados frescos
       this.clearAllCaches();
-      console.log(`[advanceToNextFloor] Cache limpo`);
-      
+
       // Obter dados do próximo andar
-      console.log(`[advanceToNextFloor] Buscando dados do andar ${nextFloorNumber}`);
-      const nextFloor = await this.getFloorData(nextFloorNumber);
-      if (!nextFloor) {
-        const errorMsg = `Não foi possível obter dados do andar ${nextFloorNumber}`;
-        console.error(`[advanceToNextFloor] ERRO: ${errorMsg}`);
-        throw new Error(errorMsg);
+      const nextFloorData = await this.getFloorData(nextFloor);
+      if (!nextFloorData) {
+        throw new Error(`Erro ao gerar dados do andar ${nextFloor}`);
       }
-      console.log(`[advanceToNextFloor] Dados do andar ${nextFloorNumber} obtidos:`, nextFloor.description);
+
+      console.log(`[GameService] Dados do andar ${nextFloor} carregados:`, nextFloorData.description);
+
+      // Gerar novo inimigo para o próximo andar
+      const nextEnemy = await this.generateEnemy(nextFloor);
+      if (!nextEnemy) {
+        throw new Error(`Erro ao gerar inimigo para o andar ${nextFloor}`);
+      }
+
+      console.log(`[GameService] Inimigo gerado para andar ${nextFloor}:`, nextEnemy.name);
+
+      // Verificar se há evento especial (10% de chance)
+      let specialEvent = null;
+      const specialEventChance = Math.random();
       
-      // Verificar se deve gerar evento especial ou monstro
-      let nextEnemy: Enemy | null = null;
-      let nextSpecialEvent: SpecialEvent | null = null;
-      let newMode: 'battle' | 'special_event' = 'battle';
-      
-      if (SpecialEventService.shouldGenerateSpecialEvent(nextFloor.type)) {
-        // Gerar evento especial
-        console.log(`[advanceToNextFloor] Gerando evento especial para andar ${nextFloorNumber}`);
-        const eventResponse = await SpecialEventService.getSpecialEventForFloor(nextFloorNumber);
-        
-        if (eventResponse.success && eventResponse.data) {
-          nextSpecialEvent = eventResponse.data;
-          newMode = 'special_event';
-          console.log(`[advanceToNextFloor] Evento especial gerado: ${nextSpecialEvent.name}`);
-        } else {
-          // Fallback para monstro se evento falhar
-          console.warn(`[advanceToNextFloor] Falha ao gerar evento especial, gerando monstro`);
-          nextEnemy = await this.generateEnemy(nextFloorNumber);
+      if (specialEventChance < 0.1) { // 10% de chance
+        try {
+          const { data: eventData, error: eventError } = await supabase
+            .rpc('get_random_special_event', {
+              floor_number: nextFloor
+            });
+
+          if (!eventError && eventData) {
+            specialEvent = eventData;
+            console.log(`[GameService] Evento especial gerado para andar ${nextFloor}:`, specialEvent.name);
+          }
+        } catch (error) {
+          console.error('[GameService] Erro ao gerar evento especial:', error);
+          // Continuar sem evento especial em caso de erro
         }
-      } else {
-        // Gerar monstro normal
-        console.log(`[advanceToNextFloor] Gerando monstro para o andar ${nextFloorNumber}`);
-        nextEnemy = await this.generateEnemy(nextFloorNumber);
       }
-      
-      // Verificar se temos inimigo ou evento
-      if (!nextEnemy && !nextSpecialEvent) {
-        const errorMsg = `Não foi possível gerar conteúdo para o andar ${nextFloorNumber}`;
-        console.error(`[advanceToNextFloor] ERRO: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
-      
-      if (nextEnemy) {
-        console.log(`[advanceToNextFloor] Monstro gerado: ${nextEnemy.name}`);
-      }
-      
-      // Ajustar a recuperação de HP e mana baseada no tipo do andar
-      const baseRecovery = {
-        common: Math.max(10, 25 - Math.floor(nextFloorNumber / 5) * 2),
-        elite: Math.max(15, 35 - Math.floor(nextFloorNumber / 5) * 2),
-        event: Math.max(20, 40 - Math.floor(nextFloorNumber / 5) * 2),
-        boss: Math.max(25, 50 - Math.floor(nextFloorNumber / 5) * 2)
-      }[nextFloor.type];
-      
-      const manaRecovery = Math.max(5, Math.floor(baseRecovery / 2));
-      
-      console.log(`[advanceToNextFloor] Recuperação calculada - HP: +${baseRecovery}, Mana: +${manaRecovery}`);
-      
-      // Criar mensagem apropriada
-      let gameMessage: string;
-      if (nextSpecialEvent) {
-        gameMessage = `Você chegou ao ${nextFloor.description} e encontrou algo especial...`;
-      } else {
-        gameMessage = `Você chegou ao ${nextFloor.description}.`;
-      }
-      
-      // CRÍTICO: Garantir que HP e Mana sejam sempre inteiros
-      const newHp = Math.floor(Math.min(player.max_hp, player.hp + baseRecovery));
-      const newMana = Math.floor(Math.min(player.max_mana, player.mana + manaRecovery));
-      
-      // Criar o novo estado com o próximo andar
-      const newState: GameState = {
+
+      // Construir novo estado
+      const newGameState: GameState = {
         ...gameState,
-        mode: newMode,
+        mode: specialEvent ? 'special_event' : 'battle',
         player: {
           ...player,
-          floor: nextFloorNumber,
-          hp: newHp,
-          mana: newMana
+          floor: nextFloor,
+          isPlayerTurn: true,
+          isDefending: false,
+          potionUsedThisTurn: false
         },
-        currentEnemy: nextEnemy,
-        currentSpecialEvent: nextSpecialEvent,
-        currentFloor: nextFloor,
+        currentFloor: nextFloorData,
+        currentEnemy: specialEvent ? null : nextEnemy,
+        currentSpecialEvent: specialEvent,
+        gameMessage: specialEvent 
+          ? `Evento especial encontrado: ${specialEvent.name}!`
+          : `Andar ${nextFloor}: ${nextFloorData.description}. Um ${nextEnemy.name} apareceu!`,
         isPlayerTurn: true,
-        gameMessage,
-        battleRewards: null // Limpar recompensas após avançar
+        battleRewards: null
       };
-      
-      console.log(`[advanceToNextFloor] SUCESSO - Transição concluída: ${player.floor} -> ${nextFloorNumber}`);
-      console.log(`[advanceToNextFloor] Novo estado:`, { 
-        floor: newState.player.floor, 
-        mode: newState.mode,
-        enemy: newState.currentEnemy?.name,
-        event: newState.currentSpecialEvent?.name,
-        floorDesc: newState.currentFloor?.description
-      });
-      
-      return newState;
+
+      console.log(`[GameService] Estado do jogo atualizado para andar ${nextFloor}`);
+      return newGameState;
+
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('[advanceToNextFloor] ERRO CRÍTICO:', errorMsg);
-      console.error('[advanceToNextFloor] Stack trace:', error);
+      console.error(`[GameService] Erro ao avançar para andar ${nextFloor}:`, error);
+      
+      // Estado de fallback em caso de erro
       return {
         ...gameState,
-        gameMessage: 'Erro ao avançar para o próximo andar. Tente novamente.',
-        isPlayerTurn: true
+        gameMessage: `Erro ao avançar para o andar ${nextFloor}. Tente novamente.`
       };
     }
   }
@@ -1537,59 +1179,57 @@ export class GameService {
    * @returns Novo estado do jogo após processar o evento
    */
   static async processSpecialEventInteraction(
-    gameState: GameState, 
-    characterId: string
+    gameState: GameState,
   ): Promise<GameState> {
-    try {
-      const { currentSpecialEvent, player } = gameState;
-      
-      if (!currentSpecialEvent) {
-        console.warn('[processSpecialEventInteraction] Nenhum evento especial atual');
-        return {
-          ...gameState,
-          gameMessage: 'Nenhum evento especial disponível.'
-        };
-      }
-
-      console.log(`[processSpecialEventInteraction] Processando evento: ${currentSpecialEvent.name}`);
-      
-      // Processar evento no servidor
-      const eventResponse = await SpecialEventService.processSpecialEvent(
-        characterId, 
-        currentSpecialEvent.id
-      );
-      
-      if (!eventResponse.success || !eventResponse.data) {
-        throw new Error(eventResponse.error || 'Erro ao processar evento especial');
-      }
-      
-      const result = eventResponse.data;
-      
-      // Atualizar estado do jogador com os benefícios do evento
-      const updatedPlayer = {
-        ...player,
-        hp: Math.min(player.max_hp, player.hp + result.hp_restored),
-        mana: Math.min(player.max_mana, player.mana + result.mana_restored),
-        gold: player.gold + result.gold_gained
-      };
-      
-      console.log(`[processSpecialEventInteraction] Evento processado com sucesso: +${result.hp_restored} HP, +${result.mana_restored} Mana, +${result.gold_gained} Gold`);
-      
-      // Retornar estado atualizado - ainda em modo evento para mostrar resultados
-      return {
-        ...gameState,
-        player: updatedPlayer,
-        gameMessage: result.message,
-        isPlayerTurn: true
-      };
-    } catch (error) {
-      console.error('[processSpecialEventInteraction] Erro ao processar evento especial:', error);
-      return {
-        ...gameState,
-        gameMessage: 'Erro ao interagir com o evento especial. Tente novamente.',
-        isPlayerTurn: true
-      };
+    const { currentSpecialEvent, player } = gameState;
+    
+    if (!currentSpecialEvent) {
+      return gameState;
     }
+
+    console.log(`[GameService] Processando evento especial: ${currentSpecialEvent.name}`);
+
+    // Aplicar efeitos do evento
+    let newHp = player.hp;
+    let newMana = player.mana;
+    let newGold = player.gold;
+    let message = '';
+
+    switch (currentSpecialEvent.type) {
+      case 'magic_fountain':
+        newHp = player.max_hp;
+        newMana = player.max_mana;
+        message = `Você encontrou uma fonte mágica! HP e Mana foram restaurados completamente.`;
+        break;
+        
+      case 'treasure_chest':
+        const goldGain = Math.floor(Math.random() * 50) + 25; // 25-75 gold
+        newGold += goldGain;
+        message = `Você encontrou um baú do tesouro! Ganhou ${goldGain} de ouro.`;
+        break;
+        
+      case 'bonfire':
+        const hpRestore = Math.floor(player.max_hp * 0.5); // Restaura 50% do HP
+        newHp = Math.min(player.max_hp, player.hp + hpRestore);
+        message = `Você descansou numa fogueira acolhedora! Recuperou ${hpRestore} HP.`;
+        break;
+        
+      default:
+        message = `Você explorou o evento ${currentSpecialEvent.name}.`;
+    }
+
+    return {
+      ...gameState,
+      player: {
+        ...player,
+        hp: newHp,
+        mana: newMana,
+        gold: newGold
+      },
+      gameMessage: message,
+      currentSpecialEvent: null, // Remove o evento após interação
+      mode: 'battle' // Volta para modo de batalha
+    };
   }
 
   /**
@@ -1612,7 +1252,18 @@ export class GameService {
         .select(`
           spell_id,
           current_cooldown,
-          spell:spells(*)
+          spell:spells(
+            id,
+            name,
+            description,
+            mana_cost,
+            cooldown,
+            effect_type,
+            effect_value,
+            target_type,
+            element,
+            unlocked_at_level
+          )
         `)
         .eq('character_id', characterId);
 
@@ -1626,7 +1277,8 @@ export class GameService {
         current_cooldown: cs.current_cooldown,
         effect_type: cs.spell[0].effect_type as SpellEffectType,
         effect_value: cs.spell[0].effect_value,
-        duration: 0 // Add missing required property
+        duration: 0,
+        unlocked_at_level: cs.spell[0].unlocked_at_level || 1
       }));
 
       // Carregar consumíveis (se necessário)

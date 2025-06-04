@@ -519,8 +519,7 @@ export function GameProvider({ children }: GameProviderProps) {
               console.log(`[game-provider] Processando evento especial: ${prev.gameState.currentSpecialEvent?.name}`);
               
               const updatedState = await GameService.processSpecialEventInteraction(
-                prev.gameState,
-                selectedCharacter.id
+                prev.gameState
               );
               
               // Atualizar stats do personagem no banco se houve mudanças
