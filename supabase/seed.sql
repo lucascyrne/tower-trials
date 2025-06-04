@@ -402,14 +402,61 @@ VALUES
 
 -- Inserir magias iniciais
 INSERT INTO spells (name, description, effect_type, mana_cost, cooldown, unlocked_at_level, effect_value, duration) VALUES
+    -- Early Level Spells (1-15)
     ('Bola de Fogo', 'Lança uma bola de fogo que causa dano ao inimigo', 'damage', 20, 2, 1, 30, 1),
     ('Cura Menor', 'Recupera uma pequena quantidade de HP', 'heal', 15, 3, 2, 25, 1),
     ('Veneno', 'Envenena o inimigo causando dano ao longo do tempo', 'dot', 25, 4, 3, 10, 3),
-    ('Bênção', 'Aumenta temporariamente a defesa', 'buff', 30, 5, 4, 15, 2),
-    ('Maldição', 'Reduz temporariamente o ataque do inimigo', 'debuff', 35, 5, 5, 20, 2),
-    ('Regeneração', 'Recupera HP ao longo do tempo', 'hot', 40, 6, 6, 15, 3),
-    ('Explosão Arcana', 'Causa uma grande quantidade de dano', 'damage', 50, 8, 8, 80, 1),
-    ('Cura Maior', 'Recupera uma grande quantidade de HP', 'heal', 45, 7, 7, 60, 1);
+    ('Escudo Arcano', 'Aumenta temporariamente a defesa', 'buff', 30, 5, 4, 15, 2),
+    ('Fraqueza', 'Reduz temporariamente o ataque do inimigo', 'debuff', 35, 5, 5, 20, 2),
+    ('Regeneração Menor', 'Recupera HP ao longo do tempo', 'hot', 40, 6, 6, 15, 3),
+    ('Raio Congelante', 'Congela o inimigo causando dano de gelo', 'damage', 35, 3, 7, 45, 1),
+    ('Cura Moderada', 'Recupera uma quantidade moderada de HP', 'heal', 50, 4, 8, 60, 1),
+    ('Chamas Persistentes', 'Queima o inimigo ao longo do tempo', 'dot', 45, 5, 9, 15, 4),
+    ('Benção da Força', 'Aumenta temporariamente o ataque', 'buff', 55, 6, 10, 25, 3),
+    ('Maldição da Lentidão', 'Reduz a velocidade do inimigo', 'debuff', 40, 4, 11, 15, 3),
+    ('Rajada de Vento', 'Ataque rápido de ar comprimido', 'damage', 30, 2, 12, 35, 1),
+    ('Armadura Mística', 'Cria uma barreira mágica defensiva', 'buff', 60, 7, 13, 30, 4),
+    ('Drenar Energia', 'Rouba mana do inimigo e restaura a sua', 'debuff', 45, 5, 14, 20, 1),
+    ('Explosão Menor', 'Pequena explosão de energia arcana', 'damage', 55, 4, 15, 65, 1),
+    
+    -- Mid Level Spells (16-35)
+    ('Meteoro', 'Invoca um meteoro causando dano devastador', 'damage', 80, 6, 16, 120, 1),
+    ('Cura Maior', 'Recupera uma grande quantidade de HP', 'heal', 75, 5, 17, 100, 1),
+    ('Praga Tóxica', 'Veneno potente que se espalha', 'dot', 70, 7, 18, 25, 5),
+    ('Fortificação', 'Aumenta drasticamente a defesa', 'buff', 85, 8, 19, 40, 4),
+    ('Terror', 'Reduz todos os atributos do inimigo', 'debuff', 90, 6, 20, 30, 3),
+    ('Regeneração Maior', 'Cura poderosa ao longo do tempo', 'hot', 95, 8, 21, 30, 4),
+    ('Tempestade de Gelo', 'Múltiplos projéteis de gelo', 'damage', 100, 7, 22, 90, 1),
+    ('Ressurreição Parcial', 'Restaura HP quando próximo da morte', 'heal', 120, 10, 23, 150, 1),
+    ('Corrosão Ácida', 'Ácido que corrói armaduras', 'dot', 85, 6, 24, 20, 4),
+    ('Fúria Berserker', 'Aumenta ataque mas reduz defesa', 'buff', 75, 5, 25, 50, 3),
+    ('Silêncio Arcano', 'Impede o uso de magias', 'debuff', 80, 7, 26, 0, 2),
+    ('Lâminas de Vento', 'Múltiplos cortes de ar', 'damage', 85, 5, 27, 75, 1),
+    ('Barreira Temporal', 'Proteção que absorve dano', 'buff', 110, 9, 28, 60, 5),
+    ('Vampirismo', 'Cura baseada no dano causado', 'heal', 90, 6, 29, 40, 1),
+    ('Explosão Arcana', 'Grande explosão de energia mágica', 'damage', 120, 8, 30, 140, 1),
+    ('Invocar Chuva Curativa', 'Chuva que cura ao longo do tempo', 'hot', 100, 10, 31, 25, 6),
+    ('Nevasca', 'Tempestade de gelo contínua', 'dot', 95, 7, 32, 18, 5),
+    ('Aura de Poder', 'Aumenta todos os atributos', 'buff', 130, 12, 33, 35, 5),
+    ('Drenar Vida', 'Absorve HP do inimigo', 'debuff', 85, 6, 34, 35, 1),
+    ('Cometa Destruidor', 'Ataque de fogo devastador', 'damage', 150, 10, 35, 180, 1),
+    
+    -- High Level Spells (36-50)
+    ('Apocalipse', 'Invoca o fim dos tempos', 'damage', 200, 12, 36, 250, 1),
+    ('Cura Divina', 'Restauração completa da divindade', 'heal', 180, 10, 37, 200, 1),
+    ('Maldição Eterna', 'Veneno que nunca acaba', 'dot', 160, 15, 38, 40, 8),
+    ('Invencibilidade', 'Torna-se temporariamente indestrutível', 'buff', 250, 20, 39, 90, 3),
+    ('Aniquilação', 'Remove todas as defesas inimigas', 'debuff', 200, 15, 40, 80, 4),
+    ('Fonte da Juventude', 'Regeneração divina contínua', 'hot', 220, 18, 41, 50, 6),
+    ('Supernova', 'Explosão estelar devastadora', 'damage', 280, 15, 42, 320, 1),
+    ('Ressurreição Completa', 'Volta da morte com poder total', 'heal', 300, 25, 43, 350, 1),
+    ('Praga Dimensional', 'Veneno que atravessa realidades', 'dot', 240, 20, 44, 35, 10),
+    ('Transcendência', 'Eleva-se além dos mortais', 'buff', 350, 30, 45, 100, 6),
+    ('Vazio Absoluto', 'Remove a existência do inimigo', 'debuff', 320, 25, 46, 100, 5),
+    ('Tormenta Cósmica', 'Tempestade do espaço sideral', 'damage', 400, 20, 47, 380, 1),
+    ('Benção dos Deuses', 'Poder divino supremo', 'buff', 400, 35, 48, 120, 8),
+    ('Dreno Cósmico', 'Absorve a essência universal', 'debuff', 350, 30, 49, 90, 3),
+    ('Criação e Destruição', 'O poder supremo da magia', 'damage', 500, 30, 50, 500, 1);
 
 -- =====================================
 -- RECEITAS E INGREDIENTES
