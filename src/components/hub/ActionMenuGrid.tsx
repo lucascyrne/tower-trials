@@ -13,7 +13,8 @@ import {
   Map,
   TrendingUp,
   Shield,
-  Skull
+  Skull,
+  Sparkles
 } from 'lucide-react';
 
 interface ActionMenuGridProps {
@@ -24,6 +25,7 @@ interface ActionMenuGridProps {
   onOpenShop: () => void;
   onOpenInventory: () => void;
   onOpenEquipment: () => void;
+  onOpenSpells: () => void;
   onOpenCemetery: () => void;
   onReturnToSelection: () => void;
 }
@@ -91,6 +93,7 @@ export function ActionMenuGrid({
   onOpenShop, 
   onOpenInventory, 
   onOpenEquipment,
+  onOpenSpells,
   onOpenCemetery,
   onReturnToSelection 
 }: ActionMenuGridProps) {
@@ -118,6 +121,13 @@ export function ActionMenuGrid({
       badge: player.attribute_points && player.attribute_points > 0 ? player.attribute_points : undefined,
       badgeColor: 'destructive' as const,
       accent: 'border-purple-600/30'
+    },
+    {
+      title: 'Grimório',
+      description: 'Gerenciar magias',
+      icon: Sparkles,
+      onClick: onOpenSpells,
+      accent: 'border-violet-600/30'
     },
     {
       title: 'Loja',
@@ -157,7 +167,7 @@ export function ActionMenuGrid({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
       {actions.map((action, index) => (
         <ActionCard
           key={index}
