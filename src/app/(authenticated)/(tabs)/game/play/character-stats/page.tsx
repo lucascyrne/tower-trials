@@ -75,6 +75,18 @@ export default function CharacterStatsPage() {
       setLoading(true);
       const response = await CharacterService.getCharacterStats(characterId);
       if (response.success && response.data) {
+        console.log('[CharacterStatsPage] Stats recebidos:', {
+          hp: {
+            value: response.data.max_hp,
+            base: response.data.base_max_hp,
+            bonus: response.data.equipment_hp_bonus
+          },
+          atk: {
+            value: response.data.atk,
+            base: response.data.base_atk,
+            bonus: response.data.equipment_atk_bonus
+          }
+        });
         setCharacterStats(response.data);
       } else {
         toast.error('Erro ao carregar stats do personagem', {
@@ -425,21 +437,26 @@ export default function CharacterStatsPage() {
                 Stats Derivados
               </CardTitle>
               <div className="mt-2 p-3 bg-muted/30 rounded-lg">
-                <div className="text-sm font-medium mb-2 text-muted-foreground">Fórmulas de Cálculo:</div>
+                <div className="text-sm font-medium mb-2 text-muted-foreground">Fórmulas de Cálculo (Sistema Especializado):</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground font-mono">
-                  <div><span className="text-red-400">HP:</span> (80 + 5×Nível) + Vitalidade×8</div>
-                  <div><span className="text-blue-400">Mana:</span> (40 + 3×Nível) + Inteligência×5 + Magia×3</div>
-                  <div><span className="text-red-400">Ataque:</span> (15 + 2×Nível) + Força×2 + Habilidade</div>
-                  <div><span className="text-blue-400">Defesa:</span> (8 + Nível) + Vitalidade + Sabedoria + Defesa×2</div>
-                  <div><span className="text-yellow-400">Velocidade:</span> (8 + Nível) + Destreza×1.5</div>
-                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.5% + Destreza×0.3% + Habilidade×0.2%</div>
-                  <div><span className="text-orange-400">Dano Crítico:</span> 150% + Sorte×1% + Força×0.5% + Habilidade×3%</div>
-                  <div><span className="text-purple-400">Dano Mágico:</span> Base + Int×10% + Sab×5% + Magia×15%</div>
+                  <div><span className="text-red-400">HP:</span> (60 + 3×Nível) + Vitalidade^1.4×3.5</div>
+                  <div><span className="text-blue-400">Mana:</span> (25 + 2×Nível) + Int^1.35×2 + Magia^1.2×2</div>
+                  <div><span className="text-red-400">Ataque:</span> (3 + Nível) + Força^1.3×1.8 + Habilidade</div>
+                  <div><span className="text-blue-400">Defesa:</span> (2 + Nível) + Vit^1.4×0.8 + Sab^1.2×0.6</div>
+                  <div><span className="text-yellow-400">Velocidade:</span> (5 + Nível) + Destreza^1.25×1.2</div>
+                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.4% + Dex^1.25×0.3% + Arma×0.1%</div>
+                  <div><span className="text-orange-400">Dano Crítico:</span> 140% + Sorte×0.8% + Str^1.3×0.6%</div>
+                  <div><span className="text-purple-400">Dano Mágico:</span> Int^1.35×1.8% + Sab^1.2×1.2% (max 300%)</div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2 italic">
+                  <div><strong>Sistema Especializado:</strong> Escalamento logarítmico favorece builds focadas</div>
+                  <div><strong>Bases menores:</strong> Força dependência de atributos/habilidades específicos</div>
+                  <div><strong>Diminishing Returns:</strong> Eficiência reduz em valores extremos</div>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 <StatCard
                   label="HP Máximo"
                   value={characterStats.max_hp}
@@ -500,6 +517,32 @@ export default function CharacterStatsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     Baseado na Sorte ({characterStats.luck})
+                  </div>
+                </div>
+
+                <div className="bg-card p-3 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Target className="h-4 w-4 text-orange-400" />
+                    <span className="text-sm font-medium text-orange-400">Dano Crítico</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-400">
+                    {characterStats.critical_damage.toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Base: 150% + Bônus
+                  </div>
+                </div>
+
+                <div className="bg-card p-3 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="h-4 w-4 text-purple-400" />
+                    <span className="text-sm font-medium text-purple-400">Dano Mágico</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-400">
+                    +{characterStats.magic_damage_bonus}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Baseado em Int + Sab + Magia
                   </div>
                 </div>
               </div>
