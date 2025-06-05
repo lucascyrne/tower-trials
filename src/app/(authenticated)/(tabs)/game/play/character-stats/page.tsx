@@ -428,11 +428,13 @@ export default function CharacterStatsPage() {
                 <div className="text-sm font-medium mb-2 text-muted-foreground">Fórmulas de Cálculo:</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground font-mono">
                   <div><span className="text-red-400">HP:</span> (80 + 5×Nível) + Vitalidade×8</div>
-                  <div><span className="text-blue-400">Mana:</span> (40 + 3×Nível) + Inteligência×5</div>
-                  <div><span className="text-red-400">Ataque:</span> (15 + 2×Nível) + Força×2</div>
-                  <div><span className="text-blue-400">Defesa:</span> (8 + Nível) + Vitalidade + Sabedoria</div>
+                  <div><span className="text-blue-400">Mana:</span> (40 + 3×Nível) + Inteligência×5 + Magia×3</div>
+                  <div><span className="text-red-400">Ataque:</span> (15 + 2×Nível) + Força×2 + Habilidade</div>
+                  <div><span className="text-blue-400">Defesa:</span> (8 + Nível) + Vitalidade + Sabedoria + Defesa×2</div>
                   <div><span className="text-yellow-400">Velocidade:</span> (8 + Nível) + Destreza×1.5</div>
-                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.5%</div>
+                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.5% + Destreza×0.3% + Habilidade×0.2%</div>
+                  <div><span className="text-orange-400">Dano Crítico:</span> 150% + Sorte×1% + Força×0.5% + Habilidade×3%</div>
+                  <div><span className="text-purple-400">Dano Mágico:</span> Base + Int×10% + Sab×5% + Magia×15%</div>
                 </div>
               </div>
             </CardHeader>
