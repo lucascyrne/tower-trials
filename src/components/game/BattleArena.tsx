@@ -462,6 +462,53 @@ export function BattleArena({
                       </div>
                     )}
                     
+                    {/* DEBUG: Skills do Personagem */}
+                    <div className="space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground">Habilidades:</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {(player.sword_mastery || 0) > 1 && (
+                          <div className="bg-red-500/10 rounded p-1 text-center">
+                            <Sword className="h-3 w-3 mx-auto mb-1 text-red-400" />
+                            <div className="text-muted-foreground">Espada</div>
+                            <div className="font-medium">Lv {player.sword_mastery}</div>
+                            <div className="text-xs text-muted-foreground">{player.sword_mastery_xp || 0} XP</div>
+                          </div>
+                        )}
+                        {(player.axe_mastery || 0) > 1 && (
+                          <div className="bg-orange-500/10 rounded p-1 text-center">
+                            <Target className="h-3 w-3 mx-auto mb-1 text-orange-400" />
+                            <div className="text-muted-foreground">Machado</div>
+                            <div className="font-medium">Lv {player.axe_mastery}</div>
+                            <div className="text-xs text-muted-foreground">{player.axe_mastery_xp || 0} XP</div>
+                          </div>
+                        )}
+                        {(player.blunt_mastery || 0) > 1 && (
+                          <div className="bg-brown-500/10 rounded p-1 text-center">
+                            <Activity className="h-3 w-3 mx-auto mb-1 text-brown-400" />
+                            <div className="text-muted-foreground">Concussão</div>
+                            <div className="font-medium">Lv {player.blunt_mastery}</div>
+                            <div className="text-xs text-muted-foreground">{player.blunt_mastery_xp || 0} XP</div>
+                          </div>
+                        )}
+                        {(player.defense_mastery || 0) > 1 && (
+                          <div className="bg-blue-500/10 rounded p-1 text-center">
+                            <Shield className="h-3 w-3 mx-auto mb-1 text-blue-400" />
+                            <div className="text-muted-foreground">Defesa</div>
+                            <div className="font-medium">Lv {player.defense_mastery}</div>
+                            <div className="text-xs text-muted-foreground">{player.defense_mastery_xp || 0} XP</div>
+                          </div>
+                        )}
+                        {(player.magic_mastery || 0) > 1 && (
+                          <div className="bg-purple-500/10 rounded p-1 text-center">
+                            <Sparkles className="h-3 w-3 mx-auto mb-1 text-purple-400" />
+                            <div className="text-muted-foreground">Magia</div>
+                            <div className="font-medium">Lv {player.magic_mastery}</div>
+                            <div className="text-xs text-muted-foreground">{player.magic_mastery_xp || 0} XP</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
                     {/* Pontos de Atributo Disponíveis */}
                     {Boolean(player.attribute_points && player.attribute_points > 0) && (
                       <button 
@@ -529,6 +576,18 @@ export function BattleArena({
                       <Eye className="h-2 w-2 md:h-3 md:w-3 mr-1" />
                       Nv {currentEnemy.level}
                     </Badge>
+                    {currentEnemy.tier && currentEnemy.tier > 1 && (
+                      <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs px-1 md:px-2">
+                        <Star className="h-2 w-2 md:h-3 md:w-3 mr-1" />
+                        Tier {currentEnemy.tier}
+                      </Badge>
+                    )}
+                    {currentEnemy.is_boss && (
+                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs px-1 md:px-2">
+                        <Crown className="h-2 w-2 md:h-3 md:w-3 mr-1" />
+                        BOSS
+                      </Badge>
+                    )}
                     <Badge className={`text-xs border px-1 md:px-2 ${getBehaviorColor(currentEnemy.behavior)}`}>
                       {translateBehavior(currentEnemy.behavior)}
                     </Badge>

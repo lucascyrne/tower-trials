@@ -315,7 +315,13 @@ export default function GameBattle() {
   return (
     <>
       <div className="w-full max-w-6xl">
-        <BattleHeader currentFloor={currentFloor} playerLevel={player.level} />
+        <BattleHeader 
+          currentFloor={{
+            ...currentFloor,
+            floorNumber: player.floor
+          }} 
+          playerLevel={player.level} 
+        />
 
         {/* Arena de Batalha Unificada */}
         {currentEnemy && (

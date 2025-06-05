@@ -17,9 +17,6 @@ export function StatDisplay({
   showTooltip = false,
   size = 'md' 
 }: StatDisplayProps) {
-  const hasBonus = equipmentBonus && equipmentBonus > 0;
-  const calculatedBaseValue = baseValue ?? (hasBonus ? value - equipmentBonus : value);
-  
   const sizeClasses = {
     sm: 'text-sm',
     md: 'text-base',
@@ -32,7 +29,11 @@ export function StatDisplay({
     lg: 'text-base'
   };
 
-  if (!hasBonus) {
+  // CRÍTICO: Só mostrar breakdown se há valores válidos para equipmentBonus e baseValue
+  const hasValidBonus = equipmentBonus !== undefined && equipmentBonus > 0;
+  const hasValidBase = baseValue !== undefined && baseValue !== null;
+
+  if (!hasValidBonus || !hasValidBase) {
     return (
       <span className={`${sizeClasses[size]} ${className}`}>
         {value}
@@ -43,9 +44,9 @@ export function StatDisplay({
   return (
     <span 
       className={`${sizeClasses[size]} ${className} ${showTooltip ? 'cursor-help' : ''}`}
-      title={showTooltip ? `Base: ${calculatedBaseValue} + Equipamentos: ${equipmentBonus} = Total: ${value}` : undefined}
+      title={showTooltip ? `Base: ${baseValue} + Equipamentos: ${equipmentBonus} = Total: ${value}` : undefined}
     >
-      {calculatedBaseValue}
+      {baseValue}
       <span className={`text-green-400 ml-1 ${bonusClasses[size]}`}>
         (+{equipmentBonus})
       </span>
@@ -74,27 +75,39 @@ export function StatCard({
   showTooltip = true,
   size = 'md'
 }: StatCardProps) {
-  const hasBonus = equipmentBonus && equipmentBonus > 0;
+  // CRÍTICO: Só mostrar breakdown se há bônus real de equipamentos
+  const hasEquipmentBonus = equipmentBonus !== undefined && equipmentBonus > 0;
   
   return (
-    <div className={`bg-card p-3 rounded-lg border ${hasBonus ? 'border-green-500/20 bg-green-500/5' : ''}`}>
+    <div className={`bg-card p-3 rounded-lg border ${hasEquipmentBonus ? 'border-green-500/20 bg-green-500/5' : ''}`}>
       <div className="flex items-center gap-2 mb-1">
         {icon}
         <span className={`text-sm font-medium ${color}`}>{label}</span>
       </div>
       <div className={size === 'lg' ? 'text-2xl font-bold' : size === 'md' ? 'text-xl font-bold' : 'text-lg font-bold'}>
-        <StatDisplay 
-          value={value}
-          baseValue={baseValue}
-          equipmentBonus={equipmentBonus}
-          className={color}
-          showTooltip={showTooltip}
-          size={size}
-        />
+        {hasEquipmentBonus && baseValue !== undefined ? (
+          <StatDisplay 
+            value={value}
+            baseValue={baseValue}
+            equipmentBonus={equipmentBonus}
+            className={color}
+            showTooltip={showTooltip}
+            size={size}
+          />
+        ) : (
+          <span className={color}>
+            {value}
+          </span>
+        )}
       </div>
-      {hasBonus && showTooltip && (
+      {hasEquipmentBonus && baseValue !== undefined && showTooltip && (
         <div className="text-xs text-muted-foreground mt-1">
-          Base: {baseValue ?? (value - equipmentBonus!)} + Equipamentos: {equipmentBonus}
+          Base: {baseValue} + Equipamentos: +{equipmentBonus}
+        </div>
+      )}
+      {(!hasEquipmentBonus || baseValue === undefined) && showTooltip && (
+        <div className="text-xs text-muted-foreground mt-1">
+          Valor total calculado
         </div>
       )}
     </div>
