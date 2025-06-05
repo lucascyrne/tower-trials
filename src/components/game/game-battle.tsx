@@ -62,10 +62,11 @@ export default function GameBattle() {
   // Processamento de recompensas de batalha
   useEffect(() => {
     if (gameState.battleRewards) {
-      const rewardKey = `${gameState.currentEnemy?.name}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}-${gameState.player.floor}`;
+      // Usar um identificador mais estável que não dependa do currentEnemy que pode ser null
+      const rewardKey = `${gameState.battleRewards.xp}-${gameState.battleRewards.gold}-${gameState.player.floor}-${Date.now()}`;
       
       if (!messageProcessedRef.current.has(rewardKey)) {
-        console.log(`[GameBattle] Processando recompensa: ${rewardKey}`);
+        console.log(`[GameBattle] Processando recompensa: XP ${gameState.battleRewards.xp}, Gold ${gameState.battleRewards.gold}, Andar ${gameState.player.floor}`);
         messageProcessedRef.current.add(rewardKey);
         
         const battleRewards = gameState.battleRewards;
@@ -80,7 +81,7 @@ export default function GameBattle() {
         
         setShowVictoryModal(true);
         
-        const victoryMessage = `Vitória! Você derrotou ${gameState.currentEnemy?.name || 'o inimigo'} e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
+        const victoryMessage = `Vitória! Você derrotou o inimigo e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
         addGameLogMessage(victoryMessage, 'system');
         
         if (battleRewards.leveledUp && battleRewards.newLevel) {
@@ -123,6 +124,7 @@ export default function GameBattle() {
   useEffect(() => {
     const loadSelectedCharacter = async () => {
       if (characterLoadedRef.current) {
+        console.log('[GameBattle] Personagem já carregado, ignorando carregamento duplo');
         return;
       }
       
@@ -130,25 +132,35 @@ export default function GameBattle() {
       
       const characterId = searchParams.get('character');
       if (!characterId) {
+        console.warn('[GameBattle] ID do personagem não encontrado na URL');
         router.push('/game/play');
         return;
       }
 
       try {
-        console.log(`[GameBattle] Carregando personagem: ${characterId}`);
+        console.log(`[GameBattle] Iniciando carregamento do personagem: ${characterId}`);
+        
         const response = await CharacterService.getCharacter(characterId);
         
         if (response.success && response.data) {
+          console.log(`[GameBattle] Personagem carregado com sucesso: ${response.data.name} (andar: ${response.data.floor})`);
+          
           characterLoadedRef.current = true;
+          
+          // Aguardar a seleção do personagem completar
           await selectCharacter(response.data);
+          
+          console.log(`[GameBattle] selectCharacter concluído para ${response.data.name}`);
+          
         } else {
+          console.error('[GameBattle] Erro ao carregar personagem:', response.error);
           toast.error('Erro ao carregar personagem', {
             description: response.error || 'Erro desconhecido'
           });
           router.push('/game/play');
         }
       } catch (error) {
-        console.error('Erro ao carregar personagem:', error);
+        console.error('[GameBattle] Exceção ao carregar personagem:', error);
         toast.error('Erro ao carregar personagem');
         router.push('/game/play');
       } finally {
@@ -223,12 +235,29 @@ export default function GameBattle() {
     return <SpecialEventPanel />;
   }
 
-  if (!currentEnemy || !currentFloor) {
+  // Verificação melhorada dos dados necessários
+  if (!currentEnemy || !currentFloor || !player.id) {
+    console.log('[GameBattle] Aguardando dados:', {
+      hasCurrentEnemy: !!currentEnemy,
+      hasCurrentFloor: !!currentFloor,
+      hasPlayerId: !!player.id,
+      gameMode: gameState.mode
+    });
+    
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Transicionando...</h2>
-          <p className="text-muted-foreground">Preparando próximo andar</p>
+          <h2 className="text-2xl font-bold mb-2">Preparando Batalha...</h2>
+          <p className="text-muted-foreground">
+            {!currentFloor && 'Carregando dados do andar...'}
+            {!currentEnemy && currentFloor && 'Gerando inimigo...'}
+            {!player.id && 'Carregando personagem...'}
+          </p>
+          <div className="mt-4 text-sm text-muted-foreground">
+            <div>Andar: {currentFloor ? '✓' : '❌'}</div>
+            <div>Inimigo: {currentEnemy ? '✓' : '❌'}</div>
+            <div>Personagem: {player.id ? '✓' : '❌'}</div>
+          </div>
         </div>
       </div>
     );
@@ -253,12 +282,18 @@ export default function GameBattle() {
 
   // Função para continuar a aventura após derrotar um inimigo
   const handleContinueAdventure = async () => {
-    console.log("[GameBattle] Iniciando transição para o próximo andar");
-    console.log("[GameBattle] Chamando performAction('continue')...");
+    console.log("[GameBattle] === CONTINUAR AVENTURA ===");
+    console.log("[GameBattle] Estado atual:", {
+      floor: gameState.player.floor,
+      hasRewards: !!gameState.battleRewards,
+      hasEnemy: !!gameState.currentEnemy,
+      enemyHp: gameState.currentEnemy?.hp
+    });
     
     setShowVictoryModal(false);
     
     try {
+      console.log("[GameBattle] Chamando performAction('continue')...");
       await performAction('continue');
       console.log("[GameBattle] performAction('continue') concluído com sucesso");
     } catch (error) {

@@ -18,7 +18,8 @@ import {
   Activity,
   Plus,
   Droplet,
-  Droplets
+  Droplets,
+  Star
 } from 'lucide-react';
 import { ActionType, GamePlayer } from '@/resources/game/game-model';
 import { PlayerSpell } from '@/resources/game/models/spell.model';
@@ -34,7 +35,7 @@ interface CombinedBattleInterfaceProps {
   onPlayerStatsUpdate: (newHp: number, newMana: number) => void;
   onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
   currentEnemy?: { hp: number; maxHp: number; name: string } | null;
-  battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean } | null;
+  battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean; newLevel?: number } | null;
 }
 
 interface TooltipInfo {
@@ -99,7 +100,35 @@ export function CombinedBattleInterface({
   const isPlayerDead = player.hp <= 0;
   
   // Verificar se deve mostrar botão de próximo andar
-  const shouldShowNextFloorButton = Boolean(currentEnemy && currentEnemy.hp <= 0 && battleRewards);
+  // LÓGICA MELHORADA: Mostrar quando há battleRewards E não está carregando E jogador não está morto
+  const shouldShowNextFloorButton = Boolean(
+    battleRewards && 
+    !loading.performAction && 
+    !isPlayerDead &&
+    (
+      !currentEnemy || // Inimigo já foi processado e removido
+      (currentEnemy && currentEnemy.hp <= 0) // Inimigo ainda existe mas está morto
+    )
+  );
+  
+  // LOGS DE DEBUG para identificar o problema do botão
+  console.log('[CombinedBattleInterface] Estado do botão próximo andar:', {
+    shouldShowNextFloorButton,
+    hasCurrentEnemy: !!currentEnemy,
+    currentEnemyHp: currentEnemy?.hp,
+    currentEnemyMaxHp: currentEnemy?.maxHp,
+    currentEnemyName: currentEnemy?.name,
+    hasBattleRewards: !!battleRewards,
+    battleRewardsXp: battleRewards?.xp,
+    battleRewardsGold: battleRewards?.gold,
+    // NOVA LÓGICA DE DEBUG:
+    conditionA_hasBattleRewards: !!battleRewards,
+    conditionB_noCurrentEnemy: !currentEnemy,
+    conditionC_currentEnemyDead: currentEnemy && currentEnemy.hp <= 0,
+    finalCondition: battleRewards && (!currentEnemy || (currentEnemy && currentEnemy.hp <= 0)),
+    isPlayerDead: player.hp <= 0,
+    isDisabled: !isPlayerTurn || loading.performAction
+  });
 
   const loadPotionSlots = async () => {
     try {
@@ -398,16 +427,54 @@ export function CombinedBattleInterface({
           
           {/* Botão de Próximo Andar - Aparece quando inimigo está morto */}
           {shouldShowNextFloorButton && !isPlayerDead && (
-            <div className="mb-4 p-4 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/20 rounded-xl">
+            <div className="mb-4 p-4 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/20 rounded-xl animate-in slide-in-from-top-2 duration-500">
               <div className="text-center space-y-3">
-                <div className="text-sm text-green-400 font-medium">
-                  🎉 Vitória! Inimigo derrotado
+                <div className="flex items-center justify-center gap-2">
+                  <div className="text-lg">🎉</div>
+                  <div className="text-sm text-green-400 font-medium">
+                    Vitória! Inimigo derrotado
+                  </div>
+                  <div className="text-lg">🎉</div>
                 </div>
+                
+                {/* Recompensas em destaque */}
+                <div className="bg-background/30 rounded-lg p-3 border border-green-500/10">
+                  <div className="text-xs text-green-300 font-medium mb-1">Recompensas Obtidas:</div>
+                  <div className="flex justify-center items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-blue-400" />
+                      <span className="text-blue-400 font-semibold">+{battleRewards?.xp} XP</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-400 text-lg">💰</span>
+                      <span className="text-yellow-400 font-semibold">+{battleRewards?.gold} Gold</span>
+                    </div>
+                    {battleRewards?.drops && battleRewards.drops.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-purple-400 text-lg">📦</span>
+                        <span className="text-purple-400 font-semibold">
+                          +{battleRewards.drops.length} item{battleRewards.drops.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {battleRewards?.leveledUp && (
+                    <div className="mt-2 text-center">
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 animate-pulse">
+                        🎊 LEVEL UP! Nível {battleRewards.newLevel}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+                
                 <Button
-                  onClick={() => handleAction('continue')}
+                  onClick={() => {
+                    console.log('[CombinedBattleInterface] Botão Avançar clicado');
+                    handleAction('continue');
+                  }}
                   disabled={loading.performAction || isPlayerDead}
                   size="lg"
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105 w-full md:w-auto"
                 >
                   {loading.performAction ? (
                     <>
@@ -421,11 +488,9 @@ export function CombinedBattleInterface({
                     </>
                   )}
                 </Button>
+                
                 <div className="text-xs text-muted-foreground">
-                  Recompensas: +{battleRewards?.xp} XP, +{battleRewards?.gold} Gold
-                  {battleRewards?.drops && battleRewards.drops.length > 0 && (
-                    <>, +{battleRewards.drops.length} item{battleRewards.drops.length > 1 ? 's' : ''}</>
-                  )}
+                  Clique para continuar sua aventura
                 </div>
               </div>
             </div>

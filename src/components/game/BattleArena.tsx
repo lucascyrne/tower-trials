@@ -58,6 +58,16 @@ export function BattleArena({
   enemyHpPercentage, 
   isPlayerTurn,
 }: BattleArenaProps) {
+  // Log para debug das props recebidas
+  useEffect(() => {
+    console.log('[BattleArena] Props recebidas:');
+    console.log('- player:', player?.name, `(andar: ${player?.floor})`);
+    console.log('- currentEnemy:', currentEnemy?.name, `(HP: ${currentEnemy?.hp}/${currentEnemy?.maxHp})`);
+    console.log('- playerHpPercentage:', playerHpPercentage);
+    console.log('- enemyHpPercentage:', enemyHpPercentage);
+    console.log('- isPlayerTurn:', isPlayerTurn);
+  }, [player, currentEnemy, playerHpPercentage, enemyHpPercentage, isPlayerTurn]);
+
   const [showPlayerDetails, setShowPlayerDetails] = useState(false);
   const [showEnemyDetails, setShowEnemyDetails] = useState(false);
   const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);

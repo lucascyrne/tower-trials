@@ -12,6 +12,13 @@ interface BattleHeaderProps {
 }
 
 export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
+  // Log para debug das props recebidas
+  React.useEffect(() => {
+    console.log('[BattleHeader] Props recebidas:');
+    console.log('- currentFloor:', currentFloor?.description, `(tipo: ${currentFloor?.type})`);
+    console.log('- playerLevel:', playerLevel);
+  }, [currentFloor, playerLevel]);
+
   const getFloorIcon = (type: FloorType) => {
     switch (type) {
       case 'boss': return '👑';
