@@ -211,6 +211,7 @@ export interface CharacterStats {
   // Stats derivados
   critical_chance: number;
   critical_damage: number;
+  magic_damage_bonus: number;
   
   // Habilidades
   sword_mastery: number;

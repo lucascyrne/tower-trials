@@ -9,7 +9,6 @@ import { SkillXpGain, SkillXpService } from './skill-xp.service';
 import { supabase } from '@/lib/supabase';
 import { CemeteryService } from './cemetery.service';
 import { EquipmentService } from './equipment.service';
-import { PlayerSpell, SpellEffectType } from './models/spell.model';
 import { SkillType } from './models/character.model';
 
 // Interface para salvar o progresso do jogo
@@ -44,23 +43,6 @@ interface GameProgressEntry {
   highest_floor: number;
   created_at: string;
   updated_at: string;
-}
-
-interface CharacterSpell {
-  spell_id: string;
-  current_cooldown: number;
-  spell: {
-    id: string;
-    name: string;
-    description: string;
-    mana_cost: number;
-    cooldown: number;
-    effect_type: string;
-    effect_value: number;
-    target_type: string;
-    element: string;
-    unlocked_at_level: number;
-  }[];
 }
 
 export class GameService {
@@ -126,6 +108,11 @@ export class GameService {
           dots: [],
           hots: []
         },
+        // Campos do sistema cíclico
+        tier: monsterData.tier,
+        base_tier: monsterData.base_tier,
+        cycle_position: monsterData.cycle_position,
+        is_boss: monsterData.is_boss,
         // Atributos primários do banco
         strength: monsterData.strength,
         dexterity: monsterData.dexterity,
@@ -150,7 +137,8 @@ export class GameService {
         special_abilities: monsterData.special_abilities || []
       };
 
-      console.log(`[GameService] Monstro real gerado: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense})`);
+      console.log(`[GameService] Monstro real gerado: ${enemy.name} (Tier ${enemy.tier || 1}, Pos ${enemy.cycle_position || 'N/A'})`);
+      console.log(`[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, Boss: ${enemy.is_boss ? 'SIM' : 'NÃO'}`);
       
       return enemy;
     } catch (error) {
@@ -322,15 +310,31 @@ export class GameService {
         newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damage);
         message = `Você atacou ${currentEnemy.name} e causou ${damage} de dano!`;
         
-        // Ganhar XP de maestria com espada baseado no dano causado
-        const swordXpGain = Math.floor(damage * 0.1); // 10% do dano como XP
-        if (swordXpGain > 0) {
-          skillXpGains.push({
-            skill: SkillType.SWORD_MASTERY,
-            xp: swordXpGain,
-            reason: 'combat_attack'
+        // CRÍTICO: Usar o SkillXpService para calcular XP de ataque
+        try {
+          // Por enquanto usar null para equipmentSlots - o SkillXpService irá usar fallback
+          const attackXpGains = SkillXpService.calculateAttackSkillXp(null, damage);
+          skillXpGains.push(...attackXpGains);
+          
+          // Adicionar mensagens para cada skill que ganhou XP
+          attackXpGains.forEach(gain => {
+            const skillName = SkillXpService.getSkillDisplayName(gain.skill);
+            skillMessages.push(`+${gain.xp} XP de ${skillName} (${gain.reason})`);
           });
-          skillMessages.push(`+${swordXpGain} XP de Maestria com Espadas`);
+          
+          console.log(`[GameService] XP de ataque calculado:`, attackXpGains);
+        } catch (error) {
+          console.error('[GameService] Erro ao calcular XP de ataque:', error);
+          // Fallback para sistema básico
+          const basicXpGain = Math.floor(damage * 0.1);
+          if (basicXpGain > 0) {
+            skillXpGains.push({
+              skill: SkillType.SWORD_MASTERY,
+              xp: basicXpGain,
+              reason: 'combat_attack_fallback'
+            });
+            skillMessages.push(`+${basicXpGain} XP de Maestria com Espadas`);
+          }
         }
         break;
 
@@ -349,13 +353,28 @@ export class GameService {
         newState.player.defenseCooldown = 3; // 3 turnos de cooldown
         message = 'Você assume uma postura defensiva!';
         
-        // Ganhar XP de maestria de defesa
-        const defenseXpGain = 5; // XP fixo por uso da defesa
-        skillXpGains.push({
-          skill: SkillType.DEFENSE_MASTERY,
-          xp: defenseXpGain,
-          reason: 'combat_defense'
-        });
+        // CRÍTICO: Usar o SkillXpService para calcular XP de defesa
+        try {
+          const defenseXpGains = SkillXpService.calculateDefenseSkillXp(null, 0);
+          skillXpGains.push(...defenseXpGains);
+          
+          // Adicionar mensagens para cada skill que ganhou XP
+          defenseXpGains.forEach(gain => {
+            const skillName = SkillXpService.getSkillDisplayName(gain.skill);
+            skillMessages.push(`+${gain.xp} XP de ${skillName} (${gain.reason})`);
+          });
+          
+          console.log(`[GameService] XP de defesa calculado:`, defenseXpGains);
+        } catch (error) {
+          console.error('[GameService] Erro ao calcular XP de defesa:', error);
+          // Fallback para sistema básico
+          skillXpGains.push({
+            skill: SkillType.DEFENSE_MASTERY,
+            xp: 5,
+            reason: 'combat_defense_fallback'
+          });
+          skillMessages.push(`+5 XP de Maestria Defensiva`);
+        }
         break;
 
       case 'flee':
@@ -663,50 +682,114 @@ export class GameService {
       
       console.log(`[GameService] Recompensas calculadas - XP: ${xp}, Gold: ${gold}`);
 
-      // Verificar se subiu de nível
-      const oldLevel = player.level;
-      const newXP = player.xp + xp;
-      const leveledUp = newXP >= player.xp_next_level;
-
-      // Simular drops (implementação básica)
-      const drops: { name: string; quantity: number }[] = [];
-      
-      // 30% de chance de drop básico
-      if (Math.random() < 0.3) {
-        drops.push({
-          name: "Poção de Vida Menor",
-          quantity: 1
-        });
+        // CRÍTICO: Persistir XP no banco de dados
+      console.log(`[GameService] === PERSISTINDO XP NO BANCO ===`);
+      const xpResult = await CharacterService.grantSecureXP(player.id, xp, 'combat');
+      if (!xpResult.success) {
+        console.error('[GameService] Erro ao conceder XP:', xpResult.error);
+        throw new Error(`Falha ao conceder XP: ${xpResult.error}`);
       }
       
-      // Boss tem chance de drops especiais
-      if (currentFloor.type === 'boss' && Math.random() < 0.8) {
-        drops.push({
-          name: "Item Épico",
-          quantity: 1
-        });
+      const xpData = xpResult.data!;
+      console.log(`[GameService] XP persistido - Level: ${xpData.new_level}, XP: ${xpData.new_xp}, Level Up: ${xpData.leveled_up}`);
+
+      // CRÍTICO: Persistir Gold no banco de dados
+      console.log(`[GameService] === PERSISTINDO GOLD NO BANCO ===`);
+      const goldResult = await CharacterService.grantSecureGold(player.id, gold, 'combat');
+      if (!goldResult.success) {
+        console.error('[GameService] Erro ao conceder gold:', goldResult.error);
+        throw new Error(`Falha ao conceder gold: ${goldResult.error}`);
+      }
+      
+      const newGoldTotal = goldResult.data!;
+      console.log(`[GameService] Gold persistido - Total: ${newGoldTotal}`);
+
+      // CRÍTICO: Processar drops reais do monstro usando o sistema completo
+      console.log(`[GameService] === PROCESSANDO DROPS REAIS ===`);
+      
+      let drops: { name: string; quantity: number }[] = [];
+      let dropsObtidos: { drop_id: string; quantity: number }[] = [];
+      
+      if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
+        console.log(`[GameService] Monstro ${currentEnemy.name} tem ${currentEnemy.possible_drops.length} possible_drops`);
+        
+        // Usar o sistema real de drops do ConsumableService
+        dropsObtidos = ConsumableService.processMonsterDrops(
+          currentEnemy.level,
+          currentEnemy.possible_drops,
+          currentFloor.type === 'boss' ? 1.5 : 1.0 // Boss tem chance aumentada
+        );
+        
+        console.log(`[GameService] Drops obtidos: ${dropsObtidos.length} itens`);
+        
+        if (dropsObtidos.length > 0) {
+          // Buscar informações dos drops para exibição
+          const dropIds = dropsObtidos.map(d => d.drop_id);
+          const dropInfoResponse = await ConsumableService.getDropInfoByIds(dropIds);
+          
+          if (dropInfoResponse.success && dropInfoResponse.data) {
+            drops = dropsObtidos.map(dropObtido => {
+              const dropInfo = dropInfoResponse.data!.find(d => d.id === dropObtido.drop_id);
+              return {
+                name: dropInfo?.name || `Item Desconhecido (${dropObtido.drop_id})`,
+                quantity: dropObtido.quantity
+              };
+            });
+            
+            console.log(`[GameService] Drops identificados para exibição:`, drops.map(d => `${d.quantity}x ${d.name}`).join(', '));
+          } else {
+            console.error(`[GameService] Erro ao buscar informações dos drops:`, dropInfoResponse.error);
+            // Fallback: usar IDs como nomes
+            drops = dropsObtidos.map(d => ({
+              name: `Item ${d.drop_id.substring(0, 8)}...`,
+              quantity: d.quantity
+            }));
+          }
+          
+          // CRÍTICO: Persistir drops no inventário do personagem usando função segura
+          console.log(`[GameService] === PERSISTINDO DROPS NO BANCO ===`);
+          const addDropsResult = await ConsumableService.addDropsToInventory(player.id, dropsObtidos);
+          
+          if (!addDropsResult.success) {
+            console.error(`[GameService] Erro ao persistir drops:`, addDropsResult.error);
+            throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
+          }
+          
+          console.log(`[GameService] ${addDropsResult.data} drops persistidos com sucesso no inventário`);
+        }
+      } else {
+        console.log(`[GameService] Monstro ${currentEnemy.name} não possui possible_drops configurados`);
       }
 
-      // Criar objeto de recompensas ANTES de atualizar o player
+      // Criar objeto de recompensas baseado nos dados persistidos
       const battleRewards: BattleRewards = {
         xp,
         gold,
         drops,
-        leveledUp,
-        newLevel: leveledUp ? oldLevel + 1 : undefined
+        leveledUp: xpData.leveled_up,
+        newLevel: xpData.leveled_up ? xpData.new_level : undefined
       };
 
-      // Atualizar estado do jogador
+      // Atualizar estado do jogador com dados do banco
       const updatedPlayer: GamePlayer = {
         ...player,
-        xp: newXP,
-        level: leveledUp ? oldLevel + 1 : oldLevel,
-        gold: player.gold + gold
+        xp: xpData.new_xp,
+        level: xpData.new_level,
+        gold: newGoldTotal,
+        // Se houve level up, o HP e Mana foram restaurados pelo banco
+        ...(xpData.leveled_up && {
+          // Valores serão atualizados automaticamente quando o personagem for recarregado
+          // mas mantemos o estado local consistente
+        })
       };
 
-      console.log(`[GameService] Derrota processada - Level: ${updatedPlayer.level}, XP: ${updatedPlayer.xp}, Gold: ${updatedPlayer.gold}`);
+      console.log(`[GameService] === DERROTA PROCESSADA COM PERSISTÊNCIA ===`);
+      console.log(`[GameService] - Level: ${updatedPlayer.level} (Level Up: ${xpData.leveled_up})`);
+      console.log(`[GameService] - XP: ${updatedPlayer.xp}/${xpData.new_xp_next_level}`);
+      console.log(`[GameService] - Gold: ${updatedPlayer.gold}`);
+      console.log(`[GameService] - Drops: ${drops.length} itens`);
 
-      // Retornar estado atualizado com recompensas
+      // Retornar estado atualizado com recompensas persistidas
       return {
         ...gameState,
         player: updatedPlayer,
@@ -718,62 +801,18 @@ export class GameService {
     } catch (error) {
       console.error('[GameService] Erro ao processar derrota do inimigo:', error);
       
-      // Retornar estado com recompensas mínimas em caso de erro
-      const { player } = gameState;
-      const xp = 10;
-      const gold = 5;
-      
+      // Em caso de erro, não dar recompensas para evitar exploits
+      // Apenas limpar o inimigo e permitir continuar
       return {
         ...gameState,
-        player: {
-          ...player,
-          xp: player.xp + xp,
-          gold: player.gold + gold
-        },
-        battleRewards: {
-          xp,
-          gold,
-          drops: [],
-          leveledUp: false
-        },
         currentEnemy: null,
         isPlayerTurn: true,
-        gameMessage: `Inimigo derrotado! +${xp} XP, +${gold} Gold`
+        gameMessage: `Inimigo derrotado, mas houve um erro ao processar recompensas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       };
     }
   }
 
-  /**
-   * Obter nomes dos drops obtidos
-   * @private
-   * @param drops Lista de drops obtidos
-   * @returns Nomes dos drops formatados
-   */
-  private static async getDropNames(drops: { drop_id: string; quantity: number }[]): Promise<string[]> {
-    if (drops.length === 0) return [];
 
-    try {
-      const dropIds = drops.map(d => d.drop_id);
-      
-      const { data, error } = await supabase
-        .from('consumables')
-        .select('id, name')
-        .in('id', dropIds);
-
-      if (error) {
-        console.error('Erro ao buscar nomes dos drops:', error);
-        return drops.map(d => `Item ${d.drop_id}`);
-      }
-
-      return drops.map(drop => {
-        const item = data?.find(d => d.id === drop.drop_id);
-        return item?.name || `Item ${drop.drop_id}`;
-      });
-    } catch (error) {
-      console.error('Erro ao processar drops:', error);
-      return drops.map(d => `Item ${d.drop_id}`);
-    }
-  }
 
   /**
    * Processar ação do inimigo
@@ -808,14 +847,47 @@ export class GameService {
       };
     }
 
-    // Determinar ação do inimigo
+    // Determinar ação do inimigo com sistema especializado
     let actionType: 'attack' | 'spell' | 'special' = 'attack';
     
-    // IA básica do inimigo
-    if (enemy.mana >= 10 && Math.random() < 0.3) {
-      actionType = 'spell';
-    } else if (Math.random() < 0.1) {
+    // IA especializada baseada no comportamento e atributos do monstro
+    const hasSpecialAbilities = enemy.special_abilities && enemy.special_abilities.length > 0;
+    const isHighIntelligence = (enemy.intelligence || 10) > (enemy.strength || 10);
+    
+    // Probabilidades baseadas no comportamento
+    let specialChance = 0.15; // Base 15%
+    let spellChance = 0.20;   // Base 20%
+    
+    switch (enemy.behavior) {
+      case 'aggressive':
+        specialChance = 0.25; // Mais agressivo com especiais
+        spellChance = 0.10;   // Menos uso de magia
+        break;
+      case 'defensive':
+        specialChance = 0.30; // Muito uso de especiais defensivos
+        spellChance = 0.15;   // Magia moderada
+        break;
+      case 'balanced':
+        if (isHighIntelligence) {
+          spellChance = 0.35; // Magos usam muita magia
+          specialChance = 0.20;
+        } else {
+          spellChance = 0.20;
+          specialChance = 0.20;
+        }
+        break;
+    }
+    
+    // Aumentar chances de especiais se tem habilidades
+    if (hasSpecialAbilities) {
+      specialChance += 0.10;
+    }
+    
+    // Decidir ação
+    if (hasSpecialAbilities && Math.random() < specialChance) {
       actionType = 'special';
+    } else if (enemy.mana >= 10 && Math.random() < spellChance) {
+      actionType = 'spell';
     }
 
     let message = '';
@@ -833,12 +905,10 @@ export class GameService {
           
           // NOVO: XP de defesa extra por bloquear efetivamente
           try {
-            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
-            const equipmentSlots = equipmentSlotsResponse || null;
             const blockedDamage = damage - actualDamage;
-            
-            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, blockedDamage);
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(null, blockedDamage);
             skillXpGains.push(...defenseSkillXp);
+            console.log(`[GameService] XP de defesa por bloqueio:`, defenseSkillXp);
           } catch (error) {
             console.warn('[processEnemyAction] Erro ao calcular XP de defesa:', error);
           }
@@ -848,12 +918,10 @@ export class GameService {
           
           // NOVO: XP de defesa menor por receber ataque (experiência passiva)
           try {
-            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
-            const equipmentSlots = equipmentSlotsResponse || null;
-            
             // XP reduzido por ser um ataque não bloqueado
-            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(equipmentSlots, Math.floor(actualDamage * 0.3));
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(null, Math.floor(actualDamage * 0.3));
             skillXpGains.push(...defenseSkillXp);
+            console.log(`[GameService] XP de defesa passiva:`, defenseSkillXp);
           } catch (error) {
             console.warn('[processEnemyAction] Erro ao calcular XP de defesa passiva:', error);
           }
@@ -1074,36 +1142,86 @@ export class GameService {
         return { newState: spellResultState, skillXpGains, skillMessages: spellSkillMessages };
 
       case 'special':
-        // Habilidade especial baseada no comportamento
-        switch (enemy.behavior) {
-          case 'aggressive':
-            damage = Math.floor(enemy.attack * 1.5);
-            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
-            message = `${enemy.name} usou Ataque Furioso e causou ${actualDamage} de dano!`;
-            break;
-          case 'defensive':
-            // Inimigo se cura
-            const healAmount = Math.floor(enemy.maxHp * 0.15);
+        // Sistema avançado de habilidades especiais
+        const specialAbilities = enemy.special_abilities || [];
+        
+        if (specialAbilities.length > 0) {
+          // Escolher habilidade aleatória
+          const randomAbility = specialAbilities[Math.floor(Math.random() * specialAbilities.length)];
+          const abilityName = randomAbility.split(':')[0].trim();
+          
+          // Processar habilidade baseada no nome/tipo
+          if (randomAbility.includes('Regenera') || randomAbility.includes('Recupera') || randomAbility.includes('cura')) {
+            // Habilidades de cura
+            const healAmount = Math.floor(enemy.maxHp * (0.10 + Math.random() * 0.15)); // 10-25%
             const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
             return {
               newState: {
                 ...gameState,
                 player: {
                   ...player,
-                  potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+                  potionUsedThisTurn: false
                 },
                 currentEnemy: {
                   ...enemy,
                   hp: newEnemyHp
                 },
                 isPlayerTurn: true,
-                gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
+                gameMessage: `${enemy.name} usou ${abilityName} e recuperou ${healAmount} HP!`
               }
             };
-          default:
-            damage = Math.floor(enemy.attack * 1.3);
+          } else if (randomAbility.includes('dano') || randomAbility.includes('ATK') || randomAbility.includes('Ataque')) {
+            // Habilidades de dano aumentado
+            damage = Math.floor(enemy.attack * (1.3 + Math.random() * 0.7)); // 130-200%
             actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
-            message = `${enemy.name} usou uma habilidade especial e causou ${actualDamage} de dano!`;
+            message = `${enemy.name} usou ${abilityName} e causou ${actualDamage} de dano!`;
+          } else if (randomAbility.includes('crítico') || randomAbility.includes('Crítico')) {
+            // Habilidades de crítico
+            damage = Math.floor(enemy.attack * 2.0); // Dano crítico
+            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+            message = `${enemy.name} usou ${abilityName} com um golpe crítico devastador! ${actualDamage} de dano!`;
+          } else if (randomAbility.includes('área') || randomAbility.includes('todos')) {
+            // Habilidades em área (simulação para single-player)
+            damage = Math.floor(enemy.attack * 1.2);
+            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+            message = `${enemy.name} usou ${abilityName} em área! ${actualDamage} de dano!`;
+          } else {
+            // Habilidade especial genérica
+            damage = Math.floor(enemy.attack * (1.2 + Math.random() * 0.5)); // 120-170%
+            actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+            message = `${enemy.name} usou ${abilityName}! ${actualDamage} de dano!`;
+          }
+        } else {
+          // Fallback para comportamento antigo se não tem habilidades
+          switch (enemy.behavior) {
+            case 'aggressive':
+              damage = Math.floor(enemy.attack * 1.5);
+              actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+              message = `${enemy.name} usou Ataque Furioso e causou ${actualDamage} de dano!`;
+              break;
+            case 'defensive':
+              const healAmount = Math.floor(enemy.maxHp * 0.15);
+              const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+              return {
+                newState: {
+                  ...gameState,
+                  player: {
+                    ...player,
+                    potionUsedThisTurn: false
+                  },
+                  currentEnemy: {
+                    ...enemy,
+                    hp: newEnemyHp
+                  },
+                  isPlayerTurn: true,
+                  gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
+                }
+              };
+            default:
+              damage = Math.floor(enemy.attack * 1.3);
+              actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+              message = `${enemy.name} usou uma habilidade especial e causou ${actualDamage} de dano!`;
+          }
         }
         
         // XP de defesa por receber habilidade especial
@@ -1464,40 +1582,13 @@ export class GameService {
 
       const character = characterResponse.data;
 
-      // Carregar magias do personagem
-      const { data: spells } = await supabase
-        .from('character_spells')
-        .select(`
-          spell_id,
-          current_cooldown,
-          spell:spells(
-            id,
-            name,
-            description,
-            mana_cost,
-            cooldown,
-            effect_type,
-            effect_value,
-            target_type,
-            element,
-            unlocked_at_level
-          )
-        `)
-        .eq('character_id', characterId);
-
-      // Converter para PlayerSpell[]
-      const playerSpells: PlayerSpell[] = (spells || []).map((cs: CharacterSpell) => ({
-        id: cs.spell[0].id,
-        name: cs.spell[0].name,
-        description: cs.spell[0].description,
-        mana_cost: cs.spell[0].mana_cost,
-        cooldown: cs.spell[0].cooldown,
-        current_cooldown: cs.current_cooldown,
-        effect_type: cs.spell[0].effect_type as SpellEffectType,
-        effect_value: cs.spell[0].effect_value,
-        duration: 0,
-        unlocked_at_level: cs.spell[0].unlocked_at_level || 1
-      }));
+      // Carregar magias equipadas do personagem (usando slots)
+      const spellsResponse = await import('./spell.service').then(m => 
+        m.SpellService.getCharacterEquippedSpells(characterId)
+      );
+      const playerSpells = spellsResponse.success && spellsResponse.data 
+        ? spellsResponse.data 
+        : [];
 
       // Carregar consumíveis (se necessário)
       const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);

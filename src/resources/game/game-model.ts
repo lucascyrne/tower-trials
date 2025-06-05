@@ -54,6 +54,12 @@ export interface Enemy {
   possible_drops?: MonsterDropChance[];
   active_effects: ActiveEffects;
   
+  // Campos do sistema cíclico
+  tier?: number;
+  base_tier?: number;
+  cycle_position?: number;
+  is_boss?: boolean;
+  
   // Atributos primários
   strength?: number;
   dexterity?: number;

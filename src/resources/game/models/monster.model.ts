@@ -16,6 +16,12 @@ export interface Monster {
   image?: string;
   possible_drops?: MonsterDropChance[];
   
+  // Novos campos para sistema cíclico
+  tier?: number; // Representa o "elo" ou ciclo do monstro (1, 2, 3, etc.)
+  base_tier?: number; // Tier original do monstro (para referência)
+  cycle_position?: number; // Posição dentro do ciclo (1-20 por exemplo)
+  is_boss?: boolean; // Se é um monstro boss
+  
   // Atributos primários
   strength?: number;
   dexterity?: number;
@@ -50,7 +56,23 @@ export interface MonsterDropChance {
   drop_chance: number; // 0-1 (0-100%)
   min_quantity: number;
   max_quantity: number;
+  // Incluir informações do drop para referência
+  drop_info?: {
+    id: string;
+    name: string;
+    description: string;
+    rarity: string;
+    value: number;
+  };
 }
+
+// Constantes para o sistema cíclico
+export const MONSTER_CYCLE_CONFIG = {
+  FLOORS_PER_CYCLE: 20, // Quantos andares por ciclo
+  BOSS_FLOORS: [5, 10, 15, 20], // Andares que sempre têm boss
+  TIER_SCALING_FACTOR: 1.8, // Multiplicador de stats por tier
+  BASE_LEVEL_PER_TIER: 20, // Níveis base adicionados por tier
+} as const;
 
 // Constantes para comportamentos dos monstros
 export const MONSTER_BEHAVIOR = {

@@ -223,7 +223,7 @@ export class SpellService {
   }
 
   /**
-   * Calcular dano de magia escalado com atributos e habilidade
+   * Calcular dano de magia escalado com atributos e habilidade (EXTREMAMENTE BALANCEADO)
    */
   static calculateScaledSpellDamage(baseDamage: number, caster: GamePlayer | Enemy): number {
     // Se for um inimigo, usar dano base
@@ -235,18 +235,40 @@ export class SpellService {
     const wisdom = caster.wisdom || 10;
     const magicMastery = caster.magic_mastery || 1;
 
-    // Bônus total: Int (10%) + Sabedoria (5%) + Maestria Mágica (15%)
-    const totalBonus = (intelligence * 10) + (wisdom * 5) + (magicMastery * 15);
+    // FÓRMULA REBALANCEADA PARA ESPECIALIZAÇÃO EXTREMA
+    
+    // Intelligence: Escalamento logarítmico agressivo para magos
+    const intScaling = Math.pow(intelligence, 1.35) * 1.8;
+    
+    // Wisdom: Escalamento moderado
+    const wisScaling = Math.pow(wisdom, 1.2) * 1.2;
+    
+    // Magic Mastery: Escalamento controlado
+    const masteryScaling = Math.pow(magicMastery, 1.2) * 2.5;
+    
+    // Total com diminishing returns graduais
+    let totalBonus = intScaling + wisScaling + masteryScaling;
+    
+    // Diminishing returns para valores altos
+    if (totalBonus > 150) {
+      totalBonus = 150 + ((totalBonus - 150) * 0.6);
+    }
+    
+    // Cap final em 300% para especialistas extremos
+    totalBonus = Math.min(300, totalBonus);
     
     // Aplicar bônus ao dano base
     const scaledDamage = Math.round(baseDamage * (1 + totalBonus / 100));
     
-    console.log('[SpellService] Cálculo de dano mágico:', {
+    console.log('[SpellService] Cálculo de dano mágico ESPECIALIZADO:', {
       baseDamage,
       intelligence,
       wisdom,
       magicMastery,
-      totalBonus: `${totalBonus}%`,
+      intScaling: `${intScaling.toFixed(1)}%`,
+      wisScaling: `${wisScaling.toFixed(1)}%`,
+      masteryScaling: `${masteryScaling.toFixed(1)}%`,
+      totalBonus: `${totalBonus.toFixed(1)}%`,
       scaledDamage
     });
     
@@ -254,7 +276,7 @@ export class SpellService {
   }
 
   /**
-   * Calcular cura de magia escalada com atributos e habilidade
+   * Calcular cura de magia escalada com atributos e habilidade (ESPECIALIZADA)
    */
   static calculateScaledSpellHealing(baseHealing: number, caster: GamePlayer | Enemy): number {
     // Se for um inimigo, usar cura base
@@ -265,17 +287,34 @@ export class SpellService {
     const wisdom = caster.wisdom || 10;
     const magicMastery = caster.magic_mastery || 1;
 
-    // Bônus total: Sabedoria (12%) + Maestria Mágica (10%)
-    const totalBonus = (wisdom * 12) + (magicMastery * 10);
+    // FÓRMULA REBALANCEADA PARA CURADORES ESPECIALIZADOS
+    
+    // Wisdom: Escalamento agressivo para curadores
+    const wisScaling = Math.pow(wisdom, 1.3) * 2.2;
+    
+    // Magic Mastery: Escalamento moderado
+    const masteryScaling = Math.pow(magicMastery, 1.15) * 1.8;
+    
+    let totalBonus = wisScaling + masteryScaling;
+    
+    // Diminishing returns para cura (menor que dano)
+    if (totalBonus > 120) {
+      totalBonus = 120 + ((totalBonus - 120) * 0.5);
+    }
+    
+    // Cap em 220% para cura especializada
+    totalBonus = Math.min(220, totalBonus);
     
     // Aplicar bônus à cura base
     const scaledHealing = Math.round(baseHealing * (1 + totalBonus / 100));
     
-    console.log('[SpellService] Cálculo de cura mágica:', {
+    console.log('[SpellService] Cálculo de cura mágica ESPECIALIZADA:', {
       baseHealing,
       wisdom,
       magicMastery,
-      totalBonus: `${totalBonus}%`,
+      wisScaling: `${wisScaling.toFixed(1)}%`,
+      masteryScaling: `${masteryScaling.toFixed(1)}%`,
+      totalBonus: `${totalBonus.toFixed(1)}%`,
       scaledHealing
     });
     
@@ -481,5 +520,76 @@ export class SpellService {
       'hot': 'Cura Contínua'
     };
     return translations[effectType] || effectType;
+  }
+
+  // Obter apenas as magias equipadas do personagem (slots)
+  static async getCharacterEquippedSpells(characterId: string): Promise<ServiceResponse<PlayerSpell[]>> {
+    try {
+      console.log(`[SpellService] Buscando magias equipadas para personagem: ${characterId}`);
+      
+      const { data, error } = await supabase
+        .from('character_spell_slots')
+        .select(`
+          slot_position,
+          spell_id,
+          spell:spells(
+            id,
+            name,
+            description,
+            mana_cost,
+            cooldown,
+            effect_type,
+            effect_value,
+            duration,
+            unlocked_at_level
+          )
+        `)
+        .eq('character_id', characterId)
+        .not('spell_id', 'is', null)
+        .order('slot_position');
+
+      if (error) {
+        console.error('Erro ao buscar magias equipadas:', error);
+        return {
+          data: null,
+          error: error.message,
+          success: false
+        };
+      }
+
+      console.log(`[SpellService] ${data?.length || 0} magias equipadas encontradas`);
+
+      // Converter para PlayerSpell[]
+      const playerSpells: PlayerSpell[] = (data || []).map(item => {
+        const spell = Array.isArray(item.spell) ? item.spell[0] : item.spell;
+        return {
+          id: spell.id,
+          name: spell.name,
+          description: spell.description,
+          mana_cost: spell.mana_cost,
+          cooldown: spell.cooldown,
+          current_cooldown: 0, // Sempre começa em 0 no início da batalha
+          effect_type: spell.effect_type as SpellEffectType,
+          effect_value: spell.effect_value,
+          duration: spell.duration || 0,
+          unlocked_at_level: spell.unlocked_at_level
+        };
+      });
+
+      console.log(`[SpellService] Magias equipadas processadas:`, playerSpells.map(s => s.name));
+
+      return {
+        data: playerSpells,
+        error: null,
+        success: true
+      };
+    } catch (error) {
+      console.error('Erro ao buscar magias equipadas:', error);
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        success: false
+      };
+    }
   }
 } 

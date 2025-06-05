@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { Monster } from './models/monster.model';
+import { Monster, MonsterDropChance } from './models/monster.model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -14,9 +14,9 @@ export class MonsterService {
   private static pendingRequests: Map<number, Promise<ServiceResponse<Monster>>> = new Map();
 
   /**
-   * Buscar monstro apropriado para o andar atual
+   * Buscar monstro apropriado para o andar atual com seus possible_drops
    * @param floor Andar atual
-   * @returns Monstro com stats ajustados para o andar
+   * @returns Monstro com stats ajustados para o andar e seus drops possíveis
    */
   static async getMonsterForFloor(floor: number): Promise<ServiceResponse<Monster>> {
     try {
@@ -36,7 +36,7 @@ export class MonsterService {
       this.monsterCache.delete(floor);
       this.cacheExpiry.delete(floor);
 
-      // Buscar monstro do servidor
+      // Buscar monstro do servidor usando get_monster_for_floor para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
       const { data, error } = await supabase
@@ -85,7 +85,48 @@ export class MonsterService {
       console.log(`[MonsterService] ID: ${monsterData.id}`);
       console.log(`[MonsterService] Nome: ${monsterData.name}`);
       console.log(`[MonsterService] HP: ${monsterData.hp}, ATK: ${monsterData.atk}, DEF: ${monsterData.def}`);
-      console.log(`[MonsterService] Min Floor: ${monsterData.min_floor}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`);
+      console.log(`[MonsterService] Tier: ${monsterData.tier || 1}, Ciclo: ${monsterData.cycle_position || 'N/A'}, Boss: ${monsterData.is_boss || false}`);
+      console.log(`[MonsterService] Level: ${monsterData.level}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`);
+
+      // NOVO: Buscar os possible_drops do monstro
+      console.log(`[MonsterService] Buscando possible_drops para monstro ${monsterData.id}...`);
+      
+      const { data: possibleDropsData, error: dropsError } = await supabase
+        .from('monster_possible_drops')
+        .select(`
+          drop_id,
+          drop_chance,
+          min_quantity,
+          max_quantity,
+          monster_drops:drop_id (
+            id,
+            name,
+            description,
+            rarity,
+            value
+          )
+        `)
+        .eq('monster_id', monsterData.id);
+
+      if (dropsError) {
+        console.warn(`[MonsterService] Erro ao buscar drops do monstro ${monsterData.id}:`, dropsError);
+        // Continuar sem drops em caso de erro
+      }
+
+      // Converter drops para formato correto
+      const possibleDrops: MonsterDropChance[] = (possibleDropsData || []).map(dropData => ({
+        drop_id: dropData.drop_id,
+        drop_chance: dropData.drop_chance,
+        min_quantity: dropData.min_quantity,
+        max_quantity: dropData.max_quantity,
+        // Incluir dados do drop para referência (pegar primeiro elemento do array)
+        drop_info: Array.isArray(dropData.monster_drops) ? dropData.monster_drops[0] : dropData.monster_drops
+      }));
+
+      console.log(`[MonsterService] Encontrados ${possibleDrops.length} possible_drops para ${monsterData.name}`);
+      possibleDrops.forEach(drop => {
+        console.log(`[MonsterService] - ${drop.drop_info?.name || 'Drop desconhecido'} (chance: ${(drop.drop_chance * 100).toFixed(1)}%, qtd: ${drop.min_quantity}-${drop.max_quantity})`);
+      });
 
       // Converter para Monster com estrutura correta
       const monster: Monster = {
@@ -100,7 +141,14 @@ export class MonsterService {
         min_floor: monsterData.min_floor,
         reward_xp: monsterData.reward_xp,
         reward_gold: monsterData.reward_gold,
-        level: Math.max(1, Math.floor(floor / 5) + 1),
+        level: monsterData.level || Math.max(1, Math.floor(floor / 5) + 1),
+        // CRÍTICO: Incluir possible_drops
+        possible_drops: possibleDrops,
+        // Novos campos do sistema cíclico
+        tier: monsterData.tier || 1,
+        base_tier: monsterData.base_tier || 1,
+        cycle_position: monsterData.cycle_position || ((floor - 1) % 20) + 1,
+        is_boss: monsterData.is_boss || false,
         // Campos opcionais
         strength: monsterData.strength,
         dexterity: monsterData.dexterity,
@@ -123,6 +171,7 @@ export class MonsterService {
 
       console.log(`[MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===`);
       console.log(`[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`);
+      console.log(`[MonsterService] Possible drops: ${monster.possible_drops?.length || 0} tipos`);
       
       return { data: monster, error: null, success: true };
 

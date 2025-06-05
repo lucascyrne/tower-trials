@@ -261,13 +261,13 @@ export function GameProvider({ children }: GameProviderProps) {
       
       setSelectedCharacter(character);
       
-      // Obter magias disponíveis
-      console.log(`[GameProvider] Buscando magias disponíveis para nível ${character.level}`);
-      const spellsResponse = await SpellService.getAvailableSpells(character.level);
-      const availableSpells = spellsResponse.success && spellsResponse.data
-        ? spellsResponse.data.map(spell => ({ ...spell, current_cooldown: 0 }))
+      // Obter magias equipadas do personagem (slots)
+      console.log(`[GameProvider] Buscando magias equipadas para personagem: ${character.id}`);
+      const spellsResponse = await SpellService.getCharacterEquippedSpells(character.id);
+      const equippedSpells = spellsResponse.success && spellsResponse.data
+        ? spellsResponse.data
         : [];
-      console.log(`[GameProvider] ${availableSpells.length} magias carregadas`);
+      console.log(`[GameProvider] ${equippedSpells.length} magias equipadas carregadas:`, equippedSpells.map(s => s.name));
 
       // Obter consumíveis do personagem
       console.log(`[GameProvider] Buscando consumíveis do personagem`);
@@ -312,7 +312,7 @@ export function GameProvider({ children }: GameProviderProps) {
           defenseCooldown: 0,
           isDefending: false,
           floor: currentFloor,
-          spells: availableSpells,
+          spells: equippedSpells,
           consumables: characterConsumables,
           potionUsedThisTurn: false,
           active_effects: {
@@ -693,12 +693,61 @@ export function GameProvider({ children }: GameProviderProps) {
               try {
                 console.log('[game-provider] Aplicando XP de habilidades:', skillXpGains);
                 
+                let anySkillLevelUp = false;
+                
                 for (const skillGain of skillXpGains) {
-                  await CharacterService.addSkillXp(
+                  const result = await CharacterService.addSkillXp(
                     selectedCharacter.id,
                     skillGain.skill,
                     skillGain.xp
                   );
+                  
+                  if (result.success && result.data?.skill_leveled_up) {
+                    anySkillLevelUp = true;
+                    console.log(`[game-provider] Skill level up! ${skillGain.skill} agora está no nível ${result.data.new_skill_level}`);
+                  }
+                }
+                
+                // CRÍTICO: Se alguma habilidade subiu de nível, recarregar dados do personagem
+                if (anySkillLevelUp) {
+                  console.log('[game-provider] Recarregando dados do personagem após skill level up...');
+                  
+                  // Recarregar dados completos do personagem para atualizar UI
+                  const updatedCharacterResponse = await CharacterService.getCharacterForGame(selectedCharacter.id);
+                  
+                  if (updatedCharacterResponse.success && updatedCharacterResponse.data) {
+                    // Atualizar estado do jogo com dados atualizados
+                    setState(currentState => ({
+                      ...currentState,
+                      gameState: {
+                        ...currentState.gameState,
+                        player: {
+                          ...currentState.gameState.player,
+                          // Manter HP e mana atuais
+                          hp: newState.player.hp,
+                          mana: newState.player.mana,
+                          // Atualizar skills
+                          sword_mastery: updatedCharacterResponse.data!.sword_mastery,
+                          axe_mastery: updatedCharacterResponse.data!.axe_mastery,
+                          blunt_mastery: updatedCharacterResponse.data!.blunt_mastery,
+                          defense_mastery: updatedCharacterResponse.data!.defense_mastery,
+                          magic_mastery: updatedCharacterResponse.data!.magic_mastery,
+                          sword_mastery_xp: updatedCharacterResponse.data!.sword_mastery_xp,
+                          axe_mastery_xp: updatedCharacterResponse.data!.axe_mastery_xp,
+                          blunt_mastery_xp: updatedCharacterResponse.data!.blunt_mastery_xp,
+                          defense_mastery_xp: updatedCharacterResponse.data!.defense_mastery_xp,
+                          magic_mastery_xp: updatedCharacterResponse.data!.magic_mastery_xp,
+                          // Atualizar stats derivados se mudaram
+                          atk: updatedCharacterResponse.data!.atk,
+                          def: updatedCharacterResponse.data!.def,
+                          max_hp: updatedCharacterResponse.data!.max_hp,
+                          max_mana: updatedCharacterResponse.data!.max_mana,
+                          critical_chance: updatedCharacterResponse.data!.critical_chance,
+                          critical_damage: updatedCharacterResponse.data!.critical_damage
+                        }
+                      }
+                    }));
+                  }
                 }
                 
                 // Adicionar mensagens de habilidade ao log
@@ -827,12 +876,59 @@ export function GameProvider({ children }: GameProviderProps) {
                   try {
                     console.log('[game-provider] Aplicando XP de defesa do turno do inimigo:', enemySkillXpGains);
                     
+                    let anyDefenseSkillLevelUp = false;
+                    
                     for (const skillGain of enemySkillXpGains) {
-                      await CharacterService.addSkillXp(
+                      const result = await CharacterService.addSkillXp(
                         selectedCharacter.id,
                         skillGain.skill,
                         skillGain.xp
                       );
+                      
+                      if (result.success && result.data?.skill_leveled_up) {
+                        anyDefenseSkillLevelUp = true;
+                        console.log(`[game-provider] Defense skill level up! ${skillGain.skill} agora está no nível ${result.data.new_skill_level}`);
+                      }
+                    }
+                    
+                    // CRÍTICO: Se alguma habilidade de defesa subiu de nível, recarregar dados do personagem
+                    if (anyDefenseSkillLevelUp) {
+                      console.log('[game-provider] Recarregando dados do personagem após defense skill level up...');
+                      
+                      // Recarregar dados completos do personagem para atualizar UI
+                      const updatedCharacterResponse = await CharacterService.getCharacterForGame(selectedCharacter.id);
+                      
+                      if (updatedCharacterResponse.success && updatedCharacterResponse.data) {
+                        // Atualizar estado do jogo com dados atualizados, preservando HP/mana atual
+                        setState(currentState => ({
+                          ...currentState,
+                          gameState: {
+                            ...currentState.gameState,
+                            player: {
+                              ...currentState.gameState.player,
+                              // Manter HP e mana atuais do estado inimigo
+                              hp: enemyActionState.player.hp,
+                              mana: enemyActionState.player.mana,
+                              // Atualizar skills
+                              defense_mastery: updatedCharacterResponse.data!.defense_mastery,
+                              defense_mastery_xp: updatedCharacterResponse.data!.defense_mastery_xp,
+                              // Atualizar outros skills se necessário
+                              sword_mastery: updatedCharacterResponse.data!.sword_mastery,
+                              axe_mastery: updatedCharacterResponse.data!.axe_mastery,
+                              blunt_mastery: updatedCharacterResponse.data!.blunt_mastery,
+                              magic_mastery: updatedCharacterResponse.data!.magic_mastery,
+                              sword_mastery_xp: updatedCharacterResponse.data!.sword_mastery_xp,
+                              axe_mastery_xp: updatedCharacterResponse.data!.axe_mastery_xp,
+                              blunt_mastery_xp: updatedCharacterResponse.data!.blunt_mastery_xp,
+                              magic_mastery_xp: updatedCharacterResponse.data!.magic_mastery_xp,
+                              // Atualizar stats derivados se mudaram
+                              def: updatedCharacterResponse.data!.def,
+                              max_hp: updatedCharacterResponse.data!.max_hp,
+                              max_mana: updatedCharacterResponse.data!.max_mana
+                            }
+                          }
+                        }));
+                      }
                     }
                     
                     // Adicionar mensagens de habilidade ao log

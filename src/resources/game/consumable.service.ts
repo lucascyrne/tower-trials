@@ -545,4 +545,32 @@ export class ConsumableService {
       };
     }
   }
+
+  /**
+   * Obter informações dos drops baseado nos IDs
+   * @param dropIds IDs dos drops
+   * @returns Informações dos drops
+   */
+  static async getDropInfoByIds(dropIds: string[]): Promise<ServiceResponse<{id: string; name: string; description: string; rarity: string; value: number}[]>> {
+    try {
+      if (dropIds.length === 0) {
+        return { data: [], error: null, success: true };
+      }
+
+      const { data, error } = await supabase
+        .from('monster_drops')
+        .select('id, name, description, rarity, value')
+        .in('id', dropIds);
+
+      if (error) {
+        console.error('Erro ao buscar informações dos drops:', error);
+        return { data: null, error: error.message, success: false };
+      }
+
+      return { data: data || [], error: null, success: true };
+    } catch (error) {
+      console.error('Erro ao buscar drops:', error instanceof Error ? error.message : error);
+      return { data: null, error: 'Erro ao buscar informações dos drops', success: false };
+    }
+  }
 } 

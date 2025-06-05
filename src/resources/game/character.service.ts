@@ -1026,14 +1026,16 @@ export class CharacterService {
    */
   static async getCharacterStats(characterId: string): Promise<ServiceResponse<CharacterStats>> {
     try {
-      const { data, error } = await supabase
-        .rpc('get_character_detailed_stats', {
-          p_character_id: characterId
-        });
+      // CRÍTICO: Buscar dados diretamente da tabela characters (igual ao getCharacterForGame)
+      const { data: charData, error: charError } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', characterId)
+        .single();
 
-      if (error) throw error;
+      if (charError) throw charError;
 
-      if (!data || data.length === 0) {
+      if (!charData) {
         return {
           success: false,
           error: 'Personagem não encontrado',
@@ -1041,61 +1043,120 @@ export class CharacterService {
         };
       }
 
-      const charData = data[0];
+      // Calcular stats derivados usando a nova função
+      const derivedStats = await this.calculateDerivedStats(charData);
+
+      // CRÍTICO: Calcular valores base usando o NOVO SISTEMA ESPECIALIZADO (sem equipamentos)
+      const vitScaling = Math.pow(charData.vitality, 1.4);
+      const intScaling = Math.pow(charData.intelligence, 1.35);
+      const strScaling = Math.pow(charData.strength, 1.3);
+      const wisScaling = Math.pow(charData.wisdom, 1.2);
+      const dexScaling = Math.pow(charData.dexterity, 1.25);
+      
+      const magicMasteryBonus = Math.pow(charData.magic_mastery, 1.2) * 2.0;
+      const weaponBonus = Math.pow(Math.max(charData.sword_mastery || 1, charData.axe_mastery || 1, charData.blunt_mastery || 1), 1.1) * 0.5;
+      const defMasteryBonus = Math.pow(charData.defense_mastery, 1.3) * 1.2;
+      
+      // Bases muito menores para forçar especialização
+      const baseHp = 60 + (charData.level * 3) + (vitScaling * 3.5);
+      const baseMana = 25 + (charData.level * 2) + (intScaling * 2.0) + magicMasteryBonus;
+      const baseAtk = 3 + charData.level + (strScaling * 1.8) + weaponBonus;
+      const baseDef = 2 + charData.level + (vitScaling * 0.8) + (wisScaling * 0.6) + defMasteryBonus;
+      const baseSpeed = 5 + charData.level + (dexScaling * 1.2);
+
+      // Calcular bônus de equipamentos (diferença entre valor final e valor base)
+      const equipmentHpBonus = Math.max(0, derivedStats.max_hp - baseHp);
+      const equipmentManaBonus = Math.max(0, derivedStats.max_mana - baseMana);
+      const equipmentAtkBonus = Math.max(0, derivedStats.atk - baseAtk);
+      const equipmentDefBonus = Math.max(0, derivedStats.def - baseDef);
+      const equipmentSpeedBonus = Math.max(0, derivedStats.speed - baseSpeed);
+
+      console.log(`[CharacterService] Cálculo de stats base vs derivados:`, {
+        hp: { base: baseHp, derived: derivedStats.max_hp, bonus: equipmentHpBonus },
+        mana: { base: baseMana, derived: derivedStats.max_mana, bonus: equipmentManaBonus },
+        atk: { base: baseAtk, derived: derivedStats.atk, bonus: equipmentAtkBonus },
+        def: { base: baseDef, derived: derivedStats.def, bonus: equipmentDefBonus },
+        speed: { base: baseSpeed, derived: derivedStats.speed, bonus: equipmentSpeedBonus }
+      });
       
       const characterStats: CharacterStats = {
         level: charData.level,
         xp: charData.xp,
         xp_next_level: charData.xp_next_level,
         gold: charData.gold,
-        hp: charData.final_hp,
-        max_hp: charData.final_max_hp,
-        mana: charData.final_mana,
-        max_mana: charData.final_max_mana,
-        atk: charData.final_atk,
-        def: charData.final_def,
-        speed: charData.final_speed,
+        hp: charData.hp,
+        max_hp: derivedStats.max_hp,
+        mana: charData.mana,
+        max_mana: derivedStats.max_mana,
+        atk: derivedStats.atk,
+        def: derivedStats.def,
+        speed: derivedStats.speed,
         
         // Atributos primários
-        strength: charData.strength,
-        dexterity: charData.dexterity,
-        intelligence: charData.intelligence,
-        wisdom: charData.wisdom,
-        vitality: charData.vitality,
-        luck: charData.luck,
-        attribute_points: charData.attribute_points,
+        strength: charData.strength || 10,
+        dexterity: charData.dexterity || 10,
+        intelligence: charData.intelligence || 10,
+        wisdom: charData.wisdom || 10,
+        vitality: charData.vitality || 10,
+        luck: charData.luck || 10,
+        attribute_points: charData.attribute_points || 0,
         
         // Stats derivados
-        critical_chance: Math.min(75, charData.luck * 0.5),
-        critical_damage: 1.5 + (charData.luck / 100),
+        critical_chance: derivedStats.critical_chance,
+        critical_damage: derivedStats.critical_damage,
+        magic_damage_bonus: derivedStats.magic_damage_bonus,
         
-        // Habilidades (buscar separadamente se necessário)
-        sword_mastery: 1,
-        axe_mastery: 1,
-        blunt_mastery: 1,
-        defense_mastery: 1,
-        magic_mastery: 1,
+        // CRÍTICO: Habilidades - usar dados reais do banco
+        sword_mastery: charData.sword_mastery || 1,
+        axe_mastery: charData.axe_mastery || 1,
+        blunt_mastery: charData.blunt_mastery || 1,
+        defense_mastery: charData.defense_mastery || 1,
+        magic_mastery: charData.magic_mastery || 1,
         
-        sword_mastery_xp: 0,
-        axe_mastery_xp: 0,
-        blunt_mastery_xp: 0,
-        defense_mastery_xp: 0,
-        magic_mastery_xp: 0,
+        sword_mastery_xp: charData.sword_mastery_xp || 0,
+        axe_mastery_xp: charData.axe_mastery_xp || 0,
+        blunt_mastery_xp: charData.blunt_mastery_xp || 0,
+        defense_mastery_xp: charData.defense_mastery_xp || 0,
+        magic_mastery_xp: charData.magic_mastery_xp || 0,
         
         // Dados extras para exibição
-        base_hp: charData.base_hp,
-        base_max_hp: charData.base_max_hp,
-        base_mana: charData.base_mana,
-        base_max_mana: charData.base_max_mana,
-        base_atk: charData.base_atk,
-        base_def: charData.base_def,
-        base_speed: charData.base_speed,
-        equipment_hp_bonus: charData.equipment_hp_bonus,
-        equipment_mana_bonus: charData.equipment_mana_bonus,
-        equipment_atk_bonus: charData.equipment_atk_bonus,
-        equipment_def_bonus: charData.equipment_def_bonus,
-        equipment_speed_bonus: charData.equipment_speed_bonus
+        base_hp: baseHp,
+        base_max_hp: baseHp,
+        base_mana: baseMana,
+        base_max_mana: baseMana,
+        base_atk: baseAtk,
+        base_def: baseDef,
+        base_speed: baseSpeed,
+        equipment_hp_bonus: equipmentHpBonus,
+        equipment_mana_bonus: equipmentManaBonus,
+        equipment_atk_bonus: equipmentAtkBonus,
+        equipment_def_bonus: equipmentDefBonus,
+        equipment_speed_bonus: equipmentSpeedBonus
       };
+
+      console.log(`[CharacterService] Stats calculados:`, {
+        values: {
+          max_hp: characterStats.max_hp,
+          max_mana: characterStats.max_mana,
+          atk: characterStats.atk,
+          def: characterStats.def,
+          speed: characterStats.speed
+        },
+        base: {
+          hp: characterStats.base_max_hp,
+          mana: characterStats.base_max_mana,
+          atk: characterStats.base_atk,
+          def: characterStats.base_def,
+          speed: characterStats.base_speed
+        },
+        equipment: {
+          hp: characterStats.equipment_hp_bonus,
+          mana: characterStats.equipment_mana_bonus,
+          atk: characterStats.equipment_atk_bonus,
+          def: characterStats.equipment_def_bonus,
+          speed: characterStats.equipment_speed_bonus
+        }
+      });
 
       return {
         success: true,
@@ -1137,6 +1198,14 @@ export class CharacterService {
       // Calcular stats derivados usando a nova função
       const derivedStats = await this.calculateDerivedStats(charData);
       
+      // Carregar magias equipadas do personagem
+      const spellsResponse = await import('../game/spell.service').then(m => 
+        m.SpellService.getCharacterEquippedSpells(characterId)
+      );
+      const equippedSpells = spellsResponse.success && spellsResponse.data 
+        ? spellsResponse.data 
+        : [];
+      
       const gamePlayer: GamePlayer = {
         id: charData.id,
         user_id: charData.user_id,
@@ -1159,7 +1228,7 @@ export class CharacterService {
         defenseCooldown: 0,
         isDefending: false,
         floor: charData.floor,
-        spells: [],
+        spells: equippedSpells,
         consumables: [],
         active_effects: {
           buffs: [],
@@ -1520,7 +1589,7 @@ export class CharacterService {
   }
 
   /**
-   * Cálculo de fallback quando a função do banco não funciona
+   * Cálculo de fallback quando a função do banco não funciona (NOVO SISTEMA ESPECIALIZADO)
    */
   private static calculateDerivedStatsFallback(character: Character): {
     hp: number;
@@ -1542,29 +1611,51 @@ export class CharacterService {
     const vit = character.vitality;
     const luck = character.luck;
     
-    // Bônus de habilidades (simplificado - não considera arma equipada)
-    const weaponMastery = Math.max(character.sword_mastery, character.axe_mastery, character.blunt_mastery);
-    const defMasteryBonus = character.defense_mastery * 2;
-    const magicMasteryBonus = character.magic_mastery * 3;
-
-    // Cálculos base
-    const baseHp = 80 + (level * 5);
-    const baseMana = 40 + (level * 3);
-    const baseAtk = 15 + (level * 2);
-    const baseDef = 8 + level;
-    const baseSpeed = 8 + level;
-
-    // Stats derivados
-    const hp = baseHp + (vit * 8);
-    const mana = baseMana + (int * 5) + magicMasteryBonus;
-    const atk = baseAtk + (str * 2) + weaponMastery;
-    const def = baseDef + vit + wis + defMasteryBonus;
-    const speed = baseSpeed + Math.floor(dex * 1.5);
+    // Escalamento logarítmico dos atributos
+    const strScaling = Math.pow(str, 1.3);
+    const dexScaling = Math.pow(dex, 1.25);
+    const intScaling = Math.pow(int, 1.35);
+    const wisScaling = Math.pow(wis, 1.2);
+    const vitScaling = Math.pow(vit, 1.4);
+    const luckScaling = luck;
     
-    // Crítico
-    const criticalChance = Math.min(95, (luck * 0.5) + (dex * 0.3) + (weaponMastery * 0.2));
-    const criticalDamage = 150 + (luck * 1) + (str * 0.5) + (weaponMastery * 3);
-    const magicDamageBonus = (int * 10) + (wis * 5) + (character.magic_mastery * 15);
+    // Habilidades com escalamento logarítmico (sem arma equipada)
+    const weaponBonus = Math.pow(Math.max(character.sword_mastery, character.axe_mastery, character.blunt_mastery), 1.1) * 0.5;
+    const defMasteryBonus = Math.pow(character.defense_mastery, 1.3) * 1.2;
+    const magicMasteryBonus = Math.pow(character.magic_mastery, 1.2) * 2.0;
+
+    // Bases MUITO menores para forçar especialização
+    const baseHp = 60 + (level * 3);
+    const baseMana = 25 + (level * 2);
+    const baseAtk = 3 + level;         // Base crítica muito menor
+    const baseDef = 2 + level;
+    const baseSpeed = 5 + level;
+
+    // Stats derivados com escalamento especializado
+    const hp = baseHp + (vitScaling * 3.5);
+    const mana = baseMana + (intScaling * 2.0) + magicMasteryBonus;
+    const atk = baseAtk + (strScaling * 1.8) + weaponBonus;  // Agora especialistas se destacam
+    const def = baseDef + (vitScaling * 0.8) + (wisScaling * 0.6) + defMasteryBonus;
+    const speed = baseSpeed + (dexScaling * 1.2);
+    
+    // Crítico rebalanceado
+    const criticalChance = Math.min(90, (luckScaling * 0.4) + (dexScaling * 0.3) + (weaponBonus * 0.1));
+    const criticalDamage = 140 + (luckScaling * 0.8) + (strScaling * 0.6) + (weaponBonus * 0.4);
+    
+    // Sistema de dano mágico especializado
+    const intMagicScaling = intScaling * 1.8;
+    const wisMagicScaling = wisScaling * 1.2;
+    const masteryMagicScaling = magicMasteryBonus * 2.5;
+    
+    let magicDamageBonus = intMagicScaling + wisMagicScaling + masteryMagicScaling;
+    
+    // Diminishing returns graduais
+    if (magicDamageBonus > 150) {
+      magicDamageBonus = 150 + ((magicDamageBonus - 150) * 0.6);
+    }
+    
+    // Cap em 300% para especialistas extremos
+    magicDamageBonus = Math.min(300, magicDamageBonus);
 
     return {
       hp,
