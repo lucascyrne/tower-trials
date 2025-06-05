@@ -413,7 +413,6 @@ export function BattleArena({
                               <div className="font-medium">{player.wisdom}</div>
                             </div>
                           )}
-                          {/* Fim dos atributos */}
                           {player.vitality && (
                             <div className="bg-pink-500/10 rounded p-1 text-center">
                               <Heart className="h-3 w-3 mx-auto mb-1 text-pink-400" />
@@ -421,7 +420,6 @@ export function BattleArena({
                               <div className="font-medium">{player.vitality}</div>
                             </div>
                           )}
-                          {/* Fim dos atributos */}
                           {player.luck && (
                             <div className="bg-yellow-500/10 rounded p-1 text-center">
                               <Star className="h-3 w-3 mx-auto mb-1 text-yellow-400" />
@@ -429,7 +427,6 @@ export function BattleArena({
                               <div className="font-medium">{player.luck}</div>
                             </div>
                           )}
-                          {/* Fim dos atributos */}
                         </div>
                       </div>
                     )}
@@ -446,7 +443,7 @@ export function BattleArena({
                                 <span>Crítico</span>
                               </div>
                               <div className="font-medium text-yellow-400">
-                                {(player.critical_chance * 100).toFixed(1)}%
+                                {player.critical_chance.toFixed(1)}%
                               </div>
                             </div>
                           )}
@@ -457,7 +454,7 @@ export function BattleArena({
                                 <span>Dano Crit</span>
                               </div>
                               <div className="font-medium text-orange-400">
-                                {(player.critical_damage * 100).toFixed(0)}%
+                                {(player.critical_damage || 0).toFixed(0)}%
                               </div>
                             </div>
                           )}
@@ -466,7 +463,7 @@ export function BattleArena({
                     )}
                     
                     {/* Pontos de Atributo Disponíveis */}
-                    {player.attribute_points && player.attribute_points > 0 && (
+                    {Boolean(player.attribute_points && player.attribute_points > 0) && (
                       <button 
                         onClick={() => {
                           // Disparar evento customizado para abrir o modal
@@ -484,14 +481,14 @@ export function BattleArena({
                       </button>
                     )}
                     
-                    {player.isDefending && (
+                    {Boolean(player.isDefending) && (
                       <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 rounded p-2">
                         <Shield className="h-4 w-4" />
                         <span className="text-sm font-medium">Postura Defensiva Ativa</span>
                       </div>
                     )}
                     
-                    {player.defenseCooldown > 0 && (
+                    {Boolean(player.defenseCooldown > 0) && (
                       <div className="flex items-center gap-2 text-orange-400 bg-orange-500/10 rounded p-2">
                         <Activity className="h-4 w-4" />
                         <span className="text-sm">Defesa em Cooldown: {player.defenseCooldown} turnos</span>
@@ -583,7 +580,7 @@ export function BattleArena({
                   />
                 </div>
 
-                {currentEnemy.mana > 0 && (
+                {Boolean(currentEnemy.mana > 0) && (
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <div className="flex items-center gap-1">
@@ -645,25 +642,25 @@ export function BattleArena({
                     </div>
                     
                     {/* Atributos Primários do Inimigo */}
-                    {(currentEnemy.strength || currentEnemy.dexterity || currentEnemy.intelligence) && (
+                    {Boolean(currentEnemy.strength || currentEnemy.dexterity || currentEnemy.intelligence) && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Atributos Primários:</div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
-                          {currentEnemy.strength && (
+                          {Boolean(currentEnemy.strength) && (
                             <div className="bg-red-500/10 rounded p-1 text-center">
                               <TrendingUp className="h-3 w-3 mx-auto mb-1 text-red-400" />
                               <div className="text-muted-foreground">FOR</div>
                               <div className="font-medium">{currentEnemy.strength}</div>
                             </div>
                           )}
-                          {currentEnemy.dexterity && (
+                          {Boolean(currentEnemy.dexterity) && (
                             <div className="bg-green-500/10 rounded p-1 text-center">
                               <Zap className="h-3 w-3 mx-auto mb-1 text-green-400" />
                               <div className="text-muted-foreground">DES</div>
                               <div className="font-medium">{currentEnemy.dexterity}</div>
                             </div>
                           )}
-                          {currentEnemy.intelligence && (
+                          {Boolean(currentEnemy.intelligence) && (
                             <div className="bg-purple-500/10 rounded p-1 text-center">
                               <Sparkles className="h-3 w-3 mx-auto mb-1 text-purple-400" />
                               <div className="text-muted-foreground">INT</div>
@@ -675,29 +672,29 @@ export function BattleArena({
                     )}
                     
                     {/* Propriedades de Combate Avançadas */}
-                    {(currentEnemy.critical_chance || currentEnemy.critical_damage) && (
+                    {Boolean(currentEnemy.critical_chance || currentEnemy.critical_damage) && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Combate Avançado:</div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          {currentEnemy.critical_chance && (
+                          {Boolean(currentEnemy.critical_chance) && (
                             <div className="bg-background/20 rounded p-2">
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <Crosshair className="h-3 w-3" />
                                 <span>Crítico</span>
                               </div>
                               <div className="font-medium text-yellow-400">
-                                {(currentEnemy.critical_chance * 100).toFixed(1)}%
+                                {(currentEnemy.critical_chance || 0).toFixed(1)}%
                               </div>
                             </div>
                           )}
-                          {currentEnemy.critical_damage && (
+                          {Boolean(currentEnemy.critical_damage) && (
                             <div className="bg-background/20 rounded p-2">
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <Target className="h-3 w-3" />
                                 <span>Dano Crit</span>
                               </div>
                               <div className="font-medium text-orange-400">
-                                {(currentEnemy.critical_damage * 100).toFixed(0)}%
+                                {(currentEnemy.critical_damage || 0).toFixed(0)}%
                               </div>
                             </div>
                           )}
@@ -706,66 +703,63 @@ export function BattleArena({
                     )}
                     
                     {/* Resistências */}
-                    {(currentEnemy.physical_resistance || currentEnemy.magical_resistance || currentEnemy.debuff_resistance) && (
+                    {Boolean(currentEnemy.physical_resistance || currentEnemy.magical_resistance || currentEnemy.debuff_resistance) && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Resistências:</div>
                         <div className="space-y-1">
-                          {currentEnemy.physical_resistance && currentEnemy.physical_resistance > 0 && (
+                          {Boolean(currentEnemy.physical_resistance && currentEnemy.physical_resistance > 0) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <Shield className="h-3 w-3 text-red-400" />
                                 <span>Física</span>
                               </div>
-                              <span className="text-red-400">{(currentEnemy.physical_resistance * 100).toFixed(0)}%</span>
+                              <span className="text-red-400">{((currentEnemy.physical_resistance || 0) * 100).toFixed(0)}%</span>
                             </div>
                           )}
-                          {/* Fim das resistências */}
-                          {currentEnemy.magical_resistance && currentEnemy.magical_resistance > 0 && (
+                          {Boolean(currentEnemy.magical_resistance && currentEnemy.magical_resistance > 0) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <Sparkles className="h-3 w-3 text-blue-400" />
                                 <span>Mágica</span>
                               </div>
-                              <span className="text-blue-400">{(currentEnemy.magical_resistance * 100).toFixed(0)}%</span>
+                              <span className="text-blue-400">{((currentEnemy.magical_resistance || 0) * 100).toFixed(0)}%</span>
                             </div>
                           )}
-                          {/* Fim das resistências */}
-                          {currentEnemy.debuff_resistance && currentEnemy.debuff_resistance > 0 && (
+                          {Boolean(currentEnemy.debuff_resistance && currentEnemy.debuff_resistance > 0) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <ShieldCheck className="h-3 w-3 text-green-400" />
                                 <span>Debuffs</span>
                               </div>
-                              <span className="text-green-400">{(currentEnemy.debuff_resistance * 100).toFixed(0)}%</span>
+                              <span className="text-green-400">{((currentEnemy.debuff_resistance || 0) * 100).toFixed(0)}%</span>
                             </div>
                           )}
-                          {/* Fim das resistências */}
                         </div>
                       </div>
                     )}
                     
                     {/* Vulnerabilidades */}
-                    {(currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1) ||
-                     (currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1) && (
+                    {Boolean((currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1) ||
+                     (currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1)) && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Vulnerabilidades:</div>
                         <div className="space-y-1">
-                          {currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1 && (
+                          {Boolean(currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <TrendingDown className="h-3 w-3 text-red-400" />
                                 <span>Física</span>
                               </div>
-                              <span className="text-red-400">+{((currentEnemy.physical_vulnerability - 1) * 100).toFixed(0)}%</span>
+                              <span className="text-red-400">+{(((currentEnemy.physical_vulnerability || 1) - 1) * 100).toFixed(0)}%</span>
                             </div>
                           )}
-                          {currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1 && (
+                          {Boolean(currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <TrendingDown className="h-3 w-3 text-blue-400" />
                                 <span>Mágica</span>
                               </div>
-                              <span className="text-blue-400">+{((currentEnemy.magical_vulnerability - 1) * 100).toFixed(0)}%</span>
+                              <span className="text-blue-400">+{(((currentEnemy.magical_vulnerability || 1) - 1) * 100).toFixed(0)}%</span>
                             </div>
                           )}
                         </div>
@@ -773,21 +767,21 @@ export function BattleArena({
                     )}
                     
                     {/* Características Especiais */}
-                    {(currentEnemy.primary_trait || currentEnemy.secondary_trait) && (
+                    {Boolean(currentEnemy.primary_trait || currentEnemy.secondary_trait) && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium text-muted-foreground">Características:</div>
                         <div className="space-y-1">
-                          {currentEnemy.primary_trait && (
-                            <div className="flex items-center gap-2 text-xs">
-                              {getTraitIcon(currentEnemy.primary_trait)}
-                              <span className="text-purple-400">{translateTrait(currentEnemy.primary_trait)}</span>
-                            </div>
+                          {Boolean(currentEnemy.primary_trait) && (
+                                                          <div className="flex items-center gap-2 text-xs">
+                                {getTraitIcon(currentEnemy.primary_trait!)}
+                                <span className="text-purple-400">{translateTrait(currentEnemy.primary_trait!)}</span>
+                              </div>
                           )}
-                          {currentEnemy.secondary_trait && (
-                            <div className="flex items-center gap-2 text-xs">
-                              {getTraitIcon(currentEnemy.secondary_trait)}
-                              <span className="text-blue-400">{translateTrait(currentEnemy.secondary_trait)}</span>
-                            </div>
+                          {Boolean(currentEnemy.secondary_trait) && (
+                                                          <div className="flex items-center gap-2 text-xs">
+                                {getTraitIcon(currentEnemy.secondary_trait!)}
+                                <span className="text-blue-400">{translateTrait(currentEnemy.secondary_trait!)}</span>
+                              </div>
                           )}
                         </div>
                       </div>

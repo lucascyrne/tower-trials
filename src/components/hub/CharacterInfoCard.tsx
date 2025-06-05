@@ -316,16 +316,31 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
               })}
             </div>
 
-            {/* Chance crítica se disponível */}
-            {player.critical_chance && (
-              <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-orange-400" />
-                    <span className="text-sm font-medium text-slate-300">Crítico</span>
+            {/* Stats derivados se disponíveis */}
+            {Boolean(player.critical_chance || player.critical_damage) && (
+              <div className="space-y-2">
+                {Boolean(player.critical_chance) && (
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-orange-400" />
+                        <span className="text-sm font-medium text-slate-300">Chance Crítica</span>
+                      </div>
+                      <p className="text-sm font-bold text-orange-400">{(player.critical_chance || 0).toFixed(1)}%</p>
+                    </div>
                   </div>
-                  <p className="text-sm font-bold text-orange-400">{player.critical_chance.toFixed(1)}%</p>
-                </div>
+                )}
+                {player.critical_damage && (
+                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-red-400" />
+                        <span className="text-sm font-medium text-slate-300">Dano Crítico</span>
+                      </div>
+                      <p className="text-sm font-bold text-red-400">{(player.critical_damage || 0).toFixed(0)}%</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -358,7 +373,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                       <Badge variant="outline" className="border-current bg-transparent text-xs">
                         Nv. {skill.level}
                       </Badge>
-                      {skill.xp > 0 && (
+                      {Boolean(skill.xp > 0) && (
                         <div className="w-full">
                           <div className="w-full h-1 bg-slate-600 rounded-full overflow-hidden">
                             <div 
