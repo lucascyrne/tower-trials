@@ -431,15 +431,25 @@ export class GameService {
           skipTurn = true;
         }
         
-        // Ganhar XP de maestria mágica baseado no custo de mana
-        const magicXpGain = Math.floor(spell.mana_cost * 0.2); // 20% do custo de mana como XP
-        if (magicXpGain > 0) {
-          skillXpGains.push({
-            skill: SkillType.MAGIC_MASTERY,
-            xp: magicXpGain,
-            reason: 'combat_spell'
-          });
-          skillMessages.push(`+${magicXpGain} XP de Maestria Mágica`);
+        // Ganhar XP de maestria mágica usando o novo sistema
+        // Extrair valor escalado da mensagem ou calcular baseado no spell
+        let actualSpellValue = spell.effect_value;
+        if (spell.effect_type === 'damage' || spell.effect_type === 'heal') {
+          const scaledValue = spell.effect_type === 'damage' 
+            ? SpellService.calculateScaledSpellDamage(spell.effect_value, player)
+            : SpellService.calculateScaledSpellHealing(spell.effect_value, player);
+          actualSpellValue = scaledValue;
+        }
+        
+        const magicXpGains = SkillXpService.calculateMagicSkillXp(
+          spell.mana_cost, 
+          spell.effect_value, 
+          actualSpellValue
+        );
+        
+        skillXpGains.push(...magicXpGains);
+        if (magicXpGains.length > 0) {
+          skillMessages.push(`+${magicXpGains[0].xp} XP de Maestria Mágica`);
         }
         break;
 

@@ -112,19 +112,28 @@ export class SkillXpService {
    */
   static calculateMagicSkillXp(
     spellManaCost: number,
-    spellDamage: number = 0
+    spellDamage: number = 0,
+    actualSpellValue: number = 0 // Valor real da magia (dano ou cura escalado)
   ): SkillXpGain[] {
     const skillGains: SkillXpGain[] = [];
     
-    // XP baseado no custo de mana + dano (1 XP por 2 de mana + 1 XP por 8 de dano)
+    // XP baseado no custo de mana + valor real da magia
     const manaXp = Math.floor(spellManaCost / 2);
-    const damageXp = Math.floor(spellDamage / 8);
-    const totalXp = Math.max(1, manaXp + damageXp);
+    let valueXp = 0;
+    
+    // Se temos o valor real escalado, usar ele para melhor XP
+    if (actualSpellValue > 0) {
+      valueXp = Math.floor(actualSpellValue / 8); // 1 XP para cada 8 pontos de efeito real
+    } else if (spellDamage > 0) {
+      valueXp = Math.floor(spellDamage / 8); // Fallback para dano base
+    }
+    
+    const totalXp = Math.max(2, manaXp + valueXp); // Mínimo 2 XP por uso de magia
     
     skillGains.push({
       skill: SkillType.MAGIC_MASTERY,
       xp: totalXp,
-      reason: `Uso de magia (${spellManaCost} mana)`
+      reason: `Uso de magia (${spellManaCost} mana, ${actualSpellValue || spellDamage} efeito)`
     });
     
     return skillGains;

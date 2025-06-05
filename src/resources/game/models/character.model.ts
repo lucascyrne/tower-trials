@@ -319,23 +319,23 @@ export function calculateSkillXpRequired(currentLevel: number): number {
 
 export function getAttributeDescription(attribute: AttributeType): string {
   const descriptions = {
-    [AttributeType.STRENGTH]: 'Aumenta ataque físico e capacidade de carga. Cada ponto = +2 Ataque.',
-    [AttributeType.DEXTERITY]: 'Aumenta velocidade e precisão. Cada ponto = +1.5 Velocidade.',
-    [AttributeType.INTELLIGENCE]: 'Aumenta mana máxima e dano mágico. Cada ponto = +5 Mana.',
-    [AttributeType.WISDOM]: 'Aumenta regeneração de mana e resistências. Cada ponto = +1 Defesa.',
+    [AttributeType.STRENGTH]: 'Aumenta ataque físico e dano crítico. Cada ponto = +2 Ataque + 0.5% Dano Crítico.',
+    [AttributeType.DEXTERITY]: 'Aumenta velocidade e chance crítica. Cada ponto = +1.5 Velocidade + 0.3% Crítico.',
+    [AttributeType.INTELLIGENCE]: 'Aumenta mana máxima e dano mágico. Cada ponto = +5 Mana + 10% Dano Mágico.',
+    [AttributeType.WISDOM]: 'Aumenta regeneração, resistências e cura. Cada ponto = +1 Defesa + 5% Dano Mágico + 12% Cura.',
     [AttributeType.VITALITY]: 'Aumenta HP máximo e resistência. Cada ponto = +8 HP + 1 Defesa.',
-    [AttributeType.LUCK]: 'Aumenta drop rate e chance crítica. Cada ponto = +0.5% Crítico.'
+    [AttributeType.LUCK]: 'Aumenta drops e chance crítica. Cada ponto = +0.5% Crítico + 1% Dano Crítico.'
   };
   return descriptions[attribute];
 }
 
 export function getSkillDescription(skill: SkillType): string {
   const descriptions = {
-    [SkillType.SWORD_MASTERY]: 'Maestria com espadas. Melhora precisão e dano com espadas.',
-    [SkillType.AXE_MASTERY]: 'Maestria com machados. Melhora dano e críticos com machados.',
-    [SkillType.BLUNT_MASTERY]: 'Maestria com armas de concussão. Melhora penetração de armadura.',
-    [SkillType.DEFENSE_MASTERY]: 'Maestria em defesa. Reduz dano recebido e melhora bloqueio.',
-    [SkillType.MAGIC_MASTERY]: 'Maestria em magia. Melhora dano mágico e eficiência de mana.'
+    [SkillType.SWORD_MASTERY]: 'Maestria com espadas. Aumenta ataque (+1), chance crítica (+0.2%) e dano crítico (+3%) por nível.',
+    [SkillType.AXE_MASTERY]: 'Maestria com machados. Aumenta ataque (+1), chance crítica (+0.2%) e dano crítico (+3%) por nível.',
+    [SkillType.BLUNT_MASTERY]: 'Maestria com armas de concussão. Aumenta ataque (+1), chance crítica (+0.2%) e dano crítico (+3%) por nível.',
+    [SkillType.DEFENSE_MASTERY]: 'Maestria defensiva. Aumenta defesa (+2) por nível e reduz dano recebido.',
+    [SkillType.MAGIC_MASTERY]: 'Maestria mágica. Aumenta mana (+3), dano mágico (+15%) e cura (+10%) por nível.'
   };
   return descriptions[skill];
 } 

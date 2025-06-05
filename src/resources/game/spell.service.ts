@@ -223,6 +223,66 @@ export class SpellService {
   }
 
   /**
+   * Calcular dano de magia escalado com atributos e habilidade
+   */
+  static calculateScaledSpellDamage(baseDamage: number, caster: GamePlayer | Enemy): number {
+    // Se for um inimigo, usar dano base
+    if (!('intelligence' in caster) || !('wisdom' in caster) || !('magic_mastery' in caster)) {
+      return baseDamage;
+    }
+
+    const intelligence = caster.intelligence || 10;
+    const wisdom = caster.wisdom || 10;
+    const magicMastery = caster.magic_mastery || 1;
+
+    // Bônus total: Int (10%) + Sabedoria (5%) + Maestria Mágica (15%)
+    const totalBonus = (intelligence * 10) + (wisdom * 5) + (magicMastery * 15);
+    
+    // Aplicar bônus ao dano base
+    const scaledDamage = Math.round(baseDamage * (1 + totalBonus / 100));
+    
+    console.log('[SpellService] Cálculo de dano mágico:', {
+      baseDamage,
+      intelligence,
+      wisdom,
+      magicMastery,
+      totalBonus: `${totalBonus}%`,
+      scaledDamage
+    });
+    
+    return scaledDamage;
+  }
+
+  /**
+   * Calcular cura de magia escalada com atributos e habilidade
+   */
+  static calculateScaledSpellHealing(baseHealing: number, caster: GamePlayer | Enemy): number {
+    // Se for um inimigo, usar cura base
+    if (!('wisdom' in caster) || !('magic_mastery' in caster)) {
+      return baseHealing;
+    }
+
+    const wisdom = caster.wisdom || 10;
+    const magicMastery = caster.magic_mastery || 1;
+
+    // Bônus total: Sabedoria (12%) + Maestria Mágica (10%)
+    const totalBonus = (wisdom * 12) + (magicMastery * 10);
+    
+    // Aplicar bônus à cura base
+    const scaledHealing = Math.round(baseHealing * (1 + totalBonus / 100));
+    
+    console.log('[SpellService] Cálculo de cura mágica:', {
+      baseHealing,
+      wisdom,
+      magicMastery,
+      totalBonus: `${totalBonus}%`,
+      scaledHealing
+    });
+    
+    return scaledHealing;
+  }
+
+  /**
    * Aplicar efeito da magia
    * @param spell Magia a ser usada
    * @param caster Personagem que está conjurando
@@ -239,38 +299,84 @@ export class SpellService {
 
     switch (spell.effect_type) {
       case 'damage':
-        const damage = spell.effect_value;
-        target.hp = Math.max(0, target.hp - damage);
-        message = `${spell.name} causou ${damage} de dano!`;
+        // NOVO: Usar dano escalado
+        const scaledDamage = this.calculateScaledSpellDamage(spell.effect_value, caster);
+        target.hp = Math.max(0, target.hp - scaledDamage);
+        message = `${spell.name} causou ${scaledDamage} de dano mágico!`;
         break;
 
       case 'heal':
-        const healAmount = spell.effect_value;
+        // NOVO: Usar cura escalada
+        const scaledHealing = this.calculateScaledSpellHealing(spell.effect_value, caster);
         const maxHp = 'max_hp' in target ? target.max_hp : target.maxHp;
         const oldHp = target.hp;
-        target.hp = Math.min(maxHp, target.hp + healAmount);
+        target.hp = Math.min(maxHp, target.hp + scaledHealing);
         const actualHeal = target.hp - oldHp;
         message = `${spell.name} restaurou ${actualHeal} HP!`;
         break;
 
       case 'buff':
-        // Aplicar buff temporário
-        message = `${spell.name} aplicou um efeito benéfico!`;
+        // Aplicar buff temporário (escalado se aplicável)
+        if (target.active_effects) {
+          const buffValue = this.calculateScaledSpellDamage(spell.effect_value, caster);
+          target.active_effects.buffs.push({
+            type: 'buff',
+            value: buffValue,
+            duration: spell.duration,
+            source_spell: spell.name
+          });
+          message = `${spell.name} aplicou um efeito benéfico (+${buffValue})!`;
+        } else {
+          message = `${spell.name} aplicou um efeito benéfico!`;
+        }
         break;
 
       case 'debuff':
-        // Aplicar debuff temporário
-        message = `${spell.name} aplicou um efeito prejudicial!`;
+        // Aplicar debuff temporário (escalado se aplicável)
+        if (target.active_effects) {
+          const debuffValue = this.calculateScaledSpellDamage(spell.effect_value, caster);
+          target.active_effects.debuffs.push({
+            type: 'debuff',
+            value: debuffValue,
+            duration: spell.duration,
+            source_spell: spell.name
+          });
+          message = `${spell.name} aplicou um efeito prejudicial (-${debuffValue})!`;
+        } else {
+          message = `${spell.name} aplicou um efeito prejudicial!`;
+        }
         break;
 
       case 'dot':
-        // Dano ao longo do tempo
-        message = `${spell.name} aplicou dano contínuo!`;
+        // Dano ao longo do tempo (escalado)
+        if (target.active_effects) {
+          const dotDamage = this.calculateScaledSpellDamage(spell.effect_value, caster);
+          target.active_effects.dots.push({
+            type: 'dot',
+            value: dotDamage,
+            duration: spell.duration,
+            source_spell: spell.name
+          });
+          message = `${spell.name} aplicou dano contínuo (${dotDamage} por ${spell.duration} turnos)!`;
+        } else {
+          message = `${spell.name} aplicou dano contínuo!`;
+        }
         break;
 
       case 'hot':
-        // Cura ao longo do tempo
-        message = `${spell.name} aplicou cura contínua!`;
+        // Cura ao longo do tempo (escalada)
+        if (target.active_effects) {
+          const hotHealing = this.calculateScaledSpellHealing(spell.effect_value, caster);
+          target.active_effects.hots.push({
+            type: 'hot',
+            value: hotHealing,
+            duration: spell.duration,
+            source_spell: spell.name
+          });
+          message = `${spell.name} aplicou cura contínua (${hotHealing} por ${spell.duration} turnos)!`;
+        } else {
+          message = `${spell.name} aplicou cura contínua!`;
+        }
         break;
 
       default:
