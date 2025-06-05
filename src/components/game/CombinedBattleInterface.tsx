@@ -110,25 +110,6 @@ export function CombinedBattleInterface({
       (currentEnemy && currentEnemy.hp <= 0) // Inimigo ainda existe mas está morto
     )
   );
-  
-  // LOGS DE DEBUG para identificar o problema do botão
-  console.log('[CombinedBattleInterface] Estado do botão próximo andar:', {
-    shouldShowNextFloorButton,
-    hasCurrentEnemy: !!currentEnemy,
-    currentEnemyHp: currentEnemy?.hp,
-    currentEnemyMaxHp: currentEnemy?.maxHp,
-    currentEnemyName: currentEnemy?.name,
-    hasBattleRewards: !!battleRewards,
-    battleRewardsXp: battleRewards?.xp,
-    battleRewardsGold: battleRewards?.gold,
-    // NOVA LÓGICA DE DEBUG:
-    conditionA_hasBattleRewards: !!battleRewards,
-    conditionB_noCurrentEnemy: !currentEnemy,
-    conditionC_currentEnemyDead: currentEnemy && currentEnemy.hp <= 0,
-    finalCondition: battleRewards && (!currentEnemy || (currentEnemy && currentEnemy.hp <= 0)),
-    isPlayerDead: player.hp <= 0,
-    isDisabled: !isPlayerTurn || loading.performAction
-  });
 
   const loadPotionSlots = async () => {
     try {

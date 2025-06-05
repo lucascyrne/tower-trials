@@ -236,12 +236,17 @@ export default function GameBattle() {
   }
 
   // Verificação melhorada dos dados necessários
-  if (!currentEnemy || !currentFloor || !player.id) {
+  // CRÍTICO: Permitir exibir interface quando há battleRewards mesmo sem currentEnemy
+  const shouldShowLoadingScreen = !currentFloor || !player.id || (!currentEnemy && !gameState.battleRewards);
+  
+  if (shouldShowLoadingScreen) {
     console.log('[GameBattle] Aguardando dados:', {
       hasCurrentEnemy: !!currentEnemy,
       hasCurrentFloor: !!currentFloor,
       hasPlayerId: !!player.id,
-      gameMode: gameState.mode
+      hasBattleRewards: !!gameState.battleRewards,
+      gameMode: gameState.mode,
+      shouldShowLoadingScreen
     });
     
     return (
@@ -250,12 +255,12 @@ export default function GameBattle() {
           <h2 className="text-2xl font-bold mb-2">Preparando Batalha...</h2>
           <p className="text-muted-foreground">
             {!currentFloor && 'Carregando dados do andar...'}
-            {!currentEnemy && currentFloor && 'Gerando inimigo...'}
+            {!currentEnemy && currentFloor && !gameState.battleRewards && 'Gerando inimigo...'}
             {!player.id && 'Carregando personagem...'}
           </p>
           <div className="mt-4 text-sm text-muted-foreground">
             <div>Andar: {currentFloor ? '✓' : '❌'}</div>
-            <div>Inimigo: {currentEnemy ? '✓' : '❌'}</div>
+            <div>Inimigo: {currentEnemy ? '✓' : gameState.battleRewards ? '⚰️' : '❌'}</div>
             <div>Personagem: {player.id ? '✓' : '❌'}</div>
           </div>
         </div>
@@ -263,7 +268,7 @@ export default function GameBattle() {
     );
   }
 
-  const enemyHpPercentage = (currentEnemy.hp / currentEnemy.maxHp) * 100;
+  const enemyHpPercentage = currentEnemy ? (currentEnemy.hp / currentEnemy.maxHp) * 100 : 0;
   const playerHpPercentage = (player.hp / player.max_hp) * 100;
   const playerManaPercentage = (player.mana / player.max_mana) * 100;
 
@@ -313,16 +318,18 @@ export default function GameBattle() {
         <BattleHeader currentFloor={currentFloor} playerLevel={player.level} />
 
         {/* Arena de Batalha Unificada */}
-        <div className="mb-6">
-          <BattleArena 
-            player={player}
-            currentEnemy={currentEnemy}
-            playerHpPercentage={playerHpPercentage}
-            playerManaPercentage={playerManaPercentage}
-            enemyHpPercentage={enemyHpPercentage}
-            isPlayerTurn={isPlayerTurn}
-          />
-        </div>
+        {currentEnemy && (
+          <div className="mb-6">
+            <BattleArena 
+              player={player}
+              currentEnemy={currentEnemy}
+              playerHpPercentage={playerHpPercentage}
+              playerManaPercentage={playerManaPercentage}
+              enemyHpPercentage={enemyHpPercentage}
+              isPlayerTurn={isPlayerTurn}
+            />
+          </div>
+        )}
 
         {/* Interface de Batalha */}
         <div className="mb-6">
