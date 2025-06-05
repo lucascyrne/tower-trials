@@ -117,7 +117,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-red-400',
       bgColor: 'bg-red-500/10',
       borderColor: 'border-red-500/20',
-      benefit: '+2 Ataque por ponto'
+      benefit: '+2 Ataque + 0.5% Dano Crítico'
     },
     dexterity: {
       label: 'Destreza', 
@@ -125,7 +125,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-green-400',
       bgColor: 'bg-green-500/10',
       borderColor: 'border-green-500/20',
-      benefit: '+1.5 Velocidade por ponto'
+      benefit: '+1.5 Velocidade + 0.3% Crítico'
     },
     intelligence: {
       label: 'Inteligência',
@@ -133,7 +133,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       borderColor: 'border-purple-500/20',
-      benefit: '+5 Mana por ponto'
+      benefit: '+5 Mana + 10% Dano Mágico'
     },
     wisdom: {
       label: 'Sabedoria',
@@ -141,7 +141,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
       borderColor: 'border-blue-500/20',
-      benefit: '+Regeneração por ponto'
+      benefit: '+1 Def + 5% Magia + 12% Cura'
     },
     vitality: {
       label: 'Vitalidade',
@@ -149,7 +149,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-pink-400',
       bgColor: 'bg-pink-500/10',
       borderColor: 'border-pink-500/20',
-      benefit: '+8 HP por ponto'
+      benefit: '+8 HP + 1 Defesa'
     },
     luck: {
       label: 'Sorte',
@@ -157,7 +157,7 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
       color: 'text-yellow-400',
       bgColor: 'bg-yellow-500/10',
       borderColor: 'border-yellow-500/20',
-      benefit: '+Crítico e Drops'
+      benefit: '+0.5% Crítico + 1% Dano Crítico'
     }
   };
 
