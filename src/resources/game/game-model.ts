@@ -38,7 +38,7 @@ export interface SpecialEventResult {
 }
 
 export interface Enemy {
-  id: number;
+  id: string;
   name: string;
   level: number;
   hp: number;

@@ -77,8 +77,14 @@ export class SkillXpService {
   ): SkillXpGain[] {
     const skillGains: SkillXpGain[] = [];
     
-    // XP base para defesa (2-5 XP por uso da ação defender)
+    // XP base mínimo garantido para defesa (2-10 XP por uso da ação defender)
     let baseXp = Math.max(2, Math.floor(damageBlocked / 5));
+    
+    // Se não houve dano bloqueado, dar pelo menos 3 XP pela tentativa de defesa
+    if (damageBlocked <= 0) {
+      baseXp = 3;
+    }
+    
     let reason = 'Ação de defesa';
     
     // Bônus significativo se tiver escudo equipado
@@ -87,11 +93,16 @@ export class SkillXpService {
       reason = `Defesa com escudo equipado`;
     }
     
+    // Garantir que o XP seja sempre um número válido e positivo
+    const finalXp = Math.max(1, Math.floor(baseXp));
+    
     skillGains.push({
       skill: SkillType.DEFENSE_MASTERY,
-      xp: baseXp,
+      xp: finalXp,
       reason
     });
+    
+    console.log(`[SkillXpService] XP de defesa calculado: ${finalXp} (dano bloqueado: ${damageBlocked})`);
     
     return skillGains;
   }

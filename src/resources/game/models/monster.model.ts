@@ -3,6 +3,7 @@ export type MonsterBehavior = 'aggressive' | 'defensive' | 'balanced';
 export interface Monster {
   id: string;
   name: string;
+  level?: number;
   hp: number;
   atk: number;
   def: number;
@@ -12,7 +13,35 @@ export interface Monster {
   min_floor: number;
   reward_xp: number;
   reward_gold: number;
-  possible_drops?: MonsterDropChance[]; // Lista de possíveis drops
+  image?: string;
+  possible_drops?: MonsterDropChance[];
+  
+  // Atributos primários
+  strength?: number;
+  dexterity?: number;
+  intelligence?: number;
+  wisdom?: number;
+  vitality?: number;
+  luck?: number;
+  
+  // Propriedades de combate avançadas
+  critical_chance?: number;
+  critical_damage?: number;
+  critical_resistance?: number;
+  
+  // Resistências
+  physical_resistance?: number;
+  magical_resistance?: number;
+  debuff_resistance?: number;
+  
+  // Vulnerabilidades
+  physical_vulnerability?: number;
+  magical_vulnerability?: number;
+  
+  // Características especiais
+  primary_trait?: string;
+  secondary_trait?: string;
+  special_abilities?: string[];
 }
 
 // Interface para chances de drop

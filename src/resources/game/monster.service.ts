@@ -10,7 +10,7 @@ interface ServiceResponse<T> {
 export class MonsterService {
   private static monsterCache: Map<number, Monster> = new Map();
   private static cacheExpiry: Map<number, number> = new Map();
-  private static CACHE_DURATION = 30000; // 30 segundos
+  private static CACHE_DURATION = 2000; // Cache muito curto para evitar problemas
   private static pendingRequests: Map<number, Promise<ServiceResponse<Monster>>> = new Map();
 
   /**
@@ -30,79 +30,104 @@ export class MonsterService {
         };
       }
 
-      console.log(`[MonsterService] Solicitando monstro para o andar ${floor}`);
+      console.log(`[MonsterService] === INÍCIO BUSCA MONSTRO ANDAR ${floor} ===`);
 
-      // Verificar cache
-      const now = Date.now();
-      const cachedMonster = this.monsterCache.get(floor);
-      const expiryTime = this.cacheExpiry.get(floor) || 0;
+      // SEMPRE limpar cache para o andar específico para evitar problemas
+      this.monsterCache.delete(floor);
+      this.cacheExpiry.delete(floor);
 
-      if (cachedMonster && now < expiryTime) {
-        console.log(`[MonsterService] Usando monstro em cache para o andar ${floor}: ${cachedMonster.name}`);
-        return { data: { ...cachedMonster }, error: null, success: true };
-      }
-
-      // Verificar se já existe uma requisição pendente para este andar
-      if (this.pendingRequests.has(floor)) {
-        console.log(`[MonsterService] Reutilizando requisição pendente para o andar ${floor}`);
-        return this.pendingRequests.get(floor)!;
-      }
-
-      // Criar nova requisição
-      const request = this.fetchMonsterFromServer(floor);
-      this.pendingRequests.set(floor, request);
-
-      // Remover do mapa de requisições pendentes quando concluído
-      request.finally(() => {
-        this.pendingRequests.delete(floor);
-      });
-
-      return request;
-    } catch (error) {
-      console.error(`[MonsterService] Erro ao obter monstro para andar ${floor}:`, error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
-        success: false 
-      };
-    }
-  }
-
-  /**
-   * Realizar a requisição ao servidor para obter um monstro
-   * @private
-   */
-  private static async fetchMonsterFromServer(floor: number): Promise<ServiceResponse<Monster>> {
-    try {
-      console.log(`[MonsterService] Buscando monstro no servidor para andar ${floor}`);
+      // Buscar monstro do servidor
+      console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
-      // Chamar a função RPC que criamos especificamente para isso
       const { data, error } = await supabase
         .rpc('get_monster_for_floor', {
           p_floor: floor
-        })
-        .single();
+        });
+
+      console.log(`[MonsterService] Resposta da RPC get_monster_for_floor:`, {
+        hasData: !!data,
+        hasError: !!error,
+        dataLength: Array.isArray(data) ? data.length : 'not-array',
+        errorMessage: error?.message
+      });
 
       if (error) {
-        console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error.message);
-        throw error;
+        console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error);
+        return { 
+          data: null, 
+          error: error.message, 
+          success: false 
+        };
       }
       
-      if (!data) {
+      if (!data || (Array.isArray(data) && data.length === 0)) {
         console.error(`[MonsterService] Nenhum monstro retornado para andar ${floor}`);
-        throw new Error('Nenhum monstro encontrado para este andar');
+        return { 
+          data: null, 
+          error: 'Nenhum monstro encontrado para este andar', 
+          success: false 
+        };
       }
 
-      // Atualizar cache
-      this.monsterCache.set(floor, { ...data } as Monster);
-      this.cacheExpiry.set(floor, Date.now() + this.CACHE_DURATION);
+      // Garantir que temos um objeto único
+      const monsterData = Array.isArray(data) ? data[0] : data;
+      
+      if (!monsterData || !monsterData.id || !monsterData.name) {
+        console.error(`[MonsterService] Dados de monstro inválidos para andar ${floor}:`, monsterData);
+        return { 
+          data: null, 
+          error: 'Dados do monstro inválidos', 
+          success: false 
+        };
+      }
 
-      const monster = data as Monster;
-      console.log(`[MonsterService] Monstro obtido para andar ${floor}: ${monster.name}`);
+      console.log(`[MonsterService] === MONSTRO ENCONTRADO ===`);
+      console.log(`[MonsterService] ID: ${monsterData.id}`);
+      console.log(`[MonsterService] Nome: ${monsterData.name}`);
+      console.log(`[MonsterService] HP: ${monsterData.hp}, ATK: ${monsterData.atk}, DEF: ${monsterData.def}`);
+      console.log(`[MonsterService] Min Floor: ${monsterData.min_floor}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`);
+
+      // Converter para Monster com estrutura correta
+      const monster: Monster = {
+        id: monsterData.id,
+        name: monsterData.name,
+        hp: monsterData.hp,
+        atk: monsterData.atk,
+        def: monsterData.def,
+        mana: monsterData.mana || 0,
+        speed: monsterData.speed || 10,
+        behavior: monsterData.behavior,
+        min_floor: monsterData.min_floor,
+        reward_xp: monsterData.reward_xp,
+        reward_gold: monsterData.reward_gold,
+        level: Math.max(1, Math.floor(floor / 5) + 1),
+        // Campos opcionais
+        strength: monsterData.strength,
+        dexterity: monsterData.dexterity,
+        intelligence: monsterData.intelligence,
+        wisdom: monsterData.wisdom,
+        vitality: monsterData.vitality,
+        luck: monsterData.luck,
+        critical_chance: monsterData.critical_chance,
+        critical_damage: monsterData.critical_damage,
+        critical_resistance: monsterData.critical_resistance,
+        physical_resistance: monsterData.physical_resistance,
+        magical_resistance: monsterData.magical_resistance,
+        debuff_resistance: monsterData.debuff_resistance,
+        physical_vulnerability: monsterData.physical_vulnerability,
+        magical_vulnerability: monsterData.magical_vulnerability,
+        primary_trait: monsterData.primary_trait,
+        secondary_trait: monsterData.secondary_trait,
+        special_abilities: monsterData.special_abilities || []
+      };
+
+      console.log(`[MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===`);
+      console.log(`[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`);
       
       return { data: monster, error: null, success: true };
+
     } catch (error) {
-      console.error(`[MonsterService] Falha ao buscar monstro para andar ${floor}:`, error instanceof Error ? error.message : error);
+      console.error(`[MonsterService] EXCEÇÃO ao obter monstro para andar ${floor}:`, error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
@@ -118,6 +143,7 @@ export class MonsterService {
   static clearCache(): void {
     this.monsterCache.clear();
     this.cacheExpiry.clear();
+    this.pendingRequests.clear();
     console.log('[MonsterService] Cache de monstros limpo');
   }
 
