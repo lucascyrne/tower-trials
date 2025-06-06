@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
 import { GamePlayer } from '@/resources/game/game-model';
-import { formatLargeNumber } from '@/lib/utils';
+
 
 interface CharacterInfoCardProps {
   player: GamePlayer;
@@ -84,15 +84,17 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   ];
 
   const getHpColor = () => {
-    if (hpProgress >= 70) return 'bg-emerald-600';
-    if (hpProgress >= 30) return 'bg-yellow-600';
-    return 'bg-red-600';
+    if (hpProgress >= 70) return 'bg-green-500';
+    if (hpProgress >= 40) return 'bg-yellow-500';
+    if (hpProgress >= 20) return 'bg-orange-500';
+    return 'bg-red-500';
   };
 
   const getManaColor = () => {
-    if (manaProgress >= 70) return 'bg-blue-600';
-    if (manaProgress >= 30) return 'bg-cyan-600';
-    return 'bg-indigo-600';
+    if (manaProgress >= 70) return 'bg-blue-500';
+    if (manaProgress >= 40) return 'bg-cyan-500';
+    if (manaProgress >= 20) return 'bg-indigo-500';
+    return 'bg-purple-500';
   };
 
   // Função para obter ícone de habilidade
@@ -177,7 +179,13 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 </span>
                 <span className="text-slate-400">{player.hp}/{player.max_hp}</span>
               </div>
-              <Progress value={hpProgress} className={`h-2 ${getHpColor()}`} />
+              <div className="relative">
+                <Progress value={hpProgress} className="h-2" />
+                <div 
+                  className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${getHpColor()}`}
+                  style={{ width: `${hpProgress}%` }}
+                />
+              </div>
             </div>
             
             {/* Mana */}
@@ -189,7 +197,13 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 </span>
                 <span className="text-slate-400">{player.mana}/{player.max_mana}</span>
               </div>
-              <Progress value={manaProgress} className={`h-2 ${getManaColor()}`} />
+              <div className="relative">
+                <Progress value={manaProgress} className="h-2" />
+                <div 
+                  className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${getManaColor()}`}
+                  style={{ width: `${manaProgress}%` }}
+                />
+              </div>
             </div>
             
             {/* XP */}
@@ -201,7 +215,13 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 </span>
                 <span className="text-slate-400">{player.xp}/{player.xp_next_level}</span>
               </div>
-              <Progress value={xpProgress} className="h-2 bg-yellow-600" />
+              <div className="relative">
+                <Progress value={xpProgress} className="h-2" />
+                <div 
+                  className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
+                  style={{ width: `${xpProgress}%` }}
+                />
+              </div>
             </div>
           </div>
 
@@ -297,8 +317,8 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   <Gem className="h-4 w-4 text-yellow-400" />
                   <span className="text-sm font-medium text-slate-300">Gold</span>
                 </div>
-                <p className="text-lg font-bold text-yellow-400" title={`${player.gold.toLocaleString('pt-BR')} Gold`}>
-                  {formatLargeNumber(player.gold)}
+                <p className="text-lg font-bold text-yellow-400">
+                  {player.gold.toLocaleString('pt-BR')}
                 </p>
               </div>
             </div>

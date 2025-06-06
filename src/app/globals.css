@@ -122,6 +122,28 @@
   }
 }
 
+/* Animações suaves para barras de progresso */
+@keyframes progress-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(var(--progress-color), 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(var(--progress-color), 0.6);
+  }
+}
+
+.progress-hp {
+  --progress-color: 34, 197, 94; /* green-500 */
+}
+
+.progress-mana {
+  --progress-color: 59, 130, 246; /* blue-500 */
+}
+
+.progress-xp {
+  --progress-color: 245, 158, 11; /* amber-500 */
+}
+
 @keyframes damage-critical {
   0% {
     transform: translateX(-50%) translateY(0px) scale(0.5) rotate(-5deg);

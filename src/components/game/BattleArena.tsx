@@ -258,7 +258,7 @@ export function BattleArena({
                       Nv {player.level}
                     </Badge>
                     <Badge variant="outline" className="bg-background/50 text-yellow-400 text-xs px-1 md:px-2">
-                      {formatLargeNumber(player.gold)}G
+                      {player.gold.toLocaleString('pt-BR')}G
                     </Badge>
                   </div>
                 </div>
@@ -299,13 +299,23 @@ export function BattleArena({
                     </div>
                     <span className="text-xs md:text-sm font-bold">{player.hp}/{player.max_hp}</span>
                   </div>
-                  <Progress 
-                    value={playerHpPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
+                  <div className="relative">
+                    <Progress 
+                      value={playerHpPercentage} 
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)'
+                      }}
+                    />
+                    <div 
+                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                        playerHpPercentage >= 70 ? 'bg-green-500' :
+                        playerHpPercentage >= 40 ? 'bg-yellow-500' :
+                        playerHpPercentage >= 20 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${playerHpPercentage}%` }}
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -316,13 +326,23 @@ export function BattleArena({
                     </div>
                     <span className="text-xs md:text-sm font-bold">{player.mana}/{player.max_mana}</span>
                   </div>
-                  <Progress 
-                    value={playerManaPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
+                  <div className="relative">
+                    <Progress 
+                      value={playerManaPercentage} 
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)'
+                      }}
+                    />
+                    <div 
+                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                        playerManaPercentage >= 70 ? 'bg-blue-500' :
+                        playerManaPercentage >= 40 ? 'bg-cyan-500' :
+                        playerManaPercentage >= 20 ? 'bg-indigo-500' : 'bg-purple-500'
+                      }`}
+                      style={{ width: `${playerManaPercentage}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -410,13 +430,19 @@ export function BattleArena({
                         </div>
                       </div>
                       <div className="relative">
-                        <Progress 
-                          value={(player.xp / player.xp_next_level) * 100} 
-                          className="h-2"
-                          style={{
-                            background: 'rgba(0,0,0,0.2)'
-                          }}
-                        />
+                        <div className="relative">
+                          <Progress 
+                            value={(player.xp / player.xp_next_level) * 100} 
+                            className="h-2"
+                            style={{
+                              background: 'rgba(0,0,0,0.2)'
+                            }}
+                          />
+                          <div 
+                            className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
+                            style={{ width: `${(player.xp / player.xp_next_level) * 100}%` }}
+                          />
+                        </div>
                         <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
                       </div>
                       <div className="flex justify-between text-xs">
@@ -677,13 +703,23 @@ export function BattleArena({
                     </div>
                     <span className="text-xs md:text-sm font-bold">{currentEnemy.hp}/{currentEnemy.maxHp}</span>
                   </div>
-                  <Progress 
-                    value={enemyHpPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
+                  <div className="relative">
+                    <Progress 
+                      value={enemyHpPercentage} 
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)'
+                      }}
+                    />
+                    <div 
+                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                        enemyHpPercentage >= 70 ? 'bg-green-500' :
+                        enemyHpPercentage >= 40 ? 'bg-yellow-500' :
+                        enemyHpPercentage >= 20 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${enemyHpPercentage}%` }}
+                    />
+                  </div>
                 </div>
 
                 {Boolean(currentEnemy.mana > 0) && (
@@ -695,9 +731,10 @@ export function BattleArena({
                       </div>
                       <span className="text-xs md:text-sm font-bold">{currentEnemy.mana}</span>
                     </div>
-                    <div className="h-2 md:h-3 bg-black/20 rounded-full">
+                    <div className="relative">
+                      <div className="h-2 md:h-3 bg-black/20 rounded-full"></div>
                       <div 
-                        className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                        className="absolute top-0 left-0 h-2 md:h-3 bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(100, (currentEnemy.mana / Math.max(currentEnemy.mana, 100)) * 100)}%` }}
                       />
                     </div>
