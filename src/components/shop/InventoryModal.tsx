@@ -81,9 +81,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       } else if (action === 'sell') {
         const result = await EquipmentService.sellEquipment(character.id, item.equipment.id);
         
-        if (result.success && result.newGold !== undefined) {
+        if (result.success && result.data?.newGold !== undefined) {
           toast.success(`${item.equipment.name} vendido!`);
-          onItemSold(result.newGold);
+          onItemSold(result.data.newGold);
           loadInventory();
         } else {
           toast.error(result.error || 'Erro ao vender equipamento');

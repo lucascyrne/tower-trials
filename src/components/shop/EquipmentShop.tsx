@@ -71,7 +71,7 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         }
 
         try {
-            const result = await EquipmentService.buyEquipment(character.id, equipment.id, equipment.price);
+            const result = await EquipmentService.buyEquipment(character.id, equipment.id);
             if (result.success && result.data?.newGold !== undefined) {
                 toast.success(`${equipment.name} comprado com sucesso!`);
                 onPurchase(result.data.newGold);
