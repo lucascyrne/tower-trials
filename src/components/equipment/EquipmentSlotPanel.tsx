@@ -115,18 +115,18 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
             } hover:scale-[1.02] active:scale-[0.98] select-none`}
             // Mouse events
             onMouseDown={() => startPress(slotType)}
-            onMouseUp={() => endPress(slotType, item)}
+            onMouseUp={() => endPress(slotType, item ?? null)}
             onMouseLeave={cancelPress}
             // Touch events
             onTouchStart={() => startPress(slotType)}
-            onTouchEnd={() => endPress(slotType, item)}
+            onTouchEnd={() => endPress(slotType, item ?? null)}
             onTouchCancel={cancelPress}
             // Prevent context menu on long press
             onContextMenu={(e) => e.preventDefault()}
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className={`p-3 rounded-lg ${isEmpty ? 'bg-slate-700/30' : 'bg-black/20'}`}>
-                {getSlotIcon(slotType, item)}
+                {getSlotIcon(slotType, item ?? null)}
               </div>
               {item ? (
                 <div className="text-center space-y-1">
@@ -209,11 +209,11 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
             } active:scale-[0.98] select-none`}
             // Mouse events
             onMouseDown={() => index === 0 && startPress('accessory')}
-            onMouseUp={() => index === 0 && endPress('accessory', equippedSlots.accessory)}
+            onMouseUp={() => index === 0 && endPress('accessory', equippedSlots.accessory ?? null)}
             onMouseLeave={cancelPress}
             // Touch events
             onTouchStart={() => index === 0 && startPress('accessory')}
-            onTouchEnd={() => index === 0 && endPress('accessory', equippedSlots.accessory)}
+            onTouchEnd={() => index === 0 && endPress('accessory', equippedSlots.accessory ?? null)}
             onTouchCancel={cancelPress}
             // Prevent context menu on long press
             onContextMenu={(e) => e.preventDefault()}
