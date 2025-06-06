@@ -289,7 +289,8 @@ export default function GameBattle() {
 
   // Verificação melhorada dos dados necessários
   // CRÍTICO: Permitir exibir interface quando há battleRewards mesmo sem currentEnemy
-  const shouldShowLoadingScreen = !currentFloor || !player.id || (!currentEnemy && !gameState.battleRewards);
+  // CRÍTICO: NÃO mostrar loading screen quando fuga foi bem-sucedida
+  const shouldShowLoadingScreen = gameState.mode !== 'fled' && (!currentFloor || !player.id || (!currentEnemy && !gameState.battleRewards));
   
   if (shouldShowLoadingScreen) {
     console.log('[GameBattle] Aguardando dados:', {
@@ -369,8 +370,11 @@ export default function GameBattle() {
       <div className="w-full max-w-6xl">
         <BattleHeader 
           currentFloor={{
-            ...currentFloor,
-            floorNumber: player.floor
+            floorNumber: player.floor,
+            type: currentFloor?.type || 'common',
+            description: currentFloor?.description || `Andar ${player.floor}`,
+            isCheckpoint: currentFloor?.isCheckpoint || false,
+            minLevel: currentFloor?.minLevel || 1
           }} 
           playerLevel={player.level} 
         />

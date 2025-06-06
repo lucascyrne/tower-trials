@@ -39,37 +39,90 @@ export class MonsterService {
       // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
-      // Tentar primeiro a nova função com iniciativa
+      // Tentar primeiro a função padrão get_monster_for_floor
       let { data, error } = await supabase
-        .rpc('get_monster_for_floor_with_initiative', {
+        .rpc('get_monster_for_floor', {
           p_floor: floor
         });
         
-      // Fallback para função antiga caso a nova não exista ainda
+      // Se a função padrão falhar, verificar se há uma função com iniciativa disponível
       if (error && error.message?.includes('function') && error.message?.includes('does not exist')) {
-        console.log(`[MonsterService] Função nova não existe ainda, usando fallback para get_monster_for_floor`);
-        const fallbackResult = await supabase
-          .rpc('get_monster_for_floor', {
-            p_floor: floor
-          });
-        data = fallbackResult.data;
-        error = fallbackResult.error;
+        console.log(`[MonsterService] Função get_monster_for_floor não existe, tentando fallback...`);
+        
+        // Fallback: buscar monstro diretamente da tabela usando lógica básica
+        const { data: monsterResult, error: monsterError } = await supabase
+          .from('monsters')
+          .select('*')
+          .lte('min_floor', floor)
+          .order('min_floor', { ascending: false })
+          .limit(1);
+          
+        if (monsterError) {
+          data = null;
+          error = monsterError;
+        } else {
+          // Simular o formato esperado da RPC
+          data = monsterResult && monsterResult.length > 0 ? monsterResult[0] : null;
+          error = null;
+        }
       }
 
       console.log(`[MonsterService] Resposta da RPC get_monster_for_floor:`, {
         hasData: !!data,
         hasError: !!error,
+        dataType: typeof data,
+        isArray: Array.isArray(data),
         dataLength: Array.isArray(data) ? data.length : 'not-array',
-        errorMessage: error?.message
+        errorMessage: error?.message,
+        errorCode: error?.code
       });
 
       if (error) {
         console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error);
-        return { 
-          data: null, 
-          error: error.message, 
-          success: false 
-        };
+        
+        // Tratar erro específico de incompatibilidade de tipos (42804)
+        if (error.code === '42804' || error.message?.includes('does not match function result type')) {
+          console.log(`[MonsterService] Erro de tipo detectado, tentando buscar diretamente da tabela...`);
+          
+          // Fallback: buscar diretamente da tabela monsters
+          try {
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('monsters')
+              .select('*')
+              .lte('min_floor', floor)
+              .order('min_floor', { ascending: false })
+              .limit(1);
+              
+            if (fallbackError) {
+              throw fallbackError;
+            }
+            
+            if (fallbackData && fallbackData.length > 0) {
+              console.log(`[MonsterService] Fallback bem-sucedido, usando monstro da tabela`);
+              data = fallbackData[0];
+              error = null;
+            } else {
+              return { 
+                data: null, 
+                error: 'Nenhum monstro encontrado na tabela para este andar', 
+                success: false 
+              };
+            }
+          } catch (fallbackError) {
+            console.error(`[MonsterService] Fallback também falhou:`, fallbackError);
+                         return { 
+               data: null, 
+               error: `Erro na função RPC e no fallback: ${error?.message || 'Erro desconhecido'}`, 
+               success: false 
+             };
+          }
+        } else {
+          return { 
+            data: null, 
+            error: error.message, 
+            success: false 
+          };
+        }
       }
       
       if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -91,6 +144,21 @@ export class MonsterService {
           error: 'Dados do monstro inválidos', 
           success: false 
         };
+      }
+
+      // Garantir que stats básicos existem (fallback para valores calculados se necessário)
+      if (!monsterData.hp || !monsterData.atk || !monsterData.def) {
+        console.log(`[MonsterService] Calculando stats básicos para ${monsterData.name} (andar ${floor})`);
+        
+        // Calcular stats básicos se não existirem
+        const level = monsterData.level || Math.max(1, Math.floor(floor / 5) + 1);
+        const tier = monsterData.tier || Math.max(1, Math.floor(floor / 20) + 1);
+        
+        monsterData.hp = monsterData.hp || Math.floor(50 + (level * 15) + (tier * 25));
+        monsterData.atk = monsterData.atk || Math.floor(10 + (level * 3) + (tier * 5));
+        monsterData.def = monsterData.def || Math.floor(5 + (level * 2) + (tier * 3));
+        monsterData.reward_xp = monsterData.reward_xp || Math.floor(5 + (level * 2) + (tier * 2));
+        monsterData.reward_gold = monsterData.reward_gold || Math.floor(3 + (level * 1) + (tier * 1));
       }
 
       console.log(`[MonsterService] === MONSTRO ENCONTRADO ===`);

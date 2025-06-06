@@ -105,9 +105,6 @@ export function CombinedBattleInterface({
   // CRÍTICO: Verificar se o personagem está morto
   const isPlayerDead = player.hp <= 0;
   
-  // Verificar se é turno do inimigo (para mostrar feedback)
-  const isEnemyTurn = !isPlayerTurn && !loading.performAction;
-  
   // OTIMIZADO: Verificar se deve mostrar botão de próximo andar (mais rigoroso)
   const shouldShowNextFloorButton = Boolean(
     battleRewards && 
@@ -422,22 +419,6 @@ export function CombinedBattleInterface({
             <div className="flex items-center justify-center gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-400 border-t-transparent"></div>
               <span className="text-green-400 text-sm">Processando...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NOVO: Overlay mostrando turno do inimigo */}
-      {isEnemyTurn && currentEnemy && !isPlayerDead && !shouldShowNextFloorButton && (
-        <div className="absolute inset-0 bg-orange-500/15 backdrop-blur-sm z-30 flex items-center justify-center rounded-xl">
-          <div className="text-center space-y-3">
-            <div className="text-orange-400 text-2xl animate-pulse">🤔</div>
-            <div className="text-orange-400 font-bold text-lg">{currentEnemy.name} está pensando...</div>
-            <div className="text-muted-foreground text-sm">Aguarde a ação do inimigo</div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-pulse w-2 h-2 bg-orange-400 rounded-full"></div>
-              <div className="animate-pulse w-2 h-2 bg-orange-400 rounded-full" style={{ animationDelay: '0.2s' }}></div>
-              <div className="animate-pulse w-2 h-2 bg-orange-400 rounded-full" style={{ animationDelay: '0.4s' }}></div>
             </div>
           </div>
         </div>

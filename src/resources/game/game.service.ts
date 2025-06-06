@@ -542,21 +542,69 @@ export class GameService {
         break;
 
       case 'flee':
-        const fleeChance = Math.random();
-        const fleeSuccess = fleeChance > 0.7; // 30% de chance de fugir
+        // SISTEMA DE FUGA MELHORADO - Baseado em velocidade
+        console.log(`[GameService] === PROCESSANDO FUGA ===`);
+        console.log(`[GameService] Velocidade do jogador: ${player.speed}`);
+        console.log(`[GameService] Velocidade do inimigo: ${currentEnemy.speed}`);
+        
+        // Calcular chance de fuga baseada na diferença de velocidade
+        const baseFleeChance = 0.8; // 80% de chance base (mais alta que antes)
+        
+        // Bônus/penalidade baseado na velocidade relativa
+        const speedRatio = player.speed / Math.max(1, currentEnemy.speed);
+        let speedBonus = 0;
+        
+        if (speedRatio >= 1.5) {
+          speedBonus = 0.3; // +30% se for 50%+ mais rápido
+        } else if (speedRatio >= 1.2) {
+          speedBonus = 0.2; // +20% se for 20%+ mais rápido
+        } else if (speedRatio >= 1.0) {
+          speedBonus = 0.1; // +10% se for igual ou um pouco mais rápido
+        } else if (speedRatio >= 0.8) {
+          speedBonus = 0; // Sem bônus/penalidade se estiver próximo
+        } else if (speedRatio >= 0.6) {
+          speedBonus = -0.1; // -10% se for mais lento
+        } else {
+          speedBonus = -0.2; // -20% se for muito mais lento
+        }
+        
+        // Bônus adicional de destreza (cada 10 pontos = +5% chance)
+        const dexterityBonus = Math.floor((player.dexterity || 10) / 10) * 0.05;
+        
+        // Penalidade se estiver com pouco HP (mais difícil fugir ferido)
+        const hpRatio = player.hp / player.max_hp;
+        const hpPenalty = hpRatio < 0.3 ? -0.15 : hpRatio < 0.5 ? -0.1 : 0;
+        
+        const finalFleeChance = Math.min(0.95, Math.max(0.1, 
+          baseFleeChance + speedBonus + dexterityBonus + hpPenalty
+        ));
+        
+        console.log(`[GameService] Chance base de fuga: ${baseFleeChance * 100}%`);
+        console.log(`[GameService] Bônus de velocidade (ratio ${speedRatio.toFixed(2)}): ${speedBonus * 100}%`);
+        console.log(`[GameService] Bônus de destreza: ${dexterityBonus * 100}%`);
+        console.log(`[GameService] Penalidade de HP baixo: ${hpPenalty * 100}%`);
+        console.log(`[GameService] Chance final de fuga: ${finalFleeChance * 100}%`);
+        
+        const fleeRoll = Math.random();
+        const fleeSuccess = fleeRoll < finalFleeChance;
+        
+        console.log(`[GameService] Resultado do dado: ${(fleeRoll * 100).toFixed(1)}%`);
+        console.log(`[GameService] Fuga ${fleeSuccess ? 'BEM-SUCEDIDA' : 'FALHOU'}!`);
         
         if (fleeSuccess) {
-          message = `Você conseguiu fugir de ${currentEnemy.name}!`;
+          message = `Você conseguiu fugir de ${currentEnemy.name}! (${(finalFleeChance * 100).toFixed(1)}% chance)`;
           skipTurn = true;
           // Marcar o estado como fuga bem-sucedida para controle posterior
           newState.fleeSuccessful = true;
+          console.log(`[GameService] Estado marcado com fleeSuccessful = true`);
         } else {
-          // Falha na fuga, recebe dano
-          const fleeDamage = Math.floor(currentEnemy.attack * 0.3);
+          // Falha na fuga, recebe dano reduzido (era 30%, agora 20%)
+          const fleeDamage = Math.floor(currentEnemy.attack * 0.2);
           newState.player.hp = Math.max(0, player.hp - fleeDamage);
-          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano de ${currentEnemy.name}!`;
+          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano de ${currentEnemy.name}! (${(finalFleeChance * 100).toFixed(1)}% chance)`;
           // Não pular o turno para que o inimigo possa atacar normalmente
           skipTurn = false;
+          console.log(`[GameService] Fuga falhou, jogador recebeu ${fleeDamage} de dano`);
         }
         break;
 
