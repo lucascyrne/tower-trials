@@ -1,6 +1,7 @@
 'use client';
 
 import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType, BattleRewards } from './game-model';
+import type { InitiativeData, SpeedComparison } from './models/game-battle.model';
 import { MonsterService } from './monster.service';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
@@ -237,6 +238,169 @@ export class GameService {
     }
   }
 
+  // =====================================
+  // SISTEMA DE INICIATIVA E VELOCIDADE
+  // =====================================
+
+  /**
+   * Calcular iniciativa baseada em velocidade e destreza
+   */
+  static calculateInitiative(speed: number, dexterity: number): number {
+    // Base da iniciativa é a velocidade
+    const baseInitiative = speed;
+    
+    // Bônus de destreza (cada ponto de dex = +0.5 iniciativa)
+    const dexBonus = Math.floor(dexterity * 0.5);
+    
+    // Adicionar elemento aleatório (±10%)
+    const randomFactor = 0.9 + (Math.random() * 0.2);
+    const finalInitiative = Math.floor((baseInitiative + dexBonus) * randomFactor);
+    
+    return Math.max(1, finalInitiative);
+  }
+
+  /**
+   * Calcular quantos turnos extras baseado na diferença de velocidade
+   */
+  static calculateExtraTurns(attackerSpeed: number, defenderSpeed: number): number {
+    // Evitar divisão por zero
+    if (defenderSpeed <= 0) return 2;
+    
+    // Calcular diferença percentual de velocidade
+    const speedDifference = attackerSpeed / defenderSpeed;
+    
+    let extraTurns = 0;
+    
+    // Sistema de turnos extras baseado em diferença:
+    // 1.8x+ velocidade = 1 turno extra
+    // 2.5x+ velocidade = 2 turnos extras  
+    // 3.5x+ velocidade = 3 turnos extras (máximo)
+    if (speedDifference >= 3.5) {
+      extraTurns = 3;
+    } else if (speedDifference >= 2.5) {
+      extraTurns = 2;
+    } else if (speedDifference >= 1.8) {
+      extraTurns = 1;
+    }
+    
+    // Adicionar pequeno elemento aleatório (20% chance de +1 turno extra)
+    if (extraTurns < 3 && Math.random() < 0.2) {
+      extraTurns += 1;
+    }
+    
+    return Math.min(extraTurns, 3); // Máximo de 3 turnos extras
+  }
+
+  /**
+   * Comparar velocidades e determinar vantagens
+   */
+  static compareSpeed(playerSpeed: number, enemySpeed: number): SpeedComparison {
+    const speedDifference = playerSpeed / enemySpeed;
+    const playerAdvantage = playerSpeed > enemySpeed;
+    const extraTurns = playerAdvantage ? 
+      this.calculateExtraTurns(playerSpeed, enemySpeed) : 
+      this.calculateExtraTurns(enemySpeed, playerSpeed);
+    
+    let description = '';
+    if (speedDifference >= 3.5 || (1/speedDifference) >= 3.5) {
+      description = playerAdvantage ? 
+        'Sua velocidade é dominante! Você pode agir múltiplas vezes!' :
+        'O inimigo é extremamente rápido! Cuidado com ataques consecutivos!';
+    } else if (speedDifference >= 2.5 || (1/speedDifference) >= 2.5) {
+      description = playerAdvantage ?
+        'Você tem grande vantagem de velocidade!' :
+        'O inimigo tem grande vantagem de velocidade!';
+    } else if (speedDifference >= 1.8 || (1/speedDifference) >= 1.8) {
+      description = playerAdvantage ?
+        'Você é mais rápido e pode agir primeiro!' :
+        'O inimigo é mais rápido!';
+    } else {
+      description = 'Velocidades similares. A iniciativa será disputada!';
+    }
+
+    return {
+      playerSpeed,
+      enemySpeed,
+      speedDifference,
+      playerAdvantage,
+      extraTurns,
+      description
+    };
+  }
+
+  /**
+   * Calcular ordem de turnos baseada em iniciativa
+   */
+  static calculateTurnOrder(
+    playerSpeed: number, 
+    playerDex: number, 
+    enemySpeed: number, 
+    enemyDex: number
+  ): InitiativeData {
+    const playerInitiative = this.calculateInitiative(playerSpeed, playerDex);
+    const enemyInitiative = this.calculateInitiative(enemySpeed, enemyDex);
+    
+    const playerFirst = playerInitiative >= enemyInitiative;
+    const firstActor = playerFirst ? 'player' : 'enemy';
+    
+    // Calcular turnos extras para quem tem vantagem de velocidade
+    let playerExtraTurns = 0;
+    let enemyExtraTurns = 0;
+    
+    if (playerFirst && playerSpeed > enemySpeed) {
+      playerExtraTurns = this.calculateExtraTurns(playerSpeed, enemySpeed);
+    } else if (!playerFirst && enemySpeed > playerSpeed) {
+      enemyExtraTurns = this.calculateExtraTurns(enemySpeed, playerSpeed);
+    }
+    
+    // Construir ordem de turnos
+    const turnOrder: ('player' | 'enemy')[] = [];
+    
+    if (playerFirst) {
+      turnOrder.push('player');
+      for (let i = 0; i < playerExtraTurns; i++) {
+        turnOrder.push('player');
+      }
+      if (enemyExtraTurns === 0) {
+        turnOrder.push('enemy');
+      }
+    } else {
+      turnOrder.push('enemy');
+      for (let i = 0; i < enemyExtraTurns; i++) {
+        turnOrder.push('enemy');
+      }
+      if (playerExtraTurns === 0) {
+        turnOrder.push('player');
+      }
+    }
+    
+    return {
+      playerInitiative,
+      enemyInitiative,
+      playerSpeed,
+      enemySpeed,
+      playerExtraTurns,
+      enemyExtraTurns,
+      currentTurn: firstActor,
+      turnOrder,
+      turnIndex: 0
+    };
+  }
+
+  /**
+   * Avançar para o próximo turno na ordem
+   */
+  static advanceTurnOrder(initiative: InitiativeData): InitiativeData {
+    const nextIndex = (initiative.turnIndex + 1) % initiative.turnOrder.length;
+    const nextTurn = initiative.turnOrder[nextIndex];
+    
+    return {
+      ...initiative,
+      currentTurn: nextTurn,
+      turnIndex: nextIndex
+    };
+  }
+
   /**
    * Calcular o dano de ataque
    * @param attackerAttack Valor de ataque do atacante
@@ -379,15 +543,20 @@ export class GameService {
 
       case 'flee':
         const fleeChance = Math.random();
-        if (fleeChance > 0.7) {
-          // 30% de chance de fugir
+        const fleeSuccess = fleeChance > 0.7; // 30% de chance de fugir
+        
+        if (fleeSuccess) {
           message = `Você conseguiu fugir de ${currentEnemy.name}!`;
           skipTurn = true;
+          // Marcar o estado como fuga bem-sucedida para controle posterior
+          newState.fleeSuccessful = true;
         } else {
           // Falha na fuga, recebe dano
           const fleeDamage = Math.floor(currentEnemy.attack * 0.3);
           newState.player.hp = Math.max(0, player.hp - fleeDamage);
-          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano!`;
+          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano de ${currentEnemy.name}!`;
+          // Não pular o turno para que o inimigo possa atacar normalmente
+          skipTurn = false;
         }
         break;
 

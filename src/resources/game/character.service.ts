@@ -1526,7 +1526,7 @@ export class CharacterService {
   }
 
   /**
-   * Cálculo de fallback quando a função do banco não funciona (NOVO SISTEMA ESPECIALIZADO)
+   * Cálculo de fallback com sistema anti-mono-build balanceado
    */
   private static async calculateDerivedStatsFallback(character: Character): Promise<{
     hp: number;
@@ -1542,95 +1542,123 @@ export class CharacterService {
     magic_damage_bonus: number;
   }> {
     const level = character.level;
-    const str = character.strength;
-    const dex = character.dexterity;
-    const int = character.intelligence;
-    const wis = character.wisdom;
-    const vit = character.vitality;
-    const luck = character.luck;
+    const str = character.strength || 10;
+    const dex = character.dexterity || 10;
+    const int = character.intelligence || 10;
+    const wis = character.wisdom || 10;
+    const vit = character.vitality || 10;
+    const luck = character.luck || 10;
     
-    // Escalamento logarítmico dos atributos
-    const strScaling = Math.pow(str, 1.3);
-    const dexScaling = Math.pow(dex, 1.25);
-    const intScaling = Math.pow(int, 1.35);
-    const wisScaling = Math.pow(wis, 1.2);
-    const vitScaling = Math.pow(vit, 1.4);
-    const luckScaling = luck;
+    // =====================================
+    // SISTEMA ANTI-MONO-BUILD
+    // =====================================
     
-    // Habilidades com escalamento logarítmico
+    const totalAttributes = str + dex + int + wis + vit + luck;
+    
+    // Calcular diversidade de atributos (0-1, onde 1 = perfeitamente balanceado)
+    const attributeDiversity = 1.0 - (
+      Math.abs(str / totalAttributes - 1.0/6.0) +
+      Math.abs(dex / totalAttributes - 1.0/6.0) +
+      Math.abs(int / totalAttributes - 1.0/6.0) +
+      Math.abs(wis / totalAttributes - 1.0/6.0) +
+      Math.abs(vit / totalAttributes - 1.0/6.0) +
+      Math.abs(luck / totalAttributes - 1.0/6.0)
+    ) / 2.0;
+    
+    // Bônus por diversidade (builds balanceadas ganham até 20% de bônus)
+    const diversityBonus = 1.0 + (attributeDiversity * 0.2);
+    
+    // Penalidade para mono-builds (builds com 80%+ em um atributo perdem eficiência)
+    let monoPenalty = 1.0;
+    const maxAttributePercentage = Math.max(
+      str / totalAttributes,
+      dex / totalAttributes,
+      int / totalAttributes,
+      wis / totalAttributes,
+      vit / totalAttributes,
+      luck / totalAttributes
+    );
+    
+    if (maxAttributePercentage > 0.8) {
+      monoPenalty = 0.7; // Penalidade de 30%
+    }
+    
+    console.log(`[CharacterService] Build analysis - Diversidade: ${(attributeDiversity * 100).toFixed(1)}%, Mono-penalty: ${monoPenalty}`);
+    
+    // =====================================
+    // ESCALAMENTO LOGARÍTMICO COM SINERGIAS
+    // =====================================
+    
+    // Escalamento com diminishing returns mais agressivos
+    const strScaling = Math.pow(str, 1.2) * diversityBonus * monoPenalty;
+    const dexScaling = Math.pow(dex, 1.15) * diversityBonus * monoPenalty;
+    const intScaling = Math.pow(int, 1.25) * diversityBonus * monoPenalty;
+    const wisScaling = Math.pow(wis, 1.1) * diversityBonus * monoPenalty;
+    const vitScaling = Math.pow(vit, 1.3) * diversityBonus * monoPenalty;
+    const luckScaling = luck * diversityBonus * monoPenalty;
+    
+    // Habilidades também recebem bônus de diversidade
     const swordMastery = character.sword_mastery || 1;
     const axeMastery = character.axe_mastery || 1;
     const bluntMastery = character.blunt_mastery || 1;
     const defenseMastery = character.defense_mastery || 1;
     const magicMastery = character.magic_mastery || 1;
     
-    // Determinar tipo de arma equipada
-    let weaponBonus = 0;
-    try {
-      const equippedWeaponType = await this.getEquippedWeaponType(character.id);
-      
-      if (equippedWeaponType) {
-        switch (equippedWeaponType) {
-          case 'sword':
-            weaponBonus = Math.pow(swordMastery, 1.1) * 0.5;
-            break;
-          case 'axe':
-            weaponBonus = Math.pow(axeMastery, 1.1) * 0.5;
-            break;
-          case 'blunt':
-            weaponBonus = Math.pow(bluntMastery, 1.1) * 0.5;
-            break;
-          case 'staff':
-            weaponBonus = Math.pow(magicMastery, 1.1) * 0.3; // Staff dá menos bônus físico
-            break;
-        }
-      } else {
-        // Sem arma equipada, usar a melhor maestria disponível
-        weaponBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * 0.5;
-      }
-    } catch (error) {
-      console.error('[CharacterService] Erro ao determinar arma equipada no fallback:', error);
-      weaponBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * 0.5;
+    const weaponMasteryBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * diversityBonus;
+    const defMasteryBonus = Math.pow(defenseMastery, 1.2) * diversityBonus;
+    const magicMasteryBonus = Math.pow(magicMastery, 1.15) * diversityBonus;
+    
+    // =====================================
+    // BASES REBALANCEADAS
+    // =====================================
+    
+    const baseHp = 50 + (level * 2);
+    const baseMana = 20 + (level * 1);
+    const baseAtk = 2 + level;
+    const baseDef = 1 + level;
+    const baseSpeed = 3 + level;
+    
+    // =====================================
+    // CÁLCULO DE STATS COM SINERGIAS
+    // =====================================
+    
+    // HP: Vitalidade + um pouco de força (sinergia)
+    const hp = baseHp + Math.floor(vitScaling * 2.5) + Math.floor(strScaling * 0.3);
+    
+    // Mana: Inteligência + sabedoria (sinergia forte)
+    const mana = baseMana + Math.floor(intScaling * 1.5) + Math.floor(wisScaling * 1.0) + Math.floor(magicMasteryBonus * 0.8);
+    
+    // Ataque Físico: Força + habilidade de arma + um pouco de destreza (precisão)
+    const atk = baseAtk + Math.floor(strScaling * 1.2) + Math.floor(weaponMasteryBonus * 0.6) + Math.floor(dexScaling * 0.2);
+    
+    // Ataque Mágico: Inteligência + sabedoria + maestria mágica (forte sinergia)
+    const magicAttack = baseAtk + Math.floor(intScaling * 1.4) + Math.floor(wisScaling * 0.8) + Math.floor(magicMasteryBonus * 1.0);
+    
+    // Defesa: Vitalidade + sabedoria + maestria defensiva (sobrevivência)
+    const def = baseDef + Math.floor(vitScaling * 0.6) + Math.floor(wisScaling * 0.5) + Math.floor(defMasteryBonus * 1.0);
+    
+    // Velocidade: Destreza (principal) + um pouco de sorte (agilidade mental)
+    const speed = baseSpeed + Math.floor(dexScaling * 1.0) + Math.floor(luckScaling * 0.2);
+    
+    // =====================================
+    // STATS DERIVADOS COM CAPS E SINERGIAS
+    // =====================================
+    
+    // Chance Crítica: Destreza + sorte + um pouco de força (técnica + sorte + poder)
+    let criticalChance = (dexScaling * 0.25) + (luckScaling * 0.35) + (strScaling * 0.1);
+    criticalChance = Math.min(75.0, criticalChance); // Cap em 75%
+    
+    // Dano Crítico: Força + sorte + habilidades de arma
+    let criticalDamage = 130.0 + (strScaling * 0.4) + (luckScaling * 0.6) + (weaponMasteryBonus * 0.3);
+    criticalDamage = Math.min(250.0, criticalDamage); // Cap em 250%
+    
+    // Dano Mágico: Inteligência + sabedoria + maestria mágica (forte sinergia)
+    let magicDamageBonus = (intScaling * 1.2) + (wisScaling * 0.8) + (magicMasteryBonus * 1.5);
+    // Diminishing returns para dano mágico
+    if (magicDamageBonus > 100) {
+      magicDamageBonus = 100 + ((magicDamageBonus - 100) * 0.7);
     }
-    
-    const defMasteryBonus = Math.pow(defenseMastery, 1.3) * 1.2;
-    const magicMasteryBonus = Math.pow(magicMastery, 1.2) * 2.0;
-
-    // Bases MUITO menores para forçar especialização
-    const baseHp = 60 + (level * 3);
-    const baseMana = 25 + (level * 2);
-    const baseAtk = 3 + level;         // Base crítica muito menor
-    const baseDef = 2 + level;
-    const baseSpeed = 5 + level;
-
-    // Stats derivados com escalamento especializado
-    const hp = baseHp + (vitScaling * 3.5);
-    const mana = baseMana + (intScaling * 2.0) + magicMasteryBonus;
-    const atk = baseAtk + (strScaling * 1.8) + weaponBonus;  // Agora especialistas se destacam
-    const def = baseDef + (vitScaling * 0.8) + (wisScaling * 0.6) + defMasteryBonus;
-    const speed = baseSpeed + (dexScaling * 1.2);
-    
-    // Crítico rebalanceado com bônus de arma
-    const criticalChance = Math.min(90, (luckScaling * 0.4) + (dexScaling * 0.3) + (weaponBonus * 0.1));
-    const criticalDamage = 140 + (luckScaling * 0.8) + (strScaling * 0.6) + (weaponBonus * 0.4);
-    
-    // Sistema de dano mágico especializado
-    const intMagicScaling = intScaling * 1.8;
-    const wisMagicScaling = wisScaling * 1.2;
-    const masteryMagicScaling = magicMasteryBonus * 2.5;
-    
-    let magicDamageBonus = intMagicScaling + wisMagicScaling + masteryMagicScaling;
-    
-    // Diminishing returns graduais
-    if (magicDamageBonus > 150) {
-      magicDamageBonus = 150 + ((magicDamageBonus - 150) * 0.6);
-    }
-    
-    // Cap em 300% para especialistas extremos
-    magicDamageBonus = Math.min(300, magicDamageBonus);
-
-    // Calcular magic_attack usando sistema rebalanceado
-    const magicAttack = baseAtk + (intScaling * 1.8) + (wisScaling * 0.6) + (magicMasteryBonus);
+    magicDamageBonus = Math.min(200.0, magicDamageBonus); // Cap em 200%
 
     return {
       hp: Math.floor(hp),
@@ -1644,6 +1672,69 @@ export class CharacterService {
       critical_chance: criticalChance,
       critical_damage: criticalDamage,
       magic_damage_bonus: magicDamageBonus
+    };
+  }
+
+  /**
+   * Analisar diversidade de build do personagem
+   */
+  static analyzeBuildDiversity(character: Character): {
+    diversityScore: number;
+    diversityPercentage: number;
+    diversityBonus: number;
+    monoBuildPenalty: number;
+    dominantAttribute: string;
+    dominantPercentage: number;
+    isMonoBuild: boolean;
+    recommendation: string;
+  } {
+    const str = character.strength || 10;
+    const dex = character.dexterity || 10;
+    const int = character.intelligence || 10;
+    const wis = character.wisdom || 10;
+    const vit = character.vitality || 10;
+    const luck = character.luck || 10;
+    
+    const totalAttributes = str + dex + int + wis + vit + luck;
+    const attributes = [
+      { name: 'Força', value: str, percentage: str / totalAttributes },
+      { name: 'Destreza', value: dex, percentage: dex / totalAttributes },
+      { name: 'Inteligência', value: int, percentage: int / totalAttributes },
+      { name: 'Sabedoria', value: wis, percentage: wis / totalAttributes },
+      { name: 'Vitalidade', value: vit, percentage: vit / totalAttributes },
+      { name: 'Sorte', value: luck, percentage: luck / totalAttributes }
+    ];
+    
+    // Encontrar atributo dominante
+    const dominantAttr = attributes.reduce((max, attr) => attr.percentage > max.percentage ? attr : max);
+    const isMonoBuild = dominantAttr.percentage > 0.8;
+    
+    // Calcular diversidade (quanto mais próximo de 1/6 cada atributo, maior a diversidade)
+    const diversityScore = 1.0 - (
+      attributes.reduce((sum, attr) => sum + Math.abs(attr.percentage - 1.0/6.0), 0) / 2.0
+    );
+    
+    const diversityBonus = 1.0 + (diversityScore * 0.2);
+    const monoBuildPenalty = isMonoBuild ? 0.7 : 1.0;
+    
+    let recommendation = '';
+    if (isMonoBuild) {
+      recommendation = `Build muito especializada em ${dominantAttr.name}. Considere investir em outros atributos para melhor eficiência geral.`;
+    } else if (diversityScore > 0.7) {
+      recommendation = 'Build bem balanceada! Você está aproveitando as sinergias entre atributos.';
+    } else {
+      recommendation = 'Build moderadamente especializada. Há espaço para melhorar o equilíbrio.';
+    }
+    
+    return {
+      diversityScore,
+      diversityPercentage: diversityScore * 100,
+      diversityBonus,
+      monoBuildPenalty,
+      dominantAttribute: dominantAttr.name,
+      dominantPercentage: dominantAttr.percentage * 100,
+      isMonoBuild,
+      recommendation
     };
   }
 } 

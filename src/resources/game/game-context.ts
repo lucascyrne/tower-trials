@@ -50,7 +50,8 @@ export const initialGameState: GameState = {
   gameMessage: '',
   highestFloor: 0,
   selectedSpell: null,
-  battleRewards: null
+  battleRewards: null,
+  fleeSuccessful: false
 };
 
 // Tipo do contexto do jogo

@@ -722,18 +722,37 @@ export function GameProvider({ children }: GameProviderProps) {
               loadingRef.current = false;
               updateLoading('performAction', false);
               
-              if (action === 'flee' && message.includes('conseguiu fugir')) {
+              // OTIMIZADO: Verificar fuga bem-sucedida usando a propriedade do estado
+              if (action === 'flee' && playerActionState.fleeSuccessful) {
+                console.log('[game-provider] Fuga bem-sucedida, preparando redirecionamento...');
+                
+                // Atualizar estado para indicar fuga bem-sucedida
+                setState(currentState => ({
+                  ...currentState,
+                  gameState: {
+                    ...currentState.gameState,
+                    gameMessage: message,
+                    mode: 'fled', // Modo especial para indicar fuga bem-sucedida
+                    currentEnemy: null,
+                    fleeSuccessful: true // Manter para que o componente possa reagir
+                  },
+                }));
+                
+                // Processar fuga de forma assíncrona
                 setTimeout(async () => {
                   try {
                     if (selectedCharacter) {
+                      // Atualizar andar para 1 (volta ao início)
                       await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
+                      console.log('[game-provider] Andar do personagem atualizado para 1');
                     }
-                    window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
                   } catch (error) {
                     console.error('[game-provider] Erro ao processar fuga:', error);
                     toast.error('Erro ao processar fuga');
                   }
                 }, 100);
+                
+                return;
               }
               
               setState(currentState => ({
@@ -773,7 +792,8 @@ export function GameProvider({ children }: GameProviderProps) {
             }
 
             // 3. Se o inimigo não foi derrotado, processar turno do inimigo
-            if (playerActionState.currentEnemy) {
+            // CRÍTICO: NÃO processar turno do inimigo se a fuga foi bem-sucedida
+            if (playerActionState.currentEnemy && !playerActionState.fleeSuccessful) {
               console.log('[game-provider] === PROCESSANDO TURNO DO INIMIGO ===');
               
               const enemyActionResult = await GameService.processEnemyAction(

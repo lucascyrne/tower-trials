@@ -3,7 +3,7 @@ import { PlayerSpell, ActiveEffects } from './models/spell.model';
 import { MonsterDropChance } from './models/monster.model';
 import { CharacterConsumable } from './models/consumable.model';
 
-export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event';
+export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event' | 'fled';
 export type ActionType = 'attack' | 'defend' | 'special' | 'spell' | 'flee' | 'consumable' | 'continue' | 'interact_event';
 export type FloorType = 'common' | 'elite' | 'event' | 'boss';
 export type SpecialEventType = 'bonfire' | 'treasure_chest' | 'magic_fountain';
@@ -173,6 +173,7 @@ export interface GameState {
   selectedSpell: PlayerSpell | null;
   battleRewards: BattleRewards | null;
   characterDeleted?: boolean;
+  fleeSuccessful?: boolean;
 }
 
 export interface GameLoadingState {

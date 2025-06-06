@@ -36,13 +36,25 @@ export class MonsterService {
       this.monsterCache.delete(floor);
       this.cacheExpiry.delete(floor);
 
-      // Buscar monstro do servidor usando get_monster_for_floor para stats escalados
+      // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
-      const { data, error } = await supabase
-        .rpc('get_monster_for_floor', {
+      // Tentar primeiro a nova função com iniciativa
+      let { data, error } = await supabase
+        .rpc('get_monster_for_floor_with_initiative', {
           p_floor: floor
         });
+        
+      // Fallback para função antiga caso a nova não exista ainda
+      if (error && error.message?.includes('function') && error.message?.includes('does not exist')) {
+        console.log(`[MonsterService] Função nova não existe ainda, usando fallback para get_monster_for_floor`);
+        const fallbackResult = await supabase
+          .rpc('get_monster_for_floor', {
+            p_floor: floor
+          });
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+      }
 
       console.log(`[MonsterService] Resposta da RPC get_monster_for_floor:`, {
         hasData: !!data,
