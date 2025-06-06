@@ -60,13 +60,16 @@ export const CONSUMABLE_EFFECTS = {
 // Interface para ingredientes de crafting
 export interface CraftingIngredient {
   item_id: string;
-  item_type: 'monster_drop' | 'consumable';
+  item_type: 'monster_drop' | 'consumable' | 'equipment';
   quantity: number;
 }
 
 // Interface para receitas de crafting
 export interface CraftingRecipe {
+  id: string;
   result_id: string;
+  name: string;
+  description: string;
   ingredients: CraftingIngredient[];
 }
 

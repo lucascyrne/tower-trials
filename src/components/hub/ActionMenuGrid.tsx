@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Shield,
   Skull,
-  Sparkles
+  Sparkles,
+  Hammer
 } from 'lucide-react';
 
 interface ActionMenuGridProps {
@@ -26,6 +27,7 @@ interface ActionMenuGridProps {
   onOpenInventory: () => void;
   onOpenEquipment: () => void;
   onOpenSpells: () => void;
+  onOpenCrafting: () => void;
   onOpenCemetery: () => void;
   onReturnToSelection: () => void;
 }
@@ -94,6 +96,7 @@ export function ActionMenuGrid({
   onOpenInventory, 
   onOpenEquipment,
   onOpenSpells,
+  onOpenCrafting,
   onOpenCemetery,
   onReturnToSelection 
 }: ActionMenuGridProps) {
@@ -151,6 +154,13 @@ export function ActionMenuGrid({
       accent: 'border-amber-600/30'
     },
     {
+      title: 'Forja',
+      description: 'Crafting de itens',
+      icon: Hammer,
+      onClick: onOpenCrafting,
+      accent: 'border-cyan-600/30'
+    },
+    {
       title: 'Cemitério',
       description: 'Personagens mortos',
       icon: Skull,
@@ -167,7 +177,7 @@ export function ActionMenuGrid({
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 gap-3">
       {actions.map((action, index) => (
         <ActionCard
           key={index}

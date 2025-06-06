@@ -335,6 +335,26 @@ export class EquipmentService {
     }
 
     /**
+     * Buscar TODOS os equipamentos (para resolução de nomes em crafting)
+     * Sem filtros de is_unlocked ou craftable
+     */
+    static async getAllEquipments(): Promise<Equipment[]> {
+        try {
+            const { data, error } = await supabase
+                .from('equipment')
+                .select('*')
+                .order('name');
+
+            if (error) throw error;
+
+            return data as Equipment[];
+        } catch (error) {
+            console.error('Erro ao buscar todos os equipamentos:', error instanceof Error ? error.message : error);
+            return [];
+        }
+    }
+
+    /**
      * Limpar cache
      */
     static clearCache(): void {
