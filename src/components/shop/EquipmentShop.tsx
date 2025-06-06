@@ -72,9 +72,9 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
 
         try {
             const result = await EquipmentService.buyEquipment(character.id, equipment.id, equipment.price);
-            if (result.success && result.newGold !== undefined) {
+            if (result.success && result.data?.newGold !== undefined) {
                 toast.success(`${equipment.name} comprado com sucesso!`);
-                onPurchase(result.newGold);
+                onPurchase(result.data.newGold);
             } else {
                 toast.error(result.error || 'Erro ao comprar equipamento!');
             }
