@@ -418,7 +418,7 @@ export class CharacterService {
     if (error) throw error;
 
     // Carregar equipamentos equipados
-    const equipmentSlotsData = await EquipmentService.getEquippedSlots(characterId);
+    const equipmentSlotsData = await EquipmentService.getEquippedItems(characterId);
     
     // Converter para array se necessário
     const equipmentSlots = Array.isArray(equipmentSlotsData) 
