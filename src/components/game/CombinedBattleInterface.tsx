@@ -36,6 +36,7 @@ interface CombinedBattleInterfaceProps {
   onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
   currentEnemy?: { hp: number; maxHp: number; name: string } | null;
   battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean; newLevel?: number } | null;
+  isFleeInProgress?: boolean;
 }
 
 interface TooltipInfo {
@@ -83,7 +84,8 @@ export function CombinedBattleInterface({
   onPlayerStatsUpdate,
   onPlayerConsumablesUpdate,
   currentEnemy,
-  battleRewards
+  battleRewards,
+  isFleeInProgress = false
 }: CombinedBattleInterfaceProps) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -97,7 +99,7 @@ export function CombinedBattleInterface({
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isDisabled = !isPlayerTurn || loading.performAction;
+  const isDisabled = !isPlayerTurn || loading.performAction || isFleeInProgress;
   const potionUsedThisTurn = player.potionUsedThisTurn || false;
   
   // CRÍTICO: Verificar se o personagem está morto
@@ -144,8 +146,8 @@ export function CombinedBattleInterface({
 
   // Função para usar poção do slot
   const handlePotionSlotUse = async (slotPosition: number) => {
-    // CRÍTICO: Bloquear uso de poções se personagem está morto
-    if (isPlayerDead || isDisabled || usingSlot !== null) return;
+    // CRÍTICO: Bloquear uso de poções se personagem está morto ou fuga em progresso
+    if (isPlayerDead || isDisabled || usingSlot !== null || isFleeInProgress) return;
 
     const slot = potionSlots.find(s => s.slot_position === slotPosition);
     if (!slot?.consumable_id) {
@@ -236,8 +238,8 @@ export function CombinedBattleInterface({
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // CRÍTICO: Bloquear atalhos se personagem está morto
-      if (isPlayerDead || isDisabled || usingSlot !== null) return;
+      // CRÍTICO: Bloquear atalhos se personagem está morto ou fuga em progresso
+      if (isPlayerDead || isDisabled || usingSlot !== null || isFleeInProgress) return;
 
       // Verificar se o usuário está digitando em um input
       const target = event.target as HTMLElement;
@@ -298,7 +300,7 @@ export function CombinedBattleInterface({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn]);
+  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn, isFleeInProgress]);
 
   const getPotionKeyBinding = (position: number) => {
     switch (position) {
@@ -403,6 +405,21 @@ export function CombinedBattleInterface({
             <div className="text-red-400 text-2xl animate-pulse">💀</div>
             <div className="text-red-400 font-bold text-lg">Personagem Morto</div>
             <div className="text-muted-foreground text-sm">Interface bloqueada</div>
+          </div>
+        </div>
+      )}
+      
+      {/* NOVO: Overlay mostrando fuga em progresso */}
+      {isFleeInProgress && (
+        <div className="absolute inset-0 bg-green-500/20 backdrop-blur-sm z-40 flex items-center justify-center rounded-xl">
+          <div className="text-center space-y-3">
+            <div className="text-green-400 text-2xl animate-bounce">🏃‍♂️</div>
+            <div className="text-green-400 font-bold text-lg">Fuga Bem-Sucedida!</div>
+            <div className="text-muted-foreground text-sm">Redirecionando para o hub...</div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-400 border-t-transparent"></div>
+              <span className="text-green-400 text-sm">Processando...</span>
+            </div>
           </div>
         </div>
       )}

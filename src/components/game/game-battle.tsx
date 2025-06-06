@@ -141,6 +141,24 @@ export default function GameBattle() {
     }
   }, [gameState.mode, player.hp, gameState.characterDeleted, player.name]);
 
+  // NOVO: Verificação de fuga bem-sucedida
+  useEffect(() => {
+    if (gameState.mode === 'fled' && gameState.fleeSuccessful) {
+      console.log('[GameBattle] Fuga bem-sucedida detectada, redirecionando...');
+      
+      // Adicionar mensagem de fuga ao log
+      addGameLogMessage('Você fugiu da batalha com sucesso!', 'system');
+      
+      // Usar setTimeout para garantir que a mensagem seja exibida antes do redirecionamento
+      const timer = setTimeout(() => {
+        console.log('[GameBattle] Executando redirecionamento para hub...');
+        router.push(`/game/play/hub?character=${player.id}`);
+      }, 3000); // 3 segundos para mostrar a mensagem
+      
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.mode, gameState.fleeSuccessful, player.id]);
+
   // Listener para abrir modal de atributos
   useEffect(() => {
     const handleOpenAttributeModal = () => {
@@ -382,6 +400,7 @@ export default function GameBattle() {
             onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
             currentEnemy={currentEnemy}
             battleRewards={gameState.battleRewards}
+            isFleeInProgress={gameState.mode === 'fled'}
           />
         </div>
 
