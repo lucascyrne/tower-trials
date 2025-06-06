@@ -14,12 +14,7 @@ interface EquipmentPanelProps {
 
 export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEquipmentChange }) => {
     const [inventory, setInventory] = useState<CharacterEquipment[]>([]);
-    const [equippedItems, setEquippedItems] = useState<EquipmentSlots>({
-        main_hand: null,
-        off_hand: null,
-        armor: null,
-        accessory: null
-    });
+    const [equippedItems, setEquippedItems] = useState<EquipmentSlots>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -32,7 +27,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
             
             const [items, equipped] = await Promise.all([
                 EquipmentService.getCharacterEquipment(character.id),
-                EquipmentService.getEquippedSlots(character.id)
+                EquipmentService.getEquippedItems(character.id)
             ]);
             
             setInventory(items || []);
@@ -47,12 +42,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
             
             // Definir valores padrão em caso de erro
             setInventory([]);
-            setEquippedItems({
-                main_hand: null,
-                off_hand: null,
-                armor: null,
-                accessory: null
-            });
+            setEquippedItems({});
         } finally {
             setLoading(false);
         }
