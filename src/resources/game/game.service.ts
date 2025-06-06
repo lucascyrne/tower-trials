@@ -1040,7 +1040,7 @@ export class GameService {
           
           // XP de defesa por bloquear magia (menor que físico)
           try {
-            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlotsResponse = await EquipmentService.getEquippedItems(player.id);
             const equipmentSlots = equipmentSlotsResponse || null;
             const blockedDamage = Math.floor((spellDamage - actualDamage) * 0.5); // Menor XP para defesa mágica
             
@@ -1246,7 +1246,7 @@ export class GameService {
         // XP de defesa por receber habilidade especial
         if (actualDamage > 0) {
           try {
-            const equipmentSlotsResponse = await EquipmentService.getEquippedSlots(player.id);
+            const equipmentSlotsResponse = await EquipmentService.getEquippedItems(player.id);
             const equipmentSlots = equipmentSlotsResponse || null;
             
             if (player.isDefending || playerDefendAction) {

@@ -117,10 +117,10 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   };
 
   // Adicionar bônus de cada slot - atualizado para dual-wielding
-  addEquipmentBonus(slots.main_hand);
-  addEquipmentBonus(slots.off_hand);
-  addEquipmentBonus(slots.armor);
-  addEquipmentBonus(slots.accessory);
+  addEquipmentBonus(slots.main_hand ?? null);
+  addEquipmentBonus(slots.off_hand ?? null);
+  addEquipmentBonus(slots.armor ?? null);
+  addEquipmentBonus(slots.accessory ?? null);
 
   // Bônus especial para dual-wielding (15% extra de ataque se ambas as mãos tiverem armas)
   if (slots.main_hand && slots.off_hand && 
