@@ -153,33 +153,40 @@ export class EquipmentService {
 
     /**
      * Comprar um equipamento para um personagem
+     * @param characterId ID do personagem
+     * @param equipmentId ID do equipamento
+     * @param price Preço do equipamento
+     * @returns Novo valor de gold ou null se falhar
      */
     static async buyEquipment(
         characterId: string,
         equipmentId: string,
         price: number
-    ): Promise<boolean> {
+    ): Promise<{ success: boolean; newGold?: number; error?: string }> {
         try {
             if (!characterId || !equipmentId) {
                 console.error('Parâmetros inválidos para comprar equipamento');
-                return false;
+                return { success: false, error: 'Parâmetros inválidos' };
             }
 
-            const { error } = await supabase.rpc('buy_equipment', {
+            const { data, error } = await supabase.rpc('buy_equipment', {
                 p_character_id: characterId,
                 p_equipment_id: equipmentId,
                 p_price: price
-            });
+            }).single();
 
             if (error) {
                 console.error('Erro ao comprar equipamento:', error.message);
-                return false;
+                return { success: false, error: error.message };
             }
 
-            return true;
+            return { success: true, newGold: data as number };
         } catch (error) {
             console.error('Erro ao comprar equipamento:', error);
-            return false;
+            return { 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            };
         }
     }
 
@@ -230,35 +237,41 @@ export class EquipmentService {
 
     /**
      * Vender um equipamento
+     * @param characterId ID do personagem
+     * @param equipmentId ID do equipamento
+     * @returns Novo valor de gold ou informações de erro
      */
     static async sellEquipment(
         characterId: string,
         equipmentId: string
-    ): Promise<boolean> {
+    ): Promise<{ success: boolean; newGold?: number; error?: string }> {
         try {
             if (!characterId || !equipmentId) {
                 console.error('Parâmetros inválidos para vender equipamento');
-                return false;
+                return { success: false, error: 'Parâmetros inválidos' };
             }
 
             // Primeiro desequipar se estiver equipado
             await this.toggleEquipment(characterId, equipmentId, false);
 
-            // Então remover o item e dar o gold ao personagem
-            const { error } = await supabase.rpc('sell_equipment', {
+            // Então vender o item e obter o novo gold
+            const { data, error } = await supabase.rpc('sell_equipment', {
                 p_character_id: characterId,
                 p_equipment_id: equipmentId
-            });
+            }).single();
 
             if (error) {
                 console.error('Erro ao vender equipamento:', error.message);
-                return false;
+                return { success: false, error: error.message };
             }
 
-            return true;
+            return { success: true, newGold: data as number };
         } catch (error) {
             console.error('Erro ao vender equipamento:', error);
-            return false;
+            return { 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            };
         }
     }
 } 

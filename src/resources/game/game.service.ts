@@ -299,7 +299,7 @@ export class GameService {
       };
     }
 
-    const newState = { ...gameState };
+    let newState = { ...gameState };
 
     // Resetar flag de poção usada no início do turno
     newState.player.potionUsedThisTurn = false;
@@ -541,6 +541,9 @@ export class GameService {
         message += ' ' + playerMessages.join(' ');
       }
     }
+
+    // CRÍTICO: Reduzir cooldowns das magias a cada turno
+    newState = SpellService.updateSpellCooldowns(newState);
 
     // Resetar defesa após o turno
     newState.player.isDefending = false;
@@ -812,8 +815,6 @@ export class GameService {
     }
   }
 
-
-
   /**
    * Processar ação do inimigo
    * @param gameState Estado atual do jogo
@@ -833,11 +834,16 @@ export class GameService {
     const player = gameState.player;
     const skillXpGains: SkillXpGain[] = [];
     
+    // LOG: Início do processamento da ação do inimigo
+    console.log(`[GameService] === PROCESSANDO AÇÃO DO INIMIGO ===`);
+    console.log(`[GameService] Inimigo: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`);
+    
     // Processar efeitos contínuos no inimigo (DoTs, buffs, etc.)
     SpellService.processOverTimeEffects(enemy);
     
     // Se o inimigo morreu por efeitos ao longo do tempo
     if (enemy.hp <= 0) {
+      console.log(`[GameService] Inimigo morreu por efeitos ao longo do tempo`);
       return {
         newState: {
           ...gameState,
@@ -890,12 +896,16 @@ export class GameService {
       actionType = 'spell';
     }
 
+    // LOG: Ação escolhida
+    console.log(`[GameService] Ação escolhida: ${actionType} (special: ${specialChance}, spell: ${spellChance})`);
+
     let message = '';
     let damage = 0;
     let actualDamage = 0;
 
     switch (actionType) {
       case 'attack':
+        console.log(`[GameService] Executando ataque físico`);
         damage = this.calculateDamage(enemy.attack, player.def);
         
         // Aplicar resistência de defesa se jogador está defendendo
@@ -1012,9 +1022,13 @@ export class GameService {
           ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
           : undefined;
 
-        return { newState: resultState, skillXpGains, skillMessages };
+        // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+        const updatedResultState = SpellService.updateSpellCooldowns(resultState);
+        console.log(`[GameService] Ataque processado com sucesso. Mensagem: ${message}`);
+        return { newState: updatedResultState, skillXpGains, skillMessages };
 
       case 'spell':
+        console.log(`[GameService] Executando magia`);
         // Inimigo usa magia
         const spellDamage = Math.floor(enemy.attack * 1.2);
         const spellCost = 10;
@@ -1139,7 +1153,10 @@ export class GameService {
           ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
           : undefined;
 
-        return { newState: spellResultState, skillXpGains, skillMessages: spellSkillMessages };
+        // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+        const updatedSpellResultState = SpellService.updateSpellCooldowns(spellResultState);
+        console.log(`[GameService] Magia processada com sucesso. Mensagem: ${message}`);
+        return { newState: updatedSpellResultState, skillXpGains, skillMessages: spellSkillMessages };
 
       case 'special':
         // Sistema avançado de habilidades especiais
@@ -1155,21 +1172,22 @@ export class GameService {
             // Habilidades de cura
             const healAmount = Math.floor(enemy.maxHp * (0.10 + Math.random() * 0.15)); // 10-25%
             const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
-            return {
-              newState: {
-                ...gameState,
-                player: {
-                  ...player,
-                  potionUsedThisTurn: false
-                },
-                currentEnemy: {
-                  ...enemy,
-                  hp: newEnemyHp
-                },
-                isPlayerTurn: true,
-                gameMessage: `${enemy.name} usou ${abilityName} e recuperou ${healAmount} HP!`
-              }
+            const healResultState = {
+              ...gameState,
+              player: {
+                ...player,
+                potionUsedThisTurn: false
+              },
+              currentEnemy: {
+                ...enemy,
+                hp: newEnemyHp
+              },
+              isPlayerTurn: true,
+              gameMessage: `${enemy.name} usou ${abilityName} e recuperou ${healAmount} HP!`
             };
+            // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+            const updatedHealResultState = SpellService.updateSpellCooldowns(healResultState);
+            return { newState: updatedHealResultState };
           } else if (randomAbility.includes('dano') || randomAbility.includes('ATK') || randomAbility.includes('Ataque')) {
             // Habilidades de dano aumentado
             damage = Math.floor(enemy.attack * (1.3 + Math.random() * 0.7)); // 130-200%
@@ -1202,21 +1220,22 @@ export class GameService {
             case 'defensive':
               const healAmount = Math.floor(enemy.maxHp * 0.15);
               const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    potionUsedThisTurn: false
-                  },
-                  currentEnemy: {
-                    ...enemy,
-                    hp: newEnemyHp
-                  },
-                  isPlayerTurn: true,
-                  gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
-                }
+              const defensiveHealState = {
+                ...gameState,
+                player: {
+                  ...player,
+                  potionUsedThisTurn: false
+                },
+                currentEnemy: {
+                  ...enemy,
+                  hp: newEnemyHp
+                },
+                isPlayerTurn: true,
+                gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
               };
+              // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+              const updatedDefensiveHealState = SpellService.updateSpellCooldowns(defensiveHealState);
+              return { newState: updatedDefensiveHealState };
             default:
               damage = Math.floor(enemy.attack * 1.3);
               actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
@@ -1327,19 +1346,25 @@ export class GameService {
           ? skillXpGains.map(gain => `+${gain.xp} XP em ${SkillXpService.getSkillDisplayName(gain.skill)}`)
           : undefined;
 
-        return { newState: specialResultState, skillXpGains, skillMessages: specialSkillMessages };
+        // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+        const updatedSpecialResultState = SpellService.updateSpellCooldowns(specialResultState);
+        console.log(`[GameService] Habilidade especial processada com sucesso. Mensagem: ${message}`);
+        return { newState: updatedSpecialResultState, skillXpGains, skillMessages: specialSkillMessages };
 
       default:
-        return { 
-          newState: { 
-            ...gameState, 
-            player: {
-              ...gameState.player,
-              potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
-            },
-            isPlayerTurn: true
-          }
+        console.log(`[GameService] ERRO: Ação desconhecida: ${actionType}`);
+        console.log(`[GameService] Este caso não deveria ser executado!`);
+        const defaultState = { 
+          ...gameState, 
+          player: {
+            ...gameState.player,
+            potionUsedThisTurn: false // Resetar flag de poção quando o turno retorna ao jogador
+          },
+          isPlayerTurn: true
         };
+        // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
+        const updatedDefaultState = SpellService.updateSpellCooldowns(defaultState);
+        return { newState: updatedDefaultState };
     }
   }
 

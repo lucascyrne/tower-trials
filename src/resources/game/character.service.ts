@@ -36,6 +36,11 @@ export class CharacterService {
   private static lastFetchTimestamp: Map<string, number> = new Map();
   private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
   private static CACHE_DURATION = 30000; // 30 segundos de cache
+  
+  // OTIMIZADO: Throttling para invalidação de cache
+  private static cacheInvalidationQueue: Set<string> = new Set();
+  private static cacheInvalidationTimer: NodeJS.Timeout | null = null;
+  private static CACHE_INVALIDATION_DELAY = 100; // 100ms de delay para agrupar invalidações
 
   /**
    * Buscar informações de progressão do usuário
@@ -253,7 +258,7 @@ export class CharacterService {
         wisdom: fullStatsData.wisdom,
         vitality: fullStatsData.vitality,
         luck: fullStatsData.luck,
-        attribute_points: fullStatsData.attribute_points,
+        attribute_points: fullStatsData.attribute_points || 0,
         critical_chance: fullStatsData.critical_chance,
         critical_damage: fullStatsData.critical_damage,
         sword_mastery: fullStatsData.sword_mastery,
@@ -528,12 +533,7 @@ export class CharacterService {
   }
 
   /**
-   * FUNÇÃO SEGURA: Atualizar HP e Mana com validação de limites
-   * APENAS para uso interno do servidor - não exposta via RPC
-   * @param characterId ID do personagem
-   * @param hp Novo HP (opcional)
-   * @param mana Nova mana (opcional)
-   * @returns Resultado da operação
+   * OTIMIZADO: Atualizar HP e Mana com validação de limites e throttling
    */
   static async updateCharacterHpMana(
     characterId: string,
@@ -569,7 +569,7 @@ export class CharacterService {
         return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
       }
 
-      // Invalidar cache do personagem
+      // OTIMIZADO: Invalidar cache usando sistema com throttling
       this.invalidateCharacterCache(characterId);
 
       return { success: true, error: null, data: null };
@@ -584,10 +584,7 @@ export class CharacterService {
   }
 
   /**
-   * FUNÇÃO SEGURA: Avançar andar do personagem com validação
-   * @param characterId ID do personagem
-   * @param newFloor Novo andar
-   * @returns Resultado da operação
+   * OTIMIZADO: Avançar andar do personagem com validação e throttling
    */
   static async updateCharacterFloor(characterId: string, newFloor: number): Promise<ServiceResponse<null>> {
     try {
@@ -607,7 +604,7 @@ export class CharacterService {
         throw error;
       }
 
-      // Invalidar cache do personagem específico
+      // OTIMIZADO: Invalidar cache usando sistema com throttling
       this.invalidateCharacterCache(characterId);
 
       console.log(`[CharacterService] Andar atualizado com segurança para ${newFloor}`);
@@ -694,29 +691,53 @@ export class CharacterService {
   }
 
   /**
-   * Limpar cache de um personagem específico
+   * OTIMIZADO: Limpar cache de um personagem específico com throttling
    */
   static invalidateCharacterCache(characterId: string): void {
-    this.characterCache.delete(characterId);
-    this.lastFetchTimestamp.delete(characterId);
-    console.log(`[CharacterService] Cache invalidado para personagem ${characterId}`);
+    // Adicionar à fila de invalidação
+    this.cacheInvalidationQueue.add(characterId);
+    
+    // Se já há um timer rodando, cancelar
+    if (this.cacheInvalidationTimer) {
+      clearTimeout(this.cacheInvalidationTimer);
+    }
+    
+    // Processar a fila após o delay
+    this.cacheInvalidationTimer = setTimeout(() => {
+      const idsToInvalidate = Array.from(this.cacheInvalidationQueue);
+      this.cacheInvalidationQueue.clear();
+      this.cacheInvalidationTimer = null;
+      
+      idsToInvalidate.forEach(id => {
+        this.characterCache.delete(id);
+        this.lastFetchTimestamp.delete(id);
+      });
+      
+      if (idsToInvalidate.length > 0) {
+        console.log(`[CharacterService] Cache invalidado para ${idsToInvalidate.length} personagens: ${idsToInvalidate.join(', ')}`);
+      }
+    }, this.CACHE_INVALIDATION_DELAY);
   }
 
   /**
-   * Limpar cache de um usuário específico
+   * OTIMIZADO: Limpar cache de um usuário específico com throttling
    */
   static invalidateUserCache(userId: string): void {
     const userCacheKey = `user_${userId}`;
     this.lastFetchTimestamp.delete(userCacheKey);
     
-    // Remover todos os personagens deste usuário do cache
+    // Encontrar todos os personagens deste usuário e invalidar de forma agrupada
+    const userCharacterIds: string[] = [];
     Array.from(this.characterCache.entries()).forEach(([id, character]) => {
       if (character.user_id === userId) {
-        this.characterCache.delete(id);
+        userCharacterIds.push(id);
       }
     });
     
-    console.log(`[CharacterService] Cache de usuário ${userId} invalidado`);
+    // Usar o sistema de throttling para invalidar todos os personagens do usuário
+    userCharacterIds.forEach(id => this.invalidateCharacterCache(id));
+    
+    console.log(`[CharacterService] Cache de usuário ${userId} invalidado (${userCharacterIds.length} personagens)`);
   }
 
   /**
@@ -1026,136 +1047,81 @@ export class CharacterService {
    */
   static async getCharacterStats(characterId: string): Promise<ServiceResponse<CharacterStats>> {
     try {
-      // CRÍTICO: Buscar dados diretamente da tabela characters (igual ao getCharacterForGame)
-      const { data: charData, error: charError } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('id', characterId)
-        .single();
-
-      if (charError) throw charError;
-
-      if (!charData) {
+      // CRÍTICO: Usar a mesma fonte de dados que getCharacterForGame para garantir consistência
+      const gamePlayerResponse = await this.getCharacterForGame(characterId);
+      
+      if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
         return {
           success: false,
-          error: 'Personagem não encontrado',
+          error: gamePlayerResponse.error || 'Erro ao carregar dados do personagem',
           data: null
         };
       }
 
-      // Calcular stats derivados usando a nova função
-      const derivedStats = await this.calculateDerivedStats(charData);
-
-      // CRÍTICO: Calcular valores base usando o NOVO SISTEMA ESPECIALIZADO (sem equipamentos)
-      const vitScaling = Math.pow(charData.vitality, 1.4);
-      const intScaling = Math.pow(charData.intelligence, 1.35);
-      const strScaling = Math.pow(charData.strength, 1.3);
-      const wisScaling = Math.pow(charData.wisdom, 1.2);
-      const dexScaling = Math.pow(charData.dexterity, 1.25);
+      const gamePlayer = gamePlayerResponse.data;
       
-      const magicMasteryBonus = Math.pow(charData.magic_mastery, 1.2) * 2.0;
-      const weaponBonus = Math.pow(Math.max(charData.sword_mastery || 1, charData.axe_mastery || 1, charData.blunt_mastery || 1), 1.1) * 0.5;
-      const defMasteryBonus = Math.pow(charData.defense_mastery, 1.3) * 1.2;
-      
-      // Bases muito menores para forçar especialização
-      const baseHp = 60 + (charData.level * 3) + (vitScaling * 3.5);
-      const baseMana = 25 + (charData.level * 2) + (intScaling * 2.0) + magicMasteryBonus;
-      const baseAtk = 3 + charData.level + (strScaling * 1.8) + weaponBonus;
-      const baseDef = 2 + charData.level + (vitScaling * 0.8) + (wisScaling * 0.6) + defMasteryBonus;
-      const baseSpeed = 5 + charData.level + (dexScaling * 1.2);
-
-      // Calcular bônus de equipamentos (diferença entre valor final e valor base)
-      const equipmentHpBonus = Math.max(0, derivedStats.max_hp - baseHp);
-      const equipmentManaBonus = Math.max(0, derivedStats.max_mana - baseMana);
-      const equipmentAtkBonus = Math.max(0, derivedStats.atk - baseAtk);
-      const equipmentDefBonus = Math.max(0, derivedStats.def - baseDef);
-      const equipmentSpeedBonus = Math.max(0, derivedStats.speed - baseSpeed);
-
-      console.log(`[CharacterService] Cálculo de stats base vs derivados:`, {
-        hp: { base: baseHp, derived: derivedStats.max_hp, bonus: equipmentHpBonus },
-        mana: { base: baseMana, derived: derivedStats.max_mana, bonus: equipmentManaBonus },
-        atk: { base: baseAtk, derived: derivedStats.atk, bonus: equipmentAtkBonus },
-        def: { base: baseDef, derived: derivedStats.def, bonus: equipmentDefBonus },
-        speed: { base: baseSpeed, derived: derivedStats.speed, bonus: equipmentSpeedBonus }
-      });
-      
+      // Converter GamePlayer para CharacterStats usando exatamente os mesmos valores
       const characterStats: CharacterStats = {
-        level: charData.level,
-        xp: charData.xp,
-        xp_next_level: charData.xp_next_level,
-        gold: charData.gold,
-        hp: charData.hp,
-        max_hp: derivedStats.max_hp,
-        mana: charData.mana,
-        max_mana: derivedStats.max_mana,
-        atk: derivedStats.atk,
-        def: derivedStats.def,
-        speed: derivedStats.speed,
+        level: gamePlayer.level,
+        xp: gamePlayer.xp,
+        xp_next_level: gamePlayer.xp_next_level,
+        gold: gamePlayer.gold,
+        hp: gamePlayer.hp,
+        max_hp: gamePlayer.max_hp,
+        mana: gamePlayer.mana,
+        max_mana: gamePlayer.max_mana,
+        atk: gamePlayer.atk,
+        def: gamePlayer.def,
+        speed: gamePlayer.speed,
         
         // Atributos primários
-        strength: charData.strength || 10,
-        dexterity: charData.dexterity || 10,
-        intelligence: charData.intelligence || 10,
-        wisdom: charData.wisdom || 10,
-        vitality: charData.vitality || 10,
-        luck: charData.luck || 10,
-        attribute_points: charData.attribute_points || 0,
+        strength: gamePlayer.strength || 10,
+        dexterity: gamePlayer.dexterity || 10,
+        intelligence: gamePlayer.intelligence || 10,
+        wisdom: gamePlayer.wisdom || 10,
+        vitality: gamePlayer.vitality || 10,
+        luck: gamePlayer.luck || 10,
+        attribute_points: gamePlayer.attribute_points || 0,
         
-        // Stats derivados
-        critical_chance: derivedStats.critical_chance,
-        critical_damage: derivedStats.critical_damage,
-        magic_damage_bonus: derivedStats.magic_damage_bonus,
+        // CRÍTICO: Stats derivados - usar exatamente os mesmos valores do GamePlayer
+        critical_chance: gamePlayer.critical_chance || 0,
+        critical_damage: gamePlayer.critical_damage || 0,
+        magic_damage_bonus: gamePlayer.magic_damage_bonus || 0,
+        magic_attack: gamePlayer.magic_attack || 0,
         
-        // CRÍTICO: Habilidades - usar dados reais do banco
-        sword_mastery: charData.sword_mastery || 1,
-        axe_mastery: charData.axe_mastery || 1,
-        blunt_mastery: charData.blunt_mastery || 1,
-        defense_mastery: charData.defense_mastery || 1,
-        magic_mastery: charData.magic_mastery || 1,
+        // Habilidades
+        sword_mastery: gamePlayer.sword_mastery || 1,
+        axe_mastery: gamePlayer.axe_mastery || 1,
+        blunt_mastery: gamePlayer.blunt_mastery || 1,
+        defense_mastery: gamePlayer.defense_mastery || 1,
+        magic_mastery: gamePlayer.magic_mastery || 1,
         
-        sword_mastery_xp: charData.sword_mastery_xp || 0,
-        axe_mastery_xp: charData.axe_mastery_xp || 0,
-        blunt_mastery_xp: charData.blunt_mastery_xp || 0,
-        defense_mastery_xp: charData.defense_mastery_xp || 0,
-        magic_mastery_xp: charData.magic_mastery_xp || 0,
+        sword_mastery_xp: gamePlayer.sword_mastery_xp || 0,
+        axe_mastery_xp: gamePlayer.axe_mastery_xp || 0,
+        blunt_mastery_xp: gamePlayer.blunt_mastery_xp || 0,
+        defense_mastery_xp: gamePlayer.defense_mastery_xp || 0,
+        magic_mastery_xp: gamePlayer.magic_mastery_xp || 0,
         
-        // Dados extras para exibição
-        base_hp: baseHp,
-        base_max_hp: baseHp,
-        base_mana: baseMana,
-        base_max_mana: baseMana,
-        base_atk: baseAtk,
-        base_def: baseDef,
-        base_speed: baseSpeed,
-        equipment_hp_bonus: equipmentHpBonus,
-        equipment_mana_bonus: equipmentManaBonus,
-        equipment_atk_bonus: equipmentAtkBonus,
-        equipment_def_bonus: equipmentDefBonus,
-        equipment_speed_bonus: equipmentSpeedBonus
+        // Stats base (usar os mesmos do GamePlayer para consistência)
+        base_hp: gamePlayer.base_hp || gamePlayer.base_max_hp,
+        base_max_hp: gamePlayer.base_max_hp,
+        base_mana: gamePlayer.base_mana || gamePlayer.base_max_mana,
+        base_max_mana: gamePlayer.base_max_mana,
+        base_atk: gamePlayer.base_atk,
+        base_def: gamePlayer.base_def,
+        base_speed: gamePlayer.base_speed,
+        
+        // Bônus de equipamentos (usar os mesmos do GamePlayer para consistência)
+        equipment_hp_bonus: gamePlayer.equipment_hp_bonus || 0,
+        equipment_mana_bonus: gamePlayer.equipment_mana_bonus || 0,
+        equipment_atk_bonus: gamePlayer.equipment_atk_bonus || 0,
+        equipment_def_bonus: gamePlayer.equipment_def_bonus || 0,
+        equipment_speed_bonus: gamePlayer.equipment_speed_bonus || 0
       };
 
-      console.log(`[CharacterService] Stats calculados:`, {
-        values: {
-          max_hp: characterStats.max_hp,
-          max_mana: characterStats.max_mana,
-          atk: characterStats.atk,
-          def: characterStats.def,
-          speed: characterStats.speed
-        },
-        base: {
-          hp: characterStats.base_max_hp,
-          mana: characterStats.base_max_mana,
-          atk: characterStats.base_atk,
-          def: characterStats.base_def,
-          speed: characterStats.base_speed
-        },
-        equipment: {
-          hp: characterStats.equipment_hp_bonus,
-          mana: characterStats.equipment_mana_bonus,
-          atk: characterStats.equipment_atk_bonus,
-          def: characterStats.equipment_def_bonus,
-          speed: characterStats.equipment_speed_bonus
-        }
+      console.log(`[CharacterService] Stats unificados para ${gamePlayer.name}:`, {
+        critical_damage: characterStats.critical_damage,
+        fonte: 'getCharacterForGame (única fonte da verdade)'
       });
 
       return {
@@ -1238,13 +1204,13 @@ export class CharacterService {
         },
         
         // Atributos primários
-        strength: charData.strength,
-        dexterity: charData.dexterity,
-        intelligence: charData.intelligence,
-        wisdom: charData.wisdom,
-        vitality: charData.vitality,
-        luck: charData.luck,
-        attribute_points: charData.attribute_points,
+        strength: charData.strength || 10,
+        dexterity: charData.dexterity || 10,
+        intelligence: charData.intelligence || 10,
+        wisdom: charData.wisdom || 10,
+        vitality: charData.vitality || 10,
+        luck: charData.luck || 10,
+        attribute_points: charData.attribute_points || 0,
         
         // Habilidades
         sword_mastery: charData.sword_mastery || 1,
@@ -1263,6 +1229,7 @@ export class CharacterService {
         critical_chance: derivedStats.critical_chance,
         critical_damage: derivedStats.critical_damage,
         magic_damage_bonus: derivedStats.magic_damage_bonus,
+        magic_attack: derivedStats.magic_attack,
         
         // Stats base para exibição (simplificado)
         base_hp: 80 + (charData.level * 5),
@@ -1461,6 +1428,7 @@ export class CharacterService {
     mana: number;
     max_mana: number;
     atk: number;
+    magic_attack: number;
     def: number;
     speed: number;
     critical_chance: number;
@@ -1468,74 +1436,27 @@ export class CharacterService {
     magic_damage_bonus: number;
   }> {
     try {
-      // Determinar tipo de arma equipada
-      const equippedWeaponType = await this.getEquippedWeaponType(character.id);
-      
-      const { data, error } = await supabase.rpc('calculate_derived_stats', {
-        p_level: character.level,
-        p_strength: character.strength,
-        p_dexterity: character.dexterity,
-        p_intelligence: character.intelligence,
-        p_wisdom: character.wisdom,
-        p_vitality: character.vitality,
-        p_luck: character.luck,
-        p_sword_mastery: character.sword_mastery,
-        p_axe_mastery: character.axe_mastery,
-        p_blunt_mastery: character.blunt_mastery,
-        p_defense_mastery: character.defense_mastery,
-        p_magic_mastery: character.magic_mastery,
-        p_equipped_weapon_type: equippedWeaponType
-      });
-
-      if (error) {
-        console.error('[CharacterService] Erro ao calcular stats derivados:', error);
-        // Fallback para cálculo manual se a função do banco falhar
-        return this.calculateDerivedStatsFallback(character);
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error('Nenhum dado retornado da função calculate_derived_stats');
-      }
-
-      const stats = data[0];
-      
-      console.log('[CharacterService] Stats derivados calculados:', {
-        character_id: character.id,
+      console.log('[CharacterService] Calculando stats derivados para:', {
+        id: character.id,
         level: character.level,
-        attributes: {
-          str: character.strength,
-          dex: character.dexterity,
-          int: character.intelligence,
-          wis: character.wisdom,
-          vit: character.vitality,
-          luck: character.luck
-        },
-        skills: {
-          sword: character.sword_mastery,
-          axe: character.axe_mastery,
-          blunt: character.blunt_mastery,
-          defense: character.defense_mastery,
-          magic: character.magic_mastery
-        },
-        weaponType: equippedWeaponType,
-        derivedStats: stats
+        strength: character.strength,
+        dexterity: character.dexterity,
+        intelligence: character.intelligence,
+        wisdom: character.wisdom,
+        vitality: character.vitality,
+        luck: character.luck,
+        sword_mastery: character.sword_mastery,
+        axe_mastery: character.axe_mastery,
+        blunt_mastery: character.blunt_mastery,
+        defense_mastery: character.defense_mastery,
+        magic_mastery: character.magic_mastery
       });
 
-      return {
-        hp: stats.derived_hp,
-        max_hp: stats.derived_max_hp,
-        mana: stats.derived_mana,
-        max_mana: stats.derived_max_mana,
-        atk: stats.derived_atk,
-        def: stats.derived_def,
-        speed: stats.derived_speed,
-        critical_chance: stats.derived_critical_chance,
-        critical_damage: stats.derived_critical_damage,
-        magic_damage_bonus: stats.derived_magic_damage_bonus
-      };
+      console.log('[CharacterService] Usando cálculo fallback para garantir consistência');
+      return await this.calculateDerivedStatsFallback(character);
     } catch (error) {
       console.error('[CharacterService] Erro no cálculo de stats derivados:', error);
-      return this.calculateDerivedStatsFallback(character);
+      return await this.calculateDerivedStatsFallback(character);
     }
   }
 
@@ -1547,36 +1468,52 @@ export class CharacterService {
       const { data, error } = await supabase
         .from('character_equipment')
         .select(`
-          items!inner(
-            equipment_type,
-            subtype
+          equipment!inner(
+            type,
+            weapon_subtype
           )
         `)
         .eq('character_id', characterId)
-        .eq('slot', 'weapon')
-        .eq('equipped', true)
-        .single();
+        .eq('is_equipped', true);
 
-      if (error || !data) {
+      if (error) {
+        console.log('[CharacterService] Erro ao buscar equipamentos:', error.message);
         return null;
       }
 
-      const item = (data.items as unknown) as { equipment_type: string; subtype: string };
-      if (item.equipment_type === 'weapon') {
+      // Se não há dados ou array vazio, o personagem não tem equipamentos
+      if (!data || data.length === 0) {
+        console.log('[CharacterService] Nenhuma arma equipada encontrada');
+        return null;
+      }
+
+      // Procurar especificamente por armas equipadas
+      const weaponEquipment = data.find((item) => {
+        const equipment = (item.equipment as unknown) as { type: string; weapon_subtype: string };
+        return equipment.type === 'weapon';
+      });
+
+      if (!weaponEquipment) {
+        console.log('[CharacterService] Nenhuma arma encontrada nos equipamentos equipados');
+        return null;
+      }
+
+      const equipment = (weaponEquipment.equipment as unknown) as { type: string; weapon_subtype: string };
+      if (equipment.weapon_subtype) {
         // Mapear subtipos para os tipos esperados pela função
-        switch (item.subtype) {
+        switch (equipment.weapon_subtype) {
           case 'sword':
-          case 'short_sword':
-          case 'long_sword':
             return 'sword';
           case 'axe':
-          case 'battle_axe':
             return 'axe';
-          case 'mace':
-          case 'club':
-          case 'hammer':
+          case 'blunt':
             return 'blunt';
+          case 'staff':
+            return 'staff';
+          case 'dagger':
+            return 'sword'; // Adagas usam maestria de espada
           default:
+            console.log(`[CharacterService] Tipo de arma desconhecido: ${equipment.weapon_subtype}`);
             return null;
         }
       }
@@ -1591,18 +1528,19 @@ export class CharacterService {
   /**
    * Cálculo de fallback quando a função do banco não funciona (NOVO SISTEMA ESPECIALIZADO)
    */
-  private static calculateDerivedStatsFallback(character: Character): {
+  private static async calculateDerivedStatsFallback(character: Character): Promise<{
     hp: number;
     max_hp: number;
     mana: number;
     max_mana: number;
     atk: number;
+    magic_attack: number;
     def: number;
     speed: number;
     critical_chance: number;
     critical_damage: number;
     magic_damage_bonus: number;
-  } {
+  }> {
     const level = character.level;
     const str = character.strength;
     const dex = character.dexterity;
@@ -1619,10 +1557,44 @@ export class CharacterService {
     const vitScaling = Math.pow(vit, 1.4);
     const luckScaling = luck;
     
-    // Habilidades com escalamento logarítmico (sem arma equipada)
-    const weaponBonus = Math.pow(Math.max(character.sword_mastery, character.axe_mastery, character.blunt_mastery), 1.1) * 0.5;
-    const defMasteryBonus = Math.pow(character.defense_mastery, 1.3) * 1.2;
-    const magicMasteryBonus = Math.pow(character.magic_mastery, 1.2) * 2.0;
+    // Habilidades com escalamento logarítmico
+    const swordMastery = character.sword_mastery || 1;
+    const axeMastery = character.axe_mastery || 1;
+    const bluntMastery = character.blunt_mastery || 1;
+    const defenseMastery = character.defense_mastery || 1;
+    const magicMastery = character.magic_mastery || 1;
+    
+    // Determinar tipo de arma equipada
+    let weaponBonus = 0;
+    try {
+      const equippedWeaponType = await this.getEquippedWeaponType(character.id);
+      
+      if (equippedWeaponType) {
+        switch (equippedWeaponType) {
+          case 'sword':
+            weaponBonus = Math.pow(swordMastery, 1.1) * 0.5;
+            break;
+          case 'axe':
+            weaponBonus = Math.pow(axeMastery, 1.1) * 0.5;
+            break;
+          case 'blunt':
+            weaponBonus = Math.pow(bluntMastery, 1.1) * 0.5;
+            break;
+          case 'staff':
+            weaponBonus = Math.pow(magicMastery, 1.1) * 0.3; // Staff dá menos bônus físico
+            break;
+        }
+      } else {
+        // Sem arma equipada, usar a melhor maestria disponível
+        weaponBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * 0.5;
+      }
+    } catch (error) {
+      console.error('[CharacterService] Erro ao determinar arma equipada no fallback:', error);
+      weaponBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * 0.5;
+    }
+    
+    const defMasteryBonus = Math.pow(defenseMastery, 1.3) * 1.2;
+    const magicMasteryBonus = Math.pow(magicMastery, 1.2) * 2.0;
 
     // Bases MUITO menores para forçar especialização
     const baseHp = 60 + (level * 3);
@@ -1638,7 +1610,7 @@ export class CharacterService {
     const def = baseDef + (vitScaling * 0.8) + (wisScaling * 0.6) + defMasteryBonus;
     const speed = baseSpeed + (dexScaling * 1.2);
     
-    // Crítico rebalanceado
+    // Crítico rebalanceado com bônus de arma
     const criticalChance = Math.min(90, (luckScaling * 0.4) + (dexScaling * 0.3) + (weaponBonus * 0.1));
     const criticalDamage = 140 + (luckScaling * 0.8) + (strScaling * 0.6) + (weaponBonus * 0.4);
     
@@ -1657,14 +1629,18 @@ export class CharacterService {
     // Cap em 300% para especialistas extremos
     magicDamageBonus = Math.min(300, magicDamageBonus);
 
+    // Calcular magic_attack usando sistema rebalanceado
+    const magicAttack = baseAtk + (intScaling * 1.8) + (wisScaling * 0.6) + (magicMasteryBonus);
+
     return {
-      hp,
-      max_hp: hp,
-      mana,
-      max_mana: mana,
-      atk,
-      def,
-      speed,
+      hp: Math.floor(hp),
+      max_hp: Math.floor(hp),
+      mana: Math.floor(mana),
+      max_mana: Math.floor(mana),
+      atk: Math.floor(atk),
+      magic_attack: Math.floor(magicAttack),
+      def: Math.floor(def),
+      speed: Math.floor(speed),
       critical_chance: criticalChance,
       critical_damage: criticalDamage,
       magic_damage_bonus: magicDamageBonus

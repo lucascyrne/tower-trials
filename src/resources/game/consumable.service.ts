@@ -10,6 +10,26 @@ interface ServiceResponse<T> {
   success: boolean;
 }
 
+/**
+ * Extrair mensagem de erro específica do Supabase/PostgreSQL
+ * @param error Objeto de erro
+ * @param fallbackMessage Mensagem padrão caso não consiga extrair
+ * @returns Mensagem de erro específica
+ */
+function extractErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error && typeof error === 'object') {
+    // Erro do Supabase/PostgreSQL
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message;
+    }
+    // Fallback para Error padrão
+    if (error instanceof Error) {
+      return error.message;
+    }
+  }
+  return fallbackMessage;
+}
+
 export class ConsumableService {
   private static consumableCache: Map<string, Consumable> = new Map();
   private static dropCache: Map<string, MonsterDrop> = new Map();
@@ -80,26 +100,26 @@ export class ConsumableService {
    * @param characterId ID do personagem
    * @param consumableId ID do consumível
    * @param quantity Quantidade a comprar
-   * @returns Resultado da operação
+   * @returns Resultado da operação com novo gold
    */
   static async buyConsumable(
     characterId: string, 
     consumableId: string, 
     quantity: number = 1
-  ): Promise<ServiceResponse<null>> {
+  ): Promise<ServiceResponse<{ newGold: number }>> {
     try {
-      const { error } = await supabase.rpc('buy_consumable', {
+      const { data, error } = await supabase.rpc('buy_consumable', {
         p_character_id: characterId,
         p_consumable_id: consumableId,
         p_quantity: quantity
-      });
+      }).single();
 
       if (error) throw error;
 
-      return { data: null, error: null, success: true };
+      return { data: { newGold: data as number }, error: null, success: true };
     } catch (error) {
-      console.error('Erro ao comprar consumível:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao comprar consumível', success: false };
+      console.error('Erro ao comprar consumível:', error);
+      return { data: null, error: extractErrorMessage(error, 'Erro ao comprar consumível'), success: false };
     }
   }
 
@@ -229,8 +249,8 @@ export class ConsumableService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao usar consumível:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao usar consumível', success: false };
+      console.error('Erro ao usar consumível:', error);
+      return { data: null, error: extractErrorMessage(error, 'Erro ao usar consumível'), success: false };
     }
   }
 
@@ -355,10 +375,10 @@ export class ConsumableService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao processar drops:', error instanceof Error ? error.message : error);
+      console.error('Erro ao processar drops:', error);
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao processar drops', 
+        error: extractErrorMessage(error, 'Erro ao processar drops'), 
         success: false 
       };
     }
@@ -423,10 +443,10 @@ export class ConsumableService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao verificar crafting:', error instanceof Error ? error.message : error);
+      console.error('Erro ao verificar crafting:', error);
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao verificar crafting', 
+        error: extractErrorMessage(error, 'Erro ao verificar crafting'), 
         success: false 
       };
     }
@@ -456,10 +476,10 @@ export class ConsumableService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao criar item:', error instanceof Error ? error.message : error);
+      console.error('Erro ao criar item:', error);
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao criar item', 
+        error: extractErrorMessage(error, 'Erro ao criar item'), 
         success: false 
       };
     }

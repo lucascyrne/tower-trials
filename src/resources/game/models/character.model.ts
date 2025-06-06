@@ -196,6 +196,7 @@ export interface CharacterStats {
   mana: number;
   max_mana: number;
   atk: number;
+  magic_attack?: number;
   def: number;
   speed: number;
   
