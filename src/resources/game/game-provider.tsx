@@ -791,12 +791,26 @@ export function GameProvider({ children }: GameProviderProps) {
               return;
             }
 
-            // 3. Se o inimigo não foi derrotado, processar turno do inimigo
+            // 3. Se o inimigo não foi derrotado, processar turno do inimigo COM DELAY
             // CRÍTICO: NÃO processar turno do inimigo se a fuga foi bem-sucedida
             if (playerActionState.currentEnemy && !playerActionState.fleeSuccessful) {
-              console.log('[game-provider] === PROCESSANDO TURNO DO INIMIGO ===');
+              console.log('[game-provider] === PROCESSANDO TURNO DO INIMIGO COM DELAY ===');
               
-              const enemyActionResult = await GameService.processEnemyAction(
+              // Mostrar estado intermediário antes do delay
+              setState(prev => ({
+                ...prev,
+                gameState: {
+                  ...playerActionState,
+                  isPlayerTurn: false,
+                  gameMessage: message
+                }
+              }));
+              
+              // Adicionar mensagem ao log indicando que o inimigo está pensando
+              const enemyName = playerActionState.currentEnemy?.name || 'Inimigo';
+              addGameLogMessage(`${enemyName} está pensando em sua próxima ação...`, 'system');
+              
+              const enemyActionResult = await GameService.processEnemyActionWithDelay(
                 {
                   ...playerActionState,
                   isPlayerTurn: false,

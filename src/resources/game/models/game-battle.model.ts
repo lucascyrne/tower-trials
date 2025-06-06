@@ -23,10 +23,17 @@ export interface SpeedComparison {
 }
 
 export interface TurnEvent {
-  type: 'turn_start' | 'turn_end' | 'initiative_calculated' | 'extra_turn_granted';
+  type: 'turn_start' | 'turn_end' | 'initiative_calculated' | 'extra_turn_granted' | 'enemy_thinking';
   actor: 'player' | 'enemy';
   message: string;
-  data?: any;
+  data?: {
+    initiative?: number;
+    damage?: number;
+    speedDifference?: number;
+    extraTurns?: number;
+    turnIndex?: number;
+    delayMs?: number;
+  };
 }
 
 export interface BattleState {

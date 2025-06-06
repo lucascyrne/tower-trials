@@ -985,6 +985,37 @@ export class GameService {
   }
 
   /**
+   * Processar ação do inimigo com delay para melhor experiência do usuário
+   * @param gameState Estado atual do jogo
+   * @param playerDefendAction Indica se o jogador usou a ação de defesa (DEPRECATED)
+   * @param delayMs Delay em millisegundos antes de processar (padrão: 1500-2500ms aleatório)
+   * @returns Promise com novo estado do jogo após a ação do inimigo
+   */
+  static async processEnemyActionWithDelay(
+    gameState: GameState, 
+    playerDefendAction: boolean,
+    delayMs?: number
+  ): Promise<{
+    newState: GameState;
+    skillXpGains?: SkillXpGain[];
+    skillMessages?: string[];
+  }> {
+    // Calcular delay aleatório entre 1.5 e 2.5 segundos se não especificado
+    const finalDelay = delayMs ?? (1500 + Math.random() * 1000); // 1500-2500ms
+    
+    const enemyName = gameState.currentEnemy?.name || 'Inimigo';
+    console.log(`[GameService] ${enemyName} está pensando... (${Math.round(finalDelay)}ms)`);
+    
+    // Aguardar o delay antes de processar
+    await new Promise(resolve => setTimeout(resolve, finalDelay));
+    
+    console.log(`[GameService] ${enemyName} decidiu sua ação!`);
+    
+    // Processar ação do inimigo normalmente
+    return this.processEnemyAction(gameState, playerDefendAction);
+  }
+
+  /**
    * Processar ação do inimigo
    * @param gameState Estado atual do jogo
    * @param playerDefendAction Indica se o jogador usou a ação de defesa (DEPRECATED)
