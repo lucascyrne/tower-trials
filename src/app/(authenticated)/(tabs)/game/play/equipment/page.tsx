@@ -22,12 +22,7 @@ export default function EquipmentPage() {
   const characterId = searchParams.get('character');
   
   const [character, setCharacter] = useState<Character | null>(null);
-  const [equippedSlots, setEquippedSlots] = useState<EquipmentSlots>({
-    main_hand: null,
-    off_hand: null,
-    armor: null,
-    accessory: null
-  });
+  const [equippedSlots, setEquippedSlots] = useState<EquipmentSlots>({});
   const [, setCharacterEquipment] = useState<CharacterEquipment[]>([]);
   const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -49,7 +44,7 @@ export default function EquipmentPage() {
         }
         
         // Carregar equipamentos equipados
-        const slotsData = await EquipmentService.getEquippedSlots(characterId);
+        const slotsData = await EquipmentService.getEquippedItems(characterId);
         setEquippedSlots(slotsData);
         
         // Carregar equipamentos do inventário
@@ -108,7 +103,7 @@ export default function EquipmentPage() {
     if (!characterId) return;
     
     try {
-      const slotsData = await EquipmentService.getEquippedSlots(characterId);
+      const slotsData = await EquipmentService.getEquippedItems(characterId);
       setEquippedSlots(slotsData);
       
       const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
