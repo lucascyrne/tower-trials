@@ -54,9 +54,14 @@ export default function ShopPage() {
     }
   };
 
-  const handleTransactionComplete = async () => {
-    // Recarregar o personagem para atualizar o gold
-    await loadSelectedCharacter();
+  const handleTransactionComplete = async (newGold: number) => {
+    // Atualizar apenas o gold do personagem no estado local, sem recarregar toda a página
+    if (character) {
+      setCharacter(prevCharacter => ({
+        ...prevCharacter!,
+        gold: newGold
+      }));
+    }
   };
 
   const handleReturnToHub = () => {
