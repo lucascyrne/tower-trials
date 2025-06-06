@@ -1,4 +1,4 @@
-import { Equipment, CharacterEquipment, EquipmentSlots } from './models/equipment.model';
+import { Equipment, CharacterEquipment, EquipmentSlots, EquipmentCraftingRecipe, EquipmentType, WeaponSubtype, EquipmentRarity } from './models/equipment.model';
 import { supabase } from '@/lib/supabase';
 
 interface EquippedSlotRow {
@@ -15,263 +15,330 @@ interface EquippedSlotRow {
     rarity: string;
 }
 
-interface CanEquipResponse {
-    can_equip: boolean;
-    reason: string;
+interface ServiceResponse<T> {
+    data: T | null;
+    error: string | null;
+    success: boolean;
+}
+
+/**
+ * Extrair mensagem de erro específica do Supabase/PostgreSQL
+ */
+function extractErrorMessage(error: unknown, fallbackMessage: string): string {
+    if (error && typeof error === 'object') {
+        if ('message' in error && typeof error.message === 'string') {
+            return error.message;
+        }
+        if (error instanceof Error) {
+            return error.message;
+        }
+    }
+    return fallbackMessage;
 }
 
 export class EquipmentService {
+    private static equipmentCache: Map<string, Equipment[]> = new Map();
+    private static lastFetchTimestamp: number = 0;
+    private static CACHE_DURATION = 300000; // 5 minutos
+
     /**
-     * Obter todos os equipamentos disponíveis para um nível
+     * Buscar equipamentos disponíveis para compra baseado no nível do personagem
      */
-    static async getAvailableEquipment(level: number): Promise<Equipment[]> {
+    static async getAvailableEquipment(characterLevel: number): Promise<Equipment[]> {
         try {
+            const cacheKey = `level_${characterLevel}`;
+            const now = Date.now();
+            
+            if (now - this.lastFetchTimestamp < this.CACHE_DURATION && this.equipmentCache.has(cacheKey)) {
+                return this.equipmentCache.get(cacheKey) || [];
+            }
+
             const { data, error } = await supabase
                 .from('equipment')
                 .select('*')
-                .lte('level_requirement', level)
+                .lte('level_requirement', characterLevel)
+                .eq('is_unlocked', true)
+                .eq('craftable', false) // Apenas equipamentos não craftáveis na loja
                 .order('level_requirement', { ascending: true });
 
             if (error) throw error;
-            return data || [];
+
+            const equipment = data as Equipment[];
+            this.equipmentCache.set(cacheKey, equipment);
+            this.lastFetchTimestamp = now;
+
+            return equipment;
         } catch (error) {
-            console.error('Erro ao buscar equipamentos disponíveis:', error);
+            console.error('Erro ao buscar equipamentos:', error instanceof Error ? error.message : error);
             return [];
         }
     }
 
     /**
-     * Obter equipamentos de um personagem
+     * Buscar receitas de crafting de equipamentos
+     */
+    static async getEquipmentCraftingRecipes(): Promise<ServiceResponse<EquipmentCraftingRecipe[]>> {
+        try {
+            const { data, error } = await supabase
+                .from('equipment_crafting_recipes')
+                .select(`
+                    *,
+                    equipment:result_equipment_id (*),
+                    ingredients:equipment_crafting_ingredients (*)
+                `)
+                .order('name');
+
+            if (error) throw error;
+
+            return { data: data as EquipmentCraftingRecipe[], error: null, success: true };
+        } catch (error) {
+            console.error('Erro ao buscar receitas de equipamentos:', error instanceof Error ? error.message : error);
+            return { data: null, error: 'Erro ao buscar receitas de equipamentos', success: false };
+        }
+    }
+
+    /**
+     * Verificar se um personagem pode craftar um equipamento
+     */
+    static async canCraftEquipment(
+        characterId: string,
+        recipeId: string
+    ): Promise<ServiceResponse<{ canCraft: boolean; missingIngredients: string[] }>> {
+        try {
+            const { data, error } = await supabase.rpc('check_can_craft_equipment', {
+                p_character_id: characterId,
+                p_recipe_id: recipeId
+            });
+
+            if (error) throw error;
+
+            return { 
+                data: data as { canCraft: boolean; missingIngredients: string[] }, 
+                error: null, 
+                success: true 
+            };
+        } catch (error) {
+            console.error('Erro ao verificar crafting de equipamento:', error);
+            return { 
+                data: null, 
+                error: extractErrorMessage(error, 'Erro ao verificar crafting de equipamento'), 
+                success: false 
+            };
+        }
+    }
+
+    /**
+     * Craftar um equipamento
+     */
+    static async craftEquipment(
+        characterId: string,
+        recipeId: string
+    ): Promise<ServiceResponse<{ message: string }>> {
+        try {
+            const { error } = await supabase.rpc('craft_equipment', {
+                p_character_id: characterId,
+                p_recipe_id: recipeId
+            });
+
+            if (error) throw error;
+
+            return { 
+                data: { message: 'Equipamento criado com sucesso!' }, 
+                error: null, 
+                success: true 
+            };
+        } catch (error) {
+            console.error('Erro ao craftar equipamento:', error);
+            return { 
+                data: null, 
+                error: extractErrorMessage(error, 'Erro ao craftar equipamento'), 
+                success: false 
+            };
+        }
+    }
+
+    /**
+     * Buscar equipamentos do personagem
      */
     static async getCharacterEquipment(characterId: string): Promise<CharacterEquipment[]> {
         try {
-            if (!characterId) {
-                console.warn('ID do personagem não fornecido');
-                return [];
-            }
-
             const { data, error } = await supabase
                 .from('character_equipment')
                 .select(`
                     *,
                     equipment:equipment_id (*)
                 `)
-                .eq('character_id', characterId);
+                .eq('character_id', characterId)
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
-            
-            // Filtrar itens que têm equipamento válido
-            return (data || []).filter(item => item && item.equipment);
+
+            return data as CharacterEquipment[];
         } catch (error) {
-            console.error('Erro ao buscar equipamentos do personagem:', error);
+            console.error('Erro ao buscar equipamentos do personagem:', error instanceof Error ? error.message : error);
             return [];
         }
     }
 
     /**
-     * Obter slots de equipamento equipados do personagem
+     * Buscar equipamentos equipados do personagem
      */
-    static async getEquippedSlots(characterId: string): Promise<EquipmentSlots> {
-        const defaultSlots: EquipmentSlots = {
-            main_hand: null,
-            off_hand: null,
-            armor: null,
-            accessory: null
-        };
-
+    static async getEquippedItems(characterId: string): Promise<EquipmentSlots> {
         try {
-            if (!characterId) {
-                console.warn('ID do personagem não fornecido');
-                return defaultSlots;
-            }
-
-            const { data, error } = await supabase
-                .rpc('get_equipped_slots', {
-                    p_character_id: characterId
-                });
+            const { data, error } = await supabase.rpc('get_equipped_slots', {
+                p_character_id: characterId
+            });
 
             if (error) throw error;
 
-            const slots: EquipmentSlots = { ...defaultSlots };
-
-            (data || []).forEach((row: EquippedSlotRow) => {
-                if (row && row.slot_type) {
-                    const equipment = {
+            const slots: EquipmentSlots = {};
+            
+            if (data && Array.isArray(data)) {
+                (data as EquippedSlotRow[]).forEach(row => {
+                    const equipment: Equipment = {
                         id: row.equipment_id,
                         name: row.equipment_name,
-                        type: row.equipment_type,
-                        weapon_subtype: row.weapon_subtype,
+                        description: '',
+                        type: row.equipment_type as EquipmentType,
+                        weapon_subtype: row.weapon_subtype as WeaponSubtype,
+                        rarity: row.rarity as EquipmentRarity,
+                        level_requirement: 0,
                         atk_bonus: row.atk_bonus,
                         def_bonus: row.def_bonus,
                         mana_bonus: row.mana_bonus,
                         speed_bonus: row.speed_bonus,
-                        hp_bonus: row.hp_bonus,
-                        rarity: row.rarity
+                        price: 0,
+                        is_unlocked: true,
+                        created_at: '',
+                        updated_at: ''
                     };
 
-                    const slotType = row.slot_type as keyof EquipmentSlots;
-                    if (slotType in slots) {
-                        slots[slotType] = equipment as unknown as Equipment;
-                    }
-                }
-            });
+                    slots[row.slot_type as keyof EquipmentSlots] = equipment;
+                });
+            }
 
             return slots;
         } catch (error) {
-            console.error('Erro ao buscar equipamentos equipados:', error);
-            return defaultSlots;
+            console.error('Erro ao buscar equipamentos equipados:', error instanceof Error ? error.message : error);
+            return {};
         }
     }
 
     /**
-     * Verificar se um personagem pode equipar um item
+     * Equipar ou desequipar um item
      */
-    static async canEquipItem(characterId: string, equipmentId: string): Promise<{ canEquip: boolean; reason: string }> {
+    static async toggleEquipment(characterId: string, equipmentId: string, equip: boolean, slotType?: string): Promise<ServiceResponse<string>> {
         try {
-            const { data, error } = await supabase
-                .rpc('can_equip_item', {
-                    p_character_id: characterId,
-                    p_equipment_id: equipmentId
-                })
-                .single();
-
-            if (error) throw error;
-
-            const response = data as CanEquipResponse;
-            return {
-                canEquip: response.can_equip,
-                reason: response.reason
-            };
-        } catch (error) {
-            console.error('Erro ao verificar se pode equipar item:', error);
-            return {
-                canEquip: false,
-                reason: 'Erro ao verificar requisitos'
-            };
-        }
-    }
-
-    /**
-     * Comprar um equipamento para um personagem
-     * @param characterId ID do personagem
-     * @param equipmentId ID do equipamento
-     * @param price Preço do equipamento
-     * @returns Novo valor de gold ou null se falhar
-     */
-    static async buyEquipment(
-        characterId: string,
-        equipmentId: string,
-        price: number
-    ): Promise<{ success: boolean; newGold?: number; error?: string }> {
-        try {
-            if (!characterId || !equipmentId) {
-                console.error('Parâmetros inválidos para comprar equipamento');
-                return { success: false, error: 'Parâmetros inválidos' };
-            }
-
-            const { data, error } = await supabase.rpc('buy_equipment', {
-                p_character_id: characterId,
-                p_equipment_id: equipmentId,
-                p_price: price
-            }).single();
-
-            if (error) {
-                console.error('Erro ao comprar equipamento:', error.message);
-                return { success: false, error: error.message };
-            }
-
-            return { success: true, newGold: data as number };
-        } catch (error) {
-            console.error('Erro ao comprar equipamento:', error);
-            return { 
-                success: false, 
-                error: error instanceof Error ? error.message : 'Erro desconhecido'
-            };
-        }
-    }
-
-    /**
-     * Equipar/desequipar um item com suporte a dual-wielding
-     */
-    static async toggleEquipment(
-        characterId: string,
-        equipmentId: string,
-        equip: boolean,
-        slotType?: string
-    ): Promise<{ success: boolean; error?: string }> {
-        try {
-            if (!characterId || !equipmentId) {
-                console.error('Parâmetros inválidos para equipar/desequipar');
-                return { success: false, error: 'Parâmetros inválidos' };
-            }
-
-            // Se for para equipar, verificar primeiro se pode equipar
-            if (equip) {
-                const canEquip = await this.canEquipItem(characterId, equipmentId);
-                if (!canEquip.canEquip) {
-                    return { success: false, error: canEquip.reason };
-                }
-            }
-
             const { error } = await supabase.rpc('toggle_equipment', {
                 p_character_id: characterId,
                 p_equipment_id: equipmentId,
                 p_equip: equip,
-                p_slot_type: slotType || null
+                p_slot_type: slotType
             });
 
-            if (error) {
-                console.error('Erro ao equipar/desequipar:', error.message);
-                return { success: false, error: error.message };
-            }
+            if (error) throw error;
 
-            return { success: true };
+            return {
+                data: equip ? 'Item equipado com sucesso!' : 'Item desequipado com sucesso!',
+                error: null,
+                success: true
+            };
         } catch (error) {
-            console.error('Erro ao equipar/desequipar:', error);
-            return { 
-                success: false, 
-                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            console.error('Erro ao equipar/desequipar item:', error);
+            return {
+                data: null,
+                error: extractErrorMessage(error, 'Erro ao equipar/desequipar item'),
+                success: false
             };
         }
     }
 
     /**
-     * Vender um equipamento
-     * @param characterId ID do personagem
-     * @param equipmentId ID do equipamento
-     * @returns Novo valor de gold ou informações de erro
+     * Comprar equipamento
      */
-    static async sellEquipment(
-        characterId: string,
-        equipmentId: string
-    ): Promise<{ success: boolean; newGold?: number; error?: string }> {
+    static async buyEquipment(characterId: string, equipmentId: string): Promise<ServiceResponse<{ newGold: number }>> {
         try {
-            if (!characterId || !equipmentId) {
-                console.error('Parâmetros inválidos para vender equipamento');
-                return { success: false, error: 'Parâmetros inválidos' };
-            }
+            const { data, error } = await supabase.rpc('buy_equipment', {
+                p_character_id: characterId,
+                p_equipment_id: equipmentId
+            });
 
-            // Primeiro desequipar se estiver equipado
-            await this.toggleEquipment(characterId, equipmentId, false);
+            if (error) throw error;
 
-            // Então vender o item e obter o novo gold
+            return {
+                data: { newGold: data as number },
+                error: null,
+                success: true
+            };
+        } catch (error) {
+            console.error('Erro ao comprar equipamento:', error);
+            return {
+                data: null,
+                error: extractErrorMessage(error, 'Erro ao comprar equipamento'),
+                success: false
+            };
+        }
+    }
+
+    /**
+     * Vender equipamento
+     */
+    static async sellEquipment(characterId: string, equipmentId: string): Promise<ServiceResponse<{ newGold: number }>> {
+        try {
             const { data, error } = await supabase.rpc('sell_equipment', {
                 p_character_id: characterId,
                 p_equipment_id: equipmentId
-            }).single();
+            });
 
-            if (error) {
-                console.error('Erro ao vender equipamento:', error.message);
-                return { success: false, error: error.message };
-            }
+            if (error) throw error;
 
-            return { success: true, newGold: data as number };
+            return {
+                data: { newGold: data as number },
+                error: null,
+                success: true
+            };
         } catch (error) {
             console.error('Erro ao vender equipamento:', error);
-            return { 
-                success: false, 
-                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            return {
+                data: null,
+                error: extractErrorMessage(error, 'Erro ao vender equipamento'),
+                success: false
             };
         }
+    }
+
+    /**
+     * Verificar se o personagem pode equipar um item
+     */
+    static async canEquipItem(characterId: string, equipmentId: string): Promise<ServiceResponse<{ canEquip: boolean; reason: string }>> {
+        try {
+            const { data, error } = await supabase.rpc('can_equip_item', {
+                p_character_id: characterId,
+                p_equipment_id: equipmentId
+            });
+
+            if (error) throw error;
+
+            return {
+                data: data as { canEquip: boolean; reason: string },
+                error: null,
+                success: true
+            };
+        } catch (error) {
+            console.error('Erro ao verificar se pode equipar item:', error);
+            return {
+                data: null,
+                error: extractErrorMessage(error, 'Erro ao verificar se pode equipar item'),
+                success: false
+            };
+        }
+    }
+
+    /**
+     * Limpar cache
+     */
+    static clearCache(): void {
+        this.equipmentCache.clear();
+        this.lastFetchTimestamp = 0;
     }
 } 

@@ -1,13 +1,83 @@
-export type EquipmentType = 'weapon' | 'armor' | 'accessory';export type WeaponSubtype = 'sword' | 'axe' | 'blunt' | 'staff' | 'dagger';export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';export interface Equipment {  id: string;  name: string;  description: string;  type: EquipmentType;  weapon_subtype?: WeaponSubtype;  rarity: EquipmentRarity;  level_requirement: number;  atk_bonus: number;  def_bonus: number;  mana_bonus: number;  speed_bonus: number;  price: number;  is_unlocked: boolean;  created_at: string;  updated_at: string;}
+export type EquipmentType = 'weapon' | 'armor' | 'accessory';
+export type WeaponSubtype = 'sword' | 'axe' | 'blunt' | 'staff' | 'dagger';
+export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+export interface Equipment {
+  id: string;
+  name: string;
+  description: string;
+  type: EquipmentType;
+  weapon_subtype?: WeaponSubtype;
+  rarity: EquipmentRarity;
+  level_requirement: number;
+  atk_bonus: number;
+  def_bonus: number;
+  mana_bonus: number;
+  speed_bonus: number;
+  price: number;
+  is_unlocked: boolean;
+  craftable?: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface CharacterEquipment {
   id: string;
   character_id: string;
   equipment_id: string;
   is_equipped: boolean;
-  equipment?: Equipment; // Para quando carregarmos com join
+  slot_type?: string;
+  equipment?: Equipment;
   created_at: string;
   updated_at: string;
+}
+
+// Interface para ingredientes de crafting de equipamentos
+export interface EquipmentCraftingIngredient {
+  item_id: string;
+  item_type: 'monster_drop' | 'consumable' | 'equipment';
+  quantity: number;
+}
+
+// Interface para receitas de crafting de equipamentos
+export interface EquipmentCraftingRecipe {
+  id: string;
+  result_equipment_id: string;
+  name: string;
+  description: string;
+  ingredients: EquipmentCraftingIngredient[];
+  equipment?: Equipment;
+}
+
+// Definir slots para dual-wielding (já existia)
+export type EquipmentSlotType = 'main_hand' | 'off_hand' | 'armor' | 'accessory' | 'accessory_2';
+
+export interface EquipmentSlots {
+  main_hand?: Equipment;
+  off_hand?: Equipment;
+  armor?: Equipment;
+  accessory?: Equipment;
+  accessory_2?: Equipment;
+}
+
+// Função para verificar se é dual wielding
+export function isDualWielding(slots: EquipmentSlots): boolean {
+  return !!(slots.main_hand?.type === 'weapon' && slots.off_hand?.type === 'weapon');
+}
+
+// Função para verificar se tem escudo
+export function hasShield(slots: EquipmentSlots): boolean {
+  return slots.off_hand?.name?.toLowerCase().includes('escudo') || false;
+}
+
+// Função para obter arma principal
+export function getMainWeapon(slots: EquipmentSlots): Equipment | undefined {
+  return slots.main_hand?.type === 'weapon' ? slots.main_hand : undefined;
+}
+
+// Função para obter arma secundária (se dual wielding)
+export function getOffHandWeapon(slots: EquipmentSlots): Equipment | undefined {
+  return isDualWielding(slots) ? slots.off_hand : undefined;
 }
 
 // Constantes para bônus de raridade
@@ -18,14 +88,6 @@ export const RARITY_MULTIPLIERS = {
   epic: 2.0,
   legendary: 3.0
 } as const;
-
-// Interface para os slots de equipamento do personagem
-export interface EquipmentSlots {
-  main_hand: Equipment | null;
-  off_hand: Equipment | null; // Para dual-wielding
-  armor: Equipment | null;
-  accessory: Equipment | null;
-}
 
 // Interface para compatibilidade com código legado
 export interface LegacyEquipmentSlots {
@@ -69,23 +131,17 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   return totalBonus;
 };
 
-// Função para verificar se está em dual-wielding
-export const isDualWielding = (slots: EquipmentSlots): boolean => {
-  return !!(slots.main_hand && slots.off_hand && 
-           slots.main_hand.type === 'weapon' && slots.off_hand.type === 'weapon');
-};
-
 // Função para obter arma principal
-export const getMainWeapon = (slots: EquipmentSlots): Equipment | null => {
-  return slots.main_hand && slots.main_hand.type === 'weapon' ? slots.main_hand : null;
+export const getMainWeaponLegacy = (slots: LegacyEquipmentSlots): Equipment | null => {
+  return slots.weapon;
 };
 
 // Função para obter escudo ou segunda arma
-export const getOffHandItem = (slots: EquipmentSlots): Equipment | null => {
-  return slots.off_hand;
+export const getOffHandItemLegacy = (slots: LegacyEquipmentSlots): Equipment | null => {
+  return slots.armor;
 };
 
 // Função para verificar se tem escudo equipado
-export const hasShield = (slots: EquipmentSlots): boolean => {
-  return !!(slots.off_hand && slots.off_hand.type === 'armor');
+export const hasShieldLegacy = (slots: LegacyEquipmentSlots): boolean => {
+  return !!(slots.armor && slots.armor.type === 'armor');
 }; 
