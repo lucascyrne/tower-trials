@@ -8,7 +8,7 @@ import { BattleArena } from './BattleArena';
 import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skull, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
@@ -45,8 +45,20 @@ export default function GameBattle() {
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const messageProcessedRef = useRef<Set<string>>(new Set());
+  
+  // OTIMIZADO: Sistema mais robusto para evitar processamento duplicado
+  const processedRewardsRef = useRef<Set<string>>(new Set());
   const characterLoadedRef = useRef(false);
+  const lastBattleStateRef = useRef<{
+    floor: number;
+    enemyName: string;
+    rewardsProcessed: boolean;
+  }>({
+    floor: 0,
+    enemyName: '',
+    rewardsProcessed: false
+  });
+  
   const [victoryRewards, setVictoryRewards] = useState<BattleRewards>({
     xp: 0,
     gold: 0,
@@ -59,37 +71,59 @@ export default function GameBattle() {
     console.log(`[GameBattle] Andar atual: ${player.floor}`);
   }, [player.floor]);
 
-  // Processamento de recompensas de batalha
+  // OTIMIZADO: Processamento de recompensas sem duplicação
   useEffect(() => {
-    if (gameState.battleRewards) {
-      // Usar um identificador mais estável que não dependa do currentEnemy que pode ser null
-      const rewardKey = `${gameState.battleRewards.xp}-${gameState.battleRewards.gold}-${gameState.player.floor}-${Date.now()}`;
-      
-      if (!messageProcessedRef.current.has(rewardKey)) {
-        console.log(`[GameBattle] Processando recompensa: XP ${gameState.battleRewards.xp}, Gold ${gameState.battleRewards.gold}, Andar ${gameState.player.floor}`);
-        messageProcessedRef.current.add(rewardKey);
-        
-        const battleRewards = gameState.battleRewards;
-        
-        setVictoryRewards({
-          xp: battleRewards.xp,
-          gold: battleRewards.gold,
-          drops: battleRewards.drops || [],
-          leveledUp: battleRewards.leveledUp,
-          newLevel: battleRewards.newLevel
-        });
-        
-        setShowVictoryModal(true);
-        
-        const victoryMessage = `Vitória! Você derrotou o inimigo e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
-        addGameLogMessage(victoryMessage, 'system');
-        
-        if (battleRewards.leveledUp && battleRewards.newLevel) {
-          addGameLogMessage(`Você subiu para o nível ${battleRewards.newLevel}!`, 'system');
-        }
-      }
+    if (!gameState.battleRewards) {
+      return;
     }
-  }, [gameState.battleRewards]);
+
+    // Gerar chave única baseada no estado da batalha (sem timestamp)
+    const battleKey = `${player.floor}-${player.level}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}`;
+    
+    // Verificar se já processamos esta recompensa específica
+    if (processedRewardsRef.current.has(battleKey)) {
+      console.log(`[GameBattle] Recompensa já processada: ${battleKey}`);
+      return;
+    }
+
+    // Verificar se mudou de batalha (andar diferente)
+    const currentBattleState = {
+      floor: player.floor,
+      enemyName: currentEnemy?.name || 'unknown',
+      rewardsProcessed: true
+    };
+
+    // Se mudou de andar, limpar recompensas processadas anteriores
+    if (lastBattleStateRef.current.floor !== currentBattleState.floor) {
+      console.log(`[GameBattle] Mudou de andar (${lastBattleStateRef.current.floor} -> ${currentBattleState.floor}), limpando recompensas processadas`);
+      processedRewardsRef.current.clear();
+    }
+
+    // Marcar como processada ANTES do processamento para evitar condições de corrida
+    processedRewardsRef.current.add(battleKey);
+    lastBattleStateRef.current = currentBattleState;
+
+    console.log(`[GameBattle] Processando recompensa: XP ${gameState.battleRewards.xp}, Gold ${gameState.battleRewards.gold}, Andar ${player.floor}`);
+    
+    const battleRewards = gameState.battleRewards;
+    
+    setVictoryRewards({
+      xp: battleRewards.xp,
+      gold: battleRewards.gold,
+      drops: battleRewards.drops || [],
+      leveledUp: battleRewards.leveledUp,
+      newLevel: battleRewards.newLevel
+    });
+    
+    setShowVictoryModal(true);
+    
+    const victoryMessage = `Vitória! Você derrotou o inimigo e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
+    addGameLogMessage(victoryMessage, 'system');
+    
+    if (battleRewards.leveledUp && battleRewards.newLevel) {
+      addGameLogMessage(`Você subiu para o nível ${battleRewards.newLevel}!`, 'system');
+    }
+  }, [gameState.battleRewards, player.floor, player.level, currentEnemy?.name]);
 
   // Verificação de game over
   useEffect(() => {
@@ -171,7 +205,7 @@ export default function GameBattle() {
     loadSelectedCharacter();
     
     return () => {
-      messageProcessedRef.current.clear();
+      processedRewardsRef.current.clear();
     };
   }, [searchParams]);
 
@@ -372,45 +406,47 @@ export default function GameBattle() {
               <Skull className="h-6 w-6" />
               {gameState.characterDeleted ? 'Permadeath - Personagem Perdido' : 'Seu Personagem Morreu'}
             </DialogTitle>
-            <DialogDescription className="text-base space-y-4">
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg space-y-3">
-                <p className="text-sm">
-                  <strong>{player.name}</strong> foi derrotado no Andar {player.floor}...
-                </p>
-                {gameState.characterDeleted ? (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      Devido ao sistema de <strong>Permadeath</strong>, seu personagem foi perdido para sempre. 
-                      Todos os itens, equipamentos e progressos foram perdidos.
-                    </p>
-                    <p className="text-sm text-yellow-400 font-medium">
-                      Seus dados foram movidos para o cemitério onde você pode revisar sua jornada.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Mas não desista! Crie um novo personagem e tente novamente, 
-                      usando a experiência adquirida para chegar ainda mais longe.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Ocorreu um erro ao processar a morte do personagem. 
-                    Tente novamente ou entre em contato com o suporte.
-                  </p>
-                )}
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg space-y-3">
+              <div className="text-sm">
+                <strong>{player.name}</strong> foi derrotado no Andar {player.floor}...
               </div>
-              {gameState.characterDeleted && (
-                <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
-                  <p className="text-xs text-blue-400">
-                    💀 <strong>Estatísticas da Jornada:</strong><br/>
-                    • Nível alcançado: {player.level}<br/>
-                    • Andar mais alto: {player.floor}<br/>
-                    • Gold acumulado: {player.gold}<br/>
-                    • XP total: {player.xp}
-                  </p>
+              {gameState.characterDeleted ? (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    Devido ao sistema de <strong>Permadeath</strong>, seu personagem foi perdido para sempre. 
+                    Todos os itens, equipamentos e progressos foram perdidos.
+                  </div>
+                  <div className="text-sm text-yellow-400 font-medium">
+                    Seus dados foram movidos para o cemitério onde você pode revisar sua jornada.
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Mas não desista! Crie um novo personagem e tente novamente, 
+                    usando a experiência adquirida para chegar ainda mais longe.
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Ocorreu um erro ao processar a morte do personagem. 
+                  Tente novamente ou entre em contato com o suporte.
                 </div>
               )}
-            </DialogDescription>
-          </DialogHeader>
+            </div>
+            {gameState.characterDeleted && (
+              <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
+                <div className="text-xs text-blue-400">
+                  💀 <strong>Estatísticas da Jornada:</strong><br/>
+                  • Nível alcançado: {player.level}<br/>
+                  • Andar mais alto: {player.floor}<br/>
+                  • Gold acumulado: {player.gold}<br/>
+                  • XP total: {player.xp}
+                </div>
+              </div>
+            )}
+          </div>
+          
           <div className="flex flex-col gap-2">
             {gameState.characterDeleted && (
               <Button

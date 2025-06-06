@@ -229,6 +229,19 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   </span>
                 </div>
                 
+                {/* Magic Attack - Novo sistema */}
+                {player.magic_attack && player.magic_attack > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <span className="text-muted-foreground">M.ATK</span>
+                    </div>
+                    <span className="font-bold text-purple-400">
+                      {player.magic_attack}
+                    </span>
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1">
                     <Shield className="h-4 w-4 text-blue-400" />

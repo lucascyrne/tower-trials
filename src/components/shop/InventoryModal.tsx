@@ -15,7 +15,7 @@ interface InventoryModalProps {
   character: Character;
   isOpen: boolean;
   onClose: () => void;
-  onItemSold: () => void;
+  onItemSold: (newGold: number) => void;
 }
 
 interface CharacterDrop {
@@ -68,23 +68,25 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
     try {
       if (action === 'toggle') {
-        const success = await EquipmentService.toggleEquipment(
+        const result = await EquipmentService.toggleEquipment(
           character.id,
           item.equipment.id,
           !item.is_equipped
         );
         
-        if (success) {
+        if (result.success) {
           toast.success(item.is_equipped ? 'Item desequipado!' : 'Item equipado!');
           loadInventory();
         }
       } else if (action === 'sell') {
-        const success = await EquipmentService.sellEquipment(character.id, item.equipment.id);
+        const result = await EquipmentService.sellEquipment(character.id, item.equipment.id);
         
-        if (success) {
+        if (result.success && result.newGold !== undefined) {
           toast.success(`${item.equipment.name} vendido!`);
-          onItemSold();
+          onItemSold(result.newGold);
           loadInventory();
+        } else {
+          toast.error(result.error || 'Erro ao vender equipamento');
         }
       }
     } catch (error) {
@@ -107,7 +109,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       if (response.success) {
         toast.success('Item usado com sucesso!');
         loadInventory();
-        onItemSold(); // Atualizar character
+        onItemSold(character.gold);
       } else {
         toast.error(response.error || 'Erro ao usar item');
       }

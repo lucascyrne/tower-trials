@@ -91,6 +91,10 @@ export function CombinedBattleInterface({
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [usedPotionAnimation, setUsedPotionAnimation] = useState<number | null>(null);
+  
+  // OTIMIZADO: Controle para evitar múltiplos cliques no botão avançar
+  const [continuingAdventure, setContinuingAdventure] = useState(false);
+  
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isDisabled = !isPlayerTurn || loading.performAction;
@@ -99,12 +103,12 @@ export function CombinedBattleInterface({
   // CRÍTICO: Verificar se o personagem está morto
   const isPlayerDead = player.hp <= 0;
   
-  // Verificar se deve mostrar botão de próximo andar
-  // LÓGICA MELHORADA: Mostrar quando há battleRewards E não está carregando E jogador não está morto
+  // OTIMIZADO: Verificar se deve mostrar botão de próximo andar (mais rigoroso)
   const shouldShowNextFloorButton = Boolean(
     battleRewards && 
     !loading.performAction && 
     !isPlayerDead &&
+    !continuingAdventure && // Adicionar verificação de estado interno
     (
       !currentEnemy || // Inimigo já foi processado e removido
       (currentEnemy && currentEnemy.hp <= 0) // Inimigo ainda existe mas está morto
@@ -449,15 +453,32 @@ export function CombinedBattleInterface({
                 </div>
                 
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
+                    // OTIMIZADO: Evitar múltiplos cliques
+                    if (continuingAdventure || loading.performAction) {
+                      console.log('[CombinedBattleInterface] Clique ignorado - já processando');
+                      return;
+                    }
+
                     console.log('[CombinedBattleInterface] Botão Avançar clicado');
-                    handleAction('continue');
+                    setContinuingAdventure(true);
+                    
+                    try {
+                      await handleAction('continue');
+                    } catch (error) {
+                      console.error('[CombinedBattleInterface] Erro ao avançar:', error);
+                    } finally {
+                      // Reset após um delay para garantir que o estado seja atualizado
+                      setTimeout(() => {
+                        setContinuingAdventure(false);
+                      }, 1000);
+                    }
                   }}
-                  disabled={loading.performAction || isPlayerDead}
+                  disabled={loading.performAction || isPlayerDead || continuingAdventure}
                   size="lg"
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105 w-full md:w-auto"
                 >
-                  {loading.performAction ? (
+                  {loading.performAction || continuingAdventure ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
                       Avançando...

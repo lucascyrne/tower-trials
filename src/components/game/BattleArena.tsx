@@ -72,28 +72,60 @@ export function BattleArena({
   const [showEnemyDetails, setShowEnemyDetails] = useState(false);
   const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);
 
-  // Detectar mudanças de HP para mostrar dano flutuante
-  const [previousPlayerHp, setPreviousPlayerHp] = useState(player.hp);
-  const [previousEnemyHp, setPreviousEnemyHp] = useState(currentEnemy.hp);
+  // OTIMIZADO: Sistema mais confiável para detectar mudanças de HP
+  const [lastBattleState, setLastBattleState] = useState<{
+    playerHp: number;
+    enemyHp: number;
+    battleId: string;
+  }>({
+    playerHp: player.hp,
+    enemyHp: currentEnemy.hp,
+    battleId: `${player.floor}-${currentEnemy.name}-${Date.now()}`
+  });
 
+  // OTIMIZADO: Detectar mudanças de HP de forma mais precisa
   useEffect(() => {
-    // Detectar dano no jogador
-    if (player.hp < previousPlayerHp) {
-      const damage = previousPlayerHp - player.hp;
+    // Gerar ID único para esta batalha
+    const currentBattleId = `${player.floor}-${currentEnemy.name}`;
+    
+    // Se mudou o inimigo ou andar, resetar estado
+    if (!lastBattleState.battleId.includes(currentBattleId)) {
+      setLastBattleState({
+        playerHp: player.hp,
+        enemyHp: currentEnemy.hp,
+        battleId: currentBattleId
+      });
+      return;
+    }
+
+    let hasChanges = false;
+
+    // Detectar dano no jogador (apenas se HP diminuiu significativamente)
+    if (player.hp < lastBattleState.playerHp && (lastBattleState.playerHp - player.hp) >= 1) {
+      const damage = lastBattleState.playerHp - player.hp;
+      console.log(`[BattleArena] Jogador recebeu ${damage} de dano`);
       showFloatingDamage(damage, true, false, 'physical');
+      hasChanges = true;
     }
-    setPreviousPlayerHp(player.hp);
-  }, [player.hp, previousPlayerHp]);
 
-  useEffect(() => {
-    // Detectar dano no inimigo
-    if (currentEnemy.hp < previousEnemyHp) {
-      const damage = previousEnemyHp - currentEnemy.hp;
-      const isCritical = damage > (player.atk * 1.5); // Detectar crítico simples
+    // Detectar dano no inimigo (apenas se HP diminuiu significativamente)
+    if (currentEnemy.hp < lastBattleState.enemyHp && (lastBattleState.enemyHp - currentEnemy.hp) >= 1) {
+      const damage = lastBattleState.enemyHp - currentEnemy.hp;
+      const isCritical = damage > (player.atk * 1.5);
+      console.log(`[BattleArena] Inimigo recebeu ${damage} de dano ${isCritical ? '(CRÍTICO)' : ''}`);
       showFloatingDamage(damage, false, isCritical, 'physical');
+      hasChanges = true;
     }
-    setPreviousEnemyHp(currentEnemy.hp);
-  }, [currentEnemy.hp, previousEnemyHp, player.atk]);
+
+    // Atualizar estado apenas se houve mudanças
+    if (hasChanges) {
+      setLastBattleState({
+        playerHp: player.hp,
+        enemyHp: currentEnemy.hp,
+        battleId: currentBattleId
+      });
+    }
+  }, [player.hp, currentEnemy.hp, player.atk, player.floor, currentEnemy.name]);
 
   const showFloatingDamage = (damage: number, isPlayer: boolean, isCritical: boolean, damageType: string) => {
     const id = `${Date.now()}-${Math.random()}`;
@@ -294,10 +326,11 @@ export function BattleArena({
                 </div>
               </div>
 
-              {/* Player Combat Stats - Grid Compacto */}
-              <div className="grid grid-cols-3 gap-1 md:gap-2">
+              {/* Player Combat Stats - Grid Adaptativo */}
+              <div className={`grid gap-1 md:gap-2 ${player.magic_attack && player.magic_attack > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <div className="bg-red-500/10 border border-red-500/20 rounded p-1 md:p-2 text-center">
                   <Sword className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-red-400" />
+                  <div className="text-xs text-red-300 mb-1">ATK</div>
                   <div className="text-xs font-bold text-red-400">
                     <StatDisplay 
                       value={player.atk}
@@ -308,8 +341,21 @@ export function BattleArena({
                     />
                   </div>
                 </div>
+                
+                {/* Magic Attack - Novo sistema */}
+                {player.magic_attack && player.magic_attack > 0 && (
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded p-1 md:p-2 text-center">
+                    <Sparkles className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-purple-400" />
+                    <div className="text-xs text-purple-300 mb-1">MAG</div>
+                    <div className="text-xs font-bold text-purple-400">
+                      {player.magic_attack}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded p-1 md:p-2 text-center">
                   <Shield className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-blue-400" />
+                  <div className="text-xs text-blue-300 mb-1">DEF</div>
                   <div className="text-xs font-bold text-blue-400">
                     <StatDisplay 
                       value={player.def}
@@ -322,6 +368,7 @@ export function BattleArena({
                 </div>
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-1 md:p-2 text-center">
                   <Zap className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-yellow-400" />
+                  <div className="text-xs text-yellow-300 mb-1">SPD</div>
                   <div className="text-xs font-bold text-yellow-400">
                     <StatDisplay 
                       value={player.speed}

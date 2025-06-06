@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 interface GameShopProps {
     character: Character;
-    onPurchase: () => void;
+    onPurchase: (newGold: number) => void;
 }
 
 export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => {
@@ -23,9 +23,15 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         loadShopItems();
     }, [character.level]);
 
-    const loadShopItems = async () => {
+    const loadShopItems = async (preserveScroll: boolean = false) => {
         try {
-            setLoading(true);
+            // Salvar posição do scroll antes de recarregar se necessário
+            let scrollTop = 0;
+            if (preserveScroll) {
+                scrollTop = window.scrollY || document.documentElement.scrollTop;
+            } else {
+                setLoading(true);
+            }
             
             // Carregar equipamentos
             const equipment = await EquipmentService.getAvailableEquipment(character.level);
@@ -40,11 +46,21 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
                 );
                 setAvailableConsumables(shopConsumables);
             }
+
+            // Restaurar posição do scroll se necessário
+            if (preserveScroll) {
+                // Usar requestAnimationFrame para garantir que o DOM foi atualizado
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, scrollTop);
+                });
+            }
         } catch (error) {
             console.error('Erro ao carregar itens da loja:', error);
             toast.error('Erro ao carregar itens da loja');
         } finally {
-            setLoading(false);
+            if (!preserveScroll) {
+                setLoading(false);
+            }
         }
     };
 
@@ -55,13 +71,12 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         }
 
         try {
-            const success = await EquipmentService.buyEquipment(character.id, equipment.id, equipment.price);
-            if (success) {
+            const result = await EquipmentService.buyEquipment(character.id, equipment.id, equipment.price);
+            if (result.success && result.newGold !== undefined) {
                 toast.success(`${equipment.name} comprado com sucesso!`);
-                onPurchase();
-                loadShopItems(); // Recarregar para atualizar disponibilidade
+                onPurchase(result.newGold);
             } else {
-                toast.error('Erro ao comprar equipamento!');
+                toast.error(result.error || 'Erro ao comprar equipamento!');
             }
         } catch (error) {
             console.error('Erro ao comprar equipamento:', error);
@@ -79,9 +94,9 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
 
         try {
             const result = await ConsumableService.buyConsumable(character.id, consumable.id, quantity);
-            if (result.success) {
+            if (result.success && result.data) {
                 toast.success(`${quantity}x ${consumable.name} comprado com sucesso!`);
-                onPurchase();
+                onPurchase(result.data.newGold);
             } else {
                 toast.error(result.error || 'Erro ao comprar consumível!');
             }
@@ -91,9 +106,11 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         }
     };
 
-    const handleInventoryItemSold = () => {
-        // Atualizar a página para refletir as mudanças no gold
-        onPurchase();
+    const handleInventoryItemSold = (newGold: number) => {
+        // Atualizar o gold na página principal
+        onPurchase(newGold);
+        // Não é necessário recarregar a lista - a venda de itens do inventário 
+        // não afeta os itens disponíveis na loja
     };
 
     if (loading) {
