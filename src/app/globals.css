@@ -19,26 +19,39 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 45% 15%;
 
-    /* Cores de ação e destaque */
-    --primary: 230 95% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 90%;
+    /* Primários */
+    --primary: 220 45% 50%;
+    --primary-foreground: 0 0% 98%;
+
+    /* Secundários */
+    --secondary: 220 10% 95%;
     --secondary-foreground: 220 45% 15%;
 
-    /* Elementos de interface */
-    --muted: 220 15% 90%;
-    --muted-foreground: 220 20% 40%;
-    --accent: 230 95% 45%;
-    --accent-foreground: 0 0% 100%;
+    /* Mutáveis */
+    --muted: 220 15% 85%;
+    --muted-foreground: 220 25% 45%;
 
-    /* Alertas e destrutivos */
-    --destructive: 0 85% 60%;
-    --destructive-foreground: 0 0% 100%;
+    /* Acentos */
+    --accent: 220 15% 90%;
+    --accent-foreground: 220 45% 15%;
+
+    /* Destrutivos */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
 
     /* Bordas e inputs */
-    --border: 220 15% 85%;
-    --input: 220 15% 85%;
-    --ring: 230 95% 45%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 220 45% 50%;
+
+    /* Gradientes dinâmicos de vida */
+    --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(21, 128, 61, 0.03) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.03) 80%, rgba(34, 197, 94, 0.08) 100%);
+    --battle-bg-wounded: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(161, 98, 7, 0.03) 20%, transparent 40%, transparent 60%, rgba(161, 98, 7, 0.03) 80%, rgba(234, 179, 8, 0.08) 100%);
+    --battle-bg-critical: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(185, 28, 28, 0.03) 20%, transparent 40%, transparent 60%, rgba(185, 28, 28, 0.03) 80%, rgba(239, 68, 68, 0.08) 100%);
+    
+    --battle-border-healthy: rgba(34, 197, 94, 0.2);
+    --battle-border-wounded: rgba(234, 179, 8, 0.2);
+    --battle-border-critical: rgba(239, 68, 68, 0.2);
 
     /* Cores para gráficos */
     --chart-1: 199 89% 48%; /* Azul principal */
@@ -50,35 +63,48 @@
 
   .dark {
     /* Tema escuro - Cores principais */
-    --background: 220 45% 5%;
-    --foreground: 220 15% 95%;
+    --background: 220 45% 8%;
+    --foreground: 220 15% 92%;
 
     /* Cards e elementos de UI */
-    --card: 220 45% 8%;
-    --card-foreground: 220 15% 95%;
-    --popover: 220 45% 8%;
-    --popover-foreground: 220 15% 95%;
+    --card: 220 40% 10%;
+    --card-foreground: 220 15% 92%;
+    --popover: 220 40% 10%;
+    --popover-foreground: 220 15% 92%;
 
-    /* Cores de ação e destaque */
-    --primary: 230 95% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 35% 15%;
-    --secondary-foreground: 220 15% 95%;
+    /* Primários */
+    --primary: 220 60% 60%;
+    --primary-foreground: 220 45% 8%;
 
-    /* Elementos de interface */
-    --muted: 220 35% 15%;
+    /* Secundários */
+    --secondary: 220 25% 15%;
+    --secondary-foreground: 220 15% 92%;
+
+    /* Mutáveis */
+    --muted: 220 25% 18%;
     --muted-foreground: 220 15% 65%;
-    --accent: 230 95% 50%;
-    --accent-foreground: 0 0% 100%;
 
-    /* Alertas e destrutivos */
-    --destructive: 0 85% 45%;
-    --destructive-foreground: 0 0% 100%;
+    /* Acentos */
+    --accent: 220 25% 18%;
+    --accent-foreground: 220 15% 92%;
+
+    /* Destrutivos */
+    --destructive: 0 65% 60%;
+    --destructive-foreground: 0 0% 98%;
 
     /* Bordas e inputs */
-    --border: 220 35% 20%;
-    --input: 220 35% 20%;
-    --ring: 230 95% 50%;
+    --border: 220 25% 20%;
+    --input: 220 25% 20%;
+    --ring: 220 60% 60%;
+
+    /* Gradientes dinâmicos de vida - tema escuro */
+    --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(21, 128, 61, 0.05) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.05) 80%, rgba(34, 197, 94, 0.12) 100%);
+    --battle-bg-wounded: linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(161, 98, 7, 0.05) 20%, transparent 40%, transparent 60%, rgba(161, 98, 7, 0.05) 80%, rgba(234, 179, 8, 0.12) 100%);
+    --battle-bg-critical: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.05) 20%, transparent 40%, transparent 60%, rgba(185, 28, 28, 0.05) 80%, rgba(239, 68, 68, 0.12) 100%);
+    
+    --battle-border-healthy: rgba(34, 197, 94, 0.3);
+    --battle-border-wounded: rgba(234, 179, 8, 0.3);
+    --battle-border-critical: rgba(239, 68, 68, 0.3);
 
     /* Cores para gráficos no tema escuro */
     --chart-1: 199 89% 58%; /* Azul mais claro */
@@ -101,23 +127,15 @@
 /* Animações para danos flutuantes - Tema Dark Fantasy */
 @keyframes damage-float {
   0% {
-    transform: translateX(-50%) translateY(0px) scale(0.8);
-    opacity: 0;
-  }
-  10% {
-    transform: translateX(-50%) translateY(-5px) scale(1.1);
+    transform: translateY(0px) scale(1);
     opacity: 1;
   }
-  20% {
-    transform: translateX(-50%) translateY(-15px) scale(1);
-    opacity: 1;
-  }
-  80% {
-    transform: translateX(-50%) translateY(-80px) scale(0.9);
-    opacity: 0.8;
+  50% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0.9;
   }
   100% {
-    transform: translateX(-50%) translateY(-120px) scale(0.6);
+    transform: translateY(-40px) scale(0.9);
     opacity: 0;
   }
 }
@@ -125,96 +143,91 @@
 /* Animações suaves para barras de progresso */
 @keyframes progress-glow {
   0%, 100% {
-    box-shadow: 0 0 5px rgba(var(--progress-color), 0.3);
+    box-shadow: 0 0 5px currentColor;
   }
   50% {
-    box-shadow: 0 0 20px rgba(var(--progress-color), 0.6);
+    box-shadow: 0 0 15px currentColor, 0 0 25px currentColor;
   }
 }
 
 .progress-hp {
-  --progress-color: 34, 197, 94; /* green-500 */
+  animation: progress-glow 2s ease-in-out infinite;
 }
 
 .progress-mana {
-  --progress-color: 59, 130, 246; /* blue-500 */
+  animation: progress-glow 2s ease-in-out infinite;
 }
 
 .progress-xp {
-  --progress-color: 245, 158, 11; /* amber-500 */
+  animation: progress-glow 3s ease-in-out infinite;
 }
 
 @keyframes damage-critical {
   0% {
-    transform: translateX(-50%) translateY(0px) scale(0.5) rotate(-5deg);
-    opacity: 0;
-  }
-  15% {
-    transform: translateX(-50%) translateY(-10px) scale(1.3) rotate(2deg);
+    transform: translateY(0px) scale(1) rotate(-5deg);
     opacity: 1;
+    filter: drop-shadow(0 0 5px currentColor);
   }
   25% {
-    transform: translateX(-50%) translateY(-20px) scale(1.1) rotate(-1deg);
+    transform: translateY(-15px) scale(1.3) rotate(2deg);
     opacity: 1;
+    filter: drop-shadow(0 0 10px currentColor);
   }
-  35% {
-    transform: translateX(-50%) translateY(-30px) scale(1.2) rotate(1deg);
-    opacity: 1;
+  50% {
+    transform: translateY(-30px) scale(1.4) rotate(-1deg);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 15px currentColor);
   }
-  80% {
-    transform: translateX(-50%) translateY(-90px) scale(0.8) rotate(0deg);
-    opacity: 0.7;
+  75% {
+    transform: translateY(-45px) scale(1.1) rotate(1deg);
+    opacity: 0.5;
+    filter: drop-shadow(0 0 8px currentColor);
   }
   100% {
-    transform: translateX(-50%) translateY(-140px) scale(0.4) rotate(0deg);
+    transform: translateY(-60px) scale(0.8) rotate(0deg);
     opacity: 0;
+    filter: drop-shadow(0 0 0px currentColor);
   }
 }
 
 .animate-damage-float {
   animation: damage-float 2s ease-out forwards;
-  user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+  position: absolute;
+  z-index: 1000;
 }
 
 .animate-damage-critical {
   animation: damage-critical 2.5s ease-out forwards;
-  user-select: none;
   pointer-events: none;
-  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 24px rgba(220, 38, 38, 0.6));
+  position: absolute;
+  z-index: 1000;
 }
 
 /* Animações de feedback para uso de poções */
 @keyframes potion-use-success {
   0% {
     transform: scale(1);
-    opacity: 1;
-  }
-  25% {
-    transform: scale(1.2);
-    opacity: 0.8;
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
   }
   50% {
     transform: scale(1.1);
-    opacity: 0.9;
+    background-color: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
   }
   100% {
     transform: scale(1);
-    opacity: 1;
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
   }
 }
 
 @keyframes potion-disabled-shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-2px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(2px);
-  }
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
 }
 
 .animate-potion-use {
@@ -227,9 +240,9 @@
 
 /* Melhor animação de pulse para elementos em uso */
 .animate-using {
-  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --tw-pulse-from: rgba(34, 197, 94, 0.2);
-  --tw-pulse-to: rgba(34, 197, 94, 0.4);
+  animation: pulse 1s ease-in-out infinite;
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 /* Indicador visual de item indisponível */
@@ -242,50 +255,49 @@
   content: '';
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 80%;
+  left: 10%;
+  right: 10%;
   height: 2px;
-  background: #ef4444;
-  transform: translate(-50%, -50%) rotate(45deg);
-  z-index: 1;
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+  transform: translateY(-50%) rotate(-45deg);
+  z-index: 10;
 }
 
 .item-disabled::after {
   content: '';
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 80%;
+  left: 10%;
+  right: 10%;
   height: 2px;
-  background: #ef4444;
-  transform: translate(-50%, -50%) rotate(-45deg);
-  z-index: 1;
+  background: linear-gradient(90deg, transparent, #ef4444, transparent);
+  transform: translateY(-50%) rotate(45deg);
+  z-index: 10;
 }
 
 /* Animação de contador atualizado */
 @keyframes counter-update {
   0% {
     transform: scale(1);
-    color: inherit;
+    background-color: rgba(34, 197, 94, 0.1);
   }
   50% {
-    transform: scale(1.3);
-    color: #22c55e;
+    transform: scale(1.2);
+    background-color: rgba(34, 197, 94, 0.3);
   }
   100% {
     transform: scale(1);
-    color: inherit;
+    background-color: rgba(34, 197, 94, 0.1);
   }
 }
 
 .animate-counter-update {
-  animation: counter-update 0.4s ease-in-out;
+  animation: counter-update 0.3s ease-in-out;
 }
 
 /* Custom Scrollbar Styles */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -299,21 +311,21 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: rgba(100, 116, 139, 0.3);
   border-radius: 3px;
-  transition: background-color 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--accent));
+  background: rgba(100, 116, 139, 0.5);
 }
 
 .scrollbar-thumb-border {
-  scrollbar-color: hsl(var(--border)) transparent;
+  border: 1px solid rgba(100, 116, 139, 0.2);
 }
 
 .scrollbar-track-transparent {
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
 }
 
 /* Line Clamp Utilities */
@@ -322,7 +334,6 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
-  line-clamp: 1;
 }
 
 .line-clamp-2 {
@@ -330,7 +341,6 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  line-clamp: 2;
 }
 
 .line-clamp-3 {
@@ -338,31 +348,30 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  line-clamp: 3;
 }
 
 /* Crafting Layout Specific Styles */
 .crafting-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
 @media (min-width: 1024px) {
   .crafting-grid {
-    grid-template-columns: 5fr 7fr;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   }
 }
 
 /* Recipe Card Hover Animations */
 @keyframes recipe-hover {
   0% {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transform: translateY(0px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
   100% {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.2);
   }
 }
 
@@ -372,17 +381,17 @@
 
 /* Enhanced Card Transitions */
 .card-enhanced {
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card-enhanced:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* Focus States for Better Accessibility */
 .focus-visible:focus {
-  outline: 2px solid hsl(var(--primary));
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
@@ -392,33 +401,206 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.5;
   }
 }
 
 .skeleton {
   animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: hsl(var(--muted));
-  border-radius: 0.375rem;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 /* Rarity Border Glow Effects */
 .rarity-legendary {
-  box-shadow: 0 0 10px rgba(255, 165, 0, 0.3);
-  border-color: rgba(255, 165, 0, 0.5);
+  background: linear-gradient(45deg, #fbbf24, #f59e0b, #d97706);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .rarity-epic {
-  box-shadow: 0 0 10px rgba(147, 51, 234, 0.3);
-  border-color: rgba(147, 51, 234, 0.5);
+  background: linear-gradient(45deg, #a855f7, #9333ea, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .rarity-rare {
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.5);
+  background: linear-gradient(45deg, #3b82f6, #2563eb, #1d4ed8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .rarity-uncommon {
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-  border-color: rgba(34, 197, 94, 0.5);
+  background: linear-gradient(45deg, #10b981, #059669, #047857);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Efeitos para modificações mágicas */
+@keyframes magical-glow {
+  0%, 100% {
+    text-shadow: 0 0 5px rgba(168, 85, 247, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.3);
+  }
+}
+
+.stat-magical {
+  animation: magical-glow 2s ease-in-out infinite;
+}
+
+@keyframes magical-sparkle {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 0.8;
+  }
+}
+
+.magical-indicator {
+  animation: magical-sparkle 1.5s ease-in-out infinite;
+}
+
+/* Efeito de borda mágica */
+@keyframes magical-border {
+  0%, 100% {
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 5px rgba(168, 85, 247, 0.2);
+  }
+  50% {
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  }
+}
+
+.magical-border {
+  animation: magical-border 2s ease-in-out infinite;
+}
+
+/* Gradientes dinâmicos de vida para cards de batalha */
+.battle-card-healthy {
+  background: var(--battle-bg-healthy);
+  border-color: var(--battle-border-healthy);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.1);
+}
+
+.battle-card-wounded {
+  background: var(--battle-bg-wounded);
+  border-color: var(--battle-border-wounded);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.1);
+}
+
+.battle-card-critical {
+  background: var(--battle-bg-critical);
+  border-color: var(--battle-border-critical);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+  animation: critical-pulse 2s ease-in-out infinite;
+}
+
+@keyframes critical-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* Quick Action Panel styles */
+.quick-action-panel {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.quick-action-button {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+  min-height: 48px;
+  min-width: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quick-action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.quick-action-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Indicadores do Quick Action Panel */
+.quick-action-button .absolute {
+  pointer-events: none;
+}
+
+.quick-action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Mobile optimizations */
+@media (max-height: 600px) and (orientation: landscape) {
+  .quick-action-panel {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 640px) {
+  .quick-action-panel {
+    transform: scale(0.95);
+  }
+}
+
+/* Victory Modal Mobile Landscape Optimizations */
+@media (max-height: 600px) and (orientation: landscape) {
+  .victory-modal-landscape {
+    max-height: 95vh !important;
+    overflow-y: auto;
+  }
+  
+  .victory-modal-landscape .dialog-content {
+    margin: 0.5rem;
+    padding: 0.75rem;
+  }
+  
+  .victory-modal-landscape .scroll-area {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+/* Improve button touch targets on mobile landscape */
+@media (max-height: 600px) and (orientation: landscape) and (max-width: 768px) {
+  .victory-modal-buttons {
+    min-height: 36px;
+    font-size: 0.75rem;
+  }
+  
+  .victory-modal-buttons .lucide {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
 }
