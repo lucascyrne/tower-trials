@@ -16,14 +16,12 @@ import {
   Star, 
   Sword,
   Shield,
-  Award,
   Target,
   Sparkles,
   Plus,
   Minus,
   RotateCcw,
-  Save,
-  Brain
+  Save
 } from 'lucide-react';
 import { CharacterService } from '@/resources/game/character.service';
 import { 
@@ -33,7 +31,7 @@ import {
   calculateSkillXpRequired
 } from '@/resources/game/models/character.model';
 import { motion, AnimatePresence } from 'framer-motion';
-import { StatCard } from '@/components/ui/stat-display';
+import { DerivedStatsSection } from '@/components/game/derived-stats-section';
 
 interface AttributeDistribution {
   strength: number;
@@ -246,7 +244,7 @@ export default function CharacterStatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-secondary p-4">
+    <div className="min-h-screen bg-gradient-to-b from-background to-secondary p-4 overflow-visible">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -278,7 +276,7 @@ export default function CharacterStatsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-visible">
           {/* Atributos Primários com Distribuição */}
           <Card>
             <CardHeader>
@@ -430,141 +428,7 @@ export default function CharacterStatsPage() {
           </Card>
 
           {/* Stats Derivados */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Stats Derivados
-              </CardTitle>
-              <div className="mt-2 p-3 bg-muted/30 rounded-lg">
-                <div className="text-sm font-medium mb-2 text-muted-foreground">Sistema Rebalanceado - Fórmulas (Base MENOR + Especialização):</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground font-mono">
-                  <div><span className="text-red-400">HP:</span> (40 + 2×Nível) + Vitalidade^1.3×2.5</div>
-                  <div><span className="text-blue-400">Mana:</span> (15 + 1×Nível) + Int^1.3×1.5 + Sab^1.1×1.2</div>
-                  <div><span className="text-red-400">ATK Físico:</span> (1 + 0.5×Nível) + Força^1.2×1.2</div>
-                  <div><span className="text-purple-400">ATK Mágico:</span> (1 + 0.5×Nível) + Int^1.3×1.8 + Sab^1.1×0.6</div>
-                  <div><span className="text-blue-400">Defesa:</span> (1 + 0.3×Nível) + Vit^1.3×0.5 + Sab^1.1×0.4</div>
-                  <div><span className="text-yellow-400">Velocidade:</span> (3 + 0.5×Nível) + Destreza^1.15×0.8</div>
-                  <div><span className="text-yellow-400">Crítico:</span> Sorte×0.3% + Dex^1.15×0.2% (max 75%)</div>
-                  <div><span className="text-orange-400">Dano Crítico:</span> 130% + Sorte×0.6% + Str^1.2×0.4%</div>
-                </div>
-                <div className="text-xs text-muted-foreground mt-2 italic">
-                  <div><strong>🔥 SISTEMA REBALANCEADO:</strong> Bases MUITO menores forçam especialização extrema</div>
-                  <div><strong>⚖️ Trade-offs Reais:</strong> Magos frágeis/fortes vs Guerreiros resistentes/moderados</div>
-                  <div><strong>🎯 Builds Focadas:</strong> Sem investimento específico = personagem fraco</div>
-                  <div><strong>⚡ ATK Físico/Mágico:</strong> Sistemas separados com especialização obrigatória</div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                <StatCard
-                  label="HP Máximo"
-                  value={characterStats.max_hp}
-                  baseValue={characterStats.base_max_hp}
-                  equipmentBonus={characterStats.equipment_hp_bonus}
-                  icon={<Heart className="h-4 w-4 text-red-400" />}
-                  color="text-red-400"
-                  size="lg"
-                />
-                
-                <StatCard
-                  label="Mana Máxima"
-                  value={characterStats.max_mana}
-                  baseValue={characterStats.base_max_mana}
-                  equipmentBonus={characterStats.equipment_mana_bonus}
-                  icon={<Brain className="h-4 w-4 text-blue-400" />}
-                  color="text-blue-400"
-                  size="lg"
-                />
-
-                <StatCard
-                  label="ATK Físico"
-                  value={characterStats.atk}
-                  baseValue={characterStats.base_atk}
-                  equipmentBonus={characterStats.equipment_atk_bonus}
-                  icon={<Sword className="h-4 w-4 text-red-400" />}
-                  color="text-red-400"
-                  size="lg"
-                />
-
-                {/* Magic Attack - Novo sistema separado */}
-                {characterStats.magic_attack && characterStats.magic_attack > 0 && (
-                  <div className="bg-card p-3 rounded-lg border border-purple-500/20 bg-purple-500/5">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="h-4 w-4 text-purple-400" />
-                      <span className="text-sm font-medium text-purple-400">ATK Mágico</span>
-                    </div>
-                    <div className="text-2xl font-bold text-purple-400">
-                      {characterStats.magic_attack}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Sistema separado - Int + Sab
-                    </div>
-                  </div>
-                )}
-
-                <StatCard
-                  label="Defesa"
-                  value={characterStats.def}
-                  baseValue={characterStats.base_def}
-                  equipmentBonus={characterStats.equipment_def_bonus}
-                  icon={<Shield className="h-4 w-4 text-blue-400" />}
-                  color="text-blue-400"
-                  size="lg"
-                />
-
-                <StatCard
-                  label="Velocidade"
-                  value={characterStats.speed}
-                  baseValue={characterStats.base_speed}
-                  equipmentBonus={characterStats.equipment_speed_bonus}
-                  icon={<Zap className="h-4 w-4 text-yellow-400" />}
-                  color="text-yellow-400"
-                  size="lg"
-                />
-
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Star className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-medium text-yellow-400">Crítico</span>
-                  </div>
-                  <div className="text-2xl font-bold text-yellow-400">
-                    {characterStats.critical_chance.toFixed(1)}%
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Cap: 75% (Sorte + Dex)
-                  </div>
-                </div>
-
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target className="h-4 w-4 text-orange-400" />
-                    <span className="text-sm font-medium text-orange-400">Dano Crítico</span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-400">
-                    {characterStats.critical_damage.toFixed(0)}%
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Base: 130% + Bônus
-                  </div>
-                </div>
-
-                <div className="bg-card p-3 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="h-4 w-4 text-purple-400" />
-                    <span className="text-sm font-medium text-purple-400">Bônus Mágico</span>
-                  </div>
-                  <div className="text-2xl font-bold text-purple-400">
-                    +{Math.round(characterStats.magic_damage_bonus)}%
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Compatibilidade - Cap: 400%
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <DerivedStatsSection characterStats={characterStats} />
 
           {/* Habilidades */}
           <Card className="lg:col-span-2">

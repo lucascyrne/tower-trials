@@ -203,7 +203,16 @@ export default function GamePlayPage() {
   };
 
   const renderCharacterStats = (character: Character) => {
-    const xpProgress = (character.xp / character.xp_next_level) * 100;
+                    // CORRIGIDO: Calcular progresso de XP dentro do nível atual
+                const calculateCurrentLevelXpRequirement = (level: number): number => {
+                  if (level <= 1) return 0;
+                  return Math.floor(100 * Math.pow(1.5, level - 2));
+                };
+                
+                const currentLevelStartXp = calculateCurrentLevelXpRequirement(character.level);
+                const xpInCurrentLevel = character.xp - currentLevelStartXp;
+                const xpNeededForNextLevel = character.xp_next_level - currentLevelStartXp;
+                const xpProgress = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
 
     return (
       <div className="space-y-3">
