@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trophy, Skull } from 'lucide-react';
+import { Trophy, Skull, Eye, AlertTriangle } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { RankingService } from '@/resources/game/ranking.service';
@@ -19,6 +19,28 @@ export default function GameOver() {
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
+
+  // Detectar mobile landscape
+  useEffect(() => {
+    const checkMobileLandscape = () => {
+      const isMobile = window.innerWidth <= 768;
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isShortHeight = window.innerHeight <= 600;
+      setIsMobileLandscape(isMobile && isLandscape && isShortHeight);
+    };
+
+    checkMobileLandscape();
+    window.addEventListener('resize', checkMobileLandscape);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(checkMobileLandscape, 100);
+    });
+
+    return () => {
+      window.removeEventListener('resize', checkMobileLandscape);
+      window.removeEventListener('orientationchange', checkMobileLandscape);
+    };
+  }, []);
 
   // Função para salvar a pontuação no ranking e deletar o personagem
   const handleGameOver = async () => {
@@ -63,73 +85,185 @@ export default function GameOver() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl flex items-center justify-center gap-2">
-          <Skull className="h-8 w-8 text-red-500" />
-          Fim de Jogo
+    <Card className={`w-full ${
+      isMobileLandscape 
+        ? 'max-w-[95vw] max-h-[95vh] flex flex-col' 
+        : 'max-w-md'
+    }`}>
+      <CardHeader className={`text-center ${isMobileLandscape ? 'pb-3' : ''}`}>
+        <CardTitle className={`flex items-center justify-center gap-2 ${
+          isMobileLandscape ? 'text-lg' : 'text-2xl'
+        }`}>
+          <Skull className={`text-red-500 ${
+            isMobileLandscape ? 'h-6 w-6' : 'h-8 w-8'
+          }`} />
+          {gameState.characterDeleted ? 'Permadeath - Personagem Perdido' : 'Fim de Jogo'}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      
+      <CardContent className={`${
+        isMobileLandscape 
+          ? 'space-y-3 overflow-y-auto flex-1 px-4' 
+          : 'space-y-6'
+      }`}>
+        {/* Seção de Resumo */}
         <div className="text-center">
-          <p className="text-lg mb-2">{gameMessage}</p>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Trophy className="h-6 w-6 text-yellow-500" />
-            <span className="text-2xl font-bold">Andar {player.floor - 1}</span>
+          <p className={`mb-2 ${
+            isMobileLandscape ? 'text-sm' : 'text-lg'
+          }`}>
+            {gameMessage}
+          </p>
+          <div className={`flex items-center justify-center gap-2 mb-2 ${
+            isMobileLandscape ? 'mb-2' : 'mb-4'
+          }`}>
+            <Trophy className={`text-yellow-500 ${
+              isMobileLandscape ? 'h-5 w-5' : 'h-6 w-6'
+            }`} />
+            <span className={`font-bold ${
+              isMobileLandscape ? 'text-lg' : 'text-2xl'
+            }`}>
+              Andar {player.floor - 1}
+            </span>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className={`text-muted-foreground ${
+            isMobileLandscape ? 'text-xs' : 'text-sm'
+          }`}>
             Seu recorde atual: Andar {highestFloor}
           </p>
         </div>
 
-        <div className="bg-muted p-4 rounded-lg">
-          <h3 className="font-medium mb-2">Estatísticas Finais</h3>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Personagem:</div>
-            <div className="font-medium">{player.name}</div>
+        {/* Container Adaptativo para Layout Landscape */}
+        <div className={isMobileLandscape ? 'grid grid-cols-2 gap-3' : 'space-y-4'}>
+          {/* Estatísticas Finais */}
+          <div className={`bg-muted rounded-lg ${
+            isMobileLandscape ? 'p-3' : 'p-4'
+          }`}>
+            <h3 className={`font-medium mb-2 ${
+              isMobileLandscape ? 'text-sm' : ''
+            }`}>
+              Estatísticas Finais
+            </h3>
+            <div className={`grid grid-cols-2 gap-1 ${
+              isMobileLandscape ? 'text-xs' : 'gap-2 text-sm'
+            }`}>
+              <div>Personagem:</div>
+              <div className="font-medium truncate">{player.name}</div>
+              
+              <div>Andares:</div>
+              <div className="font-medium">{player.floor - 1}</div>
+              
+              <div>HP final:</div>
+              <div className="font-medium">{player.hp}/{player.max_hp}</div>
+              
+              <div>Nível:</div>
+              <div className="font-medium">{player.level}</div>
+              
+              <div>Gold:</div>
+              <div className="font-medium">{formatLargeNumber(player.gold)}</div>
+              
+              <div>XP total:</div>
+              <div className="font-medium">{formatLargeNumber(player.xp)}</div>
+            </div>
+          </div>
+
+          {/* Aviso de Permadeath */}
+          <div className={`bg-red-500/10 border border-red-500/20 rounded-lg ${
+            isMobileLandscape ? 'p-3' : 'p-4'
+          }`}>
+            <div className={`flex items-center gap-2 mb-2 ${
+              isMobileLandscape ? 'mb-1' : ''
+            }`}>
+              <AlertTriangle className={`text-red-400 ${
+                isMobileLandscape ? 'h-4 w-4' : 'h-5 w-5'
+              }`} />
+              <span className={`font-medium text-red-400 ${
+                isMobileLandscape ? 'text-xs' : 'text-sm'
+              }`}>
+                Aviso de Permadeath
+              </span>
+            </div>
             
-            <div>Andares concluídos:</div>
-            <div className="font-medium">{player.floor - 1}</div>
+            <p className={`text-red-400 mb-2 ${
+              isMobileLandscape ? 'text-xs mb-1' : 'text-sm'
+            }`}>
+              Este personagem será permanentemente deletado ao continuar.
+            </p>
             
-            <div>HP final:</div>
-            <div className="font-medium">{player.hp}/{player.max_hp}</div>
-            
-            <div>Nível alcançado:</div>
-            <div className="font-medium">{player.level}</div>
-            
-            <div>Gold acumulado:</div>
-            <div className="font-medium">{formatLargeNumber(player.gold)}</div>
-            
-            <div>XP total:</div>
-            <div className="font-medium">{formatLargeNumber(player.xp)}</div>
+            <p className={`text-red-300 ${
+              isMobileLandscape ? 'text-xs' : 'text-xs'
+            }`}>
+              Suas estatísticas serão salvas no ranking para comparação com outros jogadores.
+            </p>
           </div>
         </div>
 
-        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg">
-          <p className="text-sm text-red-400 mb-2">
-            <strong>Aviso de Permadeath:</strong> Este personagem será permanentemente deletado ao continuar.
-          </p>
-          <p className="text-xs text-red-300">
-            Suas estatísticas serão salvas no ranking para comparação com outros jogadores.
-          </p>
-        </div>
+        {/* Estatísticas da Jornada - Apenas se o personagem foi deletado */}
+        {gameState.characterDeleted && (
+          <div className={`bg-blue-500/10 border border-blue-500/20 rounded-lg ${
+            isMobileLandscape ? 'p-3' : 'p-3'
+          }`}>
+            <div className={`text-blue-400 ${
+              isMobileLandscape ? 'text-xs' : 'text-xs'
+            }`}>
+              💀 <strong>Estatísticas da Jornada:</strong><br/>
+              <div className={`mt-1 ${
+                isMobileLandscape ? 'grid grid-cols-2 gap-1' : ''
+              }`}>
+                <div>• Nível alcançado: {player.level}</div>
+                <div>• Andar mais alto: {player.floor}</div>
+                <div>• Gold acumulado: {player.gold}</div>
+                <div>• XP total: {player.xp}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
-      <CardFooter className="flex flex-col gap-2">
+      
+      <CardFooter className={`flex gap-2 ${
+        isMobileLandscape ? 'flex-row p-4' : 'flex-col'
+      }`}>
+        {gameState.characterDeleted && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Navegar para o cemitério primeiro
+              window.location.href = '/game/cemetery';
+            }}
+            className={`border-blue-500/30 text-blue-400 hover:bg-blue-500/10 ${
+              isMobileLandscape ? 'flex-1 text-xs h-8' : 'w-full'
+            }`}
+          >
+            <Eye className={`mr-2 ${
+              isMobileLandscape ? 'h-3 w-3 mr-1' : 'h-4 w-4'
+            }`} />
+            {isMobileLandscape ? 'Cemitério' : 'Ver Cemitério'}
+          </Button>
+        )}
+        
         <Button
-          className="w-full"
           variant="destructive"
           onClick={handleGameOver}
           disabled={isSaving || isDeleting}
+          className={`${
+            isMobileLandscape ? 'flex-1 text-xs h-8' : 'w-full'
+          }`}
         >
           {isSaving || isDeleting ? (
-            <span className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-              Finalizando...
+            <span className="flex items-center gap-1">
+              <div className={`animate-spin rounded-full border-t-2 border-b-2 border-white ${
+                isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'
+              }`}></div>
+              {isMobileLandscape ? 'Finalizando...' : 'Finalizando...'}
             </span>
           ) : (
-            <span className="flex items-center gap-2">
-              <Skull className="h-4 w-4" />
-              Aceitar Derrota e Salvar Pontuação
+            <span className="flex items-center gap-1">
+              <Skull className={`${
+                isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'
+              }`} />
+              {isMobileLandscape 
+                ? 'Aceitar Derrota' 
+                : (gameState.characterDeleted ? 'Criar Novo Personagem' : 'Aceitar Derrota e Salvar')
+              }
             </span>
           )}
         </Button>
@@ -138,11 +272,15 @@ export default function GameOver() {
           variant="outline"
           size="sm"
           onClick={() => router.push('/game/ranking')}
-          className="w-full"
+          className={`${
+            isMobileLandscape ? 'flex-1 text-xs h-8' : 'w-full'
+          }`}
           disabled={isSaving || isDeleting}
         >
-          <Trophy className="h-4 w-4 mr-2" />
-          Ver Ranking
+          <Trophy className={`mr-2 ${
+            isMobileLandscape ? 'h-3 w-3 mr-1' : 'h-4 w-4'
+          }`} />
+          {isMobileLandscape ? 'Ranking' : 'Ver Ranking'}
         </Button>
       </CardFooter>
     </Card>

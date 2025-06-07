@@ -10,6 +10,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sword, Shield, Gem, Package, Sparkles, Coins, Heart, Zap, Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
 
 interface InventoryModalProps {
   character: Character;
@@ -211,7 +212,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         </div>
         
         {isActive && (
-          <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-2 shadow-lg">
+          <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-lg space-y-3">
+            {!item.is_equipped && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-200 mb-2">Comparação se Equipado</h4>
+                <EquipmentComparison
+                  characterId={character.id}
+                  newEquipment={item.equipment}
+                  slotType={item.equipment.type}
+                  showTitle={false}
+                  compact={true}
+                />
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 size="sm"

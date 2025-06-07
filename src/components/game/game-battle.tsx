@@ -45,8 +45,14 @@ export default function GameBattle() {
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  
+  // Sistema para prevenir ações duplicadas
+  const actionProcessingRef = useRef(false);
+  const lastActionTimeRef = useRef(0);
+  const ACTION_DEBOUNCE_MS = 800; // Aumentar debounce para 800ms
   
   // OTIMIZADO: Sistema mais robusto para evitar processamento duplicado
   const processedRewardsRef = useRef<Set<string>>(new Set());
@@ -143,23 +149,7 @@ export default function GameBattle() {
     }
   }, [gameState.mode, player.hp, gameState.characterDeleted, player.name]);
 
-  // NOVO: Verificação de fuga bem-sucedida
-  useEffect(() => {
-    if (gameState.mode === 'fled' && gameState.fleeSuccessful) {
-      console.log('[GameBattle] Fuga bem-sucedida detectada, redirecionando...');
-      
-      // Adicionar mensagem de fuga ao log
-      addGameLogMessage('Você fugiu da batalha com sucesso!', 'system');
-      
-      // Usar setTimeout para garantir que a mensagem seja exibida antes do redirecionamento
-      const timer = setTimeout(() => {
-        console.log('[GameBattle] Executando redirecionamento para hub...');
-        router.push(`/game/play/hub?character=${player.id}`);
-      }, 3000); // 3 segundos para mostrar a mensagem
-      
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.mode, gameState.fleeSuccessful, player.id]);
+
 
   // Detectar orientação para escolher interface adequada
   useEffect(() => {
@@ -347,15 +337,54 @@ export default function GameBattle() {
 
   // Função para executar ações do jogador
   const handleAction = async (action: ActionType, spellId?: string) => {
-    // CRÍTICO: Bloquear todas as ações se o personagem está morto
+    // CRÍTICO: Sistema robusto de prevenção de ações duplicadas
+    const currentTime = Date.now();
+    
+    // 1. Verificar se já está processando uma ação
+    if (actionProcessingRef.current) {
+      console.warn(`[GameBattle] Ação '${action}' BLOQUEADA - já processando ação`);
+      return;
+    }
+    
+    // 2. Verificar debounce temporal
+    if (currentTime - lastActionTimeRef.current < ACTION_DEBOUNCE_MS) {
+      console.warn(`[GameBattle] Ação '${action}' BLOQUEADA - debounce (${currentTime - lastActionTimeRef.current}ms < ${ACTION_DEBOUNCE_MS}ms)`);
+      return;
+    }
+    
+    // 3. Bloquear todas as ações se o personagem está morto
     if (gameState.mode === 'gameover') {
       console.warn('[GameBattle] Ação bloqueada - personagem está morto');
       return;
     }
     
-    if (!isPlayerTurn) return;
+    // 4. Bloquear ações durante fuga
+    if (gameState.mode === 'fled') {
+      console.warn('[GameBattle] Ação bloqueada - processo de fuga em andamento');
+      return;
+    }
     
-    await performAction(action, spellId);
+    if (!isPlayerTurn) {
+      console.warn('[GameBattle] Ação bloqueada - não é o turno do jogador');
+      return;
+    }
+    
+    // Marcar como processando
+    actionProcessingRef.current = true;
+    lastActionTimeRef.current = currentTime;
+    
+    console.log(`[GameBattle] Executando ação '${action}' (timestamp: ${currentTime})`);
+    
+    try {
+      await performAction(action, spellId);
+    } catch (error) {
+      console.error('[GameBattle] Erro ao executar ação:', error);
+    } finally {
+      // Limpar estado de processamento após a ação
+      setTimeout(() => {
+        actionProcessingRef.current = false;
+      }, 100);
+    }
   };
 
   // Função para continuar a aventura após derrotar um inimigo
@@ -550,6 +579,8 @@ export default function GameBattle() {
         onClose={() => setShowAttributeModal(false)}
         character={player}
       />
+
+
     </>
   );
 } 

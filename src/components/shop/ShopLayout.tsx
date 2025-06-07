@@ -19,6 +19,7 @@ import {
 import { Equipment } from '@/resources/game/models/equipment.model';
 import { Consumable } from '@/resources/game/models/consumable.model';
 import { Character } from '@/resources/game/models/character.model';
+import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
 
 interface ShopLayoutProps {
   character: Character;
@@ -240,6 +241,17 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-2 text-slate-200">Comparação com Equipamento Atual</h3>
+            <EquipmentComparison
+              characterId={character.id}
+              newEquipment={equipment}
+              slotType={equipment.type}
+              showTitle={false}
+              compact={true}
+            />
           </div>
 
           <div>

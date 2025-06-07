@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star, TrendingUp, Plus, Minus, Save, RotateCcw, Heart, Zap, Sparkles, Eye, Target } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -41,6 +41,28 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
     luck: 0
   });
   const [isDistributing, setIsDistributing] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
+
+  // Detectar mobile landscape
+  useEffect(() => {
+    const checkMobileLandscape = () => {
+      const isMobile = window.innerWidth <= 768;
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isShortHeight = window.innerHeight <= 600;
+      setIsMobileLandscape(isMobile && isLandscape && isShortHeight);
+    };
+
+    checkMobileLandscape();
+    window.addEventListener('resize', checkMobileLandscape);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(checkMobileLandscape, 100);
+    });
+
+    return () => {
+      window.removeEventListener('resize', checkMobileLandscape);
+      window.removeEventListener('orientationchange', checkMobileLandscape);
+    };
+  }, []);
 
   const totalPointsToDistribute = Object.values(distribution).reduce((sum, value) => sum + value, 0);
   const availablePoints = (character.attribute_points || 0) - totalPointsToDistribute;
@@ -165,183 +187,264 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="text-center">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.5 }}
-            className="mx-auto w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4"
-          >
-            <Star className="h-8 w-8 text-yellow-500" />
-          </motion.div>
-          
-          <DialogTitle className="text-xl font-bold">
-            Distribuir Pontos de Atributo
-          </DialogTitle>
-          
-          <DialogDescription asChild>
-            <div className="text-center space-y-3">
-              <Badge variant="outline" className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400 px-3 py-1">
-                <Star className="h-4 w-4 mr-2" />
-                {availablePoints} pontos disponíveis
-              </Badge>
-              
-              <p className="text-sm text-muted-foreground">
-                Distribua seus pontos estrategicamente para fortalecer seu personagem na torre.
-              </p>
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-
-        <motion.div 
-          className="space-y-4 py-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          {/* Atributos com Controles */}
-          <div className="space-y-3">
-            {Object.entries(attributeConfig).map(([key, config]) => {
-              const attribute = key as keyof AttributeDistribution;
-              const currentValue = character[attribute] || 0;
-              const Icon = config.icon;
-              
-              return (
-                <motion.div
-                  key={attribute}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${config.bgColor} ${config.borderColor}`}
-                  whileHover={{ scale: 1.01 }}
-                >
-                  {/* Ícone e Info */}
-                  <div className="flex items-center gap-3 flex-1">
-                    <Icon className={`h-5 w-5 ${config.color}`} />
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">{config.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {config.benefit}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Valor Atual */}
-                  <div className="text-center min-w-[60px]">
-                    <div className="text-sm font-bold">
-                      {currentValue}
-                      {distribution[attribute] > 0 && (
-                        <span className="text-green-400 ml-1">
-                          +{distribution[attribute]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Controles */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleDecrement(attribute)}
-                      disabled={distribution[attribute] === 0}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    
-                    <div className="w-8 text-center text-sm font-mono">
-                      {distribution[attribute]}
-                    </div>
-                    
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full"
-                      onClick={() => handleIncrement(attribute)}
-                      disabled={availablePoints === 0}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-
-          {/* Preview dos Melhoramentos */}
-          {totalPointsToDistribute > 0 && (
+      <DialogContent className={`overflow-hidden ${
+        isMobileLandscape 
+          ? 'max-w-[95vw] max-h-[95vh] w-[95vw] p-3' 
+          : 'sm:max-w-2xl max-h-[90vh] overflow-y-auto'
+      }`}>
+        <DialogHeader className={`${isMobileLandscape ? 'pb-2' : 'text-center'}`}>
+          {!isMobileLandscape && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="bg-primary/5 border border-primary/20 rounded-lg p-3"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="mx-auto w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4"
             >
-              <div className="text-sm font-medium mb-2 flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Preview dos Melhoramentos
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {distribution.vitality > 0 && (
-                  <div className="flex justify-between">
-                    <span>HP:</span>
-                    <span className="text-green-400">+{distribution.vitality * 8}</span>
-                  </div>
-                )}
-                {distribution.intelligence > 0 && (
-                  <div className="flex justify-between">
-                    <span>Mana:</span>
-                    <span className="text-blue-400">+{distribution.intelligence * 5}</span>
-                  </div>
-                )}
-                {distribution.strength > 0 && (
-                  <div className="flex justify-between">
-                    <span>Ataque:</span>
-                    <span className="text-red-400">+{distribution.strength * 2}</span>
-                  </div>
-                )}
-                {distribution.dexterity > 0 && (
-                  <div className="flex justify-between">
-                    <span>Velocidade:</span>
-                    <span className="text-green-400">+{Math.floor(distribution.dexterity * 1.5)}</span>
-                  </div>
-                )}
-              </div>
+              <Star className="h-8 w-8 text-yellow-500" />
             </motion.div>
           )}
-
-          {/* Botões de Ação */}
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            
-            {totalPointsToDistribute > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="flex-1"
+          
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className={`flex items-center gap-3 ${
+              isMobileLandscape ? 'justify-start' : 'flex-col text-center'
+            }`}
+          >
+            {isMobileLandscape && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="w-10 h-10 bg-yellow-500/20 rounded-full flex items-center justify-center flex-shrink-0"
               >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Resetar
-              </Button>
+                <Star className="h-5 w-5 text-yellow-500" />
+              </motion.div>
             )}
             
+            <div className={isMobileLandscape ? 'text-left flex-1' : 'text-center'}>
+              <DialogTitle className={`font-bold ${isMobileLandscape ? 'text-lg' : 'text-xl'}`}>
+                Distribuir Pontos de Atributo
+              </DialogTitle>
+              
+              <DialogDescription asChild>
+                <div className={`${isMobileLandscape ? 'flex items-center justify-between mt-1' : 'text-center space-y-3'}`}>
+                  <Badge variant="outline" className={`bg-yellow-500/10 border-yellow-500/30 text-yellow-400 ${
+                    isMobileLandscape ? 'px-2 py-1 text-xs' : 'px-3 py-1'
+                  }`}>
+                    <Star className={`mr-2 ${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                    {availablePoints} pontos
+                  </Badge>
+                  
+                  {!isMobileLandscape && (
+                    <p className="text-sm text-muted-foreground">
+                      Distribua seus pontos estrategicamente para fortalecer seu personagem na torre.
+                    </p>
+                  )}
+                </div>
+              </DialogDescription>
+            </div>
+          </motion.div>
+        </DialogHeader>
+
+        {/* Conteúdo Principal - Layout Adaptativo */}
+        <div className={`${isMobileLandscape ? 'overflow-y-auto max-h-[calc(95vh-120px)]' : ''}`}>
+          <motion.div 
+            className={`${isMobileLandscape ? 'py-2' : 'space-y-4 py-4'}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {/* Atributos com Controles - Layout Adaptativo */}
+            <div className={`${
+              isMobileLandscape 
+                ? 'grid grid-cols-2 gap-2 mb-3' 
+                : 'space-y-3'
+            }`}>
+              {Object.entries(attributeConfig).map(([key, config]) => {
+                const attribute = key as keyof AttributeDistribution;
+                const currentValue = character[attribute] || 0;
+                const Icon = config.icon;
+                
+                return (
+                  <motion.div
+                    key={attribute}
+                    className={`flex items-center gap-2 rounded-lg border ${config.bgColor} ${config.borderColor} ${
+                      isMobileLandscape ? 'p-2 text-xs' : 'gap-3 p-3'
+                    }`}
+                    whileHover={{ scale: 1.01 }}
+                  >
+                    {/* Ícone e Info */}
+                    <div className={`flex items-center gap-2 flex-1 ${
+                      isMobileLandscape ? 'min-w-0' : 'gap-3'
+                    }`}>
+                      <Icon className={`flex-shrink-0 ${config.color} ${
+                        isMobileLandscape ? 'h-4 w-4' : 'h-5 w-5'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-semibold ${
+                          isMobileLandscape ? 'text-xs truncate' : 'text-sm'
+                        }`}>
+                          {config.label}
+                        </div>
+                        {!isMobileLandscape && (
+                          <div className="text-xs text-muted-foreground">
+                            {config.benefit}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Valor Atual */}
+                    <div className={`text-center ${
+                      isMobileLandscape ? 'min-w-[40px]' : 'min-w-[60px]'
+                    }`}>
+                      <div className={`font-bold ${
+                        isMobileLandscape ? 'text-xs' : 'text-sm'
+                      }`}>
+                        {currentValue}
+                        {distribution[attribute] > 0 && (
+                          <span className="text-green-400 ml-1">
+                            +{distribution[attribute]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Controles */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`rounded-full ${
+                          isMobileLandscape ? 'h-6 w-6' : 'h-8 w-8'
+                        }`}
+                        onClick={() => handleDecrement(attribute)}
+                        disabled={distribution[attribute] === 0}
+                      >
+                        <Minus className={isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'} />
+                      </Button>
+                      
+                      <div className={`text-center font-mono ${
+                        isMobileLandscape ? 'w-6 text-xs' : 'w-8 text-sm'
+                      }`}>
+                        {distribution[attribute]}
+                      </div>
+                      
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`rounded-full ${
+                          isMobileLandscape ? 'h-6 w-6' : 'h-8 w-8'
+                        }`}
+                        onClick={() => handleIncrement(attribute)}
+                        disabled={availablePoints === 0}
+                      >
+                        <Plus className={isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'} />
+                      </Button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Preview dos Melhoramentos */}
+            {totalPointsToDistribute > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className={`bg-primary/5 border border-primary/20 rounded-lg ${
+                  isMobileLandscape ? 'p-2 mt-2' : 'p-3'
+                }`}
+              >
+                <div className={`font-medium mb-2 flex items-center gap-2 ${
+                  isMobileLandscape ? 'text-xs' : 'text-sm'
+                }`}>
+                  <Target className={`text-primary ${
+                    isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'
+                  }`} />
+                  Preview dos Melhoramentos
+                </div>
+                <div className={`grid gap-1 ${
+                  isMobileLandscape ? 'grid-cols-4 text-xs' : 'grid-cols-2 gap-2 text-xs'
+                }`}>
+                  {distribution.vitality > 0 && (
+                    <div className="flex justify-between">
+                      <span>HP:</span>
+                      <span className="text-green-400">+{distribution.vitality * 8}</span>
+                    </div>
+                  )}
+                  {distribution.intelligence > 0 && (
+                    <div className="flex justify-between">
+                      <span>Mana:</span>
+                      <span className="text-blue-400">+{distribution.intelligence * 5}</span>
+                    </div>
+                  )}
+                  {distribution.strength > 0 && (
+                    <div className="flex justify-between">
+                      <span>Ataque:</span>
+                      <span className="text-red-400">+{distribution.strength * 2}</span>
+                    </div>
+                  )}
+                  {distribution.dexterity > 0 && (
+                    <div className="flex justify-between">
+                      <span>Velocidade:</span>
+                      <span className="text-green-400">+{Math.floor(distribution.dexterity * 1.5)}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        </div>
+
+        {/* Botões de Ação - Layout Adaptativo */}
+        <div className={`flex gap-2 ${isMobileLandscape ? 'pt-2' : 'pt-2'}`}>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className={`flex-1 ${
+              isMobileLandscape ? 'text-xs h-8' : ''
+            }`}
+          >
+            Cancelar
+          </Button>
+          
+          {totalPointsToDistribute > 0 && (
             <Button
-              onClick={handleSubmit}
-              disabled={isDistributing || totalPointsToDistribute === 0}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+              variant="outline"
+              onClick={handleReset}
+              className={`flex-1 ${
+                isMobileLandscape ? 'text-xs h-8' : ''
+              }`}
             >
-              {isDistributing ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Confirmar ({totalPointsToDistribute})
+              <RotateCcw className={`mr-1 ${
+                isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'
+              }`} />
+              {isMobileLandscape ? 'Reset' : 'Resetar'}
             </Button>
-          </div>
-        </motion.div>
+          )}
+          
+          <Button
+            onClick={handleSubmit}
+            disabled={isDistributing || totalPointsToDistribute === 0}
+            className={`flex-1 bg-emerald-500 hover:bg-emerald-600 ${
+              isMobileLandscape ? 'text-xs h-8' : ''
+            }`}
+          >
+            {isDistributing ? (
+              <div className={`animate-spin rounded-full border-2 border-white border-t-transparent mr-1 ${
+                isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'
+              }`} />
+            ) : (
+              <Save className={`mr-1 ${
+                isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'
+              }`} />
+            )}
+            {isMobileLandscape ? `OK (${totalPointsToDistribute})` : `Confirmar (${totalPointsToDistribute})`}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
