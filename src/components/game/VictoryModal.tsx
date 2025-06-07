@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
 import { Coins, Star, Trophy, Sparkles, ShoppingBag, ArrowRight, Home, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatLargeNumber } from '@/lib/utils';
+import { useMobileLandscape } from '@/hooks/use-media-query';
 
 interface VictoryModalProps {
   isOpen: boolean;
@@ -37,31 +38,8 @@ export function VictoryModal({
   newLevel,
   hasAttributePoints
 }: VictoryModalProps) {
-  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
-  
-  // Detectar mobile landscape com melhor precisão
-  useEffect(() => {
-    const checkMobileLandscape = () => {
-      const isMobile = window.innerWidth <= 768;
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const isShortHeight = window.innerHeight <= 600;
-      const isVeryShortHeight = window.innerHeight <= 500;
-      
-      setIsMobileLandscape(isMobile && isLandscape && (isShortHeight || isVeryShortHeight));
-    };
-
-    checkMobileLandscape();
-    window.addEventListener('resize', checkMobileLandscape);
-    window.addEventListener('orientationchange', () => {
-      // Aguardar um pouco mais para a orientação se estabilizar
-      setTimeout(checkMobileLandscape, 150);
-    });
-
-    return () => {
-      window.removeEventListener('resize', checkMobileLandscape);
-      window.removeEventListener('orientationchange', checkMobileLandscape);
-    };
-  }, []);
+  // Usar hook específico para detectar mobile landscape
+  const isMobileLandscape = useMobileLandscape();
 
   // Adicionar classes CSS customizadas para mobile landscape
   useEffect(() => {
@@ -74,9 +52,11 @@ export function VictoryModal({
           -webkit-overflow-scrolling: touch;
         }
         .victory-modal-buttons {
-          min-height: 32px !important;
-          padding: 0.25rem 0.5rem !important;
-          font-size: 0.75rem !important;
+          min-height: 24px !important;
+          padding: 0.15rem 0.3rem !important;
+          font-size: 0.65rem !important;
+          font-weight: 600 !important;
+          line-height: 1 !important;
         }
         .victory-modal-landscape [data-radix-dialog-content] {
           max-height: 90vh !important;
@@ -104,11 +84,11 @@ export function VictoryModal({
     <AnimatePresence>
       {isOpen && (
         <Dialog open={isOpen}>
-          <DialogContent className={`overflow-hidden ${
-            isMobileLandscape 
-              ? 'max-w-[98vw] max-h-[98vh] p-3 victory-modal-landscape w-[98vw]' 
-              : 'sm:max-w-[425px]'
-          }`}>
+                <DialogContent className={`overflow-hidden ${
+        isMobileLandscape 
+          ? 'max-w-[98vw] max-h-[98vh] p-2 victory-modal-landscape w-[98vw]' 
+          : 'sm:max-w-[425px]'
+      }`}>
             {/* Header adaptativo */}
             <DialogHeader className={`relative ${isMobileLandscape ? 'pb-2' : ''}`}>
               {!isMobileLandscape && (
@@ -152,45 +132,45 @@ export function VictoryModal({
               </motion.div>
             </DialogHeader>
 
-            {/* Conteúdo Principal - Layout Adaptativo */}
-            <div className={isMobileLandscape ? 'scroll-area overflow-y-auto' : ''}>
+            {            /* Conteúdo Principal - Layout Adaptativo */}
+            <div className={isMobileLandscape ? 'scroll-area overflow-y-auto max-h-[calc(98vh-100px)]' : ''}>
               <motion.div 
-                className={`${isMobileLandscape ? 'py-2' : 'space-y-4 py-4'}`}
+                className={`${isMobileLandscape ? 'py-1 space-y-1' : 'space-y-4 py-4'}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                {/* Container de Recompensas */}
+                {                /* Container de Recompensas */}
                 <div className={`${
                   isMobileLandscape 
-                    ? 'grid grid-cols-2 gap-2 mb-3' 
+                    ? 'grid grid-cols-2 gap-1 mb-1' 
                     : 'space-y-4'
                 }`}>
                   <motion.div 
-                    className={`flex items-center gap-3 bg-primary/10 rounded-lg ${
-                      isMobileLandscape ? 'p-2 text-base' : 'p-3 text-lg'
+                    className={`flex items-center gap-2 bg-primary/10 rounded-lg ${
+                      isMobileLandscape ? 'p-1' : 'p-3 text-lg'
                     }`}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <Star className={`text-yellow-500 ${isMobileLandscape ? 'h-4 w-4' : 'h-6 w-6'}`} />
+                    <Star className={`text-yellow-500 ${isMobileLandscape ? 'h-3 w-3' : 'h-6 w-6'}`} />
                     <div className="min-w-0 flex-1">
                       <div className={`font-semibold ${isMobileLandscape ? 'text-xs' : ''}`}>Experiência</div>
-                      <div className={`font-bold text-primary ${isMobileLandscape ? 'text-sm' : 'text-2xl'}`}>
+                      <div className={`font-bold text-primary ${isMobileLandscape ? 'text-xs' : 'text-2xl'}`}>
                         +{rewards.xp} XP
                       </div>
                     </div>
                   </motion.div>
 
                   <motion.div 
-                    className={`flex items-center gap-3 bg-primary/10 rounded-lg ${
-                      isMobileLandscape ? 'p-2 text-base' : 'p-3 text-lg'
+                    className={`flex items-center gap-2 bg-primary/10 rounded-lg ${
+                      isMobileLandscape ? 'p-1' : 'p-3 text-lg'
                     }`}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <Coins className={`text-yellow-400 ${isMobileLandscape ? 'h-4 w-4' : 'h-6 w-6'}`} />
+                    <Coins className={`text-yellow-400 ${isMobileLandscape ? 'h-3 w-3' : 'h-6 w-6'}`} />
                     <div className="min-w-0 flex-1">
                       <div className={`font-semibold ${isMobileLandscape ? 'text-xs' : ''}`}>Ouro</div>
-                      <div className={`font-bold text-primary ${isMobileLandscape ? 'text-sm' : 'text-2xl'}`}>
+                      <div className={`font-bold text-primary ${isMobileLandscape ? 'text-xs' : 'text-2xl'}`}>
                         +{formatLargeNumber(rewards.gold)} Gold
                       </div>
                     </div>
@@ -284,22 +264,22 @@ export function VictoryModal({
               </motion.div>
             </div>
 
-            {/* Footer - Layout Adaptativo */}
-            <DialogFooter className={`flex flex-col gap-2 ${isMobileLandscape ? 'mt-2' : 'mt-4'}`}>
+            {            /* Footer - Layout Adaptativo */}
+            <DialogFooter className={`flex flex-col gap-1 ${isMobileLandscape ? 'mt-1' : 'mt-4'}`}>
               <div className={`w-full ${
                 isMobileLandscape 
-                  ? 'flex gap-2' 
+                  ? 'grid grid-cols-3 gap-1' 
                   : 'flex flex-col gap-2'
               }`}>
                 {hasAttributePoints && (
                   <Button
                     onClick={onOpenAttributeModal}
                     className={`bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg ${
-                      isMobileLandscape ? 'flex-1 victory-modal-buttons' : 'w-full'
+                      isMobileLandscape ? 'victory-modal-buttons text-xs' : 'w-full'
                     }`}
                   >
-                    <TrendingUp className={`mr-1 ${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'}`} />
-                    {isMobileLandscape ? 'Atributos' : 'Distribuir Pontos de Atributo'}
+                    <TrendingUp className={`${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'}`} />
+                    {isMobileLandscape ? 'Pts' : 'Distribuir Pontos de Atributo'}
                   </Button>
                 )}
                 
@@ -307,21 +287,21 @@ export function VictoryModal({
                   onClick={handleReturnToHub} 
                   variant="outline"
                   className={`items-center justify-center ${
-                    isMobileLandscape ? 'flex-1 victory-modal-buttons' : 'flex-1'
+                    isMobileLandscape ? 'victory-modal-buttons text-xs' : 'flex-1'
                   }`}
                 >
-                  <Home className={`mr-1 ${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'}`} />
-                  {isMobileLandscape ? 'Hub' : 'Voltar ao Hub'}
+                  <Home className={`${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'}`} />
+                  {isMobileLandscape ? '' : 'Voltar ao Hub'}
                 </Button>
                 
                 <Button 
                   onClick={handleContinue}
                   className={`bg-emerald-500 hover:bg-emerald-600 ${
-                    isMobileLandscape ? 'flex-1 victory-modal-buttons' : 'flex-1'
+                    isMobileLandscape ? 'victory-modal-buttons text-xs' : 'flex-1'
                   }`}
                 >
-                  <ArrowRight className={`mr-1 ${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4'}`} />
-                  Continuar
+                  <ArrowRight className={`${isMobileLandscape ? 'h-3 w-3' : 'h-4 w-4 mr-2'}`} />
+                  {isMobileLandscape ? 'Continuar' : 'Continuar'}
                 </Button>
               </div>
             </DialogFooter>

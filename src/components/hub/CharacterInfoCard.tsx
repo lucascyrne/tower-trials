@@ -32,7 +32,19 @@ interface CharacterInfoCardProps {
 export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   
-  const xpProgress = (player.xp / player.xp_next_level) * 100;
+  // CORRIGIDO: Calcular progresso de XP dentro do nível atual
+  // Usamos a fórmula de XP do banco: FLOOR(100 * POW(1.5, current_level - 1))
+  const calculateCurrentLevelXpRequirement = (level: number): number => {
+    if (level <= 1) return 0;
+    return Math.floor(100 * Math.pow(1.5, level - 2)); // XP necessário para chegar ao nível atual
+  };
+  
+  const currentLevelStartXp = calculateCurrentLevelXpRequirement(player.level);
+  const currentLevelEndXp = player.xp_next_level;
+  const xpInCurrentLevel = player.xp - currentLevelStartXp;
+  const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
+  const xpProgress = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
+  
   const hpProgress = (player.hp / player.max_hp) * 100;
   const manaProgress = (player.mana / player.max_mana) * 100;
 
@@ -213,7 +225,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   <Star className="h-4 w-4 text-yellow-400" />
                   XP
                 </span>
-                <span className="text-slate-400">{player.xp}/{player.xp_next_level}</span>
+                <span className="text-slate-400">{xpInCurrentLevel.toLocaleString()}/{xpNeededForNextLevel.toLocaleString()}</span>
               </div>
               <div className="relative">
                 <Progress value={xpProgress} className="h-2" />

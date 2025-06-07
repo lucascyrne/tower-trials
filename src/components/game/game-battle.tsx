@@ -1,24 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
 import { useGame } from '@/resources/game/game-hook';
 import { ActionType } from '@/resources/game/game-model';
 import { BattleArena } from './BattleArena';
 import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { VictoryModal } from './VictoryModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Skull, Eye } from 'lucide-react';
+import { GameOverModal } from './GameOverModal';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
 import AttributeDistributionModal from './AttributeDistributionModal';
 import { CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { useAuth } from '@/resources/auth/auth-hook';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
 import { CharacterService } from '@/resources/game/character.service';
 import { QuickActionPanel } from './QuickActionPanel';
+import { FleeOverlay } from './FleeOverlay';
 
 interface BattleRewards {
   xp: number;
@@ -31,6 +31,7 @@ interface BattleRewards {
 export default function GameBattle() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const { 
     gameState, 
     performAction, 
@@ -45,6 +46,8 @@ export default function GameBattle() {
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
+  const [showFleeOverlay, setShowFleeOverlay] = useState(false);
+  const [fleeSuccess, setFleeSuccess] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
@@ -79,39 +82,35 @@ export default function GameBattle() {
     console.log(`[GameBattle] Andar atual: ${player.floor}`);
   }, [player.floor]);
 
-  // OTIMIZADO: Processamento de recompensas sem duplicação
+  // CORRIGIDO: Processamento de recompensas com controle rigoroso
   useEffect(() => {
     if (!gameState.battleRewards) {
       return;
     }
 
-    // Gerar chave única baseada no estado da batalha (sem timestamp)
-    const battleKey = `${player.floor}-${player.level}-${gameState.battleRewards.xp}-${gameState.battleRewards.gold}`;
+    // Verificar se já processamos esta batalha específica
+    const battleKey = `${player.floor}-${currentEnemy?.name || 'unknown'}-${gameState.battleRewards.xp}`;
     
-    // Verificar se já processamos esta recompensa específica
     if (processedRewardsRef.current.has(battleKey)) {
       console.log(`[GameBattle] Recompensa já processada: ${battleKey}`);
       return;
     }
 
-    // Verificar se mudou de batalha (andar diferente)
-    const currentBattleState = {
+    // Verificar se mudou de andar para limpar cache
+    if (lastBattleStateRef.current.floor !== player.floor) {
+      console.log(`[GameBattle] Novo andar detectado (${lastBattleStateRef.current.floor} -> ${player.floor}), limpando cache`);
+      processedRewardsRef.current.clear();
+    }
+
+    // Marcar como processada
+    processedRewardsRef.current.add(battleKey);
+    lastBattleStateRef.current = {
       floor: player.floor,
       enemyName: currentEnemy?.name || 'unknown',
       rewardsProcessed: true
     };
 
-    // Se mudou de andar, limpar recompensas processadas anteriores
-    if (lastBattleStateRef.current.floor !== currentBattleState.floor) {
-      console.log(`[GameBattle] Mudou de andar (${lastBattleStateRef.current.floor} -> ${currentBattleState.floor}), limpando recompensas processadas`);
-      processedRewardsRef.current.clear();
-    }
-
-    // Marcar como processada ANTES do processamento para evitar condições de corrida
-    processedRewardsRef.current.add(battleKey);
-    lastBattleStateRef.current = currentBattleState;
-
-    console.log(`[GameBattle] Processando recompensa: XP ${gameState.battleRewards.xp}, Gold ${gameState.battleRewards.gold}, Andar ${player.floor}`);
+    console.log(`[GameBattle] Processando recompensa de vitória: XP ${gameState.battleRewards.xp}, Gold ${gameState.battleRewards.gold}`);
     
     const battleRewards = gameState.battleRewards;
     
@@ -123,7 +122,10 @@ export default function GameBattle() {
       newLevel: battleRewards.newLevel
     });
     
-    setShowVictoryModal(true);
+    // CRÍTICO: Só mostrar modal se não estiver já visível
+    if (!showVictoryModal) {
+      setShowVictoryModal(true);
+    }
     
     const victoryMessage = `Vitória! Você derrotou o inimigo e recebeu ${battleRewards.xp} XP e ${battleRewards.gold} Gold.`;
     addGameLogMessage(victoryMessage, 'system');
@@ -131,7 +133,7 @@ export default function GameBattle() {
     if (battleRewards.leveledUp && battleRewards.newLevel) {
       addGameLogMessage(`Você subiu para o nível ${battleRewards.newLevel}!`, 'system');
     }
-  }, [gameState.battleRewards, player.floor, player.level, currentEnemy?.name]);
+  }, [gameState.battleRewards, gameState.mode, player.floor, currentEnemy?.name, showVictoryModal]);
 
   // Verificação de game over
   useEffect(() => {
@@ -148,6 +150,15 @@ export default function GameBattle() {
       }
     }
   }, [gameState.mode, player.hp, gameState.characterDeleted, player.name]);
+
+  // Verificação de fuga
+  useEffect(() => {
+    if (gameState.mode === 'fled') {
+      console.log('[GameBattle] Fuga detectada - exibindo overlay');
+      setFleeSuccess(gameState.fleeSuccessful !== false); // true por padrão se não especificado
+      setShowFleeOverlay(true);
+    }
+  }, [gameState.mode, gameState.fleeSuccessful]);
 
 
 
@@ -335,9 +346,8 @@ export default function GameBattle() {
   const playerHpPercentage = (player.hp / player.max_hp) * 100;
   const playerManaPercentage = (player.mana / player.max_mana) * 100;
 
-  // Função para executar ações do jogador
+  // CORRIGIDO: Função para executar ações do jogador com proteção aprimorada
   const handleAction = async (action: ActionType, spellId?: string) => {
-    // CRÍTICO: Sistema robusto de prevenção de ações duplicadas
     const currentTime = Date.now();
     
     // 1. Verificar se já está processando uma ação
@@ -352,8 +362,8 @@ export default function GameBattle() {
       return;
     }
     
-    // 3. Bloquear todas as ações se o personagem está morto
-    if (gameState.mode === 'gameover') {
+    // 3. Bloquear ações se personagem está morto
+    if (gameState.mode === 'gameover' || player.hp <= 0) {
       console.warn('[GameBattle] Ação bloqueada - personagem está morto');
       return;
     }
@@ -364,7 +374,14 @@ export default function GameBattle() {
       return;
     }
     
-    if (!isPlayerTurn) {
+    // 5. NOVO: Bloquear ações se modal de vitória está visível (exceto continue)
+    if (showVictoryModal && action !== 'continue') {
+      console.warn('[GameBattle] Ação bloqueada - modal de vitória ativo');
+      return;
+    }
+    
+    // 6. Verificar se é o turno do jogador (exceto para continue)
+    if (!isPlayerTurn && action !== 'continue') {
       console.warn('[GameBattle] Ação bloqueada - não é o turno do jogador');
       return;
     }
@@ -379,16 +396,23 @@ export default function GameBattle() {
       await performAction(action, spellId);
     } catch (error) {
       console.error('[GameBattle] Erro ao executar ação:', error);
+      toast.error(`Erro ao executar ação: ${action}`);
     } finally {
-      // Limpar estado de processamento após a ação
+      // Limpar estado de processamento após um delay
       setTimeout(() => {
         actionProcessingRef.current = false;
-      }, 100);
+      }, 200);
     }
   };
 
-  // Função para continuar a aventura após derrotar um inimigo
+  // CORRIGIDO: Função para continuar a aventura com proteção aprimorada
   const handleContinueAdventure = async () => {
+    // Verificar se já está processando uma ação
+    if (actionProcessingRef.current || loading.performAction) {
+      console.warn("[GameBattle] Continuar aventura bloqueado - já processando ação");
+      return;
+    }
+
     console.log("[GameBattle] === CONTINUAR AVENTURA ===");
     console.log("[GameBattle] Estado atual:", {
       floor: gameState.player.floor,
@@ -397,21 +421,52 @@ export default function GameBattle() {
       enemyHp: gameState.currentEnemy?.hp
     });
     
+    // Fechar modal ANTES de prosseguir
     setShowVictoryModal(false);
+    
+    // Aguardar um momento para garantir que o modal foi fechado
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
       console.log("[GameBattle] Chamando performAction('continue')...");
-      await performAction('continue');
+      await handleAction('continue');
       console.log("[GameBattle] performAction('continue') concluído com sucesso");
     } catch (error) {
       console.error("[GameBattle] Erro ao avançar:", error);
       toast.error("Erro ao avançar para o próximo andar");
+      // Reabrir modal em caso de erro
       setShowVictoryModal(true);
     }
   };
 
   const handleReturnToHub = () => {
     router.push(`/game/play/hub?character=${gameState.player.id}`);
+  };
+
+  // Handler para o fim do overlay de fuga
+  const handleFleeOverlayComplete = async () => {
+    console.log('[GameBattle] Overlay de fuga concluído, sucesso:', fleeSuccess);
+    setShowFleeOverlay(false);
+    
+    if (fleeSuccess) {
+      // Fuga bem-sucedida: redirecionar para o hub
+      try {
+        if (gameState.player.id) {
+          // Atualizar andar para 1 (volta ao início)
+          await CharacterService.updateCharacterFloor(gameState.player.id, 1);
+          console.log('[GameBattle] Andar do personagem atualizado para 1');
+        }
+        
+        // Redirecionar para o hub
+        router.push(`/game/play/hub?character=${gameState.player.id}`);
+      } catch (error) {
+        console.error('[GameBattle] Erro ao processar fuga:', error);
+        toast.error('Erro ao processar fuga');
+      }
+    } else {
+      // Fuga falhada: o contexto já deve ter retornado ao modo battle
+      console.log('[GameBattle] Fuga falhou, retornando à batalha');
+    }
   };
 
   return (
@@ -428,47 +483,68 @@ export default function GameBattle() {
           playerLevel={player.level} 
         />
 
-        {/* Arena de Batalha Unificada */}
-        {currentEnemy && (
-          <div className="mb-6 relative">
-            {/* Quick Action Panel - Desktop (ao lado esquerdo) */}
-            {!isMobilePortrait && (
-              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-20 z-10 hidden lg:block">
-                <QuickActionPanel
-                  handleAction={handleAction}
-                  isPlayerTurn={isPlayerTurn}
-                  loading={loading}
-                  player={player}
-                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
-                  onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
-                />
-              </div>
-            )}
+        {/* Arena de Batalha Unificada - SEMPRE VISÍVEL para evitar layout shift */}
+        <div className="mb-6 relative">
+          {/* Quick Action Panel - Desktop (ao lado esquerdo) */}
+          {!isMobilePortrait && (
+            <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-20 z-10 hidden lg:block">
+              <QuickActionPanel
+                handleAction={handleAction}
+                isPlayerTurn={isPlayerTurn}
+                loading={loading}
+                player={player}
+                onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+              />
+            </div>
+          )}
 
-            {/* Quick Action Panel - Mobile Horizontal (canto inferior esquerdo) */}
-            {!isMobilePortrait && (
-              <div className="fixed bottom-4 left-4 z-20 block lg:hidden">
-                <QuickActionPanel
-                  handleAction={handleAction}
-                  isPlayerTurn={isPlayerTurn}
-                  loading={loading}
-                  player={player}
-                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
-                  onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
-                />
-              </div>
-            )}
-            
-            <BattleArena 
-              player={player}
-              currentEnemy={currentEnemy}
-              playerHpPercentage={playerHpPercentage}
-              playerManaPercentage={playerManaPercentage}
-              enemyHpPercentage={enemyHpPercentage}
-              isPlayerTurn={isPlayerTurn}
-            />
-          </div>
-        )}
+          {/* Quick Action Panel - Mobile Horizontal (canto inferior esquerdo) */}
+          {!isMobilePortrait && (
+            <div className="fixed bottom-4 left-4 z-20 block lg:hidden">
+              <QuickActionPanel
+                handleAction={handleAction}
+                isPlayerTurn={isPlayerTurn}
+                loading={loading}
+                player={player}
+                onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+              />
+            </div>
+          )}
+          
+          {/* CORRIGIDO: Sempre exibir BattleArena, usando placeholder quando necessário */}
+          <BattleArena 
+            player={player}
+            currentEnemy={currentEnemy || {
+              id: 'placeholder',
+              name: 'Preparando próximo inimigo...',
+              level: 1,
+              hp: 0,
+              maxHp: 1,
+              attack: 0,
+              defense: 0,
+              speed: 1,
+              image: '',
+              behavior: 'balanced',
+              mana: 0,
+              reward_xp: 0,
+              reward_gold: 0,
+              possible_drops: [],
+              active_effects: {
+                buffs: [],
+                debuffs: [],
+                dots: [],
+                hots: [],
+                attribute_modifications: []
+              }
+            }}
+            playerHpPercentage={playerHpPercentage}
+            playerManaPercentage={playerManaPercentage}
+            enemyHpPercentage={currentEnemy ? enemyHpPercentage : 0}
+            isPlayerTurn={isPlayerTurn}
+          />
+        </div>
 
         {/* Interface de Batalha - Apenas Mobile Portrait */}
         {isMobilePortrait && (
@@ -482,7 +558,6 @@ export default function GameBattle() {
               onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
               currentEnemy={currentEnemy}
               battleRewards={gameState.battleRewards}
-              isFleeInProgress={gameState.mode === 'fled'}
             />
           </div>
         )}
@@ -501,85 +576,54 @@ export default function GameBattle() {
         hasAttributePoints={(player.attribute_points || 0) > 0}
       />
 
-      <Dialog open={showDeathModal} onOpenChange={setShowDeathModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-500">
-              <Skull className="h-6 w-6" />
-              {gameState.characterDeleted ? 'Permadeath - Personagem Perdido' : 'Seu Personagem Morreu'}
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg space-y-3">
-              <div className="text-sm">
-                <strong>{player.name}</strong> foi derrotado no Andar {player.floor}...
-              </div>
-              {gameState.characterDeleted ? (
-                <>
-                  <div className="text-sm text-muted-foreground">
-                    Devido ao sistema de <strong>Permadeath</strong>, seu personagem foi perdido para sempre. 
-                    Todos os itens, equipamentos e progressos foram perdidos.
-                  </div>
-                  <div className="text-sm text-yellow-400 font-medium">
-                    Seus dados foram movidos para o cemitério onde você pode revisar sua jornada.
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Mas não desista! Crie um novo personagem e tente novamente, 
-                    usando a experiência adquirida para chegar ainda mais longe.
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Ocorreu um erro ao processar a morte do personagem. 
-                  Tente novamente ou entre em contato com o suporte.
-                </div>
-              )}
-            </div>
-            {gameState.characterDeleted && (
-              <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg">
-                <div className="text-xs text-blue-400">
-                  💀 <strong>Estatísticas da Jornada:</strong><br/>
-                  • Nível alcançado: {player.level}<br/>
-                  • Andar mais alto: {player.floor}<br/>
-                  • Gold acumulado: {player.gold}<br/>
-                  • XP total: {player.xp}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex flex-col gap-2">
-            {gameState.characterDeleted && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Navegar para o cemitério primeiro
-                  window.location.href = '/game/cemetery';
-                }}
-                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Ver Cemitério
-              </Button>
-            )}
-            <Button
-              variant="destructive"
-              onClick={handleReturnToCharacterSelect}
-            >
-              <Skull className="h-4 w-4 mr-2" />
-              {gameState.characterDeleted ? 'Criar Novo Personagem' : 'Voltar à Seleção'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GameOverModal
+        isOpen={showDeathModal}
+        onClose={() => setShowDeathModal(false)}
+        player={{
+          id: player.id,
+          name: player.name,
+          level: player.level,
+          floor: player.floor,
+          hp: player.hp,
+          max_hp: player.max_hp,
+          xp: player.xp,
+          gold: player.gold
+        }}
+        gameMessage={`${player.name} foi derrotado no Andar ${player.floor}...`}
+        highestFloor={player.floor}
+        isCharacterDeleted={gameState.characterDeleted}
+        userId={user?.id}
+        onReturnToCharacterSelect={handleReturnToCharacterSelect}
+        onViewCemetery={() => {
+          window.location.href = '/game/cemetery';
+        }}
+      />
 
       <AttributeDistributionModal 
         isOpen={showAttributeModal}
-        onClose={() => setShowAttributeModal(false)}
+        onClose={() => {
+          setShowAttributeModal(false);
+          // CORRIGIDO: Quando fechar modal de atributos, garantir que VictoryModal permaneça visível se há recompensas
+          if (gameState.battleRewards && !showVictoryModal) {
+            console.log('[GameBattle] Reexibindo VictoryModal após fechar modal de atributos');
+            setShowVictoryModal(true);
+          }
+        }}
         character={player}
       />
 
+      {/* Overlay de Fuga */}
+      {showFleeOverlay && (
+        <div className="fixed inset-0 z-50">
+          <FleeOverlay
+            isVisible={showFleeOverlay}
+            isSuccess={fleeSuccess}
+            playerName={player.name}
+            enemyName={currentEnemy?.name}
+            onComplete={handleFleeOverlayComplete}
+          />
+        </div>
+      )}
 
     </>
   );

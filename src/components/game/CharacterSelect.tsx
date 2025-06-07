@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Skull, Crown, Swords, AlertCircle, CheckCircle, Plus, Users, TrendingUp } from 'lucide-react';
+import { Crown, Swords, AlertCircle, CheckCircle, Plus, Users, TrendingUp } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PermadeathWarningModal } from './PermadeathWarningModal';
 
 export function CharacterSelect() {
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -224,7 +225,16 @@ export function CharacterSelect() {
   };
 
   const renderCharacterStats = (character: Character) => {
-    const xpProgress = (character.xp / character.xp_next_level) * 100;
+                      // CORRIGIDO: Calcular progresso de XP dentro do nível atual
+                  const calculateCurrentLevelXpRequirement = (level: number): number => {
+                    if (level <= 1) return 0;
+                    return Math.floor(100 * Math.pow(1.5, level - 2));
+                  };
+                  
+                  const currentLevelStartXp = calculateCurrentLevelXpRequirement(character.level);
+                  const xpInCurrentLevel = character.xp - currentLevelStartXp;
+                  const xpNeededForNextLevel = character.xp_next_level - currentLevelStartXp;
+                  const xpProgress = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
     const hpProgress = (character.hp / character.max_hp) * 100;
     const manaProgress = (character.mana / character.max_mana) * 100;
 
@@ -248,7 +258,7 @@ export function CharacterSelect() {
         
         <div>
           <div className="flex justify-between text-sm mb-1">
-            <span>XP: {character.xp}/{character.xp_next_level}</span>
+            <span>XP: {xpInCurrentLevel.toLocaleString()}/{xpNeededForNextLevel.toLocaleString()}</span>
             <span>{Math.round(xpProgress)}%</span>
           </div>
           <Progress value={xpProgress} className="h-2 bg-yellow-500" />
@@ -468,61 +478,13 @@ export function CharacterSelect() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de Aviso de Permadeath */}
-      <Dialog open={showPermadeathDialog} onOpenChange={setShowPermadeathDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-500">
-              <Skull className="h-6 w-6" />
-              Aviso de Permadeath
-            </DialogTitle>
-            <DialogDescription className="text-base">
-              Você está prestes a entrar em uma aventura perigosa!
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg space-y-3">
-              <p className="text-sm">
-                <strong>O que é Permadeath?</strong>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Neste jogo, a morte é permanente. Se seu personagem morrer durante a aventura:
-              </p>
-              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>O personagem será permanentemente deletado</li>
-                <li>Todo o progresso será perdido</li>
-                <li>Equipamentos e itens serão destruídos</li>
-                <li>A pontuação será registrada no ranking</li>
-              </ul>
-            </div>
-            
-            <div className="bg-muted p-4 rounded-lg">
-              <p className="text-sm font-medium mb-2">Dicas de Sobrevivência:</p>
-              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>Use magias sabiamente e gerencie sua mana</li>
-                <li>Mantenha seus pontos de vida sempre altos</li>
-                <li>Fuja de batalhas muito difíceis</li>
-                <li>Compre equipamentos para aumentar suas chances</li>
-              </ul>
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowPermadeathDialog(false)}
-            >
-              Voltar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmCharacterSelect}
-            >
-              <Skull className="h-4 w-4 mr-2" />
-              Aceitar e Continuar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Aviso de Permadeath Responsivo */}
+      <PermadeathWarningModal
+        isOpen={showPermadeathDialog}
+        onClose={() => setShowPermadeathDialog(false)}
+        onConfirm={handleConfirmCharacterSelect}
+        characterName={selectedCharacter?.name}
+      />
     </div>
   );
 } 

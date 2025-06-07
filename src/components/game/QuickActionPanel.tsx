@@ -79,42 +79,55 @@ export function QuickActionPanel({
 }: QuickActionPanelProps) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   
-  // Top 2 spells para economia de espaço
-  const quickSpells = player.spells?.slice(0, 2) || [];
+  // Top 3 spells para os atalhos 1-3
+  const quickSpells = player.spells?.slice(0, 3) || [];
 
   // Suporte a teclas de atalho
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!isPlayerTurn || loading.performAction) return;
       
-      switch (event.key) {
-        case '1':
+      const key = event.key.toLowerCase();
+      
+      switch (key) {
+        // Ações de combate: A S D
+        case 'a':
           event.preventDefault();
           handleAction('attack');
           break;
-        case '2':
+        case 's':
           event.preventDefault();
           handleAction('defend');
           break;
-        case '3':
+        case 'd':
           event.preventDefault();
           handleAction('flee');
           break;
-        case '4':
+        // Magias: 1 2 3
+        case '1':
           event.preventDefault();
           if (quickSpells[0]) handleAction('spell', quickSpells[0].id);
           break;
-        case '5':
+        case '2':
           event.preventDefault();
           if (quickSpells[1]) handleAction('spell', quickSpells[1].id);
           break;
-        case '6':
+        case '3':
+          event.preventDefault();
+          if (quickSpells[2]) handleAction('spell', quickSpells[2].id);
+          break;
+        // Poções: Q W E
+        case 'q':
           event.preventDefault();
           if (potionSlots[0]) handlePotionUse(potionSlots[0]);
           break;
-        case '7':
+        case 'w':
           event.preventDefault();
           if (potionSlots[1]) handlePotionUse(potionSlots[1]);
+          break;
+        case 'e':
+          event.preventDefault();
+          if (potionSlots[2]) handlePotionUse(potionSlots[2]);
           break;
       }
     };
@@ -130,7 +143,7 @@ export function QuickActionPanel({
       
       const slots: PotionSlot[] = player.consumables
         .filter(c => c.consumable?.type === 'potion' && c.quantity > 0)
-        .slice(0, 2) // Apenas 2 primeiros slots para economia de espaço
+        .slice(0, 3) // 3 slots para os atalhos Q-W-E
         .map(c => ({
           id: c.id,
           consumable_id: c.consumable_id,
@@ -194,12 +207,12 @@ export function QuickActionPanel({
             onClick={() => handleAction('attack')}
             disabled={isActionDisabled}
             className="quick-action-button w-12 h-12 p-0 bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-red-400 transition-all duration-150"
-            title="Atacar (1)"
+            title="Atacar (A)"
           >
             <Sword className="w-4 h-4" />
           </Button>
           <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-            1
+            A
           </span>
         </div>
 
@@ -209,21 +222,21 @@ export function QuickActionPanel({
             variant="outline"
             size="sm"
             onClick={() => handleAction('defend')}
-            disabled={isActionDisabled || (player.defenseCooldown ? player.defenseCooldown > 0 : false)}
+            disabled={isActionDisabled || (player.defenseCooldown > 0)}
             className={`quick-action-button w-12 h-12 p-0 bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/50 text-blue-400 transition-all duration-150 relative ${
-              player.defenseCooldown && player.defenseCooldown > 0 ? 'opacity-50' : ''
+              player.defenseCooldown > 0 ? 'opacity-50' : ''
             }`}
-            title={`Defender (2)${player.defenseCooldown && player.defenseCooldown > 0 ? ` - Cooldown: ${player.defenseCooldown}` : ''}`}
+            title={`Defender (S)${player.defenseCooldown > 0 ? ` - Cooldown: ${player.defenseCooldown}` : ''}`}
           >
             <Shield className="w-4 h-4" />
-            {player.defenseCooldown && player.defenseCooldown > 0 && (
+            {player.defenseCooldown > 0 && (
               <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                 {player.defenseCooldown}
               </span>
             )}
           </Button>
           <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-            2
+            S
           </span>
         </div>
 
@@ -235,12 +248,12 @@ export function QuickActionPanel({
             onClick={() => handleAction('flee')}
             disabled={isActionDisabled}
             className="quick-action-button w-12 h-12 p-0 bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-yellow-400 transition-all duration-150"
-            title="Fugir (3)"
+            title="Fugir (D)"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-            3
+            D
           </span>
         </div>
       </div>
@@ -262,7 +275,7 @@ export function QuickActionPanel({
                 className={`quick-action-button w-12 h-12 p-0 ${getSpellColor(spell)} relative transition-all duration-150 ${
                   !canCast ? 'opacity-50' : ''
                 }`}
-                title={`${spell.name} (${4 + index}) - ${spell.mana_cost} Mana${
+                title={`${spell.name} (${1 + index}) - ${spell.mana_cost} Mana${
                   spell.current_cooldown > 0 ? ` - Cooldown: ${spell.current_cooldown}` : 
                   player.mana < spell.mana_cost ? ' - Mana insuficiente' : ''
                 }`}
@@ -282,7 +295,7 @@ export function QuickActionPanel({
               </Button>
               {/* Indicador de tecla */}
               <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-                {4 + index}
+                {1 + index}
               </span>
             </div>
           );
@@ -304,7 +317,7 @@ export function QuickActionPanel({
               className={`quick-action-button w-12 h-12 p-0 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400 relative transition-all duration-150 ${
                 player.potionUsedThisTurn ? 'opacity-50' : ''
               }`}
-              title={`${slot.consumable.name} (${6 + index}) - Cura ${slot.consumable.effect_value} HP${
+              title={`${slot.consumable.name} (${['Q', 'W', 'E'][index]}) - Cura ${slot.consumable.effect_value} HP${
                 player.potionUsedThisTurn ? ' - Já usou poção neste turno' : ''
               }`}
             >
@@ -320,20 +333,13 @@ export function QuickActionPanel({
             </Button>
             {/* Indicador de tecla */}
             <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-              {6 + index}
+              {['Q', 'W', 'E'][index]}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Dica de atalhos no final */}
-      <div className="mt-2 text-center">
-        <div className="text-xs text-slate-400 leading-tight">
-          1-3: Ações<br/>
-          4-5: Magias<br/>
-          6-7: Poções
-        </div>
-      </div>
+
     </div>
   );
 } 

@@ -36,7 +36,6 @@ interface CombinedBattleInterfaceProps {
   onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
   currentEnemy?: { hp: number; maxHp: number; name: string } | null;
   battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean; newLevel?: number } | null;
-  isFleeInProgress?: boolean;
 }
 
 interface TooltipInfo {
@@ -84,8 +83,7 @@ export function CombinedBattleInterface({
   onPlayerStatsUpdate,
   onPlayerConsumablesUpdate,
   currentEnemy,
-  battleRewards,
-  isFleeInProgress = false
+  battleRewards
 }: CombinedBattleInterfaceProps) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
@@ -102,22 +100,21 @@ export function CombinedBattleInterface({
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isDisabled = !isPlayerTurn || loading.performAction || isFleeInProgress;
+  const isDisabled = !isPlayerTurn || loading.performAction;
   const potionUsedThisTurn = player.potionUsedThisTurn || false;
   
   // CRÍTICO: Verificar se o personagem está morto
   const isPlayerDead = player.hp <= 0;
   
-  // OTIMIZADO: Verificar se deve mostrar botão de próximo andar (mais rigoroso)
+  // CORRIGIDO: Verificação mais rigorosa para mostrar botão de próximo andar
+  // CORRIGIDO: Botão de fallback para quando inimigo está morto mas modais foram fechados
   const shouldShowNextFloorButton = Boolean(
     battleRewards && 
     !loading.performAction && 
     !isPlayerDead &&
-    !continuingAdventure && // Adicionar verificação de estado interno
-    (
-      !currentEnemy || // Inimigo já foi processado e removido
-      (currentEnemy && currentEnemy.hp <= 0) // Inimigo ainda existe mas está morto
-    )
+    !continuingAdventure &&
+    currentEnemy && 
+    currentEnemy.hp <= 0 // Só mostrar se inimigo atual está morto
   );
 
   const loadPotionSlots = async () => {
@@ -149,8 +146,8 @@ export function CombinedBattleInterface({
 
   // Função para usar poção do slot
   const handlePotionSlotUse = async (slotPosition: number) => {
-    // CRÍTICO: Bloquear uso de poções se personagem está morto ou fuga em progresso
-    if (isPlayerDead || isDisabled || usingSlot !== null || isFleeInProgress) return;
+    // CRÍTICO: Bloquear uso de poções se personagem está morto
+    if (isPlayerDead || isDisabled || usingSlot !== null) return;
 
     const slot = potionSlots.find(s => s.slot_position === slotPosition);
     if (!slot?.consumable_id) {
@@ -241,8 +238,8 @@ export function CombinedBattleInterface({
   // Atalhos de teclado
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      // CRÍTICO: Bloquear atalhos se personagem está morto ou fuga em progresso
-      if (isPlayerDead || isDisabled || usingSlot !== null || isFleeInProgress) return;
+      // CRÍTICO: Bloquear atalhos se personagem está morto
+      if (isPlayerDead || isDisabled || usingSlot !== null) return;
 
       // Verificar se o usuário está digitando em um input
       const target = event.target as HTMLElement;
@@ -303,7 +300,7 @@ export function CombinedBattleInterface({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn, isFleeInProgress]);
+  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn]);
 
   const getPotionKeyBinding = (position: number) => {
     switch (position) {
@@ -447,34 +444,21 @@ export function CombinedBattleInterface({
         </div>
       )}
       
-      {/* NOVO: Overlay mostrando fuga em progresso */}
-      {isFleeInProgress && (
-        <div className="absolute inset-0 bg-green-500/20 backdrop-blur-sm z-40 flex items-center justify-center rounded-xl">
-          <div className="text-center space-y-3">
-            <div className="text-green-400 text-2xl animate-bounce">🏃‍♂️</div>
-            <div className="text-green-400 font-bold text-lg">Fuga Bem-Sucedida!</div>
-            <div className="text-muted-foreground text-sm">Redirecionando para o hub...</div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-400 border-t-transparent"></div>
-              <span className="text-green-400 text-sm">Processando...</span>
-            </div>
-          </div>
-        </div>
-      )}
+
       
       <Card className="border-0 bg-card/50 backdrop-blur-sm relative">
         <CardContent className="p-3 md:p-3 space-y-3 md:space-y-2">
           
-          {/* Botão de Próximo Andar - Aparece quando inimigo está morto */}
+          {/* CORRIGIDO: Botão de Fallback para Avançar - Aparece quando inimigo está morto */}
           {shouldShowNextFloorButton && !isPlayerDead && (
             <div className="mb-4 p-4 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 border border-green-500/20 rounded-xl animate-in slide-in-from-top-2 duration-500">
               <div className="text-center space-y-3">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="text-lg">🎉</div>
+                  <div className="text-lg">⚔️</div>
                   <div className="text-sm text-green-400 font-medium">
-                    Vitória! Inimigo derrotado
+                    Inimigo derrotado - Pronto para avançar
                   </div>
-                  <div className="text-lg">🎉</div>
+                  <div className="text-lg">⚔️</div>
                 </div>
                 
                 {/* Recompensas em destaque */}
@@ -509,8 +493,8 @@ export function CombinedBattleInterface({
                 
                 <Button
                   onClick={async () => {
-                    // OTIMIZADO: Evitar múltiplos cliques
-                    if (continuingAdventure || loading.performAction) {
+                    // CORRIGIDO: Evitar múltiplos cliques e processamento duplicado
+                    if (continuingAdventure || loading.performAction || actionProcessingRef.current) {
                       console.log('[CombinedBattleInterface] Clique ignorado - já processando');
                       return;
                     }
@@ -519,14 +503,15 @@ export function CombinedBattleInterface({
                     setContinuingAdventure(true);
                     
                     try {
-                      await handleAction('continue');
+                      await executeAction('continue');
                     } catch (error) {
                       console.error('[CombinedBattleInterface] Erro ao avançar:', error);
+                      toast.error('Erro ao avançar para o próximo andar');
                     } finally {
                       // Reset após um delay para garantir que o estado seja atualizado
                       setTimeout(() => {
                         setContinuingAdventure(false);
-                      }, 1000);
+                      }, 500);
                     }
                   }}
                   disabled={loading.performAction || isPlayerDead || continuingAdventure}
@@ -541,13 +526,13 @@ export function CombinedBattleInterface({
                   ) : (
                     <>
                       <ArrowLeft className="h-4 w-4 mr-2 rotate-180" />
-                      Avançar para o Próximo Andar
+                      Continuar Aventura
                     </>
                   )}
                 </Button>
                 
                 <div className="text-xs text-muted-foreground">
-                  Clique para continuar sua aventura
+                  Continue para o próximo andar da torre
                 </div>
               </div>
             </div>

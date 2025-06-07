@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+
 import { 
   Sword, 
   Shield, 
@@ -24,7 +25,8 @@ import {
   TrendingUp,
   TrendingDown,
   Crosshair,
-  ShieldCheck
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 import { GamePlayer, Enemy } from '@/resources/game/game-model';
 import { formatLargeNumber } from '@/lib/utils';
@@ -71,6 +73,32 @@ export function BattleArena({
   const [showPlayerDetails, setShowPlayerDetails] = useState(false);
   const [showEnemyDetails, setShowEnemyDetails] = useState(false);
   const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);
+  const [showShortcutsTooltip, setShowShortcutsTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Hook para fechar tooltip ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowShortcutsTooltip(false);
+      }
+    };
+
+    if (showShortcutsTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showShortcutsTooltip]);
+
+  // Funções para controlar o tooltip
+  const toggleShortcutsTooltip = () => {
+    setShowShortcutsTooltip(!showShortcutsTooltip);
+  };
 
   // OTIMIZADO: Sistema mais confiável para detectar mudanças de HP
   const [lastBattleState, setLastBattleState] = useState<{
@@ -212,16 +240,66 @@ export function BattleArena({
                 Andar {player.floor}
               </Badge>
               <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-primary animate-pulse"></div>
-              <Badge 
-                variant={isPlayerTurn ? "default" : "secondary"} 
-                className={`px-2 py-1 text-xs ${
-                  isPlayerTurn 
-                    ? 'bg-primary text-primary-foreground border-primary' 
-                    : 'bg-secondary text-secondary-foreground border-secondary'
-                }`}
-              >
-                {isPlayerTurn ? "Seu Turno" : "Turno do Inimigo"}
-              </Badge>
+              <div className="flex items-center gap-1">
+                <Badge 
+                  variant={isPlayerTurn ? "default" : "secondary"} 
+                  className={`px-2 py-1 text-xs ${
+                    isPlayerTurn 
+                      ? 'bg-primary text-primary-foreground border-primary' 
+                      : 'bg-secondary text-secondary-foreground border-secondary'
+                  }`}
+                >
+                  {isPlayerTurn ? "Seu Turno" : "Turno do Inimigo"}
+                </Badge>
+                {isPlayerTurn && (
+                  <div className="relative" ref={tooltipRef}>
+                    <button 
+                      className="ml-1 text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
+                      onClick={toggleShortcutsTooltip}
+                      onTouchStart={toggleShortcutsTooltip}
+                      aria-label="Mostrar atalhos de teclado"
+                    >
+                      <HelpCircle className="h-3 w-3 md:h-4 md:w-4" />
+                    </button>
+                    {showShortcutsTooltip && (
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50 bg-background border border-border rounded-lg shadow-xl p-4 w-72 md:w-80 max-w-[90vw]">
+                        <div className="text-sm">
+                          <div className="font-semibold mb-3 text-center text-foreground">Atalhos de Teclado</div>
+                          <div className="space-y-2.5">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex gap-1">
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">A</span>
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">S</span>
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">D</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">Atacar, Defender, Fugir</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex gap-1">
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">1</span>
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">2</span>
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">3</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">Magias 1, 2, 3</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex gap-1">
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">Q</span>
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">W</span>
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">E</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">Poções 1, 2, 3</span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Setinha apontando para cima */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-border"></div>
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 translate-y-px w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-background"></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -437,39 +515,58 @@ export function BattleArena({
                   <div className="space-y-3 pt-2 border-t border-border/50 animate-in slide-in-from-top-2 duration-300">
                     {/* XP Progress Bar */}
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500" />
-                          <span className="font-medium text-xs text-muted-foreground">Experiência</span>
-                        </div>
-                        <div className="text-xs font-bold">
-                          <span className="text-yellow-400">{formatLargeNumber(player.xp)}</span>
-                          <span className="text-muted-foreground mx-1">/</span>
-                          <span className="text-muted-foreground">{formatLargeNumber(player.xp_next_level)}</span>
-                        </div>
-                      </div>
-                      <div className="relative">
-                      <div className="relative">
-                        <Progress 
-                          value={(player.xp / player.xp_next_level) * 100} 
-                          className="h-2"
-                          style={{
-                            background: 'rgba(0,0,0,0.2)'
-                          }}
-                        />
-                          <div 
-                            className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
-                            style={{ width: `${(player.xp / player.xp_next_level) * 100}%` }}
-                          />
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Nível {player.level}</span>
-                        <span className="text-yellow-400 font-medium">
-                          -{formatLargeNumber(player.xp_next_level - player.xp)} para nv {player.level + 1}
-                        </span>
-                      </div>
+                                              {/* CORRIGIDO: XP Progress com cálculo do nível atual */}
+                        {(() => {
+                          // Calcular XP do nível atual
+                          const calculateCurrentLevelXpRequirement = (level: number): number => {
+                            if (level <= 1) return 0;
+                            return Math.floor(100 * Math.pow(1.5, level - 2));
+                          };
+                          
+                          const currentLevelStartXp = calculateCurrentLevelXpRequirement(player.level);
+                          const currentLevelEndXp = player.xp_next_level;
+                          const xpInCurrentLevel = player.xp - currentLevelStartXp;
+                          const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
+                          const xpProgressPercent = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
+                          
+                          return (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500" />
+                                  <span className="font-medium text-xs text-muted-foreground">Experiência</span>
+                                </div>
+                                <div className="text-xs font-bold">
+                                  <span className="text-yellow-400">{formatLargeNumber(xpInCurrentLevel)}</span>
+                                  <span className="text-muted-foreground mx-1">/</span>
+                                  <span className="text-muted-foreground">{formatLargeNumber(xpNeededForNextLevel)}</span>
+                                </div>
+                              </div>
+                              <div className="relative">
+                                <div className="relative">
+                                  <Progress 
+                                    value={xpProgressPercent} 
+                                    className="h-2"
+                                    style={{
+                                      background: 'rgba(0,0,0,0.2)'
+                                    }}
+                                  />
+                                  <div 
+                                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
+                                    style={{ width: `${xpProgressPercent}%` }}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
+                              </div>
+                              <div className="flex justify-between text-xs">
+                                <span className="text-muted-foreground">Nível {player.level}</span>
+                                <span className="text-yellow-400 font-medium">
+                                  {formatLargeNumber(xpNeededForNextLevel - xpInCurrentLevel)} para nv {player.level + 1}
+                                </span>
+                              </div>
+                            </>
+                          );
+                        })()}
                     </div>
                     
                     {/* Atributos Primários do Jogador */}

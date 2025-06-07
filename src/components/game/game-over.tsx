@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { RankingService } from '@/resources/game/ranking.service';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
 import { formatLargeNumber } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 export default function GameOver() {
   const router = useRouter();
@@ -19,28 +20,9 @@ export default function GameOver() {
   const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
-
-  // Detectar mobile landscape
-  useEffect(() => {
-    const checkMobileLandscape = () => {
-      const isMobile = window.innerWidth <= 768;
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const isShortHeight = window.innerHeight <= 600;
-      setIsMobileLandscape(isMobile && isLandscape && isShortHeight);
-    };
-
-    checkMobileLandscape();
-    window.addEventListener('resize', checkMobileLandscape);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(checkMobileLandscape, 100);
-    });
-
-    return () => {
-      window.removeEventListener('resize', checkMobileLandscape);
-      window.removeEventListener('orientationchange', checkMobileLandscape);
-    };
-  }, []);
+  
+  // Usar hook para detectar mobile landscape
+  const isMobileLandscape = useMediaQuery('(max-width: 768px) and (orientation: landscape) and (max-height: 600px)');
 
   // Função para salvar a pontuação no ranking e deletar o personagem
   const handleGameOver = async () => {

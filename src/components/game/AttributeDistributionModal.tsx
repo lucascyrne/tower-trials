@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Star, TrendingUp, Plus, Minus, Save, RotateCcw, Heart, Zap, Sparkles, Eye, Target } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { GamePlayer } from '@/resources/game/game-model';
 import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
+import { useMobileLandscape } from '@/hooks/use-media-query';
 
 interface AttributeDistributionModalProps {
   isOpen: boolean;
@@ -41,28 +42,9 @@ const AttributeDistributionModal: React.FC<AttributeDistributionModalProps> = ({
     luck: 0
   });
   const [isDistributing, setIsDistributing] = useState(false);
-  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
-
-  // Detectar mobile landscape
-  useEffect(() => {
-    const checkMobileLandscape = () => {
-      const isMobile = window.innerWidth <= 768;
-      const isLandscape = window.innerWidth > window.innerHeight;
-      const isShortHeight = window.innerHeight <= 600;
-      setIsMobileLandscape(isMobile && isLandscape && isShortHeight);
-    };
-
-    checkMobileLandscape();
-    window.addEventListener('resize', checkMobileLandscape);
-    window.addEventListener('orientationchange', () => {
-      setTimeout(checkMobileLandscape, 100);
-    });
-
-    return () => {
-      window.removeEventListener('resize', checkMobileLandscape);
-      window.removeEventListener('orientationchange', checkMobileLandscape);
-    };
-  }, []);
+  
+  // Usar hook para detectar mobile landscape
+  const isMobileLandscape = useMobileLandscape();
 
   const totalPointsToDistribute = Object.values(distribution).reduce((sum, value) => sum + value, 0);
   const availablePoints = (character.attribute_points || 0) - totalPointsToDistribute;
