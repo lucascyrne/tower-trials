@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { CharacterConsumable, CraftingRecipe, MonsterDrop } from '@/resources/game/models/consumable.model';
-import { CharacterEquipment, EquipmentCraftingRecipe } from '@/resources/game/models/equipment.model';
+import { CharacterEquipment, Equipment, EquipmentCraftingRecipe } from '@/resources/game/models/equipment.model';
 import { toast } from 'sonner';
 import { ArrowLeft, Hammer, Sword, Shield, Gem, Sparkles, Search, Filter, Package, CheckCircle2, XCircle, Clock, TrendingUp, Zap, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
 
 // Tipos auxiliares para o processamento de receitas
 interface ProcessedIngredient {
@@ -64,9 +65,10 @@ interface RecipeDetailsPanelProps {
   recipe: ProcessedRecipe | null;
   onCraft: (recipeId: string, craftType: 'consumable' | 'equipment') => Promise<void>;
   isCrafting: boolean;
+  selectedCharacter: { id: string } | null; // Adicionar o personagem selecionado
 }
 
-const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft, isCrafting }) => {
+const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft, isCrafting, selectedCharacter }) => {
   if (!recipe) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-muted/10 rounded-lg border-2 border-dashed border-muted">
@@ -239,6 +241,41 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
                 </div>
               )}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* Comparação de Equipamento (apenas para receitas de equipamento) */}
+      {recipe.craftType === 'equipment' && (() => {
+        const equipmentRecipe = recipe as ProcessedEquipmentRecipe;
+        // Criar um objeto Equipment a partir da receita para usar no componente de comparação
+        const equipmentForComparison = {
+          id: equipmentRecipe.result_equipment_id,
+          name: equipmentRecipe.result.name,
+          description: equipmentRecipe.result.description,
+          type: equipmentRecipe.result.type,
+          rarity: equipmentRecipe.result.rarity,
+          weapon_subtype: equipmentRecipe.result.weapon_subtype,
+          atk_bonus: equipmentRecipe.result.atk_bonus || 0,
+          def_bonus: equipmentRecipe.result.def_bonus || 0,
+          mana_bonus: equipmentRecipe.result.mana_bonus || 0,
+          speed_bonus: equipmentRecipe.result.speed_bonus || 0,
+          hp_bonus: equipmentRecipe.result.hp_bonus || 0,
+          level_requirement: equipmentRecipe.result.level_requirement || 1,
+          price: 0, // Não aplicável para crafting
+          is_unlocked: true
+        };
+
+        return (
+          <div className="p-6 border-b bg-muted/10 shrink-0">
+            <h3 className="text-base font-semibold mb-3">Comparação com Equipamento Atual</h3>
+                         <EquipmentComparison
+               characterId={selectedCharacter?.id || ''}
+               newEquipment={equipmentForComparison as Equipment}
+               slotType={equipmentRecipe.result.type}
+               showTitle={false}
+               compact={true}
+             />
           </div>
         );
       })()}
@@ -1045,6 +1082,7 @@ export default function CraftingPage() {
               recipe={selectedRecipe}
               onCraft={handleCraftItem}
               isCrafting={isCrafting}
+              selectedCharacter={selectedCharacter}
             />
           </Card>
         </div>
