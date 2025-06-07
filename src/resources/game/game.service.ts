@@ -403,29 +403,81 @@ export class GameService {
   }
 
   /**
-   * Calcular o dano de ataque
+   * Calcular o dano de ataque com críticos e duplo ataque
    * @param attackerAttack Valor de ataque do atacante
    * @param defenderDefense Valor de defesa do defensor
-   * @returns Valor do dano calculado
+   * @param criticalChance Chance de crítico (0-100)
+   * @param criticalDamage Multiplicador de dano crítico (110% = 1.1)
+   * @param doubleAttackChance Chance de duplo ataque (0-100)
+   * @returns Objeto com informações do dano
    */
-  static calculateDamage(attackerAttack: number, defenderDefense: number): number {
+  static calculateDamage(
+    attackerAttack: number, 
+    defenderDefense: number,
+    criticalChance: number = 0,
+    criticalDamage: number = 110,
+    doubleAttackChance: number = 0
+  ): {
+    damage: number;
+    isCritical: boolean;
+    isDoubleAttack: boolean;
+    totalAttacks: number;
+    damageBreakdown: string;
+  } {
     // Garantir que os valores sejam números válidos
     const safeAttack = Number(attackerAttack) || 0;
     const safeDefense = Number(defenderDefense) || 0;
     
     if (safeAttack <= 0) {
       console.warn(`[GameService] Ataque inválido: ${attackerAttack} -> usando 1`);
-      return 1;
+      return {
+        damage: 1,
+        isCritical: false,
+        isDoubleAttack: false,
+        totalAttacks: 1,
+        damageBreakdown: 'Dano mínimo: 1'
+      };
     }
     
     // Fórmula básica: dano = ataque - (defesa * 0.5)
-    // Dano mínimo de 1
-    const baseDamage = safeAttack - (safeDefense * 0.5);
-    const finalDamage = Math.max(1, Math.floor(baseDamage));
+    const baseDamage = Math.max(1, Math.floor(safeAttack - (safeDefense * 0.5)));
     
-    console.log(`[GameService] Cálculo de dano: ATK ${safeAttack} - DEF ${safeDefense} = ${finalDamage}`);
+    // Verificar crítico
+    const critRoll = Math.random() * 100;
+    const isCritical = critRoll < criticalChance;
     
-    return finalDamage;
+    // Verificar duplo ataque
+    const doubleRoll = Math.random() * 100;
+    const isDoubleAttack = doubleRoll < doubleAttackChance;
+    
+    // Calcular dano final
+    let finalDamage = baseDamage;
+    let damageBreakdown = `Base: ${baseDamage}`;
+    
+    // Aplicar crítico
+    if (isCritical) {
+      const critMultiplier = criticalDamage / 100;
+      finalDamage = Math.floor(finalDamage * critMultiplier);
+      damageBreakdown += ` → Crítico (${criticalDamage}%): ${finalDamage}`;
+    }
+    
+    // Aplicar duplo ataque
+    let totalAttacks = 1;
+    if (isDoubleAttack) {
+      finalDamage = finalDamage * 2;
+      totalAttacks = 2;
+      damageBreakdown += ` → Duplo Ataque: ${finalDamage}`;
+    }
+    
+    console.log(`[GameService] Cálculo avançado: ATK ${safeAttack} vs DEF ${safeDefense} | ${damageBreakdown}`);
+    
+    return {
+      damage: finalDamage,
+      isCritical,
+      isDoubleAttack,
+      totalAttacks,
+      damageBreakdown
+    };
   }
 
   /**
@@ -474,37 +526,73 @@ export class GameService {
 
     switch (action) {
       case 'attack':
-        const damage = this.calculateDamage(player.atk, currentEnemy.defense);
-        newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damage);
-        message = `Você atacou ${currentEnemy.name} e causou ${damage} de dano!`;
+        const damageResult = this.calculateDamage(
+          player.atk, 
+          currentEnemy.defense,
+          player.critical_chance || 0,
+          player.critical_damage || 110,
+          0 // Duplo ataque não se aplica a ataques manuais por enquanto
+        );
+        
+        newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damageResult.damage);
+        
+        // Mensagem detalhada baseada no tipo de ataque
+        let attackMessage = `Você atacou ${currentEnemy.name}`;
+        if (damageResult.isCritical) {
+          attackMessage += ` com um golpe crítico`;
+        }
+        if (damageResult.isDoubleAttack) {
+          attackMessage += ` ${damageResult.totalAttacks}x`;
+        }
+        attackMessage += ` e causou ${damageResult.damage} de dano!`;
+        
+        message = attackMessage;
         
         // Adicionar mensagens ao log de jogo
         gameLogMessages.push({
           message: `${player.name} ataca ${currentEnemy.name}!`,
           type: 'player_action'
         });
+        
+        let damageLogMessage = `${player.name} causou ${damageResult.damage} de dano`;
+        if (damageResult.isCritical) damageLogMessage += ' (CRÍTICO)';
+        if (damageResult.isDoubleAttack) damageLogMessage += ' (DUPLO ATAQUE)';
+        damageLogMessage += ` em ${currentEnemy.name}`;
+        
         gameLogMessages.push({
-          message: `${player.name} causou ${damage} de dano em ${currentEnemy.name}`,
+          message: damageLogMessage,
           type: 'damage'
         });
         
         // CRÍTICO: Usar o SkillXpService para calcular XP de ataque
         try {
           // Por enquanto usar null para equipmentSlots - o SkillXpService irá usar fallback
-          const attackXpGains = SkillXpService.calculateAttackSkillXp(null, damage);
+          const attackXpGains = SkillXpService.calculateAttackSkillXp(null, damageResult.damage);
           skillXpGains.push(...attackXpGains);
+          
+          // Bônus de XP para críticos e duplo ataque
+          if (damageResult.isCritical || damageResult.isDoubleAttack) {
+            const bonusMultiplier = (damageResult.isCritical ? 1.5 : 1) * (damageResult.isDoubleAttack ? 1.3 : 1);
+            skillXpGains.forEach(gain => {
+              gain.xp = Math.floor(gain.xp * bonusMultiplier);
+            });
+          }
           
           // Adicionar mensagens para cada skill que ganhou XP
           attackXpGains.forEach(gain => {
             const skillName = SkillXpService.getSkillDisplayName(gain.skill);
-            skillMessages.push(`+${gain.xp} XP de ${skillName} (${gain.reason})`);
+            let xpMessage = `+${gain.xp} XP de ${skillName}`;
+            if (damageResult.isCritical || damageResult.isDoubleAttack) {
+              xpMessage += ' (bônus por crítico/duplo)';
+            }
+            skillMessages.push(xpMessage);
           });
           
           console.log(`[GameService] XP de ataque calculado:`, attackXpGains);
         } catch (error) {
           console.error('[GameService] Erro ao calcular XP de ataque:', error);
           // Fallback para sistema básico
-          const basicXpGain = Math.floor(damage * 0.1);
+          const basicXpGain = Math.floor(damageResult.damage * 0.1);
           if (basicXpGain > 0) {
             skillXpGains.push({
               skill: SkillType.SWORD_MASTERY,
@@ -1231,12 +1319,27 @@ export class GameService {
     switch (actionType) {
       case 'attack':
         console.log(`[GameService] Executando ataque físico`);
-        damage = this.calculateDamage(enemy.attack, player.def);
+        
+        // Inimigos também podem ter críticos e duplo ataque baseado em seus stats
+        const enemyDamageResult = this.calculateDamage(
+          enemy.attack, 
+          player.def,
+          enemy.critical_chance || 0,
+          enemy.critical_damage || 110,
+          0 // Duplo ataque do inimigo baseado em velocidade seria implementado separadamente
+        );
+        
+        damage = enemyDamageResult.damage;
         
         // Aplicar resistência de defesa se jogador está defendendo
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(damage * 0.15); // 85% de redução
-          message = `${enemy.name} atacou, mas você reduziu o dano de ${damage} para ${actualDamage} com sua defesa!`;
+          
+          let defenseMessage = `${enemy.name} atacou`;
+          if (enemyDamageResult.isCritical) defenseMessage += ` com golpe crítico`;
+          if (enemyDamageResult.isDoubleAttack) defenseMessage += ` ${enemyDamageResult.totalAttacks}x`;
+          defenseMessage += `, mas você reduziu o dano de ${damage} para ${actualDamage} com sua defesa!`;
+          message = defenseMessage;
           
           // NOVO: XP de defesa extra por bloquear efetivamente
           try {
@@ -1249,7 +1352,12 @@ export class GameService {
           }
         } else {
           actualDamage = damage;
-          message = `${enemy.name} atacou e causou ${actualDamage} de dano!`;
+          
+          let attackMessage = `${enemy.name} atacou`;
+          if (enemyDamageResult.isCritical) attackMessage += ` com golpe crítico`;
+          if (enemyDamageResult.isDoubleAttack) attackMessage += ` ${enemyDamageResult.totalAttacks}x`;
+          attackMessage += ` e causou ${actualDamage} de dano!`;
+          message = attackMessage;
           
           // NOVO: XP de defesa menor por receber ataque (experiência passiva)
           try {

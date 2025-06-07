@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterConsumable } from './models/consumable.model';
+import { FleeOverlay } from '@/components/game/FleeOverlay';
+import { useRouter } from 'next/navigation';
 
 interface GameProviderProps {
   children: ReactNode;
@@ -30,9 +32,14 @@ export function GameProvider({ children }: GameProviderProps) {
     gameLog: [{ text: 'Bem-vindo ao Tower Trials!', type: 'system' }]
   });
   const { user } = useAuth();
+  const router = useRouter();
   const loadingRef = useRef(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+
+  // Estados para o FleeOverlay
+  const [showFleeOverlay, setShowFleeOverlay] = useState(false);
+  const [fleeSuccess, setFleeSuccess] = useState(false);
 
   // OTIMIZADO: Sistema robusto para prevenir ações duplicadas
   const performActionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -754,11 +761,13 @@ export function GameProvider({ children }: GameProviderProps) {
             
             // Se a ação do jogador pula o turno (fuga, erro, etc.)
             if (skipTurn) {
-              clearProcessingState();
-              
               // OTIMIZADO: Verificar fuga bem-sucedida usando a propriedade do estado
               if (action === 'flee' && playerActionState.fleeSuccessful) {
-                console.log('[game-provider] Fuga bem-sucedida, preparando redirecionamento...');
+                console.log('[game-provider] Fuga bem-sucedida, exibindo overlay...');
+                
+                // Exibir overlay de fuga bem-sucedida
+                setFleeSuccess(true);
+                setShowFleeOverlay(true);
                 
                 // Atualizar estado para indicar fuga bem-sucedida
                 setState(currentState => ({
@@ -772,23 +781,31 @@ export function GameProvider({ children }: GameProviderProps) {
                   },
                 }));
                 
-                // Processar fuga de forma assíncrona
-                setTimeout(async () => {
-                  try {
-                    if (selectedCharacter) {
-                      // Atualizar andar para 1 (volta ao início)
-                      await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
-                      console.log('[game-provider] Andar do personagem atualizado para 1');
-                    }
-                  } catch (error) {
-                    console.error('[game-provider] Erro ao processar fuga:', error);
-                    toast.error('Erro ao processar fuga');
-                  }
-                }, 100);
+                clearProcessingState();
+                return;
+              } else if (action === 'flee' && !playerActionState.fleeSuccessful) {
+                console.log('[game-provider] Fuga falhou, exibindo overlay...');
                 
+                // Exibir overlay de fuga falhada
+                setFleeSuccess(false);
+                setShowFleeOverlay(true);
+                
+                // Atualizar estado para indicar fuga falhada
+                setState(currentState => ({
+                  ...currentState,
+                  gameState: {
+                    ...playerActionState,
+                    gameMessage: message,
+                    mode: 'fled', // Temporariamente para mostrar overlay
+                    fleeSuccessful: false // Marcar como fuga falhada
+                  },
+                }));
+                
+                clearProcessingState();
                 return;
               }
               
+              // Para outras ações que pulam turno
               setState(currentState => ({
                 ...currentState,
                 gameState: {
@@ -796,6 +813,8 @@ export function GameProvider({ children }: GameProviderProps) {
                   gameMessage: message,
                 },
               }));
+              
+              clearProcessingState();
               return;
             }
 
@@ -976,6 +995,41 @@ export function GameProvider({ children }: GameProviderProps) {
     }));
   }, [characters]);
 
+  // Função para lidar com o término do overlay de fuga
+  const handleFleeOverlayComplete = useCallback(async () => {
+    console.log('[game-provider] Overlay de fuga concluído');
+    
+    setShowFleeOverlay(false);
+    
+    if (fleeSuccess) {
+      // Fuga bem-sucedida: processar redirecionamento e atualização do andar
+      try {
+        if (selectedCharacter) {
+          // Atualizar andar para 1 (volta ao início)
+          await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
+          console.log('[game-provider] Andar do personagem atualizado para 1');
+        }
+        
+        // Redirecionar para o hub
+        router.push(`/game/play/hub?character=${selectedCharacter?.id}`);
+      } catch (error) {
+        console.error('[game-provider] Erro ao processar fuga:', error);
+        toast.error('Erro ao processar fuga');
+      }
+    } else {
+      // Fuga falhada: retornar ao modo battle
+      setState(currentState => ({
+        ...currentState,
+        gameState: {
+          ...currentState.gameState,
+          mode: 'battle',
+          isPlayerTurn: true,
+          gameMessage: 'A batalha continua...'
+        },
+      }));
+    }
+  }, [fleeSuccess, selectedCharacter, router]);
+
   // Memoizar o valor do contexto
   const contextValue = useMemo<GameContextType>(
     () => ({
@@ -1012,6 +1066,15 @@ export function GameProvider({ children }: GameProviderProps) {
   return (
     <GameContext.Provider value={contextValue}>
       {children}
+      
+      {/* Overlay de Fuga Fullscreen */}
+      <FleeOverlay
+        isVisible={showFleeOverlay}
+        isSuccess={fleeSuccess}
+        playerName={selectedCharacter?.name || 'Jogador'}
+        enemyName={state.gameState.currentEnemy?.name}
+        onComplete={handleFleeOverlayComplete}
+      />
     </GameContext.Provider>
   );
 } 

@@ -14,6 +14,11 @@ export interface Equipment {
   def_bonus: number;
   mana_bonus: number;
   speed_bonus: number;
+  hp_bonus: number;
+  critical_chance_bonus: number;
+  critical_damage_bonus: number;
+  double_attack_chance_bonus: number;
+  magic_damage_bonus: number;
   price: number;
   is_unlocked: boolean;
   craftable?: boolean;
@@ -102,17 +107,26 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     atk: 0,
     def: 0,
     speed: 0,
-    mana: 0
+    mana: 0,
+    hp: 0,
+    critical_chance: 0,
+    critical_damage: 0,
+    double_attack_chance: 0,
+    magic_damage: 0
   };
 
   // Função helper para adicionar bônus de um equipamento
   const addEquipmentBonus = (equipment: Equipment | null) => {
     if (equipment) {
-      const multiplier = RARITY_MULTIPLIERS[equipment.rarity];
-      totalBonus.atk += Math.floor(equipment.atk_bonus * multiplier);
-      totalBonus.def += Math.floor(equipment.def_bonus * multiplier);
-      totalBonus.mana += Math.floor(equipment.mana_bonus * multiplier);
-      totalBonus.speed += Math.floor(equipment.speed_bonus * multiplier);
+      totalBonus.atk += equipment.atk_bonus || 0;
+      totalBonus.def += equipment.def_bonus || 0;
+      totalBonus.mana += equipment.mana_bonus || 0;
+      totalBonus.speed += equipment.speed_bonus || 0;
+      totalBonus.hp += equipment.hp_bonus || 0;
+      totalBonus.critical_chance += equipment.critical_chance_bonus || 0;
+      totalBonus.critical_damage += equipment.critical_damage_bonus || 0;
+      totalBonus.double_attack_chance += equipment.double_attack_chance_bonus || 0;
+      totalBonus.magic_damage += equipment.magic_damage_bonus || 0;
     }
   };
 
@@ -121,6 +135,7 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   addEquipmentBonus(slots.off_hand ?? null);
   addEquipmentBonus(slots.armor ?? null);
   addEquipmentBonus(slots.accessory ?? null);
+  addEquipmentBonus(slots.accessory_2 ?? null);
 
   // Bônus especial para dual-wielding (15% extra de ataque se ambas as mãos tiverem armas)
   if (slots.main_hand && slots.off_hand && 
@@ -144,4 +159,48 @@ export const getOffHandItemLegacy = (slots: LegacyEquipmentSlots): Equipment | n
 // Função para verificar se tem escudo equipado
 export const hasShieldLegacy = (slots: LegacyEquipmentSlots): boolean => {
   return !!(slots.armor && slots.armor.type === 'armor');
+};
+
+// Interface para comparação de equipamentos
+export interface EquipmentComparison {
+  stat_name: string;
+  current_value: number;
+  new_value: number;
+  difference: number;
+  is_improvement: boolean;
+}
+
+// Função para comparar dois equipamentos
+export const compareEquipment = (
+  currentEquipment: Equipment | null,
+  newEquipment: Equipment
+): EquipmentComparison[] => {
+  const comparisons: EquipmentComparison[] = [];
+  
+  const stats = [
+    { name: 'Ataque', current: currentEquipment?.atk_bonus || 0, new: newEquipment.atk_bonus },
+    { name: 'Defesa', current: currentEquipment?.def_bonus || 0, new: newEquipment.def_bonus },
+    { name: 'Mana', current: currentEquipment?.mana_bonus || 0, new: newEquipment.mana_bonus },
+    { name: 'Velocidade', current: currentEquipment?.speed_bonus || 0, new: newEquipment.speed_bonus },
+    { name: 'HP', current: currentEquipment?.hp_bonus || 0, new: newEquipment.hp_bonus },
+    { name: 'Chance Crítica', current: currentEquipment?.critical_chance_bonus || 0, new: newEquipment.critical_chance_bonus },
+    { name: 'Dano Crítico', current: currentEquipment?.critical_damage_bonus || 0, new: newEquipment.critical_damage_bonus },
+    { name: 'Duplo Ataque', current: currentEquipment?.double_attack_chance_bonus || 0, new: newEquipment.double_attack_chance_bonus },
+    { name: 'Dano Mágico', current: currentEquipment?.magic_damage_bonus || 0, new: newEquipment.magic_damage_bonus },
+  ];
+  
+  stats.forEach(stat => {
+    const difference = stat.new - stat.current;
+    if (difference !== 0) {
+      comparisons.push({
+        stat_name: stat.name,
+        current_value: stat.current,
+        new_value: stat.new,
+        difference,
+        is_improvement: difference > 0
+      });
+    }
+  });
+  
+  return comparisons;
 }; 

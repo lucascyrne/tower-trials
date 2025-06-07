@@ -1,4 +1,4 @@
-import { Equipment, CharacterEquipment, EquipmentSlots, EquipmentCraftingRecipe, EquipmentType, WeaponSubtype, EquipmentRarity } from './models/equipment.model';
+import { Equipment, CharacterEquipment, EquipmentSlots, EquipmentCraftingRecipe, EquipmentType, WeaponSubtype, EquipmentRarity, EquipmentComparison } from './models/equipment.model';
 import { supabase } from '@/lib/supabase';
 
 interface EquippedSlotRow {
@@ -12,6 +12,10 @@ interface EquippedSlotRow {
     mana_bonus: number;
     speed_bonus: number;
     hp_bonus: number;
+    critical_chance_bonus: number;
+    critical_damage_bonus: number;
+    double_attack_chance_bonus: number;
+    magic_damage_bonus: number;
     rarity: string;
 }
 
@@ -19,6 +23,18 @@ interface ServiceResponse<T> {
     data: T | null;
     error: string | null;
     success: boolean;
+}
+
+interface EquipmentBonuses {
+    total_atk_bonus: number;
+    total_def_bonus: number;
+    total_mana_bonus: number;
+    total_speed_bonus: number;
+    total_hp_bonus: number;
+    total_critical_chance_bonus: number;
+    total_critical_damage_bonus: number;
+    total_double_attack_chance_bonus: number;
+    total_magic_damage_bonus: number;
 }
 
 /**
@@ -207,6 +223,11 @@ export class EquipmentService {
                         def_bonus: row.def_bonus,
                         mana_bonus: row.mana_bonus,
                         speed_bonus: row.speed_bonus,
+                        hp_bonus: row.hp_bonus,
+                        critical_chance_bonus: row.critical_chance_bonus,
+                        critical_damage_bonus: row.critical_damage_bonus,
+                        double_attack_chance_bonus: row.double_attack_chance_bonus,
+                        magic_damage_bonus: row.magic_damage_bonus,
                         price: 0,
                         is_unlocked: true,
                         created_at: '',
@@ -377,5 +398,87 @@ export class EquipmentService {
     static clearCache(): void {
         this.equipmentCache.clear();
         this.lastFetchTimestamp = 0;
+    }
+
+    /**
+     * Comparar equipamento com o equipado atualmente
+     */
+    static async compareEquipmentStats(
+        characterId: string,
+        newEquipmentId: string,
+        slotType?: string
+    ): Promise<ServiceResponse<EquipmentComparison[]>> {
+        try {
+            const { data, error } = await supabase.rpc('compare_equipment_stats', {
+                p_character_id: characterId,
+                p_new_equipment_id: newEquipmentId,
+                p_slot_type: slotType
+            });
+
+            if (error) {
+                console.error('[EquipmentService] Erro ao comparar equipamentos:', error);
+                return {
+                    success: false,
+                    error: error.message,
+                    data: null
+                };
+            }
+
+            return {
+                success: true,
+                error: null,
+                data: data || []
+            };
+        } catch (error) {
+            console.error('[EquipmentService] Erro na comparação de equipamentos:', error);
+            return {
+                success: false,
+                error: extractErrorMessage(error, 'Erro ao comparar equipamentos'),
+                data: null
+            };
+        }
+    }
+
+    /**
+     * Obter bônus detalhados de equipamentos para um personagem
+     */
+    static async getEquipmentBonuses(characterId: string): Promise<ServiceResponse<EquipmentBonuses>> {
+        try {
+            const { data, error } = await supabase.rpc('calculate_equipment_bonuses_enhanced', {
+                p_character_id: characterId
+            });
+
+            if (error) {
+                console.error('[EquipmentService] Erro ao calcular bônus:', error);
+                return {
+                    success: false,
+                    error: error.message,
+                    data: null
+                };
+            }
+
+            return {
+                success: true,
+                error: null,
+                data: data?.[0] || {
+                    total_atk_bonus: 0,
+                    total_def_bonus: 0,
+                    total_mana_bonus: 0,
+                    total_speed_bonus: 0,
+                    total_hp_bonus: 0,
+                    total_critical_chance_bonus: 0,
+                    total_critical_damage_bonus: 0,
+                    total_double_attack_chance_bonus: 0,
+                    total_magic_damage_bonus: 0
+                }
+            };
+        } catch (error) {
+            console.error('[EquipmentService] Erro ao obter bônus:', error);
+            return {
+                success: false,
+                error: extractErrorMessage(error, 'Erro ao obter bônus de equipamentos'),
+                data: null
+            };
+        }
     }
 } 

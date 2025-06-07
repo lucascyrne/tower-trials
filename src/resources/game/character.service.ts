@@ -1231,6 +1231,7 @@ export class CharacterService {
         critical_damage: derivedStats.critical_damage,
         magic_damage_bonus: derivedStats.magic_damage_bonus,
         magic_attack: derivedStats.magic_attack,
+        double_attack_chance: derivedStats.double_attack_chance || 0,
         
         // Stats base para exibição (simplificado)
         base_hp: 80 + (charData.level * 5),
@@ -1435,6 +1436,7 @@ export class CharacterService {
     critical_chance: number;
     critical_damage: number;
     magic_damage_bonus: number;
+    double_attack_chance: number;
   }> {
     try {
       console.log('[CharacterService] Calculando stats derivados para:', {
@@ -1541,6 +1543,7 @@ export class CharacterService {
     critical_chance: number;
     critical_damage: number;
     magic_damage_bonus: number;
+    double_attack_chance: number;
   }> {
     const level = character.level;
     const str = character.strength || 10;
@@ -1661,6 +1664,9 @@ export class CharacterService {
     }
     magicDamageBonus = Math.min(200.0, magicDamageBonus); // Cap em 200%
 
+    // Duplo ataque baseado em velocidade alta (similar ao banco)
+    const doubleAttackChance = speed >= 50 ? Math.min(25, (speed - 49) * 0.5) : 0;
+
     return {
       hp: Math.floor(hp),
       max_hp: Math.floor(hp),
@@ -1672,7 +1678,8 @@ export class CharacterService {
       speed: Math.floor(speed),
       critical_chance: criticalChance,
       critical_damage: criticalDamage,
-      magic_damage_bonus: magicDamageBonus
+      magic_damage_bonus: magicDamageBonus,
+      double_attack_chance: doubleAttackChance
     };
   }
 

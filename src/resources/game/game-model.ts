@@ -143,6 +143,7 @@ export interface GamePlayer {
   critical_chance?: number;
   critical_damage?: number;
   magic_damage_bonus?: number;
+  double_attack_chance?: number;
   
   // Stats base (sem equipamentos) para exibição de bônus
   base_hp?: number;
