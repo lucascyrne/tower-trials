@@ -9,7 +9,8 @@ const initialActiveEffects: ActiveEffects = {
   buffs: [],
   debuffs: [],
   dots: [],
-  hots: []
+  hots: [],
+  attribute_modifications: []
 };
 
 // Valores padrão para o jogador

@@ -23,10 +23,21 @@ export interface SpellEffect {
   source_spell: string; // ID da magia que causou o efeito
 }
 
+// Interface para modificações temporárias de atributos específicos
+export interface AttributeModification {
+  attribute: 'atk' | 'def' | 'speed' | 'magic_attack' | 'critical_chance' | 'critical_damage';
+  value: number;
+  type: 'flat' | 'percentage'; // Flat = +10, Percentage = +15%
+  duration: number;
+  source_spell: string;
+  applied_at: number; // timestamp para controle de duração
+}
+
 // Interface para efeitos ativos no personagem/inimigo
 export interface ActiveEffects {
   buffs: SpellEffect[];
   debuffs: SpellEffect[];
   dots: SpellEffect[];
   hots: SpellEffect[];
+  attribute_modifications: AttributeModification[]; // Nova propriedade
 } 

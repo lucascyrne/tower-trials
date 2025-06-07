@@ -1,4 +1,4 @@
-import { Spell, SpellEffectType, PlayerSpell } from './models/spell.model';
+import { Spell, SpellEffectType, PlayerSpell, AttributeModification } from './models/spell.model';
 import { GamePlayer, Enemy, GameState } from './game-model';
 import { supabase } from '@/lib/supabase';
 
@@ -364,7 +364,23 @@ export class SpellService {
             duration: spell.duration,
             source_spell: spell.name
           });
+          
+          // NOVO: Aplicar modificações específicas de atributos baseadas no nome da magia
+          const attributeModifications = this.getAttributeModificationsForSpell(spell);
+          if (attributeModifications.length > 0) {
+            if (!target.active_effects.attribute_modifications) {
+              target.active_effects.attribute_modifications = [];
+            }
+            target.active_effects.attribute_modifications.push(...attributeModifications);
+            
+            // Criar mensagem específica para as modificações
+            const modMessages = attributeModifications.map(mod => 
+              `+${mod.value}${mod.type === 'percentage' ? '%' : ''} ${this.translateAttributeName(mod.attribute)}`
+            ).join(', ');
+            message = `${spell.name} aumentou: ${modMessages}!`;
+          } else {
           message = `${spell.name} aplicou um efeito benéfico (+${buffValue})!`;
+          }
         } else {
           message = `${spell.name} aplicou um efeito benéfico!`;
         }
@@ -462,6 +478,21 @@ export class SpellService {
           target.active_effects!.hots.splice(index, 1);
         }
       });
+
+      // NOVO: Processar modificações de atributos
+      if (target.active_effects.attribute_modifications) {
+        target.active_effects.attribute_modifications = target.active_effects.attribute_modifications.filter((mod) => {
+          mod.duration--;
+          
+          if (mod.duration <= 0) {
+            // Efeito expirou
+            messages.push(`O efeito de ${mod.source_spell} em ${this.translateAttributeName(mod.attribute)} expirou.`);
+            return false; // Remover da lista
+          }
+          
+          return true; // Manter na lista
+        });
+      }
     }
 
     return messages;
@@ -520,6 +551,98 @@ export class SpellService {
       'hot': 'Cura Contínua'
     };
     return translations[effectType] || effectType;
+  }
+
+  /**
+   * Obter modificações de atributos específicas baseadas no nome da magia
+   * @param spell Magia sendo aplicada
+   * @returns Array de modificações de atributos
+   */
+  static getAttributeModificationsForSpell(spell: Spell): AttributeModification[] {
+    const modifications: AttributeModification[] = [];
+    const now = Date.now();
+    
+    // Sistema baseado no nome da magia - pode ser expandido no futuro
+    const spellName = spell.name.toLowerCase();
+    
+    if (spellName.includes('força') || spellName.includes('strength') || spellName.includes('fortalecer')) {
+      // Magia de aumento de força/ataque
+      modifications.push({
+        attribute: 'atk',
+        value: Math.floor(spell.effect_value * 0.5), // 50% do effect_value como bônus flat
+        type: 'flat',
+        duration: spell.duration,
+        source_spell: spell.name,
+        applied_at: now
+      });
+    }
+    
+    if (spellName.includes('velocidade') || spellName.includes('speed') || spellName.includes('agilidade')) {
+      // Magia de aumento de velocidade
+      modifications.push({
+        attribute: 'speed',
+        value: Math.floor(spell.effect_value * 0.3), // 30% do effect_value como bônus flat
+        type: 'flat',
+        duration: spell.duration,
+        source_spell: spell.name,
+        applied_at: now
+      });
+    }
+    
+    if (spellName.includes('defesa') || spellName.includes('defense') || spellName.includes('proteção')) {
+      // Magia de aumento de defesa
+      modifications.push({
+        attribute: 'def',
+        value: Math.floor(spell.effect_value * 0.4), // 40% do effect_value como bônus flat
+        type: 'flat',
+        duration: spell.duration,
+        source_spell: spell.name,
+        applied_at: now
+      });
+    }
+    
+    if (spellName.includes('crítico') || spellName.includes('critical') || spellName.includes('precisão')) {
+      // Magia de aumento de chance crítica
+      modifications.push({
+        attribute: 'critical_chance',
+        value: Math.floor(spell.effect_value * 0.2), // 20% do effect_value como percentual
+        type: 'percentage',
+        duration: spell.duration,
+        source_spell: spell.name,
+        applied_at: now
+      });
+    }
+    
+    if (spellName.includes('magia') || spellName.includes('magic') || spellName.includes('mystic')) {
+      // Magia de aumento de ataque mágico
+      modifications.push({
+        attribute: 'magic_attack',
+        value: Math.floor(spell.effect_value * 0.6), // 60% do effect_value como bônus flat
+        type: 'flat',
+        duration: spell.duration,
+        source_spell: spell.name,
+        applied_at: now
+      });
+    }
+    
+    return modifications;
+  }
+
+  /**
+   * Traduzir nomes de atributos para português
+   * @param attribute Nome do atributo
+   * @returns Nome traduzido
+   */
+  static translateAttributeName(attribute: string): string {
+    const translations = {
+      'atk': 'Ataque',
+      'def': 'Defesa',
+      'speed': 'Velocidade',
+      'magic_attack': 'Ataque Mágico',
+      'critical_chance': 'Chance Crítica',
+      'critical_damage': 'Dano Crítico'
+    };
+    return translations[attribute as keyof typeof translations] || attribute;
   }
 
   // Obter apenas as magias equipadas do personagem (slots)

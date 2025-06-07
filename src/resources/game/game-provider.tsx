@@ -34,15 +34,18 @@ export function GameProvider({ children }: GameProviderProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
-  // OTIMIZADO: Sistema de debounce para performAction
+  // OTIMIZADO: Sistema robusto para prevenir ações duplicadas
   const performActionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const actionProcessingRef = useRef<boolean>(false);
+  const actionIdRef = useRef<number>(0);
   const lastActionRef = useRef<{
     action: ActionType;
     timestamp: number;
     spellId?: string;
     consumableId?: string;
+    actionId: number;
   } | null>(null);
-  const ACTION_DEBOUNCE_MS = 300; // 300ms de debounce
+  const ACTION_DEBOUNCE_MS = 500; // 500ms de debounce mais conservador
 
   // Função auxiliar para atualizar estado de loading
   const updateLoading = useCallback((key: keyof GameLoadingState, value: boolean) => {
@@ -244,7 +247,8 @@ export function GameProvider({ children }: GameProviderProps) {
                   buffs: [],
                   debuffs: [],
                   dots: [],
-                  hots: []
+                  hots: [],
+                  attribute_modifications: []
                 }
               },
               currentEnemy: initialEnemy,
@@ -358,7 +362,8 @@ export function GameProvider({ children }: GameProviderProps) {
             buffs: [],
             debuffs: [],
             dots: [],
-            hots: []
+            hots: [],
+            attribute_modifications: []
           }
         },
         currentEnemy: currentEnemy,
@@ -425,7 +430,8 @@ export function GameProvider({ children }: GameProviderProps) {
               buffs: [],
               debuffs: [],
               dots: [],
-              hots: []
+              hots: [],
+              attribute_modifications: []
             }
           },
           gameMessage: `Bem-vindo ao hub, ${character.name}!`,
@@ -493,11 +499,18 @@ export function GameProvider({ children }: GameProviderProps) {
 
   // Realizar ação do jogador
   const performAction = useCallback(async (action: ActionType, spellId?: string, consumableId?: string) => {
-    // OTIMIZADO: Sistema de debounce para evitar chamadas duplicadas
+    // CRÍTICO: Sistema robusto para prevenir ações duplicadas (especialmente no dev mode)
     const currentTime = Date.now();
     const lastAction = lastActionRef.current;
+    const currentActionId = ++actionIdRef.current;
     
-    // Verificar se é uma ação duplicada muito próxima
+    // 1. Verificar se já está processando uma ação
+    if (actionProcessingRef.current) {
+      console.warn(`[game-provider] Ação '${action}' BLOQUEADA - já processando ação`);
+      return;
+    }
+    
+    // 2. Verificar se é uma ação duplicada muito próxima (debounce)
     if (lastAction && 
         lastAction.action === action && 
         lastAction.spellId === spellId && 
@@ -507,38 +520,53 @@ export function GameProvider({ children }: GameProviderProps) {
       return;
     }
     
-    // Atualizar última ação
+    // 3. Marcar como processando ANTES de qualquer validação
+    actionProcessingRef.current = true;
+    
+    // 4. Atualizar última ação com ID único
     lastActionRef.current = {
       action,
       spellId,
       consumableId,
-      timestamp: currentTime
+      timestamp: currentTime,
+      actionId: currentActionId
     };
     
-    console.log(`[game-provider] === PERFORMACTION INÍCIO ===`);
+    console.log(`[game-provider] === PERFORMACTION INÍCIO (ID: ${currentActionId}) ===`);
     console.log(`[game-provider] performAction chamado com ação: '${action}'`);
     console.log(`[game-provider] selectedCharacter:`, selectedCharacter?.name);
     console.log(`[game-provider] loadingRef.current:`, loadingRef.current);
     console.log(`[game-provider] gameState.mode:`, state.gameState.mode);
     console.log(`[game-provider] gameState.battleRewards:`, !!state.gameState.battleRewards);
     
+    // Função para limpar estado de processamento
+    const clearProcessingState = () => {
+      actionProcessingRef.current = false;
+      loadingRef.current = false;
+      updateLoading('performAction', false);
+    };
+    
+    // 5. Validações com limpeza automática em caso de erro
     if (!selectedCharacter) {
       console.warn(`[game-provider] Ação '${action}' BLOQUEADA - selectedCharacter é null`);
+      clearProcessingState();
       return;
     }
     
     if (loadingRef.current) {
       console.warn(`[game-provider] Ação '${action}' BLOQUEADA - loadingRef.current é true`);
+      clearProcessingState();
       return;
     }
     
     // CRÍTICO: Bloquear todas as ações se o personagem está morto
     if (state.gameState.mode === 'gameover') {
       console.warn(`[game-provider] Ação '${action}' BLOQUEADA - personagem está morto`);
+      clearProcessingState();
       return;
     }
     
-    console.log(`[game-provider] Todas as validações passaram, processando ação '${action}'`);
+    console.log(`[game-provider] Todas as validações passaram, processando ação '${action}' (ID: ${currentActionId})`);
     
     // OTIMIZADO: Cancelar timeout anterior se existir
     if (performActionTimeoutRef.current) {
@@ -546,8 +574,11 @@ export function GameProvider({ children }: GameProviderProps) {
       performActionTimeoutRef.current = null;
     }
     
+    // 6. Marcar loading apenas se ainda não está
+    if (!loadingRef.current) {
     loadingRef.current = true;
     updateLoading('performAction', true);
+    }
     
     setState(prev => {
       try {
@@ -558,8 +589,7 @@ export function GameProvider({ children }: GameProviderProps) {
           // Verificar se temos recompensas de batalha para processar
           if (!prev.gameState.battleRewards) {
             console.warn('[game-provider] Tentativa de continuar sem recompensas de batalha');
-            loadingRef.current = false;
-            updateLoading('performAction', false);
+            clearProcessingState();
             return prev;
           }
           
@@ -593,8 +623,7 @@ export function GameProvider({ children }: GameProviderProps) {
                 }
               }));
             } finally {
-              loadingRef.current = false;
-              updateLoading('performAction', false);
+              clearProcessingState();
             }
           })();
           
@@ -611,7 +640,7 @@ export function GameProvider({ children }: GameProviderProps) {
         // Processar interação com evento especial
         if (action === 'interact_event') {
           if (prev.gameState.mode !== 'special_event' || !prev.gameState.currentSpecialEvent) {
-            loadingRef.current = false;
+            clearProcessingState();
             return prev;
           }
           
@@ -663,8 +692,7 @@ export function GameProvider({ children }: GameProviderProps) {
                 }
               }));
             } finally {
-              loadingRef.current = false;
-              updateLoading('performAction', false);
+              clearProcessingState();
             }
           }, 100);
           
@@ -680,7 +708,7 @@ export function GameProvider({ children }: GameProviderProps) {
         // Para outras ações, verificar validações de batalha
         if (prev.gameState.mode !== 'battle' || !prev.gameState.currentEnemy) {
           console.log('[game-provider] Validação falhou - mode:', prev.gameState.mode, 'enemy:', !!prev.gameState.currentEnemy);
-          loadingRef.current = false;
+          clearProcessingState();
           return prev;
         }
 
@@ -698,9 +726,16 @@ export function GameProvider({ children }: GameProviderProps) {
               consumableId
             );
 
-            const { newState: playerActionState, skipTurn, message, skillXpGains, skillMessages } = playerActionResult;
+            const { newState: playerActionState, skipTurn, message, skillXpGains, skillMessages, gameLogMessages } = playerActionResult;
             
             console.log(`[game-provider] Ação do jogador processada - skipTurn: ${skipTurn}`);
+            
+            // Adicionar mensagens da ação do jogador ao log de jogo
+            if (gameLogMessages && gameLogMessages.length > 0) {
+              gameLogMessages.forEach(logMessage => {
+                addGameLogMessage(logMessage.message, logMessage.type);
+              });
+            }
             
             // Processar XP de habilidades do jogador se houver
             if (skillXpGains && skillXpGains.length > 0 && selectedCharacter) {
@@ -719,8 +754,7 @@ export function GameProvider({ children }: GameProviderProps) {
             
             // Se a ação do jogador pula o turno (fuga, erro, etc.)
             if (skipTurn) {
-              loadingRef.current = false;
-              updateLoading('performAction', false);
+              clearProcessingState();
               
               // OTIMIZADO: Verificar fuga bem-sucedida usando a propriedade do estado
               if (action === 'flee' && playerActionState.fleeSuccessful) {
@@ -786,8 +820,7 @@ export function GameProvider({ children }: GameProviderProps) {
                 console.error('[game-provider] Erro ao processar derrota:', error);
               }
               
-              loadingRef.current = false;
-              updateLoading('performAction', false);
+              clearProcessingState();
               return;
             }
 
@@ -845,8 +878,7 @@ export function GameProvider({ children }: GameProviderProps) {
                   gameState: finalState
                 }));
                 
-                loadingRef.current = false;
-                updateLoading('performAction', false);
+                clearProcessingState();
                 return;
               }
 
@@ -867,8 +899,7 @@ export function GameProvider({ children }: GameProviderProps) {
                   gameState: cleanedState
                 }));
                 
-                loadingRef.current = false;
-                updateLoading('performAction', false);
+                clearProcessingState();
                 return;
               }
 
@@ -911,21 +942,23 @@ export function GameProvider({ children }: GameProviderProps) {
               error: error instanceof Error ? error.message : 'Erro ao processar turno',
             }));
           } finally {
-            loadingRef.current = false;
-            updateLoading('performAction', false);
+            clearProcessingState();
           }
         }, 100);
 
         return prev;
       } catch (error) {
         console.error('Erro ao processar ação:', error instanceof Error ? error.message : 'Erro desconhecido');
-        loadingRef.current = false;
+        clearProcessingState();
         return {
           ...prev,
           error: error instanceof Error ? error.message : 'Erro ao processar ação',
         };
       } finally {
-        updateLoading('performAction', false);
+        // Garantir limpeza final do estado
+        if (actionProcessingRef.current) {
+          clearProcessingState();
+        }
       }
     });
   }, [selectedCharacter, state.gameState.mode]);

@@ -1200,7 +1200,8 @@ export class CharacterService {
           buffs: [],
           debuffs: [],
           dots: [],
-          hots: []
+          hots: [],
+          attribute_modifications: []
         },
         
         // Atributos primários

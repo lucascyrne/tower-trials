@@ -258,9 +258,26 @@ export class EquipmentService {
      */
     static async buyEquipment(characterId: string, equipmentId: string): Promise<ServiceResponse<{ newGold: number }>> {
         try {
+            // Primeiro, buscar o equipamento para obter o preço
+            const { data: equipmentData, error: equipmentError } = await supabase
+                .from('equipment')
+                .select('price')
+                .eq('id', equipmentId)
+                .single();
+
+            if (equipmentError) {
+                throw new Error(`Erro ao buscar equipamento: ${equipmentError.message}`);
+            }
+
+            if (!equipmentData) {
+                throw new Error('Equipamento não encontrado');
+            }
+
+            // Chamar a função RPC com o preço
             const { data, error } = await supabase.rpc('buy_equipment', {
                 p_character_id: characterId,
-                p_equipment_id: equipmentId
+                p_equipment_id: equipmentId,
+                p_price: equipmentData.price
             });
 
             if (error) throw error;

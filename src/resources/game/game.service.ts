@@ -107,7 +107,8 @@ export class GameService {
           buffs: [],
           debuffs: [],
           dots: [],
-          hots: []
+          hots: [],
+          attribute_modifications: []
         },
         // Campos do sistema cíclico
         tier: monsterData.tier,
@@ -446,12 +447,14 @@ export class GameService {
     message: string;
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
+    gameLogMessages?: { message: string; type: 'player_action' | 'damage' | 'system' }[];
   }> {
     const { player, currentEnemy } = gameState;
     let message = '';
     let skipTurn = false;
     const skillXpGains: SkillXpGain[] = [];
     const skillMessages: string[] = [];
+    const gameLogMessages: { message: string; type: 'player_action' | 'damage' | 'system' }[] = [];
 
     if (!currentEnemy) {
       return {
@@ -459,7 +462,8 @@ export class GameService {
         skipTurn: true,
         message: 'Nenhum inimigo para atacar!',
         skillXpGains,
-        skillMessages
+        skillMessages,
+        gameLogMessages
       };
     }
 
@@ -473,6 +477,16 @@ export class GameService {
         const damage = this.calculateDamage(player.atk, currentEnemy.defense);
         newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damage);
         message = `Você atacou ${currentEnemy.name} e causou ${damage} de dano!`;
+        
+        // Adicionar mensagens ao log de jogo
+        gameLogMessages.push({
+          message: `${player.name} ataca ${currentEnemy.name}!`,
+          type: 'player_action'
+        });
+        gameLogMessages.push({
+          message: `${player.name} causou ${damage} de dano em ${currentEnemy.name}`,
+          type: 'damage'
+        });
         
         // CRÍTICO: Usar o SkillXpService para calcular XP de ataque
         try {
@@ -516,6 +530,12 @@ export class GameService {
         newState.player.isDefending = true;
         newState.player.defenseCooldown = 3; // 3 turnos de cooldown
         message = 'Você assume uma postura defensiva!';
+        
+        // Adicionar mensagem ao log de jogo
+        gameLogMessages.push({
+          message: `${player.name} assume uma postura defensiva`,
+          type: 'player_action'
+        });
         
         // CRÍTICO: Usar o SkillXpService para calcular XP de defesa
         try {
@@ -597,6 +617,12 @@ export class GameService {
           // Marcar o estado como fuga bem-sucedida para controle posterior
           newState.fleeSuccessful = true;
           console.log(`[GameService] Estado marcado com fleeSuccessful = true`);
+          
+          // Adicionar mensagem ao log de jogo
+          gameLogMessages.push({
+            message: `${player.name} conseguiu fugir da batalha!`,
+            type: 'player_action'
+          });
         } else {
           // Falha na fuga, recebe dano reduzido (era 30%, agora 20%)
           const fleeDamage = Math.floor(currentEnemy.attack * 0.2);
@@ -605,6 +631,18 @@ export class GameService {
           // Não pular o turno para que o inimigo possa atacar normalmente
           skipTurn = false;
           console.log(`[GameService] Fuga falhou, jogador recebeu ${fleeDamage} de dano`);
+          
+          // Adicionar mensagens ao log de jogo
+          gameLogMessages.push({
+            message: `${player.name} tentou fugir mas falhou`,
+            type: 'player_action'
+          });
+          if (fleeDamage > 0) {
+            gameLogMessages.push({
+              message: `${player.name} recebeu ${fleeDamage} de dano ao tentar fugir`,
+              type: 'damage'
+            });
+          }
         }
         break;
 
@@ -615,7 +653,8 @@ export class GameService {
             skipTurn: true,
             message: 'Nenhuma magia especificada!',
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -626,7 +665,8 @@ export class GameService {
             skipTurn: true,
             message: 'Magia não encontrada!',
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -636,7 +676,8 @@ export class GameService {
             skipTurn: true,
             message: 'Mana insuficiente!',
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -646,7 +687,8 @@ export class GameService {
             skipTurn: true,
             message: `${spell.name} está em cooldown por ${spell.current_cooldown} turnos!`,
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -662,6 +704,25 @@ export class GameService {
         // Aplicar efeito da magia
         const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
         message = spellResult.message;
+        
+        // Adicionar mensagens ao log de jogo
+        gameLogMessages.push({
+          message: `${player.name} lança ${spell.name}!`,
+          type: 'player_action'
+        });
+        
+        // Adicionar mensagem específica do efeito da magia
+        if (spell.effect_type === 'damage') {
+          gameLogMessages.push({
+            message: `${spell.name} causou dano em ${currentEnemy.name}`,
+            type: 'damage'
+          });
+        } else if (spell.effect_type === 'heal') {
+          gameLogMessages.push({
+            message: `${player.name} se curou com ${spell.name}`,
+            type: 'system'
+          });
+        }
         
         if (!spellResult.success) {
           skipTurn = true;
@@ -696,7 +757,8 @@ export class GameService {
             skipTurn: true,
             message: 'Nenhum consumível especificado!',
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -708,7 +770,8 @@ export class GameService {
             skipTurn: true,
             message: 'Consumível não encontrado ou sem quantidade!',
             skillXpGains,
-            skillMessages
+            skillMessages,
+            gameLogMessages
           };
         }
         
@@ -734,6 +797,18 @@ export class GameService {
         newState.player.potionUsedThisTurn = true;
         
         message = `Você usou ${consumable.consumable?.name || 'Item'} e recuperou ${actualHeal} HP!`;
+        
+        // Adicionar mensagens ao log de jogo
+        gameLogMessages.push({
+          message: `${player.name} usou ${consumable.consumable?.name || 'Item'}`,
+          type: 'player_action'
+        });
+        if (actualHeal > 0) {
+          gameLogMessages.push({
+            message: `${player.name} recuperou ${actualHeal} HP`,
+            type: 'system'
+          });
+        }
         break;
 
       default:
@@ -742,7 +817,8 @@ export class GameService {
           skipTurn: true,
           message: 'Ação inválida!',
           skillXpGains,
-          skillMessages
+          skillMessages,
+          gameLogMessages
         };
     }
 
@@ -770,7 +846,8 @@ export class GameService {
       skipTurn,
       message,
       skillXpGains,
-      skillMessages
+      skillMessages,
+      gameLogMessages
     };
   }
 
@@ -1876,7 +1953,8 @@ export class GameService {
           buffs: [],
           debuffs: [],
           dots: [],
-          hots: []
+          hots: [],
+          attribute_modifications: []
         }
       };
     } catch (error) {
