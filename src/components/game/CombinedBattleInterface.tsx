@@ -106,6 +106,35 @@ export function CombinedBattleInterface({
   // CRÍTICO: Verificar se o personagem está morto
   const isPlayerDead = player.hp <= 0;
   
+  // DEBUG: Log detalhado do estado do turno
+  useEffect(() => {
+    console.log(`[CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===`);
+    console.log(`[CombinedBattleInterface] isPlayerTurn: ${isPlayerTurn}`);
+    console.log(`[CombinedBattleInterface] loading.performAction: ${loading.performAction}`);
+    console.log(`[CombinedBattleInterface] isDisabled: ${isDisabled}`);
+    console.log(`[CombinedBattleInterface] currentEnemy:`, currentEnemy ? {
+      name: currentEnemy.name,
+      hp: currentEnemy.hp,
+      maxHp: currentEnemy.maxHp,
+      isAlive: currentEnemy.hp > 0
+    } : 'null');
+    console.log(`[CombinedBattleInterface] battleRewards:`, battleRewards ? {
+      xp: battleRewards.xp,
+      gold: battleRewards.gold,
+      leveledUp: battleRewards.leveledUp
+    } : 'null');
+    console.log(`[CombinedBattleInterface] === FIM DO LOG DETALHADO ===`);
+    
+    // CRÍTICO: Detectar situações problemáticas
+    if (currentEnemy && currentEnemy.hp > 0 && !isPlayerTurn && !loading.performAction && !battleRewards) {
+      console.warn(`[CombinedBattleInterface] ⚠️  POSSÍVEL PROBLEMA: Turno travado no inimigo`);
+      console.warn(`[CombinedBattleInterface] - Inimigo vivo: ${currentEnemy.name} (${currentEnemy.hp}/${currentEnemy.maxHp})`);
+      console.warn(`[CombinedBattleInterface] - Não é turno do jogador`);
+      console.warn(`[CombinedBattleInterface] - Não está carregando`);
+      console.warn(`[CombinedBattleInterface] - Sem recompensas de batalha`);
+    }
+  }, [isPlayerTurn, loading.performAction, isDisabled, currentEnemy?.name, currentEnemy?.hp, battleRewards]);
+  
   // CORRIGIDO: Verificação mais rigorosa para mostrar botão de próximo andar
   // CORRIGIDO: Botão de fallback para quando inimigo está morto mas modais foram fechados
   const shouldShowNextFloorButton = Boolean(
@@ -113,8 +142,7 @@ export function CombinedBattleInterface({
     !loading.performAction && 
     !isPlayerDead &&
     !continuingAdventure &&
-    currentEnemy && 
-    currentEnemy.hp <= 0 // Só mostrar se inimigo atual está morto
+    (!currentEnemy || currentEnemy.hp <= 0) // Mostrar se não há inimigo ou se está morto
   );
 
   const loadPotionSlots = async () => {
