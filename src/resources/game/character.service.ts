@@ -1161,8 +1161,41 @@ export class CharacterService {
         };
       }
 
+      // Buscar bônus de equipamentos
+      const { EquipmentService } = await import('../game/equipment.service');
+      const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
+      const equipmentBonuses = equipmentBonusResponse.success && equipmentBonusResponse.data 
+        ? equipmentBonusResponse.data 
+        : {
+            total_atk_bonus: 0,
+            total_def_bonus: 0,
+            total_mana_bonus: 0,
+            total_speed_bonus: 0,
+            total_hp_bonus: 0,
+            total_critical_chance_bonus: 0,
+            total_critical_damage_bonus: 0,
+            total_double_attack_chance_bonus: 0,
+            total_magic_damage_bonus: 0
+          };
+
       // Calcular stats derivados usando a nova função
       const derivedStats = await this.calculateDerivedStats(charData);
+      
+      // Aplicar bônus de equipamentos aos stats derivados
+      const finalStats = {
+        hp: derivedStats.hp + equipmentBonuses.total_hp_bonus,
+        max_hp: derivedStats.max_hp + equipmentBonuses.total_hp_bonus,
+        mana: derivedStats.mana + equipmentBonuses.total_mana_bonus,
+        max_mana: derivedStats.max_mana + equipmentBonuses.total_mana_bonus,
+        atk: derivedStats.atk + equipmentBonuses.total_atk_bonus,
+        def: derivedStats.def + equipmentBonuses.total_def_bonus,
+        speed: derivedStats.speed + equipmentBonuses.total_speed_bonus,
+        magic_attack: derivedStats.magic_attack,
+        critical_chance: derivedStats.critical_chance + equipmentBonuses.total_critical_chance_bonus,
+        critical_damage: derivedStats.critical_damage + equipmentBonuses.total_critical_damage_bonus,
+        magic_damage_bonus: derivedStats.magic_damage_bonus + equipmentBonuses.total_magic_damage_bonus,
+        double_attack_chance: derivedStats.double_attack_chance + equipmentBonuses.total_double_attack_chance_bonus
+      };
       
       // Carregar magias equipadas do personagem
       const spellsResponse = await import('../game/spell.service').then(m => 
@@ -1180,13 +1213,13 @@ export class CharacterService {
         xp: charData.xp,
         xp_next_level: charData.xp_next_level,
         gold: charData.gold,
-        hp: derivedStats.hp,
-        max_hp: derivedStats.max_hp,
-        mana: derivedStats.mana,
-        max_mana: derivedStats.max_mana,
-        atk: derivedStats.atk,
-        def: derivedStats.def,
-        speed: derivedStats.speed,
+        hp: finalStats.hp,
+        max_hp: finalStats.max_hp,
+        mana: finalStats.mana,
+        max_mana: finalStats.max_mana,
+        atk: finalStats.atk,
+        def: finalStats.def,
+        speed: finalStats.speed,
         created_at: charData.created_at,
         updated_at: charData.updated_at,
         isPlayerTurn: true,
@@ -1227,28 +1260,36 @@ export class CharacterService {
         magic_mastery_xp: charData.magic_mastery_xp || 0,
         
         // Stats derivados calculados
-        critical_chance: derivedStats.critical_chance,
-        critical_damage: derivedStats.critical_damage,
-        magic_damage_bonus: derivedStats.magic_damage_bonus,
-        magic_attack: derivedStats.magic_attack,
-        double_attack_chance: derivedStats.double_attack_chance || 0,
+        critical_chance: finalStats.critical_chance,
+        critical_damage: finalStats.critical_damage,
+        magic_damage_bonus: finalStats.magic_damage_bonus,
+        magic_attack: finalStats.magic_attack,
+        double_attack_chance: finalStats.double_attack_chance,
         
-        // Stats base para exibição (simplificado)
-        base_hp: 80 + (charData.level * 5),
-        base_max_hp: 80 + (charData.level * 5),
-        base_mana: 40 + (charData.level * 3),
-        base_max_mana: 40 + (charData.level * 3),
-        base_atk: 15 + (charData.level * 2),
-        base_def: 8 + charData.level,
-        base_speed: 8 + charData.level,
+        // Stats base para exibição (sem bônus de equipamentos)
+        base_hp: derivedStats.hp,
+        base_max_hp: derivedStats.max_hp,
+        base_mana: derivedStats.mana,
+        base_max_mana: derivedStats.max_mana,
+        base_atk: derivedStats.atk,
+        base_def: derivedStats.def,
+        base_speed: derivedStats.speed,
         
-        // Bônus (calculados a partir da diferença)
-        equipment_hp_bonus: 0, // TODO: buscar de equipamentos se necessário
-        equipment_mana_bonus: 0,
-        equipment_atk_bonus: 0,
-        equipment_def_bonus: 0,
-        equipment_speed_bonus: 0
+        // Bônus de equipamentos para exibição
+        equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
+        equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
+        equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
+        equipment_def_bonus: equipmentBonuses.total_def_bonus,
+        equipment_speed_bonus: equipmentBonuses.total_speed_bonus
       };
+
+      console.log(`[CharacterService] GamePlayer criado para ${gamePlayer.name}:`, {
+        level: gamePlayer.level,
+        base_atk: gamePlayer.base_atk,
+        equipment_atk_bonus: gamePlayer.equipment_atk_bonus,
+        final_atk: gamePlayer.atk,
+        final_critical_damage: gamePlayer.critical_damage
+      });
 
       return {
         success: true,

@@ -11,8 +11,8 @@ import { toast } from 'sonner';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterConsumable } from './models/consumable.model';
-import { FleeOverlay } from '@/components/game/FleeOverlay';
-import { useRouter } from 'next/navigation';
+
+
 
 interface GameProviderProps {
   children: ReactNode;
@@ -32,14 +32,12 @@ export function GameProvider({ children }: GameProviderProps) {
     gameLog: [{ text: 'Bem-vindo ao Tower Trials!', type: 'system' }]
   });
   const { user } = useAuth();
-  const router = useRouter();
+
   const loadingRef = useRef(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
-  // Estados para o FleeOverlay
-  const [showFleeOverlay, setShowFleeOverlay] = useState(false);
-  const [fleeSuccess, setFleeSuccess] = useState(false);
+
 
   // OTIMIZADO: Sistema robusto para prevenir ações duplicadas
   const performActionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -603,8 +601,8 @@ export function GameProvider({ children }: GameProviderProps) {
           const currentFloor = prev.gameState.player.floor;
           const nextFloor = currentFloor + 1;
           
-          // Executar transição de forma assíncrona
-          (async () => {
+          // Executar transição de forma assíncrona - SIMPLIFICADO
+          setTimeout(async () => {
             try {
               GameService.clearAllCaches();
               const updatedState = await GameService.advanceToNextFloor(prev.gameState);
@@ -613,10 +611,12 @@ export function GameProvider({ children }: GameProviderProps) {
                 ...currentState,
                 gameState: {
                   ...updatedState,
-                  battleRewards: null,
+                  battleRewards: null, // Limpar após avanço bem-sucedido
                   isPlayerTurn: true
                 }
               }));
+              
+              console.log('[game-provider] === TRANSIÇÃO CONCLUÍDA ===');
             } catch (error) {
               console.error('[game-provider] Erro na transição:', error);
               setState(currentState => ({
@@ -632,13 +632,13 @@ export function GameProvider({ children }: GameProviderProps) {
             } finally {
               clearProcessingState();
             }
-          })();
+          }, 100);
           
+          // NÃO modificar battleRewards aqui - manter até transição completar
           return {
             ...prev,
             gameState: {
               ...prev.gameState,
-              battleRewards: null,
               gameMessage: `Avançando para o Andar ${nextFloor}...`
             }
           };
@@ -765,9 +765,7 @@ export function GameProvider({ children }: GameProviderProps) {
               if (action === 'flee' && playerActionState.fleeSuccessful) {
                 console.log('[game-provider] Fuga bem-sucedida, exibindo overlay...');
                 
-                // Exibir overlay de fuga bem-sucedida
-                setFleeSuccess(true);
-                setShowFleeOverlay(true);
+                // A exibição do overlay será tratada pelo componente de batalha
                 
                 // Atualizar estado para indicar fuga bem-sucedida
                 setState(currentState => ({
@@ -786,9 +784,7 @@ export function GameProvider({ children }: GameProviderProps) {
               } else if (action === 'flee' && !playerActionState.fleeSuccessful) {
                 console.log('[game-provider] Fuga falhou, exibindo overlay...');
                 
-                // Exibir overlay de fuga falhada
-                setFleeSuccess(false);
-                setShowFleeOverlay(true);
+                // A exibição do overlay será tratada pelo componente de batalha
                 
                 // Atualizar estado para indicar fuga falhada
                 setState(currentState => ({
@@ -823,18 +819,23 @@ export function GameProvider({ children }: GameProviderProps) {
               console.log('[game-provider] === INIMIGO DERROTADO PELA AÇÃO DO JOGADOR ===');
               
               try {
+                // CORRIGIDO: Processar recompensas mas manter inimigo morto para o modal
                 const defeatedState = await GameService.processEnemyDefeat(playerActionState);
                 
                 if (selectedCharacter) {
                   await CharacterService.updateLastActivity(selectedCharacter.id);
                 }
                 
+                // CRÍTICO: Manter currentEnemy morto para que o modal possa ser exibido
                 setState(prev => ({
                   ...prev,
-                  gameState: defeatedState
+                  gameState: {
+                    ...defeatedState,
+                    currentEnemy: playerActionState.currentEnemy // Manter inimigo morto
+                  }
                 }));
                 
-                console.log('[game-provider] === DERROTA PROCESSADA COM SUCESSO ===');
+                console.log('[game-provider] === RECOMPENSAS PROCESSADAS - AGUARDANDO CONFIRMAÇÃO ===');
               } catch (error) {
                 console.error('[game-provider] Erro ao processar derrota:', error);
               }
@@ -995,40 +996,7 @@ export function GameProvider({ children }: GameProviderProps) {
     }));
   }, [characters]);
 
-  // Função para lidar com o término do overlay de fuga
-  const handleFleeOverlayComplete = useCallback(async () => {
-    console.log('[game-provider] Overlay de fuga concluído');
-    
-    setShowFleeOverlay(false);
-    
-    if (fleeSuccess) {
-      // Fuga bem-sucedida: processar redirecionamento e atualização do andar
-      try {
-        if (selectedCharacter) {
-          // Atualizar andar para 1 (volta ao início)
-          await CharacterService.updateCharacterFloor(selectedCharacter.id, 1);
-          console.log('[game-provider] Andar do personagem atualizado para 1');
-        }
-        
-        // Redirecionar para o hub
-        router.push(`/game/play/hub?character=${selectedCharacter?.id}`);
-      } catch (error) {
-        console.error('[game-provider] Erro ao processar fuga:', error);
-        toast.error('Erro ao processar fuga');
-      }
-    } else {
-      // Fuga falhada: retornar ao modo battle
-      setState(currentState => ({
-        ...currentState,
-        gameState: {
-          ...currentState.gameState,
-          mode: 'battle',
-          isPlayerTurn: true,
-          gameMessage: 'A batalha continua...'
-        },
-      }));
-    }
-  }, [fleeSuccess, selectedCharacter, router]);
+
 
   // Memoizar o valor do contexto
   const contextValue = useMemo<GameContextType>(
@@ -1066,15 +1034,6 @@ export function GameProvider({ children }: GameProviderProps) {
   return (
     <GameContext.Provider value={contextValue}>
       {children}
-      
-      {/* Overlay de Fuga Fullscreen */}
-      <FleeOverlay
-        isVisible={showFleeOverlay}
-        isSuccess={fleeSuccess}
-        playerName={selectedCharacter?.name || 'Jogador'}
-        enemyName={state.gameState.currentEnemy?.name}
-        onComplete={handleFleeOverlayComplete}
-      />
     </GameContext.Provider>
   );
 } 

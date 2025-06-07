@@ -32,9 +32,8 @@ export class MonsterService {
 
       console.log(`[MonsterService] === INÍCIO BUSCA MONSTRO ANDAR ${floor} ===`);
 
-      // SEMPRE limpar cache para o andar específico para evitar problemas
-      this.monsterCache.delete(floor);
-      this.cacheExpiry.delete(floor);
+      // CORRIGIDO: Limpar todo o cache para evitar conflitos de estado
+      this.clearCache();
 
       // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);

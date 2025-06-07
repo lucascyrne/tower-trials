@@ -1174,12 +1174,12 @@ export class GameService {
       console.log(`[GameService] - Gold: ${updatedPlayer.gold}`);
       console.log(`[GameService] - Drops: ${drops.length} itens`);
 
-      // Retornar estado atualizado com recompensas persistidas
+      // CORRIGIDO: NÃO remover currentEnemy aqui - será removido apenas no avanço
       return {
         ...gameState,
         player: updatedPlayer,
         battleRewards,
-        currentEnemy: null,
+        // currentEnemy mantido para permitir exibição do modal
         isPlayerTurn: true,
         gameMessage: `Inimigo derrotado! +${xp} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`
       };
@@ -1187,12 +1187,11 @@ export class GameService {
       console.error('[GameService] Erro ao processar derrota do inimigo:', error);
       
       // Em caso de erro, não dar recompensas para evitar exploits
-      // Apenas limpar o inimigo e permitir continuar
+      // Manter inimigo para permitir retry ou debug
       return {
         ...gameState,
-        currentEnemy: null,
         isPlayerTurn: true,
-        gameMessage: `Inimigo derrotado, mas houve um erro ao processar recompensas: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+        gameMessage: `Erro ao processar derrota do inimigo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       };
     }
   }
@@ -1213,6 +1212,12 @@ export class GameService {
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
   }> {
+    // CORRIGIDO: Verificar se o inimigo ainda está vivo antes de processar
+    if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
+      console.log('[GameService] Inimigo morto antes do delay - cancelando ação');
+      return { newState: gameState };
+    }
+    
     // Calcular delay aleatório entre 1.5 e 2.5 segundos se não especificado
     const finalDelay = delayMs ?? (1500 + Math.random() * 1000); // 1500-2500ms
     
@@ -1221,6 +1226,12 @@ export class GameService {
     
     // Aguardar o delay antes de processar
     await new Promise(resolve => setTimeout(resolve, finalDelay));
+    
+    // CORRIGIDO: Verificar novamente após o delay se o inimigo ainda está vivo
+    if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
+      console.log('[GameService] Inimigo morto após delay - cancelando ação');
+      return { newState: gameState };
+    }
     
     console.log(`[GameService] ${enemyName} decidiu sua ação!`);
     
@@ -1881,7 +1892,7 @@ export class GameService {
         }
       }
 
-      // Construir novo estado com dados validados
+      // CORRIGIDO: Construir novo estado com limpeza completa
       const newGameState: GameState = {
         ...gameState,
         mode: specialEvent ? 'special_event' : 'battle',
@@ -1894,7 +1905,7 @@ export class GameService {
           defenseCooldown: Math.max(0, (player.defenseCooldown || 0) - 1) // Reduzir cooldown
         },
         currentFloor: nextFloorData,
-        currentEnemy: specialEvent ? null : nextEnemy,
+        currentEnemy: specialEvent ? null : nextEnemy, // CRÍTICO: Limpar inimigo anterior e definir novo
         currentSpecialEvent: specialEvent,
         gameMessage: specialEvent 
           ? `Evento especial encontrado: ${specialEvent.name}!`
@@ -1902,6 +1913,8 @@ export class GameService {
         isPlayerTurn: true,
         battleRewards: null, // CRÍTICO: Sempre limpar recompensas de batalha
         selectedSpell: null, // Limpar spell selecionado ao avançar
+        characterDeleted: false, // Resetar flags de estado
+        fleeSuccessful: false,
         highestFloor: Math.max(gameState.highestFloor || 0, nextFloor)
       };
 
