@@ -2,6 +2,7 @@ import { MonsterBehavior } from './models/monster.model';
 import { PlayerSpell, ActiveEffects } from './models/spell.model';
 import { MonsterDropChance } from './models/monster.model';
 import { CharacterConsumable } from './models/consumable.model';
+import { BattleSession, TurnControl } from './models/game-battle.model';
 
 export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event' | 'fled';
 export type ActionType = 'attack' | 'defend' | 'special' | 'spell' | 'flee' | 'consumable' | 'continue' | 'interact_event';
@@ -175,6 +176,11 @@ export interface GameState {
   battleRewards: BattleRewards | null;
   characterDeleted?: boolean;
   fleeSuccessful?: boolean;
+  
+  // NOVO: Sistema robusto de controle de turnos
+  battleSession?: BattleSession;
+  currentTurnControl?: TurnControl;
+  actionLocks?: Map<string, boolean>;
 }
 
 export interface GameLoadingState {

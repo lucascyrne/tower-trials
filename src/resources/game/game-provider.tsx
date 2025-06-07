@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { CharacterConsumable } from './models/consumable.model';
+import { TurnControlService } from './turn-control.service';
 
 
 
@@ -50,7 +51,6 @@ export function GameProvider({ children }: GameProviderProps) {
     consumableId?: string;
     actionId: number;
   } | null>(null);
-  const ACTION_DEBOUNCE_MS = 500; // 500ms de debounce mais conservador
 
   // Função auxiliar para atualizar estado de loading
   const updateLoading = useCallback((key: keyof GameLoadingState, value: boolean) => {
@@ -350,6 +350,13 @@ export function GameProvider({ children }: GameProviderProps) {
       
       console.log(`[GameProvider] Definindo estado do jogo para batalha`);
       
+      // NOVO: Inicializar sessão de controle de turnos
+      // Primeiro, limpar qualquer sessão antiga para evitar conflitos
+      TurnControlService.performCleanup();
+      
+      const battleSession = TurnControlService.initializeBattleSession(currentFloor, currentEnemy.name);
+      console.log(`[GameProvider] Sessão de batalha inicializada: ${battleSession.sessionId}`);
+      
       const newGameState = {
         ...initialGameState,
         mode: 'battle' as const,
@@ -374,6 +381,9 @@ export function GameProvider({ children }: GameProviderProps) {
         currentEnemy: currentEnemy,
         currentFloor: floorData,
         gameMessage: `Bem-vindo de volta, ${character.name}! Você está no ${floorData.description}.`,
+        // NOVO: Adicionar sessão de batalha ao estado
+        battleSession: battleSession,
+        actionLocks: new Map()
       };
       
       setState(prev => ({
@@ -504,38 +514,9 @@ export function GameProvider({ children }: GameProviderProps) {
 
   // Realizar ação do jogador
   const performAction = useCallback(async (action: ActionType, spellId?: string, consumableId?: string) => {
-    // CRÍTICO: Sistema robusto para prevenir ações duplicadas (especialmente no dev mode)
+    // NOVO: Sistema robusto com controle de turnos únicos
     const currentTime = Date.now();
-    const lastAction = lastActionRef.current;
     const currentActionId = ++actionIdRef.current;
-    
-    // 1. Verificar se já está processando uma ação
-    if (actionProcessingRef.current) {
-      console.warn(`[game-provider] Ação '${action}' BLOQUEADA - já processando ação`);
-      return;
-    }
-    
-    // 2. Verificar se é uma ação duplicada muito próxima (debounce)
-    if (lastAction && 
-        lastAction.action === action && 
-        lastAction.spellId === spellId && 
-        lastAction.consumableId === consumableId &&
-        (currentTime - lastAction.timestamp) < ACTION_DEBOUNCE_MS) {
-      console.warn(`[game-provider] Ação '${action}' BLOQUEADA - debounce (${currentTime - lastAction.timestamp}ms < ${ACTION_DEBOUNCE_MS}ms)`);
-      return;
-    }
-    
-    // 3. Marcar como processando ANTES de qualquer validação
-    actionProcessingRef.current = true;
-    
-    // 4. Atualizar última ação com ID único
-    lastActionRef.current = {
-      action,
-      spellId,
-      consumableId,
-      timestamp: currentTime,
-      actionId: currentActionId
-    };
     
     console.log(`[game-provider] === PERFORMACTION INÍCIO (ID: ${currentActionId}) ===`);
     console.log(`[game-provider] performAction chamado com ação: '${action}'`);
@@ -543,6 +524,141 @@ export function GameProvider({ children }: GameProviderProps) {
     console.log(`[game-provider] loadingRef.current:`, loadingRef.current);
     console.log(`[game-provider] gameState.mode:`, state.gameState.mode);
     console.log(`[game-provider] gameState.battleRewards:`, !!state.gameState.battleRewards);
+    
+    // 1. CRÍTICO: Garantir que sempre há uma sessão de batalha válida
+    let battleSession = state.gameState.battleSession;
+    
+    // NOVO: Verificar SEMPRE se há sessão para ações de batalha
+    const isBattleAction = ['attack', 'defend', 'spell', 'flee'].includes(action);
+    const isBattleMode = state.gameState.mode === 'battle' && state.gameState.currentEnemy !== null;
+    
+         if (isBattleMode && isBattleAction && state.gameState.currentEnemy) {
+       if (!battleSession) {
+         console.warn(`[game-provider] CRÍTICO: Nenhuma sessão de batalha encontrada, criando emergencialmente...`);
+         
+         try {
+           const emergencySession = TurnControlService.ensureValidSession(
+             state.gameState.player.floor,
+             state.gameState.currentEnemy.name
+           );
+          
+          console.log(`[game-provider] Sessão de emergência criada: ${emergencySession.sessionId}`);
+          
+          battleSession = emergencySession;
+          
+          // Atualizar estado imediatamente
+          setState(currentState => ({
+            ...currentState,
+            gameState: {
+              ...currentState.gameState,
+              battleSession: emergencySession
+            }
+          }));
+          
+          console.log(`[game-provider] Estado atualizado com sessão de emergência`);
+        } catch (error) {
+          console.error(`[game-provider] ERRO CRÍTICO: Não foi possível criar sessão de emergência:`, error);
+          // Continuar mesmo assim - deixar o sistema tentar processar
+        }
+      } else {
+                 // Verificar se a sessão ainda é válida
+         const isValid = TurnControlService.isSessionValid(battleSession.sessionId);
+         if (!isValid) {
+           console.warn(`[game-provider] Sessão inválida detectada, criando nova...`);
+           
+           try {
+             const newSession = TurnControlService.ensureValidSession(
+               state.gameState.player.floor,
+               state.gameState.currentEnemy!.name
+             );
+            
+            battleSession = newSession;
+            
+            setState(currentState => ({
+              ...currentState,
+              gameState: {
+                ...currentState.gameState,
+                battleSession: newSession
+              }
+            }));
+            
+            console.log(`[game-provider] Sessão renovada: ${newSession.sessionId}`);
+          } catch (error) {
+            console.error(`[game-provider] Erro ao renovar sessão:`, error);
+          }
+        } else {
+          console.log(`[game-provider] Usando sessão válida existente: ${battleSession.sessionId}`);
+        }
+      }
+    } else {
+      console.log(`[game-provider] Ação '${action}' não requer sessão de batalha`);
+    }
+    
+    // Se ainda não temos sessão após tentativa de criação, bloquear
+    if (!battleSession && state.gameState.mode === 'battle') {
+      console.warn(`[game-provider] Ação '${action}' BLOQUEADA - não foi possível criar/encontrar sessão de batalha`);
+      return;
+    }
+    
+    // 2. Usar TurnControlService para verificar se podemos executar a ação
+    if (battleSession && ['attack', 'defend', 'spell', 'flee'].includes(action)) {
+      const canPerform = TurnControlService.canPerformAction(
+        battleSession.sessionId,
+        'player',
+        action
+      );
+      
+      if (!canPerform.canPerform) {
+        console.warn(`[game-provider] Ação '${action}' BLOQUEADA pelo TurnControl - ${canPerform.reason}`);
+        
+        // NOVO: Para ações críticas, tentar recuperar automaticamente a sessão
+        if (canPerform.reason?.includes('Sessão não encontrada') && ['attack', 'defend'].includes(action)) {
+          console.warn(`[game-provider] Recuperação automática para ação crítica '${action}'...`);
+          
+          // Usar função de sincronização automática
+          const recoveredSession = TurnControlService.ensureValidSession(
+            state.gameState.player.floor,
+            state.gameState.currentEnemy?.name || 'Unknown',
+            battleSession.sessionId
+          );
+          
+          // Atualizar estado com sessão recuperada
+          setState(currentState => ({
+            ...currentState,
+            gameState: {
+              ...currentState.gameState,
+              battleSession: recoveredSession
+            }
+          }));
+          
+          console.log(`[game-provider] Sessão recuperada: ${recoveredSession.sessionId}, continuando...`);
+          battleSession = recoveredSession; // Usar a sessão recuperada para esta execução
+        } else {
+          // Para outras situações, bloquear a ação
+          return;
+        }
+      } else {
+        console.log(`[game-provider] Ação '${action}' APROVADA pelo TurnControl - ID: ${canPerform.actionId}`);
+      }
+    }
+    
+    // 3. Verificar se já está processando uma ação (fallback)
+    if (actionProcessingRef.current) {
+      console.warn(`[game-provider] Ação '${action}' BLOQUEADA - já processando ação (fallback)`);
+      return;
+    }
+    
+    // 4. Marcar como processando ANTES de qualquer validação
+    actionProcessingRef.current = true;
+    
+    // 5. Atualizar última ação com ID único
+    lastActionRef.current = {
+      action,
+      spellId,
+      consumableId,
+      timestamp: currentTime,
+      actionId: currentActionId
+    };
     
     // Função para limpar estado de processamento
     const clearProcessingState = () => {
@@ -604,6 +720,12 @@ export function GameProvider({ children }: GameProviderProps) {
           // Executar transição de forma assíncrona - SIMPLIFICADO
           setTimeout(async () => {
             try {
+              // NOVO: Limpar dados da batalha anterior antes de avançar
+              if (battleSession) {
+                console.log(`[game-provider] Limpando dados da batalha anterior: ${battleSession.battleId}`);
+                TurnControlService.cleanupBattleData(battleSession.battleId);
+              }
+              
               GameService.clearAllCaches();
               const updatedState = await GameService.advanceToNextFloor(prev.gameState);
               
@@ -612,6 +734,7 @@ export function GameProvider({ children }: GameProviderProps) {
                 gameState: {
                   ...updatedState,
                   battleRewards: null, // Limpar após avanço bem-sucedido
+                  battleSession: undefined, // Limpar sessão de batalha
                   isPlayerTurn: true
                 }
               }));
@@ -625,6 +748,7 @@ export function GameProvider({ children }: GameProviderProps) {
                   ...currentState.gameState,
                   currentEnemy: null,
                   battleRewards: null,
+                  battleSession: undefined,
                   mode: 'battle',
                   gameMessage: `Erro ao avançar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
                 }
@@ -721,11 +845,38 @@ export function GameProvider({ children }: GameProviderProps) {
 
         // NOVA LÓGICA UNIFICADA: Processar turno completo (jogador + inimigo) de uma só vez
         setTimeout(async () => {
+          // NOVO: Variáveis para controle de turnos
+          let playerActionId: string | null = null;
+          let canEnemyAct: { canPerform: boolean; reason?: string; actionId?: string } | null = null;
+          
           try {
             console.log(`[game-provider] === PROCESSANDO TURNO COMPLETO ===`);
             console.log(`[game-provider] Ação do jogador: ${action}`);
             
+            // Inicializar variáveis de controle
+            canEnemyAct = null;
+            
             // 1. Processar ação do jogador
+            // NOVO: Marcar início da ação do jogador se for uma ação de batalha
+            if (battleSession && ['attack', 'defend', 'spell', 'flee'].includes(action)) {
+              const canPerform = TurnControlService.canPerformAction(
+                battleSession.sessionId,
+                'player',
+                action
+              );
+              
+              if (canPerform.canPerform && canPerform.actionId) {
+                TurnControlService.startAction(
+                  battleSession.sessionId,
+                  canPerform.actionId,
+                  'player',
+                  action
+                );
+                playerActionId = canPerform.actionId;
+                console.log(`[game-provider] Ação do jogador iniciada - ID: ${playerActionId}`);
+              }
+            }
+            
             const playerActionResult = await GameService.processPlayerAction(
               action, 
               prev.gameState,
@@ -759,41 +910,22 @@ export function GameProvider({ children }: GameProviderProps) {
               }
             }
             
-            // Se a ação do jogador pula o turno (fuga, erro, etc.)
+            // CORRIGIDO: Lógica de skipTurn mais restritiva
             if (skipTurn) {
-              // OTIMIZADO: Verificar fuga bem-sucedida usando a propriedade do estado
+              // CRÍTICO: Apenas pular turno do inimigo em casos específicos
+              
+              // 1. Fuga bem-sucedida - terminar batalha
               if (action === 'flee' && playerActionState.fleeSuccessful) {
-                console.log('[game-provider] Fuga bem-sucedida, exibindo overlay...');
+                console.log('[game-provider] Fuga bem-sucedida, terminando batalha...');
                 
-                // A exibição do overlay será tratada pelo componente de batalha
-                
-                // Atualizar estado para indicar fuga bem-sucedida
                 setState(currentState => ({
                   ...currentState,
                   gameState: {
                     ...currentState.gameState,
                     gameMessage: message,
-                    mode: 'fled', // Modo especial para indicar fuga bem-sucedida
+                    mode: 'fled',
                     currentEnemy: null,
-                    fleeSuccessful: true // Manter para que o componente possa reagir
-                  },
-                }));
-                
-                clearProcessingState();
-                return;
-              } else if (action === 'flee' && !playerActionState.fleeSuccessful) {
-                console.log('[game-provider] Fuga falhou, exibindo overlay...');
-                
-                // A exibição do overlay será tratada pelo componente de batalha
-                
-                // Atualizar estado para indicar fuga falhada
-                setState(currentState => ({
-                  ...currentState,
-                  gameState: {
-                    ...playerActionState,
-                    gameMessage: message,
-                    mode: 'fled', // Temporariamente para mostrar overlay
-                    fleeSuccessful: false // Marcar como fuga falhada
+                    fleeSuccessful: true
                   },
                 }));
                 
@@ -801,17 +933,36 @@ export function GameProvider({ children }: GameProviderProps) {
                 return;
               }
               
-              // Para outras ações que pulam turno
-              setState(currentState => ({
-                ...currentState,
-                gameState: {
-                  ...currentState.gameState,
-                  gameMessage: message,
-                },
-              }));
+              // 2. Fuga falhada - processar turno do inimigo normalmente (não pular)
+              if (action === 'flee' && !playerActionState.fleeSuccessful) {
+                console.log('[game-provider] Fuga falhou, processando turno do inimigo...');
+                // NÃO fazer return, continuar para processamento do turno do inimigo
+              }
               
-              clearProcessingState();
-              return;
+              // 3. Erro de validação (mana, cooldown, etc.) - pular tudo
+              else if (['spell', 'consumable'].includes(action) && 
+                       (message.includes('insuficiente') || 
+                        message.includes('cooldown') || 
+                        message.includes('não encontrad'))) {
+                console.log('[game-provider] Erro de validação, pulando turno completamente...');
+                
+                setState(currentState => ({
+                  ...currentState,
+                  gameState: {
+                    ...currentState.gameState,
+                    gameMessage: message,
+                  },
+                }));
+                
+                clearProcessingState();
+                return;
+              }
+              
+              // 4. Para outras situações de skipTurn, CONTINUAR para turno do inimigo
+              else {
+                console.log('[game-provider] skipTurn=true mas continuando para turno do inimigo...');
+                // Não fazer return, continuar processamento
+              }
             }
 
             // 2. Verificar se o inimigo foi derrotado pela ação do jogador
@@ -849,6 +1000,126 @@ export function GameProvider({ children }: GameProviderProps) {
             if (playerActionState.currentEnemy && !playerActionState.fleeSuccessful) {
               console.log('[game-provider] === PROCESSANDO TURNO DO INIMIGO COM DELAY ===');
               
+              // NOVO: Sistema mais robusto para controle de turnos do inimigo
+              let battleSession = playerActionState.battleSession;
+              
+              // CRÍTICO: Se não há sessão, criar uma para garantir continuidade
+              if (!battleSession) {
+                console.warn(`[game-provider] Sem sessão de batalha, criando nova para turno do inimigo...`);
+                try {
+                  battleSession = TurnControlService.ensureValidSession(
+                    playerActionState.player.floor,
+                    playerActionState.currentEnemy.name
+                  );
+                  console.log(`[game-provider] Nova sessão criada para turno do inimigo: ${battleSession.sessionId}`);
+                  
+                  // Atualizar estado com nova sessão
+                  playerActionState.battleSession = battleSession;
+                } catch (error) {
+                  console.error(`[game-provider] Erro ao criar sessão para turno do inimigo:`, error);
+                  // Continuar sem sessão - o turno ainda será processado
+                }
+              }
+              
+              if (battleSession) {
+                canEnemyAct = TurnControlService.canPerformAction(
+                  battleSession.sessionId,
+                  'enemy',
+                  'enemy_turn'
+                );
+                
+                if (!canEnemyAct.canPerform) {
+                  console.warn(`[game-provider] Turno do inimigo BLOQUEADO pelo TurnControl - ${canEnemyAct.reason}`);
+                  
+                  // NOVO: Para turnos de inimigo, ser MUITO mais permissivo
+                  const permissiveReasons = [
+                    'Debounce ativo',
+                    'processando',
+                    'última ação muito recente',
+                    'ação em progresso'
+                  ];
+                  
+                  const shouldForceEnemyTurn = permissiveReasons.some(reason => 
+                    canEnemyAct?.reason?.toLowerCase().includes(reason.toLowerCase())
+                  );
+                  
+                  if (shouldForceEnemyTurn) {
+                    console.log(`[game-provider] FORÇANDO turno do inimigo - motivo contornável: ${canEnemyAct.reason}`);
+                    
+                    // Gerar ID de ação de emergência
+                    const emergencyActionId = `emergency-enemy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    try {
+                      TurnControlService.startAction(
+                        battleSession.sessionId,
+                        emergencyActionId,
+                        'enemy',
+                        'enemy_turn'
+                      );
+                      
+                      canEnemyAct = { canPerform: true, actionId: emergencyActionId };
+                      console.log(`[game-provider] Turno do inimigo FORÇADO com sucesso - ID: ${emergencyActionId}`);
+                    } catch (forceError) {
+                      console.error(`[game-provider] Erro ao forçar turno do inimigo:`, forceError);
+                      // Continuar mesmo assim para não travar o jogo
+                      canEnemyAct = { canPerform: true, actionId: emergencyActionId };
+                    }
+                  } else {
+                    console.error(`[game-provider] Turno do inimigo bloqueado por motivo crítico: ${canEnemyAct.reason}`);
+                    
+                    // NOVO: Mesmo em casos críticos, tentar diagnosticar e recuperar
+                    const debugStats = TurnControlService.getDebugStats();
+                    console.log(`[game-provider] Debug Stats:`, debugStats);
+                    
+                    // Se há sessões travadas, tentar destravar
+                    if (debugStats.activeSessions > 0) {
+                      console.log(`[game-provider] Tentando destravar sessões para permitir turno do inimigo...`);
+                      TurnControlService.forceUnlockAll();
+                      
+                      // Tentar novamente após destravar
+                      const retryCanAct = TurnControlService.canPerformAction(
+                        battleSession.sessionId,
+                        'enemy',
+                        'enemy_turn'
+                      );
+                      
+                      if (retryCanAct.canPerform) {
+                        console.log(`[game-provider] Turno do inimigo DESTRAVADO com sucesso - ID: ${retryCanAct.actionId}`);
+                        canEnemyAct = retryCanAct;
+                        
+                        TurnControlService.startAction(
+                          battleSession.sessionId,
+                          retryCanAct.actionId!,
+                          'enemy',
+                          'enemy_turn'
+                        );
+                      } else {
+                        console.error(`[game-provider] Falha ao destravar turno do inimigo, processando sem controle`);
+                        // Processar sem controle de turnos para não travar o jogo
+                        canEnemyAct = { canPerform: true, actionId: `bypass-${Date.now()}` };
+                      }
+                    } else {
+                      // Se não há sessões ativas, algo está muito errado - processar mesmo assim
+                      console.error(`[game-provider] Estado inconsistente detectado, processando turno do inimigo sem controle`);
+                      canEnemyAct = { canPerform: true, actionId: `bypass-${Date.now()}` };
+                    }
+                  }
+                } else {
+                  // Marcar início da ação do inimigo normalmente
+                  TurnControlService.startAction(
+                    battleSession.sessionId,
+                    canEnemyAct.actionId!,
+                    'enemy',
+                    'enemy_turn'
+                  );
+                  
+                  console.log(`[game-provider] Turno do inimigo APROVADO normalmente - ID: ${canEnemyAct.actionId}`);
+                }
+              } else {
+                console.warn(`[game-provider] Processando turno do inimigo SEM sessão de controle`);
+                canEnemyAct = { canPerform: true, actionId: `no-session-${Date.now()}` };
+              }
+              
               // Mostrar estado intermediário antes do delay
               setState(prev => ({
                 ...prev,
@@ -863,6 +1134,14 @@ export function GameProvider({ children }: GameProviderProps) {
               const enemyName = playerActionState.currentEnemy?.name || 'Inimigo';
               addGameLogMessage(`${enemyName} está pensando em sua próxima ação...`, 'system');
               
+              console.log(`[game-provider] Chamando GameService.processEnemyActionWithDelay...`);
+              console.log(`[game-provider] Estado antes do processamento do inimigo:`, {
+                enemyName: playerActionState.currentEnemy?.name,
+                enemyHp: playerActionState.currentEnemy?.hp,
+                playerHp: playerActionState.player.hp,
+                isPlayerTurn: playerActionState.isPlayerTurn
+              });
+              
               const enemyActionResult = await GameService.processEnemyActionWithDelay(
                 {
                   ...playerActionState,
@@ -873,6 +1152,12 @@ export function GameProvider({ children }: GameProviderProps) {
               );
 
               const { newState: finalState, skillXpGains: enemySkillXpGains, skillMessages: enemySkillMessages } = enemyActionResult;
+              
+              console.log(`[game-provider] Resultado do processamento do inimigo:`, {
+                finalMessage: finalState.gameMessage,
+                playerHpAfter: finalState.player.hp,
+                isPlayerTurnAfter: finalState.isPlayerTurn
+              });
               
               // Processar XP de defesa se houver
               if (enemySkillXpGains && enemySkillXpGains.length > 0 && selectedCharacter) {
@@ -902,22 +1187,40 @@ export function GameProvider({ children }: GameProviderProps) {
                 return;
               }
 
-              // CRÍTICO: Verificar se o inimigo morreu por DoT/efeitos (SEM REPROCESSAR RECOMPENSAS)
+              // CRÍTICO: Verificar se o inimigo morreu por DoT/efeitos
               if (finalState.currentEnemy && finalState.currentEnemy.hp <= 0) {
-                console.log('[game-provider] === INIMIGO MORREU POR EFEITOS - SEM REPROCESSAR ===');
+                console.log('[game-provider] === INIMIGO MORREU POR EFEITOS - PROCESSANDO VITÓRIA ===');
                 
-                // Apenas limpar o inimigo sem dar recompensas duplicadas
-                const cleanedState = {
-                  ...finalState,
-                  currentEnemy: null,
-                  isPlayerTurn: true,
-                  gameMessage: `${finalState.currentEnemy.name} foi derrotado por efeitos ao longo do tempo!`
-                };
-                
-                setState(prev => ({
-                  ...prev,
-                  gameState: cleanedState
-                }));
+                try {
+                  // Processar vitória normalmente se não há recompensas ainda
+                  const victoryState = await GameService.processEnemyDefeat({
+                    ...finalState,
+                    isPlayerTurn: true
+                  });
+                  
+                  setState(prev => ({
+                    ...prev,
+                    gameState: victoryState
+                  }));
+                  
+                  addGameLogMessage(`${finalState.currentEnemy.name} foi derrotado por efeitos ao longo do tempo!`, 'system');
+                  
+                } catch (error) {
+                  console.error('[game-provider] Erro ao processar vitória por efeitos:', error);
+                  
+                  // Fallback: apenas limpar o inimigo
+                  const cleanedState = {
+                    ...finalState,
+                    currentEnemy: null,
+                    isPlayerTurn: true,
+                    gameMessage: `${finalState.currentEnemy.name} foi derrotado por efeitos ao longo do tempo!`
+                  };
+                  
+                  setState(prev => ({
+                    ...prev,
+                    gameState: cleanedState
+                  }));
+                }
                 
                 clearProcessingState();
                 return;
@@ -953,6 +1256,18 @@ export function GameProvider({ children }: GameProviderProps) {
                   isPlayerTurn: true
                 }
               }));
+              
+              // NOVO: Finalizar ação do inimigo
+              if (battleSession && canEnemyAct && canEnemyAct.actionId) {
+                console.log(`[game-provider] Finalizando ação do inimigo - ID: ${canEnemyAct.actionId}`);
+                TurnControlService.finishAction(battleSession.sessionId, canEnemyAct.actionId);
+              } else {
+                console.warn(`[game-provider] Não foi possível finalizar ação do inimigo:`, {
+                  hasBattleSession: !!battleSession,
+                  hasCanEnemyAct: !!canEnemyAct,
+                  hasActionId: !!(canEnemyAct && canEnemyAct.actionId)
+                });
+              }
             }
 
           } catch (error) {
@@ -962,6 +1277,16 @@ export function GameProvider({ children }: GameProviderProps) {
               error: error instanceof Error ? error.message : 'Erro ao processar turno',
             }));
           } finally {
+            // NOVO: Finalizar ações pendentes
+            if (battleSession && playerActionId) {
+              TurnControlService.finishAction(battleSession.sessionId, playerActionId);
+              console.log(`[game-provider] Ação do jogador finalizada - ID: ${playerActionId}`);
+            }
+            if (battleSession && canEnemyAct && canEnemyAct.actionId) {
+              TurnControlService.finishAction(battleSession.sessionId, canEnemyAct.actionId);
+              console.log(`[game-provider] Ação do inimigo finalizada - ID: ${canEnemyAct.actionId}`);
+            }
+            
             clearProcessingState();
           }
         }, 100);

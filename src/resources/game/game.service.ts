@@ -793,6 +793,14 @@ export class GameService {
         const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
         message = spellResult.message;
         
+        // LOG: Debug do resultado da magia
+        console.log(`[GameService] Resultado da magia ${spell.name}:`, {
+          success: spellResult.success,
+          effect_type: spell.effect_type,
+          message: spellResult.message,
+          skipTurn: !spellResult.success
+        });
+        
         // Adicionar mensagens ao log de jogo
         gameLogMessages.push({
           message: `${player.name} lança ${spell.name}!`,
@@ -812,8 +820,13 @@ export class GameService {
           });
         }
         
+        // CRÍTICO: Magias bem-sucedidas NÃO devem pular turno
         if (!spellResult.success) {
+          console.log(`[GameService] Magia ${spell.name} FALHOU - pulando turno do inimigo`);
           skipTurn = true;
+        } else {
+          console.log(`[GameService] Magia ${spell.name} bem-sucedida - processando turno do inimigo`);
+          skipTurn = false; // Garantir que não pula turno para magias bem-sucedidas
         }
         
         // Ganhar XP de maestria mágica usando o novo sistema
@@ -1212,6 +1225,17 @@ export class GameService {
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
   }> {
+    console.log('[GameService] === PROCESSANDO TURNO DO INIMIGO ===');
+    console.log('[GameService] Estado recebido:', {
+      hasEnemy: !!gameState.currentEnemy,
+      enemyName: gameState.currentEnemy?.name,
+      enemyHp: gameState.currentEnemy?.hp,
+      enemyMaxHp: gameState.currentEnemy?.maxHp,
+      playerHp: gameState.player.hp,
+      isPlayerTurn: gameState.isPlayerTurn,
+      gameMode: gameState.mode
+    });
+    
     // CORRIGIDO: Verificar se o inimigo ainda está vivo antes de processar
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
       console.log('[GameService] Inimigo morto antes do delay - cancelando ação');
@@ -1892,6 +1916,23 @@ export class GameService {
         }
       }
 
+      // CRÍTICO: Criar nova sessão de batalha se não for evento especial
+      let newBattleSession = undefined;
+      if (!specialEvent && nextEnemy) {
+        try {
+          // Importar TurnControlService dinamicamente para evitar dependência circular
+          const { TurnControlService } = await import('./turn-control.service');
+          
+          console.log(`[GameService] Criando nova sessão de batalha para andar ${nextFloor} com inimigo ${nextEnemy.name}`);
+          TurnControlService.performCleanup(); // Limpar sessões antigas primeiro
+          newBattleSession = TurnControlService.initializeBattleSession(nextFloor, nextEnemy.name);
+          console.log(`[GameService] Nova sessão de batalha criada: ${newBattleSession.sessionId}`);
+        } catch (error) {
+          console.error('[GameService] Erro ao criar sessão de batalha, continuando sem ela:', error);
+          // Continuar sem sessão - será criada posteriormente se necessário
+        }
+      }
+
       // CORRIGIDO: Construir novo estado com limpeza completa
       const newGameState: GameState = {
         ...gameState,
@@ -1915,7 +1956,9 @@ export class GameService {
         selectedSpell: null, // Limpar spell selecionado ao avançar
         characterDeleted: false, // Resetar flags de estado
         fleeSuccessful: false,
-        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor)
+        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor),
+        battleSession: newBattleSession, // CRÍTICO: Incluir nova sessão no estado
+        actionLocks: new Map() // Limpar locks de ações
       };
 
       console.log(`[GameService] Estado do jogo atualizado para andar ${nextFloor} com sucesso`);
