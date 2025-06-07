@@ -18,6 +18,7 @@ import { CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
 import { CharacterService } from '@/resources/game/character.service';
+import { QuickActionPanel } from './QuickActionPanel';
 
 interface BattleRewards {
   xp: number;
@@ -45,6 +46,7 @@ export default function GameBattle() {
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   
   // OTIMIZADO: Sistema mais robusto para evitar processamento duplicado
   const processedRewardsRef = useRef<Set<string>>(new Set());
@@ -158,6 +160,24 @@ export default function GameBattle() {
       return () => clearTimeout(timer);
     }
   }, [gameState.mode, gameState.fleeSuccessful, player.id]);
+
+  // Detectar orientação para escolher interface adequada
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth <= 768;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsMobilePortrait(isMobile && isPortrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   // Listener para abrir modal de atributos
   useEffect(() => {
@@ -381,7 +401,35 @@ export default function GameBattle() {
 
         {/* Arena de Batalha Unificada */}
         {currentEnemy && (
-          <div className="mb-6">
+          <div className="mb-6 relative">
+            {/* Quick Action Panel - Desktop (ao lado esquerdo) */}
+            {!isMobilePortrait && (
+              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-20 z-10 hidden lg:block">
+                <QuickActionPanel
+                  handleAction={handleAction}
+                  isPlayerTurn={isPlayerTurn}
+                  loading={loading}
+                  player={player}
+                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                  onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+                />
+              </div>
+            )}
+
+            {/* Quick Action Panel - Mobile Horizontal (canto inferior esquerdo) */}
+            {!isMobilePortrait && (
+              <div className="fixed bottom-4 left-4 z-20 block lg:hidden">
+                <QuickActionPanel
+                  handleAction={handleAction}
+                  isPlayerTurn={isPlayerTurn}
+                  loading={loading}
+                  player={player}
+                  onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                  onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+                />
+              </div>
+            )}
+            
             <BattleArena 
               player={player}
               currentEnemy={currentEnemy}
@@ -393,20 +441,22 @@ export default function GameBattle() {
           </div>
         )}
 
-        {/* Interface de Batalha */}
-        <div className="mb-6">
-          <CombinedBattleInterface 
-            handleAction={handleAction}
-            isPlayerTurn={isPlayerTurn}
-            loading={loading}
-            player={player}
-            onPlayerStatsUpdate={handlePlayerStatsUpdate}
-            onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
-            currentEnemy={currentEnemy}
-            battleRewards={gameState.battleRewards}
-            isFleeInProgress={gameState.mode === 'fled'}
-          />
-        </div>
+        {/* Interface de Batalha - Apenas Mobile Portrait */}
+        {isMobilePortrait && (
+          <div className="mb-6">
+            <CombinedBattleInterface 
+              handleAction={handleAction}
+              isPlayerTurn={isPlayerTurn}
+              loading={loading}
+              player={player}
+              onPlayerStatsUpdate={handlePlayerStatsUpdate}
+              onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+              currentEnemy={currentEnemy}
+              battleRewards={gameState.battleRewards}
+              isFleeInProgress={gameState.mode === 'fled'}
+            />
+          </div>
+        )}
 
         <GameLog gameLog={gameLog} />
       </div>

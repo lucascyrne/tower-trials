@@ -198,7 +198,11 @@ export function BattleArena({
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/30 via-transparent to-slate-900/30 rounded-xl"></div>
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-red-500/5 rounded-xl"></div>
       
-      <Card className="relative border-2 border-border/50 bg-card/40 backdrop-blur-sm overflow-hidden">
+      <Card className={`relative border-2 backdrop-blur-sm overflow-hidden transition-all duration-500 ${
+        playerHpPercentage >= 70 ? 'battle-card-healthy' :
+        playerHpPercentage >= 30 ? 'battle-card-wounded' :
+        'battle-card-critical'
+      }`}>
         <CardContent className="p-3 md:p-6">
           {/* Battle Header - Compacto */}
           <div className="text-center mb-3 md:mb-6">
@@ -208,7 +212,14 @@ export function BattleArena({
                 Andar {player.floor}
               </Badge>
               <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-primary animate-pulse"></div>
-              <Badge variant={isPlayerTurn ? "default" : "secondary"} className="px-2 py-1 text-xs bg-background/50">
+              <Badge 
+                variant={isPlayerTurn ? "default" : "secondary"} 
+                className={`px-2 py-1 text-xs ${
+                  isPlayerTurn 
+                    ? 'bg-primary text-primary-foreground border-primary' 
+                    : 'bg-secondary text-secondary-foreground border-secondary'
+                }`}
+              >
                 {isPlayerTurn ? "Seu Turno" : "Turno do Inimigo"}
               </Badge>
             </div>
@@ -300,13 +311,13 @@ export function BattleArena({
                     <span className="text-xs md:text-sm font-bold">{player.hp}/{player.max_hp}</span>
                   </div>
                   <div className="relative">
-                    <Progress 
-                      value={playerHpPercentage} 
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)'
-                      }}
-                    />
+                  <Progress 
+                    value={playerHpPercentage} 
+                    className="h-2 md:h-3"
+                    style={{
+                      background: 'rgba(0,0,0,0.2)'
+                    }}
+                  />
                     <div 
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
                         playerHpPercentage >= 70 ? 'bg-green-500' :
@@ -327,13 +338,13 @@ export function BattleArena({
                     <span className="text-xs md:text-sm font-bold">{player.mana}/{player.max_mana}</span>
                   </div>
                   <div className="relative">
-                    <Progress 
-                      value={playerManaPercentage} 
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)'
-                      }}
-                    />
+                  <Progress 
+                    value={playerManaPercentage} 
+                    className="h-2 md:h-3"
+                    style={{
+                      background: 'rgba(0,0,0,0.2)'
+                    }}
+                  />
                     <div 
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
                         playerManaPercentage >= 70 ? 'bg-blue-500' :
@@ -356,6 +367,7 @@ export function BattleArena({
                       value={player.atk}
                       baseValue={player.base_atk}
                       equipmentBonus={player.equipment_atk_bonus}
+                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'atk') || []}
                       size="sm"
                       showTooltip={true}
                     />
@@ -368,7 +380,12 @@ export function BattleArena({
                     <Sparkles className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-purple-400" />
                     <div className="text-xs text-purple-300 mb-1">MAG</div>
                     <div className="text-xs font-bold text-purple-400">
-                      {player.magic_attack}
+                      <StatDisplay 
+                        value={player.magic_attack}
+                        modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'magic_attack') || []}
+                        size="sm"
+                        showTooltip={true}
+                      />
                     </div>
                   </div>
                 )}
@@ -381,6 +398,7 @@ export function BattleArena({
                       value={player.def}
                       baseValue={player.base_def}
                       equipmentBonus={player.equipment_def_bonus}
+                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'def') || []}
                       size="sm"
                       showTooltip={true}
                     />
@@ -394,6 +412,7 @@ export function BattleArena({
                       value={player.speed}
                       baseValue={player.base_speed}
                       equipmentBonus={player.equipment_speed_bonus}
+                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'speed') || []}
                       size="sm"
                       showTooltip={true}
                     />
@@ -430,14 +449,14 @@ export function BattleArena({
                         </div>
                       </div>
                       <div className="relative">
-                        <div className="relative">
-                          <Progress 
-                            value={(player.xp / player.xp_next_level) * 100} 
-                            className="h-2"
-                            style={{
-                              background: 'rgba(0,0,0,0.2)'
-                            }}
-                          />
+                      <div className="relative">
+                        <Progress 
+                          value={(player.xp / player.xp_next_level) * 100} 
+                          className="h-2"
+                          style={{
+                            background: 'rgba(0,0,0,0.2)'
+                          }}
+                        />
                           <div 
                             className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
                             style={{ width: `${(player.xp / player.xp_next_level) * 100}%` }}
@@ -516,7 +535,13 @@ export function BattleArena({
                                 <span>Crítico</span>
                               </div>
                               <div className="font-medium text-yellow-400">
-                                {player.critical_chance.toFixed(1)}%
+                                <StatDisplay 
+                                  value={player.critical_chance}
+                                  modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'critical_chance') || []}
+                                  size="sm"
+                                  showTooltip={true}
+                                  label="%"
+                                />
                               </div>
                             </div>
                           )}
@@ -527,7 +552,13 @@ export function BattleArena({
                                 <span>Dano Crit</span>
                               </div>
                               <div className="font-medium text-orange-400">
-                                {(player.critical_damage || 0).toFixed(0)}%
+                                <StatDisplay 
+                                  value={player.critical_damage}
+                                  modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'critical_damage') || []}
+                                  size="sm"
+                                  showTooltip={true}
+                                  label="%"
+                                />
                               </div>
                             </div>
                           )}
@@ -704,13 +735,13 @@ export function BattleArena({
                     <span className="text-xs md:text-sm font-bold">{currentEnemy.hp}/{currentEnemy.maxHp}</span>
                   </div>
                   <div className="relative">
-                    <Progress 
-                      value={enemyHpPercentage} 
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)'
-                      }}
-                    />
+                  <Progress 
+                    value={enemyHpPercentage} 
+                    className="h-2 md:h-3"
+                    style={{
+                      background: 'rgba(0,0,0,0.2)'
+                    }}
+                  />
                     <div 
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
                         enemyHpPercentage >= 70 ? 'bg-green-500' :

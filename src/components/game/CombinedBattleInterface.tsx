@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,8 +94,11 @@ export function CombinedBattleInterface({
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [usedPotionAnimation, setUsedPotionAnimation] = useState<number | null>(null);
   
-  // OTIMIZADO: Controle para evitar múltiplos cliques no botão avançar
+  // OTIMIZADO: Controle para evitar múltiplos cliques e execuções duplicadas
   const [continuingAdventure, setContinuingAdventure] = useState(false);
+  const actionProcessingRef = useRef<boolean>(false);
+  const lastActionTimestampRef = useRef<number>(0);
+  const ACTION_COOLDOWN_MS = 300; // 300ms entre ações
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -339,6 +342,41 @@ export function CombinedBattleInterface({
     }, 150); // Pequeno delay para evitar flicker
   };
 
+  // Função para verificar se uma ação pode ser executada
+  const canPerformAction = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastAction = now - lastActionTimestampRef.current;
+    
+    if (actionProcessingRef.current) {
+      console.warn('[CombinedBattleInterface] Ação bloqueada - já processando');
+      return false;
+    }
+    
+    if (timeSinceLastAction < ACTION_COOLDOWN_MS) {
+      console.warn(`[CombinedBattleInterface] Ação bloqueada - cooldown (${timeSinceLastAction}ms < ${ACTION_COOLDOWN_MS}ms)`);
+      return false;
+    }
+    
+    return true;
+  }, []);
+
+  // Função para executar ação com proteção
+  const executeAction = useCallback(async (action: ActionType, spellId?: string) => {
+    if (!canPerformAction()) return;
+    
+    actionProcessingRef.current = true;
+    lastActionTimestampRef.current = Date.now();
+    
+    try {
+      await handleAction(action, spellId);
+    } finally {
+      // Limpar flag após um delay para permitir próxima ação
+      setTimeout(() => {
+        actionProcessingRef.current = false;
+      }, ACTION_COOLDOWN_MS);
+    }
+  }, []);
+
   // Handlers para desktop (mouse)
   const handleMouseDown = (info: Omit<TooltipInfo, 'position'>, event: React.MouseEvent) => {
     // Capturar coordenadas antes do setTimeout
@@ -525,7 +563,7 @@ export function CombinedBattleInterface({
               <div className="flex justify-center md:justify-start gap-2">
                 <div className="relative">
                   <Button
-                    onClick={() => handleAction('attack')}
+                    onClick={() => executeAction('attack')}
                     onMouseDown={(e) => handleMouseDown({
                       title: 'Atacar',
                       description: 'Realiza um ataque físico contra o inimigo usando sua arma equipada',
@@ -565,7 +603,7 @@ export function CombinedBattleInterface({
 
                 <div className="relative">
                   <Button
-                    onClick={() => handleAction('defend')}
+                    onClick={() => executeAction('defend')}
                     onMouseDown={(e) => handleMouseDown({
                       title: player.isDefending ? 'Defendendo' : 'Defender',
                       description: player.isDefending 
@@ -617,7 +655,7 @@ export function CombinedBattleInterface({
 
                 <div className="relative">
                   <Button
-                    onClick={() => handleAction('flee')}
+                    onClick={() => executeAction('flee')}
                     onMouseDown={(e) => handleMouseDown({
                       title: 'Fugir',
                       description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
@@ -837,7 +875,7 @@ export function CombinedBattleInterface({
                     return (
                       <div key={spell.id} className="relative">
                         <Button
-                          onClick={() => handleAction('spell', spell.id)}
+                          onClick={() => executeAction('spell', spell.id)}
                           onMouseDown={(e) => handleMouseDown(tooltipInfo, e)}
                           onMouseUp={handleMouseUp}
                           onMouseLeave={handleMouseLeave}

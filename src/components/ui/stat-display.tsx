@@ -1,56 +1,146 @@
 import React from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
+import { AttributeModification } from '@/resources/game/models/spell.model';
 
 interface StatDisplayProps {
   value: number;
   baseValue?: number;
   equipmentBonus?: number;
-  className?: string;
-  showTooltip?: boolean;
+  modifications?: AttributeModification[];
   size?: 'sm' | 'md' | 'lg';
+  showTooltip?: boolean;
+  label?: string;
+  icon?: React.ReactNode;
+  className?: string;
 }
 
-export function StatDisplay({ 
-  value, 
-  baseValue, 
-  equipmentBonus, 
-  className = '', 
+export function StatDisplay({
+  value,
+  baseValue,
+  equipmentBonus = 0,
+  modifications = [],
+  size = 'md',
   showTooltip = false,
-  size = 'md' 
+  label,
+  icon,
+  className = ''
 }: StatDisplayProps) {
-  const sizeClasses = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg font-bold'
-  };
+  // Calcular modificações totais das magias
+  const magicModifications = modifications.reduce((total, mod) => {
+    if (mod.type === 'flat') {
+      return total + mod.value;
+    } else {
+      // Para percentual, aplicar sobre o valor base
+      return total + (baseValue || value) * (mod.value / 100);
+    }
+  }, 0);
 
-  const bonusClasses = {
+  // Verificar se há modificações ativas
+  const hasModifications = modifications.length > 0;
+  //const totalModifications = equipmentBonus + magicModifications;
+
+  const sizeClasses = {
     sm: 'text-xs',
     md: 'text-sm',
     lg: 'text-base'
   };
 
-  // CRÍTICO: Só mostrar breakdown se há valores válidos para equipmentBonus e baseValue
-  const hasValidBonus = equipmentBonus !== undefined && equipmentBonus > 0;
-  const hasValidBase = baseValue !== undefined && baseValue !== null;
-
-  if (!hasValidBonus || !hasValidBase) {
-    return (
-      <span className={`${sizeClasses[size]} ${className}`}>
-        {value}
+  const content = (
+    <div className={`inline-flex items-center gap-1 ${sizeClasses[size]} ${className}`}>
+      {icon && <span className="inline-flex">{icon}</span>}
+      <span className={`font-bold transition-all duration-300 ${
+        hasModifications 
+          ? 'text-purple-400 animate-pulse drop-shadow-[0_0_6px_rgba(168,85,247,0.4)]' 
+          : equipmentBonus > 0 
+            ? 'text-green-400' 
+            : ''
+      }`}>
+        {Math.round(value)}
       </span>
-    );
+      
+      {/* Indicador visual de modificações mágicas */}
+      {hasModifications && (
+        <div className="inline-flex items-center">
+          <div className="w-1 h-1 bg-purple-400 rounded-full animate-pulse" />
+          <div className="ml-1 text-purple-300 text-xs animate-bounce">
+            {magicModifications > 0 ? '+' : ''}{Math.round(magicModifications)}
+          </div>
+        </div>
+      )}
+      
+      {label && <span className="text-muted-foreground ml-1">{label}</span>}
+    </div>
+  );
+
+  if (!showTooltip) {
+    return content;
   }
 
   return (
-    <span 
-      className={`${sizeClasses[size]} ${className} ${showTooltip ? 'cursor-help' : ''}`}
-      title={showTooltip ? `Base: ${baseValue} + Equipamentos: ${equipmentBonus} = Total: ${value}` : undefined}
-    >
-      {baseValue}
-      <span className={`text-green-400 ml-1 ${bonusClasses[size]}`}>
-        (+{equipmentBonus})
-      </span>
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {content}
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs p-3">
+          <div className="space-y-2">
+            <div className="font-semibold text-sm">Detalhes da Estatística</div>
+            
+            {baseValue !== undefined && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Base:</span>
+                <span>{baseValue}</span>
+              </div>
+            )}
+            
+            {equipmentBonus > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Equipamentos:</span>
+                <span className="text-green-400 flex items-center gap-1">
+                  <Plus className="h-3 w-3" />
+                  {equipmentBonus}
+                </span>
+              </div>
+            )}
+            
+            {/* Modificações mágicas detalhadas */}
+            {modifications.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-purple-400 border-t border-border pt-2">
+                  Efeitos Mágicos:
+                </div>
+                {modifications.map((mod, index) => (
+                  <div key={index} className="flex justify-between text-xs">
+                    <span className="text-purple-300 flex items-center gap-1">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
+                      {mod.source_spell}
+                    </span>
+                    <span className="text-purple-400 flex items-center gap-1">
+                      {mod.value > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {mod.value > 0 ? '+' : ''}{mod.value}{mod.type === 'percentage' ? '%' : ''}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-xs pt-1 border-t border-purple-500/20">
+                  <span className="text-purple-300">Total Mágico:</span>
+                  <span className="text-purple-400 font-medium">
+                    {magicModifications > 0 ? '+' : ''}{Math.round(magicModifications)}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-between text-xs font-medium pt-2 border-t border-border">
+              <span>Total:</span>
+              <span className={`${hasModifications ? 'text-purple-400' : 'text-foreground'}`}>
+                {Math.round(value)}
+              </span>
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
