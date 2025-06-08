@@ -943,6 +943,12 @@ export class GameService {
       // CRÍTICO: Evitar processamento duplicado verificando se já temos recompensas
       if (gameState.battleRewards) {
         console.warn('[GameService] Tentativa de processar derrota de inimigo que já possui recompensas - ignorando');
+        console.warn('[GameService] Estado atual do battleRewards:', {
+          xp: gameState.battleRewards.xp,
+          gold: gameState.battleRewards.gold,
+          leveledUp: gameState.battleRewards.leveledUp,
+          dropsCount: gameState.battleRewards.drops?.length || 0
+        });
         return gameState;
       }
 

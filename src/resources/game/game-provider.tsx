@@ -525,6 +525,13 @@ export function GameProvider({ children }: GameProviderProps) {
     console.log(`[game-provider] gameState.mode:`, state.gameState.mode);
     console.log(`[game-provider] gameState.battleRewards:`, !!state.gameState.battleRewards);
     
+    // DEBUGGING: Log detalhado do battleRewards para continue
+    if (action === 'continue') {
+      console.log(`[game-provider] DETALHE BATTLEREWARDS:`, state.gameState.battleRewards);
+      console.log(`[game-provider] TIMESTAMP ATUAL:`, currentTime);
+      console.log(`[game-provider] ÚLTIMA AÇÃO:`, lastActionRef.current);
+    }
+    
     // 1. CRÍTICO: Garantir que sempre há uma sessão de batalha válida
     let battleSession = state.gameState.battleSession;
     
@@ -595,7 +602,8 @@ export function GameProvider({ children }: GameProviderProps) {
     }
     
     // Se ainda não temos sessão após tentativa de criação, bloquear
-    if (!battleSession && state.gameState.mode === 'battle') {
+    // EXCEÇÃO: 'continue' não precisa de sessão de batalha ativa (está finalizando a batalha)
+    if (!battleSession && state.gameState.mode === 'battle' && action !== 'continue') {
       console.warn(`[game-provider] Ação '${action}' BLOQUEADA - não foi possível criar/encontrar sessão de batalha`);
       return;
     }
@@ -706,10 +714,19 @@ export function GameProvider({ children }: GameProviderProps) {
         // CRÍTICO: Processar ação 'continue' ANTES de qualquer outra validação
         if (action === 'continue') {
           console.log('[game-provider] === INÍCIO DA TRANSIÇÃO ===');
+          console.log('[game-provider] Estado battleRewards no setState:', prev.gameState.battleRewards);
+          console.log('[game-provider] Estado completo do jogo:', {
+            mode: prev.gameState.mode,
+            playerFloor: prev.gameState.player.floor,
+            enemyName: prev.gameState.currentEnemy?.name,
+            enemyHp: prev.gameState.currentEnemy?.hp,
+            battleRewards: !!prev.gameState.battleRewards
+          });
           
           // Verificar se temos recompensas de batalha para processar
           if (!prev.gameState.battleRewards) {
-            console.warn('[game-provider] Tentativa de continuar sem recompensas de batalha');
+            console.error('[game-provider] ERRO CRÍTICO: Tentativa de continuar sem recompensas de batalha');
+            console.error('[game-provider] Estado atual completo:', prev.gameState);
             clearProcessingState();
             return prev;
           }
@@ -988,6 +1005,17 @@ export function GameProvider({ children }: GameProviderProps) {
                   }
                 }));
                 
+                // DEBUG: Log do estado após processar derrota
+                console.log('[game-provider] === ESTADO APÓS PROCESSAR DERROTA ===');
+                console.log('[game-provider] battleRewards configurado:', !!defeatedState.battleRewards);
+                console.log('[game-provider] currentEnemy mantido (morto):', {
+                  name: playerActionState.currentEnemy?.name,
+                  hp: playerActionState.currentEnemy?.hp,
+                  maxHp: playerActionState.currentEnemy?.maxHp
+                });
+                console.log('[game-provider] isPlayerTurn:', defeatedState.isPlayerTurn);
+                console.log('[game-provider] gameMode:', defeatedState.mode);
+                
                 console.log('[game-provider] === RECOMPENSAS PROCESSADAS - AGUARDANDO CONFIRMAÇÃO ===');
               } catch (error) {
                 console.error('[game-provider] Erro ao processar derrota:', error);
@@ -1191,7 +1219,27 @@ export function GameProvider({ children }: GameProviderProps) {
 
               // CRÍTICO: Verificar se o inimigo morreu por DoT/efeitos
               if (finalState.currentEnemy && finalState.currentEnemy.hp <= 0) {
-                console.log('[game-provider] === INIMIGO MORREU POR EFEITOS - PROCESSANDO VITÓRIA ===');
+                console.log('[game-provider] === INIMIGO MORREU POR EFEITOS - VERIFICANDO DUPLICAÇÃO ===');
+                
+                // NOVO: Verificar se já há recompensas configuradas para evitar duplicação
+                if (finalState.battleRewards) {
+                  console.warn('[game-provider] Recompensas já existem, ignorando morte por efeitos');
+                  console.warn('[game-provider] Recompensas existentes:', finalState.battleRewards);
+                  
+                  // Apenas atualizar estado sem processar recompensas novamente
+                  setState(prev => ({
+                    ...prev,
+                    gameState: {
+                      ...finalState,
+                      isPlayerTurn: true
+                    }
+                  }));
+                  
+                  clearProcessingState();
+                  return;
+                }
+                
+                console.log('[game-provider] === PROCESSANDO VITÓRIA POR EFEITOS ===');
                 
                 try {
                   // Processar vitória normalmente se não há recompensas ainda
