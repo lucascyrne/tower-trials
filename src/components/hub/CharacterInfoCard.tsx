@@ -20,9 +20,12 @@ import {
   Target,
   User,
   Gem,
+  Play,
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
 import { GamePlayer } from '@/resources/game/game-model';
+import { CharacterService } from '@/resources/game/character.service';
+import { useRouter } from 'next/navigation';
 
 
 interface CharacterInfoCardProps {
@@ -31,6 +34,46 @@ interface CharacterInfoCardProps {
 
 export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [isLoadingQuickPlay, setIsLoadingQuickPlay] = useState(false);
+  const router = useRouter();
+
+  // Função para iniciar jogo rapidamente do último checkpoint
+  const handleQuickPlay = async () => {
+    try {
+      setIsLoadingQuickPlay(true);
+      
+      // Buscar checkpoints desbloqueados
+      const checkpointsResponse = await CharacterService.getUnlockedCheckpoints(player.id);
+      
+      if (!checkpointsResponse.success || !checkpointsResponse.data || checkpointsResponse.data.length === 0) {
+        console.error('Nenhum checkpoint encontrado');
+        return;
+      }
+      
+      // Pegar o maior checkpoint desbloqueado (último)
+      const checkpoints = checkpointsResponse.data.sort((a, b) => b.floor - a.floor);
+      const lastCheckpoint = checkpoints[0];
+      
+      console.log(`[QuickPlay] Iniciando do checkpoint: Andar ${lastCheckpoint.floor} - ${lastCheckpoint.description}`);
+      
+      // Iniciar do último checkpoint
+      const startResponse = await CharacterService.startFromCheckpoint(player.id, lastCheckpoint.floor);
+      
+      if (!startResponse.success) {
+        console.error('Erro ao iniciar do checkpoint:', startResponse.error);
+        return;
+      }
+      
+      console.log(`[QuickPlay] Checkpoint configurado com sucesso. Redirecionando para batalha...`);
+      
+      // CORRIGIDO: Redirecionar para a página de batalha com o ID do personagem
+      router.push(`/game/play/battle?character=${player.id}`);
+    } catch (error) {
+      console.error('Erro no início rápido:', error);
+    } finally {
+      setIsLoadingQuickPlay(false);
+    }
+  };
   
   // CORRIGIDO: Calcular progresso de XP dentro do nível atual
   // Usamos a fórmula de XP do banco: FLOOR(100 * POW(1.5, current_level - 1))
@@ -145,7 +188,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   return (
     <Card className="w-full bg-slate-900/80 border-slate-700 shadow-xl">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-slate-700 rounded-lg">
               <User className="h-5 w-5 text-slate-300" />
@@ -155,8 +198,37 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
               <p className="text-sm text-slate-400">Aventureiro</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="border-amber-500 text-amber-400 bg-amber-500/10">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Button
+              onClick={handleQuickPlay}
+              disabled={isLoadingQuickPlay}
+              size="sm"
+              className="quick-play-button relative overflow-hidden bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:via-purple-500 hover:to-indigo-500 text-white border border-violet-500/20 shadow-lg transition-all duration-300 hover:shadow-violet-500/25 hover:shadow-xl hover:-translate-y-0.5 flex-shrink-0 group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:transform-none"
+            >
+              {/* Overlay gradiente hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-600/50 via-purple-600/50 to-indigo-600/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
+              {/* Indicador de início rápido - pequeno ícone */}
+              {!isLoadingQuickPlay && (
+                <div className="quick-start-indicator absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full shadow-sm shadow-amber-400/50" />
+              )}
+              
+              {/* Ícone principal */}
+              <Play className={`h-3 w-3 mr-1.5 relative z-10 transition-transform duration-300 ${isLoadingQuickPlay ? 'animate-spin' : 'group-hover:scale-110 group-hover:drop-shadow-lg'}`} />
+              
+              {/* Texto */}
+              <span className="relative z-10 font-medium tracking-wide">
+                {isLoadingQuickPlay ? 'Iniciando...' : 'Jogar'}
+              </span>
+              
+              {/* Shimmer effect on hover */}
+              {!isLoadingQuickPlay && (
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 group-hover:animate-pulse" />
+                </div>
+              )}
+            </Button>
+            <Badge variant="outline" className="border-amber-500 text-amber-400 bg-amber-500/10 flex-shrink-0">
               <Star className="h-3 w-3 mr-1" />
               Nível {player.level}
             </Badge>
@@ -164,7 +236,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
               variant="ghost"
               size="sm"
               onClick={() => setShowDetails(!showDetails)}
-              className="text-slate-400 hover:text-slate-200"
+              className="text-slate-400 hover:text-slate-200 flex-shrink-0"
             >
               {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>

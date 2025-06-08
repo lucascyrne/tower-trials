@@ -884,7 +884,7 @@ export function GameProvider({ children }: GameProviderProps) {
               consumableId
             );
 
-            const { newState: playerActionState, skipTurn, message, skillXpGains, skillMessages, gameLogMessages } = playerActionResult;
+            const { newState: playerActionState, skipTurn, message, gameLogMessages } = playerActionResult;
             
             console.log(`[game-provider] Ação do jogador processada - skipTurn: ${skipTurn}`);
             
