@@ -436,13 +436,17 @@ export function BattleArena({
               </div>
 
               {/* Player Combat Stats - Grid Adaptativo */}
-              <div className={`grid gap-1 md:gap-2 ${player.magic_attack && player.magic_attack > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <div className={`grid gap-1 md:gap-2 ${
+                player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0 
+                  ? 'grid-cols-4' 
+                  : 'grid-cols-3'
+              }`}>
                 <div className="bg-red-500/10 border border-red-500/20 rounded p-1 md:p-2 text-center">
                   <Sword className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-red-400" />
                   <div className="text-xs text-red-300 mb-1">ATK</div>
                   <div className="text-xs font-bold text-red-400">
                     <StatDisplay 
-                      value={player.atk}
+                      value={player.atk || 0}
                       baseValue={player.base_atk}
                       equipmentBonus={player.equipment_atk_bonus}
                       modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'atk') || []}
@@ -450,11 +454,10 @@ export function BattleArena({
                       showTooltip={true}
                     />
                   </div>
-
                 </div>
                 
-                {/* Magic Attack - Novo sistema */}
-                {player.magic_attack && player.magic_attack > 0 && (
+                {/* Magic Attack - Só renderizar se valor for válido */}
+                {player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0 && (
                   <div className="bg-purple-500/10 border border-purple-500/20 rounded p-1 md:p-2 text-center">
                     <Sparkles className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-purple-400" />
                     <div className="text-xs text-purple-300 mb-1">MAG</div>
@@ -466,7 +469,6 @@ export function BattleArena({
                         showTooltip={true}
                       />
                     </div>
-
                   </div>
                 )}
                 
@@ -475,7 +477,7 @@ export function BattleArena({
                   <div className="text-xs text-blue-300 mb-1">DEF</div>
                   <div className="text-xs font-bold text-blue-400">
                     <StatDisplay 
-                      value={player.def}
+                      value={player.def || 0}
                       baseValue={player.base_def}
                       equipmentBonus={player.equipment_def_bonus}
                       modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'def') || []}
@@ -483,7 +485,6 @@ export function BattleArena({
                       showTooltip={true}
                     />
                   </div>
-
                 </div>
                 
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-1 md:p-2 text-center">
@@ -491,7 +492,7 @@ export function BattleArena({
                   <div className="text-xs text-yellow-300 mb-1">SPD</div>
                   <div className="text-xs font-bold text-yellow-400">
                     <StatDisplay 
-                      value={player.speed}
+                      value={player.speed || 0}
                       baseValue={player.base_speed}
                       equipmentBonus={player.equipment_speed_bonus}
                       modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'speed') || []}

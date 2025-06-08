@@ -26,19 +26,25 @@ export function StatDisplay({
   icon,
   className = ''
 }: StatDisplayProps) {
+  // CRÍTICO: Garantir que o valor seja válido, senão usar 0
+  const safeValue = isNaN(value) || value === undefined || value === null ? 0 : value;
+  const safeBaseValue = isNaN(baseValue || 0) || baseValue === undefined || baseValue === null ? 0 : (baseValue || 0);
+  const safeEquipmentBonus = isNaN(equipmentBonus) || equipmentBonus === undefined ? 0 : equipmentBonus;
+
   // Calcular modificações totais das magias
   const magicModifications = modifications.reduce((total, mod) => {
     if (mod.type === 'flat') {
-      return total + mod.value;
+      return total + (isNaN(mod.value) ? 0 : mod.value);
     } else {
       // Para percentual, aplicar sobre o valor base
-      return total + (baseValue || value) * (mod.value / 100);
+      const baseForPercentage = safeBaseValue || safeValue;
+      return total + baseForPercentage * ((isNaN(mod.value) ? 0 : mod.value) / 100);
     }
   }, 0);
 
   // Verificar se há modificações ativas
   const hasModifications = modifications.length > 0;
-  //const totalModifications = equipmentBonus + magicModifications;
+  //const totalModifications = safeEquipmentBonus + magicModifications;
 
   const sizeClasses = {
     sm: 'text-xs',
@@ -52,11 +58,11 @@ export function StatDisplay({
       <span className={`font-bold transition-all duration-300 ${
         hasModifications 
           ? 'text-purple-400 animate-pulse drop-shadow-[0_0_6px_rgba(168,85,247,0.4)]' 
-          : equipmentBonus > 0 
+          : safeEquipmentBonus > 0 
             ? 'text-green-400' 
             : ''
       }`}>
-        {Math.round(value)}
+        {Math.round(safeValue)}
       </span>
       
       {/* Indicador visual de modificações mágicas */}
@@ -87,19 +93,19 @@ export function StatDisplay({
           <div className="space-y-2">
             <div className="font-semibold text-sm">Detalhes da Estatística</div>
             
-            {baseValue !== undefined && (
+            {baseValue !== undefined && !isNaN(safeBaseValue) && (
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Base:</span>
-                <span>{baseValue}</span>
+                <span>{Math.round(safeBaseValue)}</span>
               </div>
             )}
             
-            {equipmentBonus > 0 && (
+            {safeEquipmentBonus > 0 && (
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">Equipamentos:</span>
                 <span className="text-green-400 flex items-center gap-1">
                   <Plus className="h-3 w-3" />
-                  {equipmentBonus}
+                  {Math.round(safeEquipmentBonus)}
                 </span>
               </div>
             )}
@@ -134,7 +140,7 @@ export function StatDisplay({
             <div className="flex justify-between text-xs font-medium pt-2 border-t border-border">
               <span>Total:</span>
               <span className={`${hasModifications ? 'text-purple-400' : 'text-foreground'}`}>
-                {Math.round(value)}
+                {Math.round(safeValue)}
               </span>
             </div>
           </div>
@@ -165,8 +171,13 @@ export function StatCard({
   showTooltip = true,
   size = 'md'
 }: StatCardProps) {
+  // CRÍTICO: Verificar valores válidos e tratar NaN
+  const safeValue = isNaN(value) || value === undefined || value === null ? 0 : value;
+  const safeBaseValue = isNaN(baseValue || 0) || baseValue === undefined || baseValue === null ? 0 : (baseValue || 0);
+  const safeEquipmentBonus = isNaN(equipmentBonus || 0) || equipmentBonus === undefined ? 0 : (equipmentBonus || 0);
+  
   // CRÍTICO: Só mostrar breakdown se há bônus real de equipamentos
-  const hasEquipmentBonus = equipmentBonus !== undefined && equipmentBonus > 0;
+  const hasEquipmentBonus = safeEquipmentBonus > 0;
   
   return (
     <div className={`bg-card p-3 rounded-lg border ${hasEquipmentBonus ? 'border-green-500/20 bg-green-500/5' : ''}`}>
@@ -177,22 +188,22 @@ export function StatCard({
       <div className={size === 'lg' ? 'text-2xl font-bold' : size === 'md' ? 'text-xl font-bold' : 'text-lg font-bold'}>
         {hasEquipmentBonus && baseValue !== undefined ? (
           <StatDisplay 
-            value={value}
-            baseValue={baseValue}
-            equipmentBonus={equipmentBonus}
+            value={safeValue}
+            baseValue={safeBaseValue}
+            equipmentBonus={safeEquipmentBonus}
             className={color}
             showTooltip={showTooltip}
             size={size}
           />
         ) : (
           <span className={color}>
-            {value}
+            {Math.round(safeValue)}
           </span>
         )}
       </div>
       {hasEquipmentBonus && baseValue !== undefined && showTooltip && (
         <div className="text-xs text-muted-foreground mt-1">
-          Base: {baseValue} + Equipamentos: +{equipmentBonus}
+          Base: {Math.round(safeBaseValue)} + Equipamentos: +{Math.round(safeEquipmentBonus)}
         </div>
       )}
       {(!hasEquipmentBonus || baseValue === undefined) && showTooltip && (

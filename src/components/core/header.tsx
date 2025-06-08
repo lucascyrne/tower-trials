@@ -10,6 +10,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
+import { PWAInstallButton } from '../PWAInstallButton';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
 import Link from 'next/link';
@@ -75,7 +76,9 @@ export function Header({ userName }: HeaderProps) {
           </h1>
         </Link>
 
-        <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
+          <PWAInstallButton />
+          
           <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
             <User className="h-4 w-4" />
             <span className="text-sm">{userName}</span>

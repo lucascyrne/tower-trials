@@ -457,9 +457,16 @@ export default function GameBattle() {
     );
   }
 
-  const enemyHpPercentage = currentEnemy ? (currentEnemy.hp / currentEnemy.maxHp) * 100 : 0;
-  const playerHpPercentage = (player.hp / player.max_hp) * 100;
-  const playerManaPercentage = (player.mana / player.max_mana) * 100;
+  // CRÍTICO: Garantir que não haja divisão por zero ou valores NaN
+  const enemyHpPercentage = currentEnemy && currentEnemy.maxHp > 0 
+    ? Math.max(0, Math.min(100, (currentEnemy.hp / currentEnemy.maxHp) * 100)) 
+    : 0;
+  const playerHpPercentage = player.max_hp > 0 
+    ? Math.max(0, Math.min(100, (player.hp / player.max_hp) * 100)) 
+    : 0;
+  const playerManaPercentage = player.max_mana > 0 
+    ? Math.max(0, Math.min(100, (player.mana / player.max_mana) * 100)) 
+    : 0;
 
   // CORRIGIDO: Função para executar ações do jogador com proteção aprimorada
   const handleAction = async (action: ActionType, spellId?: string) => {
@@ -716,21 +723,19 @@ export default function GameBattle() {
           />
         </div>
 
-        {/* Interface de Batalha - Apenas Mobile Portrait */}
-        {isMobilePortrait && (
-          <div className="mb-6">
-            <CombinedBattleInterface 
-              handleAction={handleAction}
-              isPlayerTurn={isPlayerTurn}
-              loading={loading}
-              player={player}
-              onPlayerStatsUpdate={handlePlayerStatsUpdate}
-              onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
-              currentEnemy={currentEnemy}
-              battleRewards={gameState.battleRewards}
-            />
-          </div>
-        )}
+        {/* Interface de Batalha - SEMPRE VISÍVEL para garantir botão de fallback */}
+        <div className="mb-6">
+          <CombinedBattleInterface 
+            handleAction={handleAction}
+            isPlayerTurn={isPlayerTurn}
+            loading={loading}
+            player={player}
+            onPlayerStatsUpdate={handlePlayerStatsUpdate}
+            onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+            currentEnemy={currentEnemy}
+            battleRewards={gameState.battleRewards}
+          />
+        </div>
 
         <GameLog gameLog={gameLog} />
         

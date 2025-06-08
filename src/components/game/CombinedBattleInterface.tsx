@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import {
   Sword, 
   Shield, 
   ArrowLeft,
+  ArrowRight,
   Zap,
   Flame,
   Snowflake,
@@ -25,6 +26,7 @@ import { ActionType, GamePlayer } from '@/resources/game/game-model';
 import { PlayerSpell } from '@/resources/game/models/spell.model';
 import { CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { SlotService, PotionSlot } from '@/resources/game/slot.service';
+import { GameContext } from '@/resources/game/game-context';
 import { toast } from 'sonner';
 
 interface CombinedBattleInterfaceProps {
@@ -85,6 +87,7 @@ export function CombinedBattleInterface({
   currentEnemy,
   battleRewards
 }: CombinedBattleInterfaceProps) {
+  const { performAction } = useContext(GameContext);
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [usingSlot, setUsingSlot] = useState<number | null>(null);
@@ -99,6 +102,30 @@ export function CombinedBattleInterface({
   const ACTION_COOLDOWN_MS = 300; // 300ms entre ações
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Função para avançar para o próximo andar
+  const handleContinueAdventure = useCallback(async () => {
+    if (continuingAdventure || !battleRewards) return;
+    
+    console.log('[CombinedBattleInterface] === BOTÃO FALLBACK ACIONADO ===');
+    console.log('[CombinedBattleInterface] Avançando para próximo andar via fallback...');
+    
+    setContinuingAdventure(true);
+    
+    try {
+      // Usar a ação 'continue' do contexto do jogo
+      performAction('continue');
+      
+      toast.success('Avançando para o próximo andar!', {
+        description: 'Preparando nova batalha...',
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('[CombinedBattleInterface] Erro ao avançar:', error);
+      toast.error('Erro ao avançar para o próximo andar');
+      setContinuingAdventure(false);
+    }
+  }, [continuingAdventure, battleRewards, performAction]);
 
   const isDisabled = !isPlayerTurn || loading.performAction;
   const potionUsedThisTurn = player.potionUsedThisTurn || false;
@@ -144,6 +171,28 @@ export function CombinedBattleInterface({
     !continuingAdventure &&
     (!currentEnemy || currentEnemy.hp <= 0) // Mostrar se não há inimigo ou se está morto
   );
+  
+  // DEBUG: Log detalhado das condições do botão
+  useEffect(() => {
+    console.log(`[CombinedBattleInterface] === CONDIÇÕES DO BOTÃO FALLBACK ===`);
+    console.log(`[CombinedBattleInterface] shouldShowNextFloorButton: ${shouldShowNextFloorButton}`);
+    console.log(`[CombinedBattleInterface] - battleRewards:`, battleRewards ? {
+      xp: battleRewards.xp,
+      gold: battleRewards.gold,
+      leveledUp: battleRewards.leveledUp,
+      dropsCount: battleRewards.drops?.length || 0
+    } : 'null/undefined');
+    console.log(`[CombinedBattleInterface] - loading.performAction: ${loading.performAction}`);
+    console.log(`[CombinedBattleInterface] - isPlayerDead: ${isPlayerDead}`);
+    console.log(`[CombinedBattleInterface] - continuingAdventure: ${continuingAdventure}`);
+    console.log(`[CombinedBattleInterface] - currentEnemy:`, currentEnemy ? {
+      name: currentEnemy.name,
+      hp: currentEnemy.hp,
+      maxHp: currentEnemy.maxHp,
+      isDead: currentEnemy.hp <= 0
+    } : 'null/undefined');
+    console.log(`[CombinedBattleInterface] === FIM DAS CONDIÇÕES ===`);
+  }, [shouldShowNextFloorButton, battleRewards, loading.performAction, isPlayerDead, continuingAdventure, currentEnemy?.hp]);
 
   const loadPotionSlots = async () => {
     try {
@@ -459,7 +508,7 @@ export function CombinedBattleInterface({
   // Limitar magias a 3 para UI mais enxuta
   const displaySpells = player.spells.slice(0, 3);
 
-  return (
+    return (
     <>
       {/* CRÍTICO: Overlay bloqueando interface se personagem morto */}
       {isPlayerDead && (
@@ -471,8 +520,6 @@ export function CombinedBattleInterface({
           </div>
         </div>
       )}
-      
-
       
       <Card className="border-0 bg-card/50 backdrop-blur-sm relative">
         <CardContent className="p-3 md:p-3 space-y-3 md:space-y-2">
@@ -520,28 +567,7 @@ export function CombinedBattleInterface({
                 </div>
                 
                 <Button
-                  onClick={async () => {
-                    // CORRIGIDO: Evitar múltiplos cliques e processamento duplicado
-                    if (continuingAdventure || loading.performAction || actionProcessingRef.current) {
-                      console.log('[CombinedBattleInterface] Clique ignorado - já processando');
-                      return;
-                    }
-
-                    console.log('[CombinedBattleInterface] Botão Avançar clicado');
-                    setContinuingAdventure(true);
-                    
-                    try {
-                      await executeAction('continue');
-                    } catch (error) {
-                      console.error('[CombinedBattleInterface] Erro ao avançar:', error);
-                      toast.error('Erro ao avançar para o próximo andar');
-                    } finally {
-                      // Reset após um delay para garantir que o estado seja atualizado
-                      setTimeout(() => {
-                        setContinuingAdventure(false);
-                      }, 500);
-                    }
-                  }}
+                  onClick={handleContinueAdventure}
                   disabled={loading.performAction || isPlayerDead || continuingAdventure}
                   size="lg"
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105 w-full md:w-auto"
@@ -553,7 +579,7 @@ export function CombinedBattleInterface({
                     </>
                   ) : (
                     <>
-                      <ArrowLeft className="h-4 w-4 mr-2 rotate-180" />
+                      <ArrowRight className="h-4 w-4 mr-2" />
                       Continuar Aventura
                     </>
                   )}
