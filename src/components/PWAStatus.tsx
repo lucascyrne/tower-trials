@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Download, Smartphone, Wifi, WifiOff } from 'lucide-react';
 
 export function PWAStatus() {
-  const { isInstalled, isInstallable, canInstall } = usePWAInstall();
+  const { isInstalled, canInstall } = usePWAInstall();
   const [isOnline, setIsOnline] = useState(true);
   const [isStandalone, setIsStandalone] = useState(false);
 
