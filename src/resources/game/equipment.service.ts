@@ -521,15 +521,15 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     };
 
     // Arma principal (100% eficiência)
-    addEquipmentBonus(slots.main_hand, false);
+    addEquipmentBonus(slots.main_hand ?? null, false);
     
     // ATUALIZADO: Arma/escudo secundário (80% para armas, 100% para escudos)
-    addEquipmentBonus(slots.off_hand, true);
+    addEquipmentBonus(slots.off_hand ?? null, true);
     
     // Armadura e acessórios (100% eficiência)
-    addEquipmentBonus(slots.armor, false);
-    addEquipmentBonus(slots.accessory, false);
-    addEquipmentBonus(slots.accessory_2, false);
+    addEquipmentBonus(slots.armor ?? null, false);
+    addEquipmentBonus(slots.accessory ?? null, false);
+    addEquipmentBonus(slots.accessory_2 ?? null, false);
 
     return bonus;
 }; 
