@@ -450,14 +450,7 @@ export function BattleArena({
                       showTooltip={true}
                     />
                   </div>
-                  {/* NOVO: Indicador de dual wielding */}
-                  {Boolean(player.equipment_slots?.off_hand?.type === 'weapon') && (
-                    <div className="mt-1 flex items-center justify-center">
-                      <div className="text-xs bg-purple-500/20 text-purple-400 px-1 rounded border border-purple-500/30" title="Dual Wielding: Arma secundária ativa (80% eficiência)">
-                        DW
-                      </div>
-                    </div>
-                  )}
+
                 </div>
                 
                 {/* Magic Attack - Novo sistema */}
@@ -473,14 +466,7 @@ export function BattleArena({
                         showTooltip={true}
                       />
                     </div>
-                    {/* NOVO: Indicador de staff off-hand */}
-                    {Boolean(player.equipment_slots?.off_hand?.weapon_subtype === 'staff') && (
-                      <div className="mt-1 flex items-center justify-center">
-                        <div className="text-xs bg-blue-500/20 text-blue-400 px-1 rounded border border-blue-500/30" title="Staff Secundário: Bônus mágico (100% eficiência)">
-                          MS
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 )}
                 
@@ -497,14 +483,7 @@ export function BattleArena({
                       showTooltip={true}
                     />
                   </div>
-                  {/* NOVO: Indicador de escudo off-hand */}
-                  {Boolean(player.equipment_slots?.off_hand?.type === 'armor') && (
-                    <div className="mt-1 flex items-center justify-center">
-                      <div className="text-xs bg-cyan-500/20 text-cyan-400 px-1 rounded border border-cyan-500/30" title="Escudo Equipado: Defesa completa (100% eficiência)">
-                        SH
-                      </div>
-                    </div>
-                  )}
+
                 </div>
                 
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-1 md:p-2 text-center">
