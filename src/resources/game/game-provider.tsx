@@ -888,27 +888,29 @@ export function GameProvider({ children }: GameProviderProps) {
             
             console.log(`[game-provider] Ação do jogador processada - skipTurn: ${skipTurn}`);
             
-            // Adicionar mensagens da ação do jogador ao log de jogo
+            // CORRIGIDO: Adicionar mensagens da ação do jogador ao log PRIMEIRO
             if (gameLogMessages && gameLogMessages.length > 0) {
-              gameLogMessages.forEach(logMessage => {
+              // Separar mensagens por tipo para manter ordem correta
+              const actionMessages = gameLogMessages.filter(msg => msg.type === 'player_action' || msg.type === 'damage' || msg.type === 'system');
+              const skillXpMessages = gameLogMessages.filter(msg => msg.type === 'skill_xp');
+              
+              // Adicionar mensagens de ação primeiro
+              actionMessages.forEach(logMessage => {
                 addGameLogMessage(logMessage.message, logMessage.type);
               });
-            }
-            
-            // Processar XP de habilidades do jogador se houver
-            if (skillXpGains && skillXpGains.length > 0 && selectedCharacter) {
-              try {
-                for (const skillGain of skillXpGains) {
-                  await CharacterService.addSkillXp(selectedCharacter.id, skillGain.skill, skillGain.xp);
-                }
-                
-                if (skillMessages) {
-                  skillMessages.forEach(skillMsg => addGameLogMessage(skillMsg, 'skill_xp'));
-                }
-              } catch (error) {
-                console.error('[game-provider] Erro ao aplicar XP de habilidades do jogador:', error);
+              
+              // Aguardar um momento antes de adicionar mensagens de skill XP
+              if (skillXpMessages.length > 0) {
+                setTimeout(() => {
+                  skillXpMessages.forEach(logMessage => {
+                    addGameLogMessage(logMessage.message, 'skill_xp');
+                  });
+                }, 100); // Pequeno delay para garantir ordem
               }
             }
+            
+            // REMOVIDO: Processamento duplicado de XP (já feito no GameService)
+            // O GameService agora aplica skill XP diretamente e retorna as mensagens
             
             // CORRIGIDO: Lógica de skipTurn mais restritiva
             if (skipTurn) {

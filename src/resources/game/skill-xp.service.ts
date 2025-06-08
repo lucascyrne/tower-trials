@@ -1,11 +1,13 @@
 import { SkillType } from './models/character.model';
 import { Equipment, isDualWielding, hasShield, getMainWeapon } from './models/equipment.model';
 import { EquipmentSlots } from './models/equipment.model';
+import { CharacterService } from './character.service';
 
 export interface SkillXpGain {
   skill: SkillType;
   xp: number;
   reason: string;
+  isOffHand?: boolean;
 }
 
 export class SkillXpService {
@@ -40,13 +42,15 @@ export class SkillXpService {
           skillGains.push({
             skill: weaponSkill,
             xp,
-            reason: `Ataque com ${mainWeapon.name} (Dual-wield)`
+            reason: `Ataque com ${mainWeapon.name} (Dual-wield)`,
+            isOffHand: false
           });
         } else {
           skillGains.push({
             skill: weaponSkill,
             xp,
-            reason: `Ataque com ${mainWeapon.name}`
+            reason: `Ataque com ${mainWeapon.name}`,
+            isOffHand: false
           });
         }
       }
@@ -60,7 +64,8 @@ export class SkillXpService {
         skillGains.push({
           skill: offWeaponSkill,
           xp: offXp,
-          reason: `Ataque com ${equipmentSlots.off_hand.name} (Mão secundária)`
+          reason: `Ataque com ${equipmentSlots.off_hand.name} (Mão secundária)`,
+          isOffHand: true
         });
       }
     }
@@ -99,7 +104,8 @@ export class SkillXpService {
     skillGains.push({
       skill: SkillType.DEFENSE_MASTERY,
       xp: finalXp,
-      reason
+      reason,
+      isOffHand: false
     });
     
     console.log(`[SkillXpService] XP de defesa calculado: ${finalXp} (dano bloqueado: ${damageBlocked})`);
@@ -113,7 +119,8 @@ export class SkillXpService {
   static calculateMagicSkillXp(
     spellManaCost: number,
     spellDamage: number = 0,
-    actualSpellValue: number = 0 // Valor real da magia (dano ou cura escalado)
+    actualSpellValue: number = 0, // Valor real da magia (dano ou cura escalado)
+    equipmentSlots: EquipmentSlots | null = null // NOVO: Para verificar varinhas
   ): SkillXpGain[] {
     const skillGains: SkillXpGain[] = [];
     
@@ -133,9 +140,21 @@ export class SkillXpService {
     skillGains.push({
       skill: SkillType.MAGIC_MASTERY,
       xp: totalXp,
-      reason: `Uso de magia (${spellManaCost} mana, ${actualSpellValue || spellDamage} efeito)`
+      reason: `Uso de magia (${spellManaCost} mana, ${actualSpellValue || spellDamage} efeito)`,
+      isOffHand: false
     });
-    
+
+    // NOVO: Bônus de XP se estiver usando varinha/staff na off-hand
+    if (equipmentSlots?.off_hand?.weapon_subtype === 'staff') {
+      const bonusXp = Math.max(1, Math.floor(totalXp * 0.2)); // 20% de bônus
+      skillGains.push({
+        skill: SkillType.MAGIC_MASTERY,
+        xp: bonusXp,
+        reason: `Bônus por ${equipmentSlots.off_hand.name} (off-hand)`,
+        isOffHand: true
+      });
+    }
+
     return skillGains;
   }
 
@@ -186,30 +205,41 @@ export class SkillXpService {
     characterId: string,
     skillGains: SkillXpGain[]
   ): Promise<{ messages: string[], skillLevelUps: Array<{ skill: SkillType, newLevel: number }> }> {
-    const { CharacterService } = await import('./character.service');
-    
     const messages: string[] = [];
     const skillLevelUps: Array<{ skill: SkillType, newLevel: number }> = [];
     
+    if (skillGains.length === 0) {
+      return { messages, skillLevelUps };
+    }
+
+    console.log(`[SkillXpService] Aplicando ${skillGains.length} ganhos de XP de habilidade para ${characterId}`);
+
     for (const gain of skillGains) {
       try {
         const result = await CharacterService.addSkillXp(characterId, gain.skill, gain.xp);
         
         if (result.success && result.data) {
-          // Adicionar mensagem de XP ganho
-          messages.push(`+${gain.xp} XP em ${this.getSkillDisplayName(gain.skill)} (${gain.reason})`);
+          const skillDisplayName = this.getSkillDisplayName(gain.skill);
+          const offHandIndicator = gain.isOffHand ? ' (off-hand)' : '';
           
-          // Verificar se houve level up
           if (result.data.skill_leveled_up) {
+            const levelUpMessage = `🎉 ${skillDisplayName} subiu para nível ${result.data.new_skill_level}!${offHandIndicator}`;
+            messages.push(levelUpMessage);
             skillLevelUps.push({
               skill: gain.skill,
               newLevel: result.data.new_skill_level
             });
-            messages.push(`🎉 ${this.getSkillDisplayName(gain.skill)} aumentou para nível ${result.data.new_skill_level}!`);
+            console.log(`[SkillXpService] ${levelUpMessage}`);
+          } else {
+            const xpMessage = `+${gain.xp} XP em ${skillDisplayName}${offHandIndicator}`;
+            messages.push(xpMessage);
+            console.log(`[SkillXpService] ${xpMessage} (${gain.reason})`);
           }
+        } else {
+          console.error(`[SkillXpService] Erro ao aplicar XP de ${gain.skill}:`, result.error);
         }
       } catch (error) {
-        console.error(`Erro ao aplicar XP de habilidade ${gain.skill}:`, error);
+        console.error(`[SkillXpService] Exceção ao aplicar XP de ${gain.skill}:`, error);
       }
     }
     

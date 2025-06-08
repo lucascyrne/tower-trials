@@ -481,4 +481,55 @@ export class EquipmentService {
             };
         }
     }
-} 
+}
+
+export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
+    const bonus = {
+        hp: 0,
+        max_hp: 0,
+        mana: 0,
+        max_mana: 0,
+        atk: 0,
+        def: 0,
+        speed: 0,
+        critical_chance: 0,
+        critical_damage: 0,
+        double_attack_chance: 0,
+        magic_damage: 0,
+    };
+
+    const addEquipmentBonus = (equipment: Equipment | null, isOffHand: boolean = false) => {
+        if (!equipment) return;
+
+        // NOVO: Sistema de nerf para off-hand weapons (20% de redução)
+        const offHandMultiplier = isOffHand && equipment.type === 'weapon' ? 0.8 : 1.0;
+        
+        // NOVO: Escudos mantêm 100% de eficiência mesmo na off-hand
+        const actualMultiplier = (isOffHand && equipment.type === 'armor') ? 1.0 : offHandMultiplier;
+
+        bonus.hp += Math.floor(equipment.hp_bonus * actualMultiplier);
+        bonus.max_hp += Math.floor(equipment.hp_bonus * actualMultiplier);
+        bonus.mana += Math.floor(equipment.mana_bonus * actualMultiplier);
+        bonus.max_mana += Math.floor(equipment.mana_bonus * actualMultiplier);
+        bonus.atk += Math.floor(equipment.atk_bonus * actualMultiplier);
+        bonus.def += Math.floor(equipment.def_bonus * actualMultiplier);
+        bonus.speed += Math.floor(equipment.speed_bonus * actualMultiplier);
+        bonus.critical_chance += equipment.critical_chance_bonus * actualMultiplier;
+        bonus.critical_damage += equipment.critical_damage_bonus * actualMultiplier;
+        bonus.double_attack_chance += equipment.double_attack_chance_bonus * actualMultiplier;
+        bonus.magic_damage += equipment.magic_damage_bonus * actualMultiplier;
+    };
+
+    // Arma principal (100% eficiência)
+    addEquipmentBonus(slots.main_hand, false);
+    
+    // ATUALIZADO: Arma/escudo secundário (80% para armas, 100% para escudos)
+    addEquipmentBonus(slots.off_hand, true);
+    
+    // Armadura e acessórios (100% eficiência)
+    addEquipmentBonus(slots.armor, false);
+    addEquipmentBonus(slots.accessory, false);
+    addEquipmentBonus(slots.accessory_2, false);
+
+    return bonus;
+}; 

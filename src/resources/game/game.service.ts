@@ -1,16 +1,16 @@
 'use client';
 
-import { ActionType, Enemy, GameResponse, GameState, GamePlayer, Floor, FloorType, BattleRewards } from './game-model';
-import type { InitiativeData, SpeedComparison } from './models/game-battle.model';
-import { MonsterService } from './monster.service';
+import { Enemy, GameResponse, GameState, Floor, FloorType, ActionType, GamePlayer, BattleRewards } from './game-model';
+import { supabase } from '@/lib/supabase';
+import { SkillXpService, SkillXpGain } from './skill-xp.service';
+import { EquipmentSlots } from './models/equipment.model';
 import { SpellService } from './spell.service';
+import { MonsterService } from './monster.service';
+import { InitiativeData, SpeedComparison } from './models/game-battle.model';
 import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
-import { SkillXpGain, SkillXpService } from './skill-xp.service';
-import { supabase } from '@/lib/supabase';
 import { CemeteryService } from './cemetery.service';
 import { EquipmentService } from './equipment.service';
-import { SkillType } from './models/character.model';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -485,462 +485,325 @@ export class GameService {
    * @param action Tipo de ação
    * @param gameState Estado atual do jogo
    * @param spellId ID da magia (opcional)
-   * @param consumableId ID do consumível (opcional)
+   * @param _consumableId ID do consumível (opcional)
    * @returns Novo estado do jogo e resultado da ação
    */
   static async processPlayerAction(
     action: ActionType, 
     gameState: GameState,
     spellId?: string,
-    consumableId?: string
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _consumableId?: string // Parâmetro reservado para futuro uso
   ): Promise<{ 
     newState: GameState;
     skipTurn: boolean;
     message: string;
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
-    gameLogMessages?: { message: string; type: 'player_action' | 'damage' | 'system' }[];
+    gameLogMessages?: { message: string; type: 'player_action' | 'damage' | 'system' | 'skill_xp' }[];
   }> {
-    const { player, currentEnemy } = gameState;
-    let message = '';
-    let skipTurn = false;
+    console.log(`[GameService] Processando ação do jogador: ${action}`);
+    const newState = { ...gameState };
+    const gameLogMessages: { message: string; type: 'player_action' | 'damage' | 'system' | 'skill_xp' }[] = [];
     const skillXpGains: SkillXpGain[] = [];
     const skillMessages: string[] = [];
-    const gameLogMessages: { message: string; type: 'player_action' | 'damage' | 'system' }[] = [];
-
-    if (!currentEnemy) {
-      return {
-        newState: gameState,
-        skipTurn: true,
-        message: 'Nenhum inimigo para atacar!',
-        skillXpGains,
-        skillMessages,
-        gameLogMessages
-      };
-    }
-
-    let newState = { ...gameState };
-
-    // Resetar flag de poção usada no início do turno
-    newState.player.potionUsedThisTurn = false;
+    let skipTurn = false;
+    let message = "";
+    let totalDamage = 0; // Para calcular skill XP
 
     switch (action) {
       case 'attack':
-        const damageResult = this.calculateDamage(
-          player.atk, 
-          currentEnemy.defense,
-          player.critical_chance || 0,
-          player.critical_damage || 110,
-          0 // Duplo ataque não se aplica a ataques manuais por enquanto
-        );
-        
-        newState.currentEnemy!.hp = Math.max(0, currentEnemy.hp - damageResult.damage);
-        
-        // Mensagem detalhada baseada no tipo de ataque
-        let attackMessage = `Você atacou ${currentEnemy.name}`;
-        if (damageResult.isCritical) {
-          attackMessage += ` com um golpe crítico`;
-        }
-        if (damageResult.isDoubleAttack) {
-          attackMessage += ` ${damageResult.totalAttacks}x`;
-        }
-        attackMessage += ` e causou ${damageResult.damage} de dano!`;
-        
-        message = attackMessage;
-        
-        // Adicionar mensagens ao log de jogo
-        gameLogMessages.push({
-          message: `${player.name} ataca ${currentEnemy.name}!`,
-          type: 'player_action'
-        });
-        
-        let damageLogMessage = `${player.name} causou ${damageResult.damage} de dano`;
-        if (damageResult.isCritical) damageLogMessage += ' (CRÍTICO)';
-        if (damageResult.isDoubleAttack) damageLogMessage += ' (DUPLO ATAQUE)';
-        damageLogMessage += ` em ${currentEnemy.name}`;
-        
-        gameLogMessages.push({
-          message: damageLogMessage,
-          type: 'damage'
-        });
-        
-        // CRÍTICO: Usar o SkillXpService para calcular XP de ataque
-        try {
-          // Por enquanto usar null para equipmentSlots - o SkillXpService irá usar fallback
-          const attackXpGains = SkillXpService.calculateAttackSkillXp(null, damageResult.damage);
-          skillXpGains.push(...attackXpGains);
+        if (newState.currentEnemy && newState.currentEnemy.hp > 0) {
+          // Obter equipamentos do jogador para skill XP
+          const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
           
-          // Bônus de XP para críticos e duplo ataque
-          if (damageResult.isCritical || damageResult.isDoubleAttack) {
-            const bonusMultiplier = (damageResult.isCritical ? 1.5 : 1) * (damageResult.isDoubleAttack ? 1.3 : 1);
-            skillXpGains.forEach(gain => {
-              gain.xp = Math.floor(gain.xp * bonusMultiplier);
-            });
+          // Calcular dano com todos os modificadores
+          const damageResult = this.calculateDamage(
+            newState.player.atk,
+            newState.currentEnemy.defense,
+            newState.player.critical_chance || 0,
+            newState.player.critical_damage || 110,
+            newState.player.double_attack_chance || 0
+          );
+
+          totalDamage = damageResult.damage;
+          const isCritical = damageResult.isCritical;
+          const isDoubleAttack = damageResult.isDoubleAttack;
+
+          // Aplicar dano ao inimigo
+          newState.currentEnemy.hp = Math.max(0, newState.currentEnemy.hp - totalDamage);
+          
+          // Resetar defesa do jogador se estava defendendo
+          if (newState.player.isDefending) {
+            newState.player.isDefending = false;
           }
-          
-          // Adicionar mensagens para cada skill que ganhou XP
-          attackXpGains.forEach(gain => {
-            const skillName = SkillXpService.getSkillDisplayName(gain.skill);
-            let xpMessage = `+${gain.xp} XP de ${skillName}`;
-            if (damageResult.isCritical || damageResult.isDoubleAttack) {
-              xpMessage += ' (bônus por crítico/duplo)';
-            }
-            skillMessages.push(xpMessage);
+
+          // Criar mensagem de ataque
+          let attackMessage = `${newState.player.name} atacou ${newState.currentEnemy.name}`;
+          if (isDoubleAttack) {
+            attackMessage += ` com ataque duplo`;
+          }
+          if (isCritical) {
+            attackMessage += ` CRITICAMENTE`;
+          }
+          attackMessage += ` causando ${totalDamage} de dano!`;
+
+          gameLogMessages.push({
+            message: attackMessage,
+            type: 'player_action'
           });
-          
-          console.log(`[GameService] XP de ataque calculado:`, attackXpGains);
-        } catch (error) {
-          console.error('[GameService] Erro ao calcular XP de ataque:', error);
-          // Fallback para sistema básico
-          const basicXpGain = Math.floor(damageResult.damage * 0.1);
-          if (basicXpGain > 0) {
-            skillXpGains.push({
-              skill: SkillType.SWORD_MASTERY,
-              xp: basicXpGain,
-              reason: 'combat_attack_fallback'
+
+          // CORRIGIDO: Calcular e aplicar skill XP imediatamente após o ataque
+          if (playerEquipment) {
+            console.log(`[GameService] Calculando skill XP para ataque com dano ${totalDamage}`);
+            const attackSkillXp = SkillXpService.calculateAttackSkillXp(
+              playerEquipment,
+              totalDamage
+            );
+
+            if (attackSkillXp.length > 0) {
+              skillXpGains.push(...attackSkillXp);
+              
+              // Aplicar skill XP imediatamente
+              try {
+                const { messages: xpMessages, skillLevelUps } = await SkillXpService.applySkillXp(
+                  newState.player.id,
+                  attackSkillXp
+                );
+
+                // CRÍTICO: Adicionar mensagens de skill XP APÓS a ação de ataque
+                for (const xpMessage of xpMessages) {
+                  gameLogMessages.push({
+                    message: xpMessage,
+                    type: 'skill_xp'
+                  });
+                }
+
+                skillMessages.push(...xpMessages);
+
+                // Log de level ups de habilidade
+                for (const levelUp of skillLevelUps) {
+                  console.log(`[GameService] Skill level up: ${levelUp.skill} -> ${levelUp.newLevel}`);
+                }
+              } catch (error) {
+                console.error('[GameService] Erro ao aplicar skill XP de ataque:', error);
+              }
+            }
+          }
+
+          // Verificar se inimigo foi derrotado
+          if (newState.currentEnemy.hp <= 0) {
+            gameLogMessages.push({
+              message: `${newState.currentEnemy.name} foi derrotado!`,
+              type: 'system'
             });
-            skillMessages.push(`+${basicXpGain} XP de Maestria com Espadas`);
+            message = `Você derrotou ${newState.currentEnemy.name}!`;
+          } else {
+            message = attackMessage;
           }
         }
         break;
 
       case 'defend':
-        if (player.defenseCooldown > 0) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: `Defesa em cooldown! Aguarde ${player.defenseCooldown} turnos.`,
-            skillXpGains,
-            skillMessages
-          };
+        if (newState.player.defenseCooldown === 0) {
+          newState.player.isDefending = true;
+          newState.player.defenseCooldown = 3; // 3 turnos de cooldown
+          
+          const defendMessage = `${newState.player.name} assumiu postura defensiva.`;
+          gameLogMessages.push({
+            message: defendMessage,
+            type: 'player_action'
+          });
+
+          // NOVO: Aplicar skill XP de defesa
+          const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
+          if (playerEquipment) {
+            const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(playerEquipment, 0);
+            
+            if (defenseSkillXp.length > 0) {
+              skillXpGains.push(...defenseSkillXp);
+              
+              try {
+                const { messages: xpMessages } = await SkillXpService.applySkillXp(
+                  newState.player.id,
+                  defenseSkillXp
+                );
+
+                for (const xpMessage of xpMessages) {
+                  gameLogMessages.push({
+                    message: xpMessage,
+                    type: 'skill_xp'
+                  });
+                }
+
+                skillMessages.push(...xpMessages);
+              } catch (error) {
+                console.error('[GameService] Erro ao aplicar skill XP de defesa:', error);
+              }
+            }
+          }
+
+          message = defendMessage;
+        } else {
+          message = `Defesa está em cooldown por mais ${newState.player.defenseCooldown} turnos.`;
+          skipTurn = true;
         }
-        
-        newState.player.isDefending = true;
-        newState.player.defenseCooldown = 3; // 3 turnos de cooldown
-        message = 'Você assume uma postura defensiva!';
-        
-        // Adicionar mensagem ao log de jogo
-        gameLogMessages.push({
-          message: `${player.name} assume uma postura defensiva`,
-          type: 'player_action'
-        });
-        
-        // CRÍTICO: Usar o SkillXpService para calcular XP de defesa
-        try {
-          const defenseXpGains = SkillXpService.calculateDefenseSkillXp(null, 0);
-          skillXpGains.push(...defenseXpGains);
-          
-          // Adicionar mensagens para cada skill que ganhou XP
-          defenseXpGains.forEach(gain => {
-            const skillName = SkillXpService.getSkillDisplayName(gain.skill);
-            skillMessages.push(`+${gain.xp} XP de ${skillName} (${gain.reason})`);
-          });
-          
-          console.log(`[GameService] XP de defesa calculado:`, defenseXpGains);
-        } catch (error) {
-          console.error('[GameService] Erro ao calcular XP de defesa:', error);
-          // Fallback para sistema básico
-          skillXpGains.push({
-            skill: SkillType.DEFENSE_MASTERY,
-            xp: 5,
-            reason: 'combat_defense_fallback'
-          });
-          skillMessages.push(`+5 XP de Maestria Defensiva`);
+        break;
+
+      case 'spell':
+        if (spellId) {
+          const spell = newState.player.spells.find(s => s.id === spellId);
+          if (spell && newState.player.mana >= spell.mana_cost && spell.current_cooldown === 0) {
+            // Reduzir mana do jogador
+            newState.player.mana = Math.max(0, newState.player.mana - spell.mana_cost);
+            
+            // Aplicar cooldown na magia
+            spell.current_cooldown = spell.cooldown;
+            
+            let spellResult = '';
+            let actualSpellValue = 0;
+
+            if (spell.effect_type === 'damage' && newState.currentEnemy) {
+              // Magia de dano
+              let magicDamage = spell.effect_value;
+              
+              // Aplicar bônus de magic attack do jogador
+              if (newState.player.magic_attack) {
+                magicDamage += Math.floor(newState.player.magic_attack * 0.5);
+              }
+
+              // Aplicar bônus de maestria mágica
+              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
+                const masteryBonus = Math.floor(magicDamage * (newState.player.magic_mastery - 1) * 0.1);
+                magicDamage += masteryBonus;
+              }
+
+              actualSpellValue = magicDamage;
+              newState.currentEnemy.hp = Math.max(0, newState.currentEnemy.hp - magicDamage);
+              
+              spellResult = `causando ${magicDamage} de dano mágico`;
+              
+              if (newState.currentEnemy.hp <= 0) {
+                spellResult += ` e derrotando ${newState.currentEnemy.name}`;
+              }
+            } else if (spell.effect_type === 'heal') {
+              // Magia de cura
+              let healAmount = spell.effect_value;
+              
+              // Aplicar bônus de magic attack
+              if (newState.player.magic_attack) {
+                healAmount += Math.floor(newState.player.magic_attack * 0.3);
+              }
+
+              // Aplicar bônus de maestria mágica
+              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
+                const masteryBonus = Math.floor(healAmount * (newState.player.magic_mastery - 1) * 0.1);
+                healAmount += masteryBonus;
+              }
+
+              actualSpellValue = healAmount;
+              newState.player.hp = Math.min(newState.player.max_hp, newState.player.hp + healAmount);
+              spellResult = `restaurando ${healAmount} de vida`;
+            }
+
+            const spellMessage = `${newState.player.name} lançou ${spell.name} ${spellResult}!`;
+            gameLogMessages.push({
+              message: spellMessage,
+              type: 'player_action'
+            });
+
+            // CORRIGIDO: Aplicar skill XP de magia
+            const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
+            const magicSkillXp = SkillXpService.calculateMagicSkillXp(
+              spell.mana_cost,
+              spell.effect_type === 'damage' ? actualSpellValue : 0,
+              actualSpellValue,
+              playerEquipment // Passar equipamento para verificar varinhas
+            );
+
+            if (magicSkillXp.length > 0) {
+              skillXpGains.push(...magicSkillXp);
+              
+              try {
+                const { messages: xpMessages } = await SkillXpService.applySkillXp(
+                  newState.player.id,
+                  magicSkillXp
+                );
+
+                for (const xpMessage of xpMessages) {
+                  gameLogMessages.push({
+                    message: xpMessage,
+                    type: 'skill_xp'
+                  });
+                }
+
+                skillMessages.push(...xpMessages);
+              } catch (error) {
+                console.error('[GameService] Erro ao aplicar skill XP de magia:', error);
+              }
+            }
+
+            message = spellMessage;
+          } else {
+            message = 'Não é possível usar esta magia agora.';
+            skipTurn = true;
+          }
         }
         break;
 
       case 'flee':
-        // SISTEMA DE FUGA MELHORADO - Baseado em velocidade
-        console.log(`[GameService] === PROCESSANDO FUGA ===`);
-        console.log(`[GameService] Velocidade do jogador: ${player.speed}`);
-        console.log(`[GameService] Velocidade do inimigo: ${currentEnemy.speed}`);
-        
-        // Calcular chance de fuga baseada na diferença de velocidade
-        const baseFleeChance = 0.8; // 80% de chance base (mais alta que antes)
-        
-        // Bônus/penalidade baseado na velocidade relativa
-        const speedRatio = player.speed / Math.max(1, currentEnemy.speed);
-        let speedBonus = 0;
-        
-        if (speedRatio >= 1.5) {
-          speedBonus = 0.3; // +30% se for 50%+ mais rápido
-        } else if (speedRatio >= 1.2) {
-          speedBonus = 0.2; // +20% se for 20%+ mais rápido
-        } else if (speedRatio >= 1.0) {
-          speedBonus = 0.1; // +10% se for igual ou um pouco mais rápido
-        } else if (speedRatio >= 0.8) {
-          speedBonus = 0; // Sem bônus/penalidade se estiver próximo
-        } else if (speedRatio >= 0.6) {
-          speedBonus = -0.1; // -10% se for mais lento
-        } else {
-          speedBonus = -0.2; // -20% se for muito mais lento
-        }
-        
-        // Bônus adicional de destreza (cada 10 pontos = +5% chance)
-        const dexterityBonus = Math.floor((player.dexterity || 10) / 10) * 0.05;
-        
-        // Penalidade se estiver com pouco HP (mais difícil fugir ferido)
-        const hpRatio = player.hp / player.max_hp;
-        const hpPenalty = hpRatio < 0.3 ? -0.15 : hpRatio < 0.5 ? -0.1 : 0;
-        
-        const finalFleeChance = Math.min(0.95, Math.max(0.1, 
-          baseFleeChance + speedBonus + dexterityBonus + hpPenalty
-        ));
-        
-        console.log(`[GameService] Chance base de fuga: ${baseFleeChance * 100}%`);
-        console.log(`[GameService] Bônus de velocidade (ratio ${speedRatio.toFixed(2)}): ${speedBonus * 100}%`);
-        console.log(`[GameService] Bônus de destreza: ${dexterityBonus * 100}%`);
-        console.log(`[GameService] Penalidade de HP baixo: ${hpPenalty * 100}%`);
-        console.log(`[GameService] Chance final de fuga: ${finalFleeChance * 100}%`);
-        
-        const fleeRoll = Math.random();
-        const fleeSuccess = fleeRoll < finalFleeChance;
-        
-        console.log(`[GameService] Resultado do dado: ${(fleeRoll * 100).toFixed(1)}%`);
-        console.log(`[GameService] Fuga ${fleeSuccess ? 'BEM-SUCEDIDA' : 'FALHOU'}!`);
-        
+        // Lógica de fuga
+        const fleeChance = 0.7; // 70% de chance base
+        const fleeSuccess = Math.random() < fleeChance;
+
         if (fleeSuccess) {
-          message = `Você conseguiu fugir de ${currentEnemy.name}! (${(finalFleeChance * 100).toFixed(1)}% chance)`;
-          skipTurn = true;
-          // Marcar o estado como fuga bem-sucedida para controle posterior
+          newState.mode = 'fled';
           newState.fleeSuccessful = true;
-          console.log(`[GameService] Estado marcado com fleeSuccessful = true`);
+          message = `${newState.player.name} fugiu da batalha com sucesso!`;
           
-          // Adicionar mensagem ao log de jogo
           gameLogMessages.push({
-            message: `${player.name} conseguiu fugir da batalha!`,
-            type: 'player_action'
+            message: message,
+            type: 'system'
           });
         } else {
-          // Falha na fuga, recebe dano reduzido (era 30%, agora 20%)
-          const fleeDamage = Math.floor(currentEnemy.attack * 0.2);
-          newState.player.hp = Math.max(0, player.hp - fleeDamage);
-          message = `Você falhou ao tentar fugir e recebeu ${fleeDamage} de dano de ${currentEnemy.name}! (${(finalFleeChance * 100).toFixed(1)}% chance)`;
-          // Não pular o turno para que o inimigo possa atacar normalmente
-          skipTurn = false;
-          console.log(`[GameService] Fuga falhou, jogador recebeu ${fleeDamage} de dano`);
+          newState.fleeSuccessful = false;
+          message = `${newState.player.name} tentou fugir mas falhou!`;
           
-          // Adicionar mensagens ao log de jogo
           gameLogMessages.push({
-            message: `${player.name} tentou fugir mas falhou`,
+            message: message,
             type: 'player_action'
           });
-          if (fleeDamage > 0) {
+          
+          // Receber dano por falha na fuga
+          if (newState.currentEnemy) {
+            const fleeDamage = Math.floor(newState.currentEnemy.attack * 0.3);
+            newState.player.hp = Math.max(0, newState.player.hp - fleeDamage);
+            
             gameLogMessages.push({
-              message: `${player.name} recebeu ${fleeDamage} de dano ao tentar fugir`,
+              message: `${newState.player.name} recebeu ${fleeDamage} de dano ao tentar fugir!`,
               type: 'damage'
             });
           }
         }
         break;
 
-      case 'spell':
-        if (!spellId) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: 'Nenhuma magia especificada!',
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        const spell = player.spells.find(s => s.id === spellId);
-        if (!spell) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: 'Magia não encontrada!',
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        if (player.mana < spell.mana_cost) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: 'Mana insuficiente!',
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        if (spell.current_cooldown > 0) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: `${spell.name} está em cooldown por ${spell.current_cooldown} turnos!`,
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        // Consumir mana
-        newState.player.mana -= spell.mana_cost;
-        
-        // Aplicar cooldown
-        const spellIndex = newState.player.spells.findIndex(s => s.id === spellId);
-        if (spellIndex !== -1) {
-          newState.player.spells[spellIndex].current_cooldown = spell.cooldown;
-        }
-        
-        // Aplicar efeito da magia
-        const spellResult = SpellService.applySpellEffect(spell, player, currentEnemy);
-        message = spellResult.message;
-        
-        // LOG: Debug do resultado da magia
-        console.log(`[GameService] Resultado da magia ${spell.name}:`, {
-          success: spellResult.success,
-          effect_type: spell.effect_type,
-          message: spellResult.message,
-          skipTurn: !spellResult.success
-        });
-        
-        // Adicionar mensagens ao log de jogo
-        gameLogMessages.push({
-          message: `${player.name} lança ${spell.name}!`,
-          type: 'player_action'
-        });
-        
-        // Adicionar mensagem específica do efeito da magia
-        if (spell.effect_type === 'damage') {
-          gameLogMessages.push({
-            message: `${spell.name} causou dano em ${currentEnemy.name}`,
-            type: 'damage'
-          });
-        } else if (spell.effect_type === 'heal') {
-          gameLogMessages.push({
-            message: `${player.name} se curou com ${spell.name}`,
-            type: 'system'
-          });
-        }
-        
-        // CRÍTICO: Magias bem-sucedidas NÃO devem pular turno
-        if (!spellResult.success) {
-          console.log(`[GameService] Magia ${spell.name} FALHOU - pulando turno do inimigo`);
-          skipTurn = true;
-        } else {
-          console.log(`[GameService] Magia ${spell.name} bem-sucedida - processando turno do inimigo`);
-          skipTurn = false; // Garantir que não pula turno para magias bem-sucedidas
-        }
-        
-        // Ganhar XP de maestria mágica usando o novo sistema
-        // Extrair valor escalado da mensagem ou calcular baseado no spell
-        let actualSpellValue = spell.effect_value;
-        if (spell.effect_type === 'damage' || spell.effect_type === 'heal') {
-          const scaledValue = spell.effect_type === 'damage' 
-            ? SpellService.calculateScaledSpellDamage(spell.effect_value, player)
-            : SpellService.calculateScaledSpellHealing(spell.effect_value, player);
-          actualSpellValue = scaledValue;
-        }
-        
-        const magicXpGains = SkillXpService.calculateMagicSkillXp(
-          spell.mana_cost, 
-          spell.effect_value, 
-          actualSpellValue
-        );
-        
-        skillXpGains.push(...magicXpGains);
-        if (magicXpGains.length > 0) {
-          skillMessages.push(`+${magicXpGains[0].xp} XP de Maestria Mágica`);
-        }
-        break;
-
-      case 'consumable':
-        if (!consumableId) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: 'Nenhum consumível especificado!',
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        // Encontrar o consumível no inventário
-        const consumable = player.consumables?.find(c => c.consumable_id === consumableId);
-        if (!consumable || consumable.quantity <= 0) {
-          return {
-            newState: gameState,
-            skipTurn: true,
-            message: 'Consumível não encontrado ou sem quantidade!',
-            skillXpGains,
-            skillMessages,
-            gameLogMessages
-          };
-        }
-        
-        // Aplicar efeito do consumível (implementação simplificada)
-        // Assumindo que é uma poção de cura por agora
-        const healAmount = 50; // Valor fixo por enquanto
-        const oldHp = player.hp;
-        newState.player.hp = Math.min(player.max_hp, player.hp + healAmount);
-        const actualHeal = newState.player.hp - oldHp;
-        
-        // Reduzir quantidade do consumível
-        if (newState.player.consumables) {
-          const consumableIndex = newState.player.consumables.findIndex(c => c.consumable_id === consumableId);
-          if (consumableIndex !== -1) {
-            newState.player.consumables[consumableIndex].quantity -= 1;
-            if (newState.player.consumables[consumableIndex].quantity <= 0) {
-              newState.player.consumables.splice(consumableIndex, 1);
-            }
-          }
-        }
-        
-        // Marcar que uma poção foi usada neste turno
-        newState.player.potionUsedThisTurn = true;
-        
-        message = `Você usou ${consumable.consumable?.name || 'Item'} e recuperou ${actualHeal} HP!`;
-        
-        // Adicionar mensagens ao log de jogo
-        gameLogMessages.push({
-          message: `${player.name} usou ${consumable.consumable?.name || 'Item'}`,
-          type: 'player_action'
-        });
-        if (actualHeal > 0) {
-          gameLogMessages.push({
-            message: `${player.name} recuperou ${actualHeal} HP`,
-            type: 'system'
-          });
-        }
-        break;
-
       default:
-        return {
-          newState: gameState,
-          skipTurn: true,
-          message: 'Ação inválida!',
-          skillXpGains,
-          skillMessages,
-          gameLogMessages
-        };
+        message = 'Ação não reconhecida.';
+        skipTurn = true;
+        break;
     }
 
-    // Reduzir cooldown de defesa se ativo
+    // Reduzir cooldown de defesa se necessário
     if (newState.player.defenseCooldown > 0) {
       newState.player.defenseCooldown--;
     }
 
-    // Processar efeitos ao longo do tempo no jogador
-    if (newState.player.active_effects) {
-      const playerMessages = SpellService.processOverTimeEffects(newState.player);
-      if (playerMessages.length > 0) {
-        message += ' ' + playerMessages.join(' ');
-      }
-    }
+    // Resetar flag de poção usada no turno (será resetada no próximo turno)
+    newState.player.potionUsedThisTurn = false;
 
-    // CRÍTICO: Reduzir cooldowns das magias a cada turno
-    newState = SpellService.updateSpellCooldowns(newState);
-
-    // Resetar defesa após o turno
-    newState.player.isDefending = false;
+    console.log(`[GameService] Ação processada: ${action}, mensagem: ${message}`);
+    console.log(`[GameService] Skill XP gains:`, skillXpGains.length);
+    console.log(`[GameService] Game log messages:`, gameLogMessages.length);
 
     return {
       newState,
@@ -950,6 +813,18 @@ export class GameService {
       skillMessages,
       gameLogMessages
     };
+  }
+
+  // NOVO: Função auxiliar para obter slots de equipamento do jogador
+  private static async getPlayerEquipmentSlots(playerId: string): Promise<EquipmentSlots | null> {
+    try {
+      const { EquipmentService } = await import('./equipment.service');
+      const equipmentSlots = await EquipmentService.getEquippedItems(playerId);
+      return equipmentSlots;
+    } catch (error) {
+      console.error('[GameService] Erro ao obter equipamentos do jogador:', error);
+      return null;
+    }
   }
 
   /**

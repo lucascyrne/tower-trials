@@ -1505,71 +1505,6 @@ export class CharacterService {
   }
 
   /**
-   * Determinar tipo de arma equipada
-   */
-  private static async getEquippedWeaponType(characterId: string): Promise<string | null> {
-    try {
-      const { data, error } = await supabase
-        .from('character_equipment')
-        .select(`
-          equipment!inner(
-            type,
-            weapon_subtype
-          )
-        `)
-        .eq('character_id', characterId)
-        .eq('is_equipped', true);
-
-      if (error) {
-        console.log('[CharacterService] Erro ao buscar equipamentos:', error.message);
-        return null;
-      }
-
-      // Se não há dados ou array vazio, o personagem não tem equipamentos
-      if (!data || data.length === 0) {
-        console.log('[CharacterService] Nenhuma arma equipada encontrada');
-        return null;
-      }
-
-      // Procurar especificamente por armas equipadas
-      const weaponEquipment = data.find((item) => {
-        const equipment = (item.equipment as unknown) as { type: string; weapon_subtype: string };
-        return equipment.type === 'weapon';
-      });
-
-      if (!weaponEquipment) {
-        console.log('[CharacterService] Nenhuma arma encontrada nos equipamentos equipados');
-        return null;
-      }
-
-      const equipment = (weaponEquipment.equipment as unknown) as { type: string; weapon_subtype: string };
-      if (equipment.weapon_subtype) {
-        // Mapear subtipos para os tipos esperados pela função
-        switch (equipment.weapon_subtype) {
-          case 'sword':
-            return 'sword';
-          case 'axe':
-            return 'axe';
-          case 'blunt':
-            return 'blunt';
-          case 'staff':
-            return 'staff';
-          case 'dagger':
-            return 'sword'; // Adagas usam maestria de espada
-          default:
-            console.log(`[CharacterService] Tipo de arma desconhecido: ${equipment.weapon_subtype}`);
-            return null;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('[CharacterService] Erro ao obter tipo de arma:', error);
-      return null;
-    }
-  }
-
-  /**
    * Cálculo de fallback com sistema anti-mono-build balanceado
    */
   private static async calculateDerivedStatsFallback(character: Character): Promise<{
@@ -1664,64 +1599,125 @@ export class CharacterService {
     const baseSpeed = 3 + level;
     
     // =====================================
+    // NOVO: BÔNUS DE EQUIPAMENTOS COM DUAL WIELDING
+    // =====================================
+    
+    let equipmentBonus = {
+      hp: 0,
+      mana: 0,
+      atk: 0,
+      def: 0,
+      speed: 0,
+      critical_chance: 0,
+      critical_damage: 0,
+      magic_damage: 0,
+      double_attack_chance: 0
+    };
+
+    try {
+      // Buscar equipamentos do personagem
+      const { EquipmentService } = await import('./equipment.service');
+      const equipmentSlots = await EquipmentService.getEquippedItems(character.id);
+      
+      if (equipmentSlots) {
+        // Usar a nova função que considera dual wielding
+        const { calculateEquipmentBonus } = await import('./equipment.service');
+        equipmentBonus = calculateEquipmentBonus(equipmentSlots);
+        
+        console.log(`[CharacterService] Bônus de equipamentos calculado:`, {
+          atk: equipmentBonus.atk,
+          def: equipmentBonus.def,
+          speed: equipmentBonus.speed,
+          critical_chance: equipmentBonus.critical_chance,
+          magic_damage: equipmentBonus.magic_damage
+        });
+      }
+    } catch (error) {
+      console.error('[CharacterService] Erro ao calcular bônus de equipamentos:', error);
+    }
+    
+    // =====================================
     // CÁLCULO DE STATS COM SINERGIAS
     // =====================================
     
-    // HP: Vitalidade + um pouco de força (sinergia)
-    const hp = baseHp + Math.floor(vitScaling * 2.5) + Math.floor(strScaling * 0.3);
+    // HP: Vitalidade + bônus de level + equipamentos
+    const hp = Math.floor(baseHp + (vitScaling * 3.5) + equipmentBonus.hp);
+    const max_hp = hp;
     
-    // Mana: Inteligência + sabedoria (sinergia forte)
-    const mana = baseMana + Math.floor(intScaling * 1.5) + Math.floor(wisScaling * 1.0) + Math.floor(magicMasteryBonus * 0.8);
+    // Mana: Inteligência/Sabedoria + bônus de level + equipamentos
+    const mana = Math.floor(baseMana + ((intScaling + wisScaling) * 1.5) + equipmentBonus.mana);
+    const max_mana = mana;
     
-    // Ataque Físico: Força + habilidade de arma + um pouco de destreza (precisão)
-    const atk = baseAtk + Math.floor(strScaling * 1.2) + Math.floor(weaponMasteryBonus * 0.6) + Math.floor(dexScaling * 0.2);
+    // Ataque: Força + maestria de arma + equipamentos
+    const atk = Math.floor(baseAtk + (strScaling * 2.2) + weaponMasteryBonus + equipmentBonus.atk);
     
-    // Ataque Mágico: Inteligência + sabedoria + maestria mágica (forte sinergia)
-    const magicAttack = baseAtk + Math.floor(intScaling * 1.4) + Math.floor(wisScaling * 0.8) + Math.floor(magicMasteryBonus * 1.0);
+    // NOVO: Magic Attack separado (baseado em INT + maestria mágica)
+    const magic_attack = Math.floor((intScaling * 1.8) + magicMasteryBonus + equipmentBonus.magic_damage);
     
-    // Defesa: Vitalidade + sabedoria + maestria defensiva (sobrevivência)
-    const def = baseDef + Math.floor(vitScaling * 0.6) + Math.floor(wisScaling * 0.5) + Math.floor(defMasteryBonus * 1.0);
+    // Defesa: Destreza + maestria defensiva + equipamentos
+    const def = Math.floor(baseDef + (dexScaling * 1.5) + defMasteryBonus + equipmentBonus.def);
     
-    // Velocidade: Destreza (principal) + um pouco de sorte (agilidade mental)
-    const speed = baseSpeed + Math.floor(dexScaling * 1.0) + Math.floor(luckScaling * 0.2);
+    // Velocidade: Destreza + equipamentos
+    const speed = Math.floor(baseSpeed + (dexScaling * 1.8) + equipmentBonus.speed);
     
     // =====================================
-    // STATS DERIVADOS COM CAPS E SINERGIAS
+    // STATS DERIVADOS AVANÇADOS
     // =====================================
     
-    // Chance Crítica: Destreza + sorte + um pouco de força (técnica + sorte + poder)
-    let criticalChance = (dexScaling * 0.25) + (luckScaling * 0.35) + (strScaling * 0.1);
-    criticalChance = Math.min(75.0, criticalChance); // Cap em 75%
+    // Chance crítica: Destreza + Sorte + maestria + equipamentos
+    const critical_chance = Math.min(95, Math.floor(
+      5 + // Base 5%
+      (dexScaling * 0.3) + // Destreza contribui
+      (luckScaling * 0.5) + // Sorte contribui mais
+      (weaponMasteryBonus * 0.2) + // Maestria de arma
+      equipmentBonus.critical_chance
+    ));
     
-    // Dano Crítico: Força + sorte + habilidades de arma
-    let criticalDamage = 130.0 + (strScaling * 0.4) + (luckScaling * 0.6) + (weaponMasteryBonus * 0.3);
-    criticalDamage = Math.min(250.0, criticalDamage); // Cap em 250%
+    // Dano crítico: Força + maestria + equipamentos
+    const critical_damage = Math.floor(
+      150 + // Base 150%
+      (strScaling * 0.8) + // Força contribui
+      (weaponMasteryBonus * 1.2) + // Maestria contribui mais
+      equipmentBonus.critical_damage
+    );
     
-    // Dano Mágico: Inteligência + sabedoria + maestria mágica (forte sinergia)
-    let magicDamageBonus = (intScaling * 1.2) + (wisScaling * 0.8) + (magicMasteryBonus * 1.5);
-    // Diminishing returns para dano mágico
-    if (magicDamageBonus > 100) {
-      magicDamageBonus = 100 + ((magicDamageBonus - 100) * 0.7);
-    }
-    magicDamageBonus = Math.min(200.0, magicDamageBonus); // Cap em 200%
+    // Bônus de dano mágico: Inteligência + maestria mágica + equipamentos
+    const magic_damage_bonus = Math.floor(
+      (intScaling * 1.2) + 
+      (magicMasteryBonus * 1.5) +
+      equipmentBonus.magic_damage
+    );
+    
+    // NOVO: Chance de ataque duplo (dual wielding)
+    const double_attack_chance = Math.min(25, Math.floor(
+      (dexScaling * 0.2) + // Destreza base
+      (luckScaling * 0.3) + // Sorte contribui
+      equipmentBonus.double_attack_chance
+    ));
 
-    // Duplo ataque baseado em velocidade alta (similar ao banco)
-    const doubleAttackChance = speed >= 50 ? Math.min(25, (speed - 49) * 0.5) : 0;
-
-    return {
-      hp: Math.floor(hp),
-      max_hp: Math.floor(hp),
-      mana: Math.floor(mana),
-      max_mana: Math.floor(mana),
-      atk: Math.floor(atk),
-      magic_attack: Math.floor(magicAttack),
-      def: Math.floor(def),
-      speed: Math.floor(speed),
-      critical_chance: criticalChance,
-      critical_damage: criticalDamage,
-      magic_damage_bonus: magicDamageBonus,
-      double_attack_chance: doubleAttackChance
+    const stats = {
+      hp,
+      max_hp,
+      mana,
+      max_mana,
+      atk,
+      magic_attack,
+      def,
+      speed,
+      critical_chance,
+      critical_damage,
+      magic_damage_bonus,
+      double_attack_chance
     };
+
+    console.log('[CharacterService] Stats derivados calculados:', {
+      level,
+      diversityBonus: (diversityBonus * 100 - 100).toFixed(1) + '%',
+      monoPenalty: (monoPenalty * 100).toFixed(1) + '%',
+      final_stats: stats
+    });
+
+    return stats;
   }
 
   /**

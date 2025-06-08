@@ -65,24 +65,58 @@ export interface EquipmentSlots {
   accessory_2?: Equipment;
 }
 
-// Função para verificar se é dual wielding
+/**
+ * Verifica se o personagem está usando dual wielding (duas armas)
+ */
 export function isDualWielding(slots: EquipmentSlots): boolean {
   return !!(slots.main_hand?.type === 'weapon' && slots.off_hand?.type === 'weapon');
 }
 
-// Função para verificar se tem escudo
+/**
+ * Verifica se o personagem tem um escudo equipado
+ */
 export function hasShield(slots: EquipmentSlots): boolean {
-  return slots.off_hand?.name?.toLowerCase().includes('escudo') || false;
+  return !!(slots.off_hand?.type === 'armor' && !slots.off_hand?.weapon_subtype);
 }
 
-// Função para obter arma principal
+/**
+ * Obtém a arma principal
+ */
 export function getMainWeapon(slots: EquipmentSlots): Equipment | undefined {
   return slots.main_hand?.type === 'weapon' ? slots.main_hand : undefined;
 }
 
-// Função para obter arma secundária (se dual wielding)
+/**
+ * Obtém a arma secundária (se houver dual wielding)
+ */
 export function getOffHandWeapon(slots: EquipmentSlots): Equipment | undefined {
-  return isDualWielding(slots) ? slots.off_hand : undefined;
+  return slots.off_hand?.type === 'weapon' ? slots.off_hand : undefined;
+}
+
+/**
+ * Verifica se há um staff na off-hand para bônus mágico
+ */
+export function hasOffHandStaff(slots: EquipmentSlots): boolean {
+  return !!(slots.off_hand?.type === 'weapon' && slots.off_hand?.weapon_subtype === 'staff');
+}
+
+/**
+ * Calcula eficiência da arma off-hand baseado no tipo
+ * - Armas: 80% de eficiência
+ * - Escudos: 100% de eficiência
+ * - Staffs mágicos: 100% de eficiência para magia, 80% para físico
+ */
+export function getOffHandEfficiency(equipment: Equipment, forMagic: boolean = false): number {
+  if (equipment.type === 'weapon') {
+    if (equipment.weapon_subtype === 'staff' && forMagic) {
+      return 1.0; // Staffs mantêm 100% para magia
+    }
+    return 0.8; // Armas físicas 80%
+  }
+  if (equipment.type === 'armor') {
+    return 1.0; // Escudos 100%
+  }
+  return 1.0; // Fallback
 }
 
 // Constantes para bônus de raridade
