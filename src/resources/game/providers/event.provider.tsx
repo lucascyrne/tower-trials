@@ -4,6 +4,7 @@ import { CharacterService } from '../character.service';
 import { useGameState } from './game-state.provider';
 import { useGameLog } from './log.provider';
 import { useCharacter } from './character.provider';
+import type { GameState } from '../game-model';
 
 interface EventContextType {
   interactWithEvent: () => Promise<void>;
@@ -61,7 +62,7 @@ export function EventProvider({ children }: EventProviderProps) {
         gameMessage: `Andar ${updatedState.player.floor}: ${updatedState.currentFloor?.description || 'Área Desconhecida'}. Um ${enemy.name} apareceu!`
       };
       
-      setGameState(finalState);
+      setGameState(finalState as GameState);
       
       // 5. Adicionar mensagens ao log
       addGameLogMessage(updatedState.gameMessage || 'Evento especial concluído!', 'system');

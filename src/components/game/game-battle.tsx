@@ -135,7 +135,7 @@ export default function GameBattle() {
         console.log(`[GameBattle] Personagem carregado: ${character.name} (andar ${character.floor})`);
         
         // Inicializar batalha
-        await initializeBattle(character);
+        await initializeBattle(character, characterId);
         
         // Marcar como carregamento concluído
         setIsLoading(false);
