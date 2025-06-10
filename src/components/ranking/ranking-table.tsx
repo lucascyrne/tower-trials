@@ -34,13 +34,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ entries, mode, currentUserI
   const getValueForMode = (entry: RankingEntry, mode: RankingMode): string => {
     switch (mode) {
       case 'floor':
-        return `Andar ${entry.floor}`;
+        return `Andar ${entry.highest_floor}`;
       case 'level':
         return `Nível ${entry.character_level}`;
       case 'gold':
         return `${formatLargeNumber(entry.character_gold)} Gold`;
       default:
-        return `Andar ${entry.floor}`;
+        return `Andar ${entry.highest_floor}`;
     }
   };
 
@@ -49,9 +49,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ entries, mode, currentUserI
       case 'floor':
         return `Nível ${entry.character_level} • ${formatLargeNumber(entry.character_gold)} Gold`;
       case 'level':
-        return `Andar ${entry.floor} • ${formatLargeNumber(entry.character_gold)} Gold`;
+        return `Andar ${entry.highest_floor} • ${formatLargeNumber(entry.character_gold)} Gold`;
       case 'gold':
-        return `Andar ${entry.floor} • Nível ${entry.character_level}`;
+        return `Andar ${entry.highest_floor} • Nível ${entry.character_level}`;
       default:
         return `Nível ${entry.character_level}`;
     }

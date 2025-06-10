@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import GameBattle from '@/components/game/game-battle';
 import { useGame } from '@/resources/game/game-hook';
 import { toast } from 'sonner';
@@ -10,11 +10,19 @@ function BattlePage() {
   const { loading } = useGame();
   const [isLoading, setIsLoading] = useState(true);
 
-  // NOVO: Controle para evitar múltiplas inicializações
+  // OTIMIZADO: Controles de estado mais eficientes
   const initializedRef = useRef(false);
   const mountedRef = useRef(false);
 
-  // Controle de montagem do componente
+  // OTIMIZADO: Memorizar o estado de carregamento para evitar re-cálculos
+  const loadingState = useMemo(() => {
+    return {
+      isGameLoading: loading.loadProgress,
+      shouldShowLoading: isLoading || loading.loadProgress,
+    };
+  }, [loading.loadProgress, isLoading]);
+
+  // Controle de montagem do componente - OTIMIZADO
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -23,30 +31,32 @@ function BattlePage() {
     };
   }, []);
 
-  // Monitor de carregamento global - otimizado
+  // OTIMIZADO: Monitor de carregamento mais eficiente
   useEffect(() => {
     if (!mountedRef.current) return;
 
-    if (!loading.loadProgress && !loading.performAction) {
+    // Apenas atualizar estado se realmente mudou
+    const shouldLoad = loadingState.isGameLoading;
+
+    if (!shouldLoad && isLoading) {
+      // Pequeno delay para transições suaves
       const timer = setTimeout(() => {
         if (mountedRef.current) {
           setIsLoading(false);
         }
-      }, 100); // Reduzir delay para transições mais rápidas
+      }, 100);
 
       return () => clearTimeout(timer);
-    } else {
+    } else if (shouldLoad && !isLoading) {
       setIsLoading(true);
     }
-  }, [loading.loadProgress, loading.performAction]);
+  }, [loadingState.isGameLoading, isLoading]);
 
-  // Validar se o personagem existe no URL - apenas uma vez na montagem
+  // OTIMIZADO: Validação de personagem mais eficiente
   useEffect(() => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || initializedRef.current) return;
 
     if (!characterId) {
-      if (initializedRef.current) return; // Evitar múltiplas navegações
-
       initializedRef.current = true;
       toast.error('Personagem não especificado', {
         description: 'Redirecionando para a seleção de personagens',
@@ -57,8 +67,8 @@ function BattlePage() {
     }
   }, [characterId, navigate]);
 
-  // Renderizar skeleton loader enquanto carrega
-  if (isLoading) {
+  // OTIMIZADO: Skeleton loader mais leve
+  if (loadingState.shouldShowLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className="w-full max-w-6xl">

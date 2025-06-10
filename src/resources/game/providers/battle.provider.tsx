@@ -32,6 +32,13 @@ export function BattleProvider({ children }: BattleProviderProps) {
     processing: false,
   });
 
+  // Função auxiliar para limpar estado de loading
+  const clearLoadingState = useCallback(() => {
+    console.log('[BattleProvider] Limpando estado de loading');
+    lastActionRef.current.processing = false;
+    updateLoading('performAction', false);
+  }, [updateLoading]);
+
   // Função principal de ação
   const performAction = useCallback(
     async (action: ActionType, spellId?: string, consumableId?: string) => {
@@ -130,12 +137,14 @@ export function BattleProvider({ children }: BattleProviderProps) {
         if (action === 'flee' && (newState.fleeSuccessful === true || newState.mode === 'fled')) {
           console.log(`[BattleProvider] === FUGA BEM-SUCEDIDA ===`);
           addGameLogMessage(message, 'system');
+          clearLoadingState();
           return;
         }
 
-        // Verificar se deve pular turno
+        // Verificar se deve pular turno (ações instantâneas como poções)
         if (skipTurn) {
           addGameLogMessage(message, 'system');
+          clearLoadingState();
           return;
         }
 
@@ -145,6 +154,7 @@ export function BattleProvider({ children }: BattleProviderProps) {
           const defeatedState = await GameService.processEnemyDefeat(newState);
           setGameState(defeatedState);
           addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'system');
+          clearLoadingState();
           return;
         }
 
@@ -195,6 +205,7 @@ export function BattleProvider({ children }: BattleProviderProps) {
               // Verificar se jogador morreu
               if (finalState.mode === 'gameover') {
                 setGameState(finalState);
+                clearLoadingState();
                 return;
               }
 
@@ -222,20 +233,31 @@ export function BattleProvider({ children }: BattleProviderProps) {
                 ...finalState,
                 isPlayerTurn: true,
               });
+
+              // CORREÇÃO: Limpar loading APENAS após completar todo o ciclo
+              clearLoadingState();
             } catch (error) {
               console.error('[BattleProvider] Erro no turno do inimigo:', error);
+              clearLoadingState();
             }
           }, 1000);
+        } else {
+          // CORREÇÃO: Se não há turno do inimigo, limpar loading imediatamente
+          clearLoadingState();
         }
       } catch (error) {
         console.error('[BattleProvider] Erro ao processar ação:', error);
-      } finally {
-        // CRÍTICO: Limpar estado de processamento SEMPRE
-        lastActionRef.current.processing = false;
-        updateLoading('performAction', false);
+        clearLoadingState();
       }
     },
-    [gameState, selectedCharacter, setGameState, addGameLogMessage, updateLoading]
+    [
+      gameState,
+      selectedCharacter,
+      setGameState,
+      addGameLogMessage,
+      updateLoading,
+      clearLoadingState,
+    ]
   );
 
   return <BattleContext.Provider value={{ performAction }}>{children}</BattleContext.Provider>;

@@ -91,25 +91,6 @@ function RankingPage() {
     await fetchRankingData();
   };
 
-  // Função para testar o sistema de ranking
-  const testRankingSystem = async () => {
-    console.log('[RankingPage] Testando sistema de ranking...');
-    try {
-      const testResult = await RankingService.testRankingSystem(user?.id);
-      if (testResult.error) {
-        console.error('Erro no teste:', testResult.error);
-      } else {
-        console.log('Resultado do teste:', testResult.data);
-        // Mostrar resultado no console para debug
-        testResult.data.forEach(test => {
-          console.log(`${test.test_name}: ${test.result} - ${test.details}`);
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao executar teste:', error);
-    }
-  };
-
   const fetchRankingData = async () => {
     try {
       setIsLoading(true);
@@ -152,7 +133,7 @@ function RankingPage() {
             `[RankingPage] Primeiros 5 personagens do ranking:`,
             globalResponse.data.slice(0, 5).map(entry => ({
               name: entry.player_name,
-              floor: entry.floor,
+              highest_floor: entry.highest_floor, // CORRIGIDO: usar highest_floor
               level: entry.character_level,
               alive: entry.character_alive,
               user_id: entry.user_id,
@@ -265,11 +246,6 @@ function RankingPage() {
           <Button variant="outline" size="sm" onClick={refreshRanking} disabled={isLoading}>
             Atualizar
           </Button>
-          {process.env.NODE_ENV === 'development' && (
-            <Button variant="outline" size="sm" onClick={testRankingSystem}>
-              Testar Sistema
-            </Button>
-          )}
         </div>
       </div>
 
@@ -299,7 +275,7 @@ function RankingPage() {
             <UserStats
               stats={userStats}
               userRanking={userRanking.map(entry => ({
-                highest_floor: entry.floor,
+                highest_floor: entry.highest_floor, // CORRIGIDO: usar highest_floor
                 character_level: entry.character_level,
                 character_gold: entry.character_gold,
                 character_alive: entry.character_alive,

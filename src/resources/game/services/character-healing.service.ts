@@ -17,7 +17,7 @@ interface HealResult {
 
 export class CharacterHealingService {
   /**
-   * OTIMIZADO: Atualizar HP e Mana com validação de limites e throttling
+   * OTIMIZADO: Atualizar HP e Mana com validação de limites e cache inteligente
    */
   static async updateCharacterHpMana(
     characterId: string,
@@ -42,6 +42,20 @@ export class CharacterHealingService {
         return { success: false, error: 'Valor de Mana inválido', data: null };
       }
 
+      // OTIMIZADO: Verificar se realmente houve mudança antes de atualizar
+      const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
+      if (cachedCharacter) {
+        const hpChanged = integerHp !== undefined && integerHp !== cachedCharacter.hp;
+        const manaChanged = integerMana !== undefined && integerMana !== cachedCharacter.mana;
+
+        if (!hpChanged && !manaChanged) {
+          console.log(
+            `[CharacterHealingService] Stats inalterados para ${cachedCharacter.name} - skip update`
+          );
+          return { success: true, error: null, data: null };
+        }
+      }
+
       const { error } = await supabase.rpc('internal_update_character_hp_mana', {
         p_character_id: characterId,
         p_hp: integerHp,
@@ -53,8 +67,21 @@ export class CharacterHealingService {
         return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
       }
 
-      // OTIMIZADO: Invalidar cache usando sistema com throttling
-      CharacterCacheService.invalidateCharacterCache(characterId);
+      // OTIMIZADO: Atualizar cache ao invés de invalidar
+      if (cachedCharacter && (integerHp !== undefined || integerMana !== undefined)) {
+        const updates: Partial<typeof cachedCharacter> = {};
+        if (integerHp !== undefined) updates.hp = integerHp;
+        if (integerMana !== undefined) updates.mana = integerMana;
+
+        const updated = CharacterCacheService.updateCachedCharacterStats(characterId, updates);
+        if (!updated) {
+          // Se não conseguiu atualizar o cache, invalidar apenas stats
+          CharacterCacheService.invalidateCharacterStatsOnly(characterId);
+        }
+      } else {
+        // Se não há cache, usar invalidação específica para stats
+        CharacterCacheService.invalidateCharacterStatsOnly(characterId);
+      }
 
       return { success: true, error: null, data: null };
     } catch (error) {

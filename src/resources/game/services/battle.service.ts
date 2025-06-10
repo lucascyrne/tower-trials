@@ -392,8 +392,9 @@ export class BattleService {
                 type: 'player_action',
               });
 
-              // Poções NÃO encerram o turno - skipTurn = false
               skipTurn = false;
+
+              console.log(`[BattleService] Poção usada com sucesso - turno NÃO consumido`);
             } else {
               message = useResult.error || 'Erro ao usar item consumível.';
               skipTurn = true;
@@ -438,7 +439,7 @@ export class BattleService {
         break;
 
       case 'interact_event':
-        // CORRIGIDO: Processar evento especial de verdade
+        // Processar evento especial
         try {
           console.log('[BattleService] Processando interação com evento especial');
           const { GameService } = await import('../game.service');
@@ -472,12 +473,13 @@ export class BattleService {
       newState.player.defenseCooldown--;
     }
 
-    newState.player.potionUsedThisTurn = false;
+    if (action !== 'consumable') {
+      newState.player.potionUsedThisTurn = false;
+    }
 
     console.log(`[BattleService] Ação processada: ${action}, mensagem: ${message}`);
-    console.log(`[BattleService] skipTurn FINAL: ${skipTurn}`);
+    console.log(`[BattleService] skipTurn FINAL: ${skipTurn} (poções nunca consomem turno)`);
     console.log(`[BattleService] Skill XP gains:`, skillXpGains.length);
-    console.log(`[BattleService] Game log messages:`, gameLogMessages.length);
 
     return {
       newState,

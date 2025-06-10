@@ -4,7 +4,7 @@ export interface RankingEntry {
   id: string;
   user_id: string;
   player_name: string;
-  floor: number;
+  highest_floor: number;
   character_level: number;
   character_gold: number;
   character_alive: boolean;

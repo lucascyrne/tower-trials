@@ -151,7 +151,7 @@ function UserPage() {
                   ) : (
                     rankings.map(ranking => (
                       <TableRow key={ranking.id}>
-                        <TableCell>{ranking.floor}</TableCell>
+                        <TableCell>{ranking.highest_floor}</TableCell>
                         <TableCell>
                           {ranking.created_at
                             ? new Date(ranking.created_at).toLocaleDateString('pt-BR')

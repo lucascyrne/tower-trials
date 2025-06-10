@@ -312,7 +312,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         console.log(
           `[CharacterProvider] === INICIALIZANDO BATALHA PARA ${character.name} (${battleKey}) ===`
         );
-        updateLoading('performAction', true);
+        updateLoading('loadProgress', true);
 
         setSelectedCharacter(character);
 
@@ -408,7 +408,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         lastBattleInitRef.current = null;
         throw error;
       } finally {
-        updateLoading('performAction', false);
+        updateLoading('loadProgress', false);
         initializingBattleRef.current = false;
       }
     },

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PWAStatus } from '@/components/PWAStatus';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IUser } from '@/resources/user/user-model';
@@ -285,6 +286,9 @@ function ProfilePage() {
             </Form>
           </CardContent>
         </Card>
+
+        {/* Status PWA para debug */}
+        <PWAStatus />
       </div>
     </div>
   );
