@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,16 +10,13 @@ interface EquipmentSlotPanelProps {
   equippedSlots: EquipmentSlots;
   onSlotClick: (slotType: string, item: Equipment | null) => void;
   onSlotLongPress: (slotType: string) => void;
-  characterId: string;
 }
 
 export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   equippedSlots,
   onSlotClick,
-  onSlotLongPress,
-  characterId
+  onSlotLongPress
 }) => {
-  const navigate = useNavigate();
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isLongPress, setIsLongPress] = useState(false);
 
@@ -28,12 +24,11 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     setIsLongPress(false);
     const timer = setTimeout(() => {
       setIsLongPress(true);
-      // Navegar para a página de seleção de equipamento
-      navigate({ to: '/game/play/hub/equipment/select', search: { character: characterId, slot: slotType as 'main_hand' | 'off_hand' | 'armor' | 'accessory' } });
+      // Chamar o callback do componente pai que fará a navegação
       onSlotLongPress(slotType);
-    }, 600); // Reduzido para 600ms para melhor responsividade
+    }, 800); // 800ms para dar tempo suficiente para o usuário perceber
     setPressTimer(timer);
-  }, [characterId]);
+  }, [onSlotLongPress]);
 
   const endPress = useCallback((slotType: string, item: Equipment | null) => {
     if (pressTimer) {

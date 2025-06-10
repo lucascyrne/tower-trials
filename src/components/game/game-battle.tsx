@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { useGame } from '@/resources/game/game-hook';
 import { type ActionType } from '@/resources/game/game-model';
 import { BattleArena } from './BattleArena';
@@ -17,6 +17,7 @@ import { GameLog } from './GameLog';
 import { CharacterService } from '@/resources/game/character.service';
 import { QuickActionPanel } from './QuickActionPanel';
 import { FleeOverlay } from './FleeOverlay';
+
 interface BattleRewards {
   xp: number;
   gold: number;
@@ -32,7 +33,7 @@ export default function GameBattle() {
     gameState, 
     performAction, 
     loading,
-    selectCharacter,
+    initializeBattle,
     addGameLogMessage,
     updatePlayerStats,
     updatePlayerConsumables,
@@ -44,7 +45,7 @@ export default function GameBattle() {
   const [showAttributeModal, setShowAttributeModal] = useState(false);
   const [showFleeOverlay, setShowFleeOverlay] = useState(false);
   const [fleeSuccess, setFleeSuccess] = useState(false);
-      const [showDebugUnlock, setShowDebugUnlock] = useState(false);
+  const [showDebugUnlock, setShowDebugUnlock] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
@@ -59,7 +60,6 @@ export default function GameBattle() {
   
   // Sistema para evitar processamento duplicado de recompensas
   const processedRewardsRef = useRef<Set<string>>(new Set());
-  const characterLoadedRef = useRef(false);
   const lastBattleStateRef = useRef<{
     floor: number;
     enemyName: string;
@@ -77,6 +77,93 @@ export default function GameBattle() {
     leveledUp: false,
     newLevel: 0
   });
+
+  const { character: characterId } = useParams({ 
+    from: '/_authenticated/game/play/hub/battle/$character' 
+  });
+
+  // NOVO: Controle para evitar múltiplas inicializações
+  const battleInitializedRef = useRef(false);
+  const mountedRef = useRef(false);
+  const currentCharacterRef = useRef<string | null>(null);
+
+  // Controle de montagem
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      battleInitializedRef.current = false;
+      currentCharacterRef.current = null;
+    };
+  }, []);
+
+  // Inicializar batalha apenas uma vez quando componente montar com personagem válido
+  useEffect(() => {
+    if (!mountedRef.current || !user?.id || !characterId) {
+      return;
+    }
+
+    // Evitar múltiplas inicializações para o mesmo personagem
+    if (battleInitializedRef.current && currentCharacterRef.current === characterId) {
+      console.log(`[GameBattle] Batalha já inicializada para personagem ${characterId}`);
+      return;
+    }
+
+    // Evitar inicialização se já está carregando
+    if (loading.performAction || loading.loadProgress) {
+      console.log(`[GameBattle] Aguardando carregamento finalizar antes de inicializar batalha`);
+      return;
+    }
+
+    const initializeBattleForCharacter = async () => {
+      try {
+        console.log(`[GameBattle] === INICIANDO INICIALIZAÇÃO DA BATALHA ===`);
+        console.log(`[GameBattle] Personagem ID: ${characterId}`);
+        
+        // Marcar como inicializado antes de começar
+        battleInitializedRef.current = true;
+        currentCharacterRef.current = characterId;
+        
+        // Buscar dados do personagem
+        const characterResponse = await CharacterService.getCharacter(characterId);
+        
+        if (!characterResponse.success || !characterResponse.data) {
+          throw new Error(characterResponse.error || 'Personagem não encontrado');
+        }
+        
+        const character = characterResponse.data;
+        console.log(`[GameBattle] Personagem carregado: ${character.name} (andar ${character.floor})`);
+        
+        // Inicializar batalha
+        await initializeBattle(character);
+        
+        // Marcar como carregamento concluído
+        setIsLoading(false);
+        
+        console.log(`[GameBattle] === BATALHA INICIALIZADA COM SUCESSO ===`);
+        
+      } catch (error) {
+        console.error('[GameBattle] Erro ao inicializar batalha:', error);
+        
+        // Reset em caso de erro para permitir nova tentativa
+        battleInitializedRef.current = false;
+        currentCharacterRef.current = null;
+        
+        toast.error('Erro ao inicializar batalha', {
+          description: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
+      }
+    };
+
+    // Pequeno delay para garantir que o componente está totalmente montado
+    const initTimer = setTimeout(() => {
+      if (mountedRef.current && !battleInitializedRef.current) {
+        initializeBattleForCharacter();
+      }
+    }, 100);
+
+    return () => clearTimeout(initTimer);
+  }, [user?.id, characterId, initializeBattle, loading.performAction, loading.loadProgress]);
 
   useEffect(() => {
     console.log(`[GameBattle] Andar atual: ${player.floor}`);
@@ -218,8 +305,6 @@ export default function GameBattle() {
     }
   }, [gameState.mode, gameState.fleeSuccessful, currentEnemy, showFleeOverlay, player.name]);
 
-
-
   // Detectar orientação para escolher interface adequada
   useEffect(() => {
     const checkOrientation = () => {
@@ -250,61 +335,6 @@ export default function GameBattle() {
       window.removeEventListener('openAttributeModal', handleOpenAttributeModal);
     };
   }, []);
-
-  // Carregamento inicial do personagem
-  useEffect(() => {
-    const loadSelectedCharacter = async () => {
-      if (characterLoadedRef.current) {
-        console.log('[GameBattle] Personagem já carregado, ignorando carregamento duplo');
-        return;
-      }
-      
-      setIsLoading(true);
-      
-      const characterId = window.location.pathname.split('/').pop();
-      if (!characterId) {
-        console.warn('[GameBattle] ID do personagem não encontrado na URL');
-        navigate({ to: '/game/play' });
-        return;
-      }
-
-      try {
-        console.log(`[GameBattle] Iniciando carregamento do personagem: ${characterId}`);
-        
-        const response = await CharacterService.getCharacter(characterId);
-        
-        if (response.success && response.data) {
-          console.log(`[GameBattle] Personagem carregado com sucesso: ${response.data.name} (andar: ${response.data.floor})`);
-          
-          characterLoadedRef.current = true;
-          
-          // Aguardar a seleção do personagem completar
-          await selectCharacter(response.data);
-          
-          console.log(`[GameBattle] selectCharacter concluído para ${response.data.name}`);
-          
-        } else {
-          console.error('[GameBattle] Erro ao carregar personagem:', response.error);
-          toast.error('Erro ao carregar personagem', {
-            description: response.error || 'Erro desconhecido'
-          });
-          navigate({ to: '/game/play' });
-        }
-      } catch (error) {
-        console.error('[GameBattle] Exceção ao carregar personagem:', error);
-        toast.error('Erro ao carregar personagem');
-        navigate({ to: '/game/play' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadSelectedCharacter();
-    
-    return () => {
-      processedRewardsRef.current.clear();
-    };
-  }, [selectCharacter]);
 
   // Função para atualizar consumáveis do jogador
   const handlePlayerConsumablesUpdate = (consumables: CharacterConsumable[]) => {
@@ -352,13 +382,15 @@ export default function GameBattle() {
   // Componente de carregamento - NUNCA mostrar durante fuga
   const isFugaState = gameState.mode === 'fled' || gameState.fleeSuccessful === true || showFleeOverlay;
   
-  if (!isFugaState && (isLoading || loading.performAction)) {
+  if (!isFugaState && (isLoading || loading.performAction || !battleInitializedRef.current)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
           <h2 className="text-2xl font-bold mb-2">Carregando...</h2>
-          <p className="text-muted-foreground">Preparando sua aventura</p>
+          <p className="text-muted-foreground">
+            {!battleInitializedRef.current ? 'Inicializando batalha...' : 'Preparando sua aventura'}
+          </p>
         </div>
       </div>
     );
