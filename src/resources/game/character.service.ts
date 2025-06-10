@@ -35,6 +35,7 @@ export class CharacterService {
   private static characterCache: Map<string, Character> = new Map();
   private static lastFetchTimestamp: Map<string, number> = new Map();
   private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
+  private static pendingUserCharactersRequests: Map<string, Promise<ServiceResponse<Character[]>>> = new Map();
   private static CACHE_DURATION = 30000; // 30 segundos de cache
   
   // OTIMIZADO: Throttling para invalidação de cache
@@ -109,34 +110,38 @@ export class CharacterService {
    */
   static async getUserCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
     try {
-      // Verificar se já buscamos recentemente
+      // Verificar se já buscamos recentemente - apenas se temos dados válidos
       const now = Date.now();
       const userCacheKey = `user_${userId}`;
       const lastFetch = this.lastFetchTimestamp.get(userCacheKey) || 0;
       
-      if (now - lastFetch < this.CACHE_DURATION) {
+      // Cache mais rigoroso - só usar cache se foi muito recente (10 segundos)
+      if (now - lastFetch < 10000) {
         const cachedCharacters = Array.from(this.characterCache.values()).filter(char => char.user_id === userId);
         if (cachedCharacters.length > 0) {
-          console.log(`[CharacterService] Usando lista de personagens em cache para usuário ${userId}`);
+          console.log(`[CharacterService] Usando lista de personagens em cache para usuário ${userId} (${cachedCharacters.length} personagens) - última busca há ${Math.round((now - lastFetch) / 1000)}s`);
           return { data: cachedCharacters, error: null, success: true };
         }
       }
+      
+      // Verificar se já existe uma requisição pendente para este usuário
+      if (this.pendingUserCharactersRequests.has(userId)) {
+        console.log(`[CharacterService] Reutilizando requisição pendente para usuário ${userId}`);
+        return this.pendingUserCharactersRequests.get(userId)!;
+      }
 
-      const { data, error } = await supabase
-        .rpc('get_user_characters', {
-          p_user_id: userId
-        });
+      console.log(`[CharacterService] Buscando personagens do servidor para usuário ${userId}`);
 
-      if (error) throw error;
+      // Criar nova requisição
+      const request = this.fetchUserCharactersFromServer(userId, userCacheKey, now);
+      this.pendingUserCharactersRequests.set(userId, request);
 
-      // Atualizar cache
-      this.characterCache.clear();
-      (data as Character[]).forEach(char => {
-        this.characterCache.set(char.id, char);
+      // Remover do mapa de requisições pendentes quando concluído
+      request.finally(() => {
+        this.pendingUserCharactersRequests.delete(userId);
       });
-      this.lastFetchTimestamp.set(userCacheKey, now);
 
-      return { data: data as Character[], error: null, success: true };
+      return request;
     } catch (error) {
       console.error('Erro ao buscar personagens:', error instanceof Error ? error.message : error);
       return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagens', success: false };
@@ -207,6 +212,33 @@ export class CharacterService {
         error: error instanceof Error ? error.message : 'Erro ao buscar personagem', 
         success: false 
       };
+    }
+  }
+
+  /**
+   * Buscar personagens do usuário do servidor
+   * @private
+   */
+  private static async fetchUserCharactersFromServer(userId: string, userCacheKey: string, now: number): Promise<ServiceResponse<Character[]>> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_user_characters', {
+          p_user_id: userId
+        });
+
+      if (error) throw error;
+
+      // Atualizar cache
+      this.characterCache.clear();
+      (data as Character[]).forEach(char => {
+        this.characterCache.set(char.id, char);
+      });
+      this.lastFetchTimestamp.set(userCacheKey, now);
+
+      return { data: data as Character[], error: null, success: true };
+    } catch (error) {
+      console.error('Erro ao buscar personagens do servidor:', error instanceof Error ? error.message : error);
+      return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagens', success: false };
     }
   }
 

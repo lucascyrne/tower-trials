@@ -39,7 +39,7 @@ export function LogProvider({ children }: LogProviderProps) {
       addGameLogMessage,
       setGameMessage,
     }),
-    [gameMessage, gameLog, addGameLogMessage]
+    [gameMessage, gameLog, addGameLogMessage, setGameMessage]
   );
 
   return (

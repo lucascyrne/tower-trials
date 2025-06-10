@@ -55,7 +55,7 @@ export function EventProvider({ children }: EventProviderProps) {
       console.error('[EventProvider] Erro no evento especial:', error);
       addGameLogMessage('Erro ao processar evento especial', 'system');
     }
-  }, [gameState, selectedCharacter, setGameState, addGameLogMessage]);
+  }, [gameState, selectedCharacter]);
 
   return (
     <EventContext.Provider value={{ interactWithEvent }}>

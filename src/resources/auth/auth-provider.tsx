@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useNavigate } from '@tanstack/react-router';
 
 const initialLoadingState: AuthLoadingState = {
-  onAuthUserChanged: false,
+  onAuthUserChanged: true,
   signIn: false,
   signUp: false,
   signOut: false,
@@ -37,7 +37,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>(initialState);
 
   const loadUser = useCallback(async () => {
-    if (!state.isLoading) return;
+    setState(prev => {
+      if (!prev.isLoading) return prev;
+      
+      return {
+        ...prev,
+        loading: { ...prev.loading, onAuthUserChanged: true }
+      };
+    });
 
     try {
       const session = await AuthService.getSession();
@@ -46,6 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setState({
           ...initialState,
           isLoading: false,
+          loading: { ...initialLoadingState, onAuthUserChanged: false },
         });
         return;
       }
@@ -57,6 +65,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         session,
         isAuthenticated: !!user,
         isLoading: false,
+        loading: { ...initialLoadingState, onAuthUserChanged: false },
       });
     } catch (error: unknown) {
       console.error('Erro ao carregar usuário:', error instanceof Error ? error.message : error);
@@ -64,27 +73,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ...initialState,
         error: error instanceof Error ? error.message : String(error),
         isLoading: false,
+        loading: { ...initialLoadingState, onAuthUserChanged: false },
       });
     }
-  }, [state.isLoading]);
+  }, []);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (JSON.stringify(session) !== JSON.stringify(state.session)) {
-        setState(prev => ({
+      setState(prev => {
+        if (JSON.stringify(session) === JSON.stringify(prev.session)) {
+          return prev;
+        }
+        
+        return {
           ...prev,
           session,
           isLoading: true,
-        }));
-      }
+          loading: { ...prev.loading, onAuthUserChanged: true },
+        };
+      });
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [state.session]);
+  }, []);
 
   useEffect(() => {
     if (state.isLoading) {
@@ -107,7 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setState(prev => ({
         ...prev,
         isLoading: true,
-        loading: { ...prev.loading, signIn: false },
+        loading: { ...prev.loading, signIn: false, onAuthUserChanged: true },
       }));
       return { success: true };
     } catch (error) {
@@ -136,7 +151,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setState(prev => ({
         ...prev,
         isLoading: true,
-        loading: { ...prev.loading, signUp: false },
+        loading: { ...prev.loading, signUp: false, onAuthUserChanged: true },
       }));
       return { success: true };
     } catch (error) {
@@ -161,8 +176,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setState({
         ...initialState,
         isLoading: false,
+        loading: { ...initialLoadingState, onAuthUserChanged: false },
       });
-      navigate({ to: '/auth', search: { auth: '' } });
+      navigate({ to: '/auth', search: { auth: 'logout' } });
     } catch (error: unknown) {
       console.error('Erro ao fazer logout:', error instanceof Error ? error.message : error);
       setState(prev => ({
@@ -171,7 +187,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         loading: { ...prev.loading, signOut: false },
       }));
     }
-  }, []);
+  }, [navigate]);
 
   const updateProfile = useCallback(async (data: UpdateProfileDTO) => {
     setState(prev => ({ ...prev, loading: { ...prev.loading, updateProfile: true } }));
@@ -188,7 +204,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setState(prev => ({
         ...prev,
         isLoading: true,
-        loading: { ...prev.loading, updateProfile: false },
+        loading: { ...prev.loading, updateProfile: false, onAuthUserChanged: true },
       }));
       return { success: true };
     } catch (error) {
@@ -210,7 +226,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signOut,
       updateProfile,
     }),
-    [state, signInWithEmail, signUpWithEmail, signOut, updateProfile],
+    [state],
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

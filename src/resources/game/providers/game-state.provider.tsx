@@ -84,7 +84,7 @@ export function GameStateProvider({ children }: GameStateProviderProps) {
       setError,
       resetError,
     }),
-    [state.gameState, state.loading, state.error]
+    [state]
   );
 
   return (

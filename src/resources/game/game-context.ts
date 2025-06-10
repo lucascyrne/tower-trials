@@ -35,7 +35,7 @@ export const defaultPlayer: GamePlayer = {
   specialCooldown: 0,
   defenseCooldown: 0,
   isDefending: false,
-  floor: 0,
+  floor: 1,
   spells: [],
   consumables: [],
   potionUsedThisTurn: false,
