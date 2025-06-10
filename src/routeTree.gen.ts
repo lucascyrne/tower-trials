@@ -22,19 +22,19 @@ import { Route as AuthenticatedGameImport } from './routes/_authenticated/game'
 import { Route as Authenticated403Import } from './routes/_authenticated/403'
 import { Route as PublicAuthVerifyEmailImport } from './routes/_public/auth/verify-email'
 import { Route as AuthenticatedUsersIdImport } from './routes/_authenticated/users/$id'
-import { Route as AuthenticatedGameSpellsImport } from './routes/_authenticated/game/spells'
 import { Route as AuthenticatedGameRankingImport } from './routes/_authenticated/game/ranking'
 import { Route as AuthenticatedGamePlayImport } from './routes/_authenticated/game/play'
 import { Route as AuthenticatedGameGuideImport } from './routes/_authenticated/game/guide'
-import { Route as AuthenticatedGameCraftingImport } from './routes/_authenticated/game/crafting'
-import { Route as AuthenticatedGameCemeteryImport } from './routes/_authenticated/game/cemetery'
-import { Route as AuthenticatedGamePlayShopImport } from './routes/_authenticated/game/play/shop'
-import { Route as AuthenticatedGamePlayInventoryImport } from './routes/_authenticated/game/play/inventory'
 import { Route as AuthenticatedGamePlayHubImport } from './routes/_authenticated/game/play/hub'
-import { Route as AuthenticatedGamePlayEquipmentImport } from './routes/_authenticated/game/play/equipment'
-import { Route as AuthenticatedGamePlayCharacterStatsImport } from './routes/_authenticated/game/play/character-stats'
-import { Route as AuthenticatedGamePlayEquipmentSelectImport } from './routes/_authenticated/game/play/equipment/select'
-import { Route as AuthenticatedGamePlayBattleCharacterImport } from './routes/_authenticated/game/play/battle/$character'
+import { Route as AuthenticatedGamePlayHubSpellsImport } from './routes/_authenticated/game/play/hub/spells'
+import { Route as AuthenticatedGamePlayHubShopImport } from './routes/_authenticated/game/play/hub/shop'
+import { Route as AuthenticatedGamePlayHubInventoryImport } from './routes/_authenticated/game/play/hub/inventory'
+import { Route as AuthenticatedGamePlayHubEquipmentImport } from './routes/_authenticated/game/play/hub/equipment'
+import { Route as AuthenticatedGamePlayHubCraftingImport } from './routes/_authenticated/game/play/hub/crafting'
+import { Route as AuthenticatedGamePlayHubCharacterStatsImport } from './routes/_authenticated/game/play/hub/character-stats'
+import { Route as AuthenticatedGamePlayHubCemeteryImport } from './routes/_authenticated/game/play/hub/cemetery'
+import { Route as AuthenticatedGamePlayHubEquipmentSelectImport } from './routes/_authenticated/game/play/hub/equipment/select'
+import { Route as AuthenticatedGamePlayHubBattleCharacterImport } from './routes/_authenticated/game/play/hub/battle/$character'
 
 // Create/Update Routes
 
@@ -102,12 +102,6 @@ const AuthenticatedUsersIdRoute = AuthenticatedUsersIdImport.update({
   getParentRoute: () => AuthenticatedUsersRoute,
 } as any)
 
-const AuthenticatedGameSpellsRoute = AuthenticatedGameSpellsImport.update({
-  id: '/spells',
-  path: '/spells',
-  getParentRoute: () => AuthenticatedGameRoute,
-} as any)
-
 const AuthenticatedGameRankingRoute = AuthenticatedGameRankingImport.update({
   id: '/ranking',
   path: '/ranking',
@@ -126,63 +120,73 @@ const AuthenticatedGameGuideRoute = AuthenticatedGameGuideImport.update({
   getParentRoute: () => AuthenticatedGameRoute,
 } as any)
 
-const AuthenticatedGameCraftingRoute = AuthenticatedGameCraftingImport.update({
-  id: '/crafting',
-  path: '/crafting',
-  getParentRoute: () => AuthenticatedGameRoute,
-} as any)
-
-const AuthenticatedGameCemeteryRoute = AuthenticatedGameCemeteryImport.update({
-  id: '/cemetery',
-  path: '/cemetery',
-  getParentRoute: () => AuthenticatedGameRoute,
-} as any)
-
-const AuthenticatedGamePlayShopRoute = AuthenticatedGamePlayShopImport.update({
-  id: '/shop',
-  path: '/shop',
-  getParentRoute: () => AuthenticatedGamePlayRoute,
-} as any)
-
-const AuthenticatedGamePlayInventoryRoute =
-  AuthenticatedGamePlayInventoryImport.update({
-    id: '/inventory',
-    path: '/inventory',
-    getParentRoute: () => AuthenticatedGamePlayRoute,
-  } as any)
-
 const AuthenticatedGamePlayHubRoute = AuthenticatedGamePlayHubImport.update({
   id: '/hub',
   path: '/hub',
   getParentRoute: () => AuthenticatedGamePlayRoute,
 } as any)
 
-const AuthenticatedGamePlayEquipmentRoute =
-  AuthenticatedGamePlayEquipmentImport.update({
+const AuthenticatedGamePlayHubSpellsRoute =
+  AuthenticatedGamePlayHubSpellsImport.update({
+    id: '/spells',
+    path: '/spells',
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
+  } as any)
+
+const AuthenticatedGamePlayHubShopRoute =
+  AuthenticatedGamePlayHubShopImport.update({
+    id: '/shop',
+    path: '/shop',
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
+  } as any)
+
+const AuthenticatedGamePlayHubInventoryRoute =
+  AuthenticatedGamePlayHubInventoryImport.update({
+    id: '/inventory',
+    path: '/inventory',
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
+  } as any)
+
+const AuthenticatedGamePlayHubEquipmentRoute =
+  AuthenticatedGamePlayHubEquipmentImport.update({
     id: '/equipment',
     path: '/equipment',
-    getParentRoute: () => AuthenticatedGamePlayRoute,
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
   } as any)
 
-const AuthenticatedGamePlayCharacterStatsRoute =
-  AuthenticatedGamePlayCharacterStatsImport.update({
+const AuthenticatedGamePlayHubCraftingRoute =
+  AuthenticatedGamePlayHubCraftingImport.update({
+    id: '/crafting',
+    path: '/crafting',
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
+  } as any)
+
+const AuthenticatedGamePlayHubCharacterStatsRoute =
+  AuthenticatedGamePlayHubCharacterStatsImport.update({
     id: '/character-stats',
     path: '/character-stats',
-    getParentRoute: () => AuthenticatedGamePlayRoute,
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
   } as any)
 
-const AuthenticatedGamePlayEquipmentSelectRoute =
-  AuthenticatedGamePlayEquipmentSelectImport.update({
+const AuthenticatedGamePlayHubCemeteryRoute =
+  AuthenticatedGamePlayHubCemeteryImport.update({
+    id: '/cemetery',
+    path: '/cemetery',
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
+  } as any)
+
+const AuthenticatedGamePlayHubEquipmentSelectRoute =
+  AuthenticatedGamePlayHubEquipmentSelectImport.update({
     id: '/select',
     path: '/select',
-    getParentRoute: () => AuthenticatedGamePlayEquipmentRoute,
+    getParentRoute: () => AuthenticatedGamePlayHubEquipmentRoute,
   } as any)
 
-const AuthenticatedGamePlayBattleCharacterRoute =
-  AuthenticatedGamePlayBattleCharacterImport.update({
+const AuthenticatedGamePlayHubBattleCharacterRoute =
+  AuthenticatedGamePlayHubBattleCharacterImport.update({
     id: '/battle/$character',
     path: '/battle/$character',
-    getParentRoute: () => AuthenticatedGamePlayRoute,
+    getParentRoute: () => AuthenticatedGamePlayHubRoute,
   } as any)
 
 // Populate the FileRoutesByPath interface
@@ -252,20 +256,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicLogoutImport
       parentRoute: typeof PublicImport
     }
-    '/_authenticated/game/cemetery': {
-      id: '/_authenticated/game/cemetery'
-      path: '/cemetery'
-      fullPath: '/game/cemetery'
-      preLoaderRoute: typeof AuthenticatedGameCemeteryImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
-    '/_authenticated/game/crafting': {
-      id: '/_authenticated/game/crafting'
-      path: '/crafting'
-      fullPath: '/game/crafting'
-      preLoaderRoute: typeof AuthenticatedGameCraftingImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
     '/_authenticated/game/guide': {
       id: '/_authenticated/game/guide'
       path: '/guide'
@@ -287,13 +277,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGameRankingImport
       parentRoute: typeof AuthenticatedGameImport
     }
-    '/_authenticated/game/spells': {
-      id: '/_authenticated/game/spells'
-      path: '/spells'
-      fullPath: '/game/spells'
-      preLoaderRoute: typeof AuthenticatedGameSpellsImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
     '/_authenticated/users/$id': {
       id: '/_authenticated/users/$id'
       path: '/$id'
@@ -308,20 +291,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicAuthVerifyEmailImport
       parentRoute: typeof PublicAuthImport
     }
-    '/_authenticated/game/play/character-stats': {
-      id: '/_authenticated/game/play/character-stats'
-      path: '/character-stats'
-      fullPath: '/game/play/character-stats'
-      preLoaderRoute: typeof AuthenticatedGamePlayCharacterStatsImport
-      parentRoute: typeof AuthenticatedGamePlayImport
-    }
-    '/_authenticated/game/play/equipment': {
-      id: '/_authenticated/game/play/equipment'
-      path: '/equipment'
-      fullPath: '/game/play/equipment'
-      preLoaderRoute: typeof AuthenticatedGamePlayEquipmentImport
-      parentRoute: typeof AuthenticatedGamePlayImport
-    }
     '/_authenticated/game/play/hub': {
       id: '/_authenticated/game/play/hub'
       path: '/hub'
@@ -329,73 +298,129 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGamePlayHubImport
       parentRoute: typeof AuthenticatedGamePlayImport
     }
-    '/_authenticated/game/play/inventory': {
-      id: '/_authenticated/game/play/inventory'
+    '/_authenticated/game/play/hub/cemetery': {
+      id: '/_authenticated/game/play/hub/cemetery'
+      path: '/cemetery'
+      fullPath: '/game/play/hub/cemetery'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCemeteryImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
+    }
+    '/_authenticated/game/play/hub/character-stats': {
+      id: '/_authenticated/game/play/hub/character-stats'
+      path: '/character-stats'
+      fullPath: '/game/play/hub/character-stats'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCharacterStatsImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
+    }
+    '/_authenticated/game/play/hub/crafting': {
+      id: '/_authenticated/game/play/hub/crafting'
+      path: '/crafting'
+      fullPath: '/game/play/hub/crafting'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCraftingImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
+    }
+    '/_authenticated/game/play/hub/equipment': {
+      id: '/_authenticated/game/play/hub/equipment'
+      path: '/equipment'
+      fullPath: '/game/play/hub/equipment'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
+    }
+    '/_authenticated/game/play/hub/inventory': {
+      id: '/_authenticated/game/play/hub/inventory'
       path: '/inventory'
-      fullPath: '/game/play/inventory'
-      preLoaderRoute: typeof AuthenticatedGamePlayInventoryImport
-      parentRoute: typeof AuthenticatedGamePlayImport
+      fullPath: '/game/play/hub/inventory'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubInventoryImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
     }
-    '/_authenticated/game/play/shop': {
-      id: '/_authenticated/game/play/shop'
+    '/_authenticated/game/play/hub/shop': {
+      id: '/_authenticated/game/play/hub/shop'
       path: '/shop'
-      fullPath: '/game/play/shop'
-      preLoaderRoute: typeof AuthenticatedGamePlayShopImport
-      parentRoute: typeof AuthenticatedGamePlayImport
+      fullPath: '/game/play/hub/shop'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubShopImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
     }
-    '/_authenticated/game/play/battle/$character': {
-      id: '/_authenticated/game/play/battle/$character'
+    '/_authenticated/game/play/hub/spells': {
+      id: '/_authenticated/game/play/hub/spells'
+      path: '/spells'
+      fullPath: '/game/play/hub/spells'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubSpellsImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
+    }
+    '/_authenticated/game/play/hub/battle/$character': {
+      id: '/_authenticated/game/play/hub/battle/$character'
       path: '/battle/$character'
-      fullPath: '/game/play/battle/$character'
-      preLoaderRoute: typeof AuthenticatedGamePlayBattleCharacterImport
-      parentRoute: typeof AuthenticatedGamePlayImport
+      fullPath: '/game/play/hub/battle/$character'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubBattleCharacterImport
+      parentRoute: typeof AuthenticatedGamePlayHubImport
     }
-    '/_authenticated/game/play/equipment/select': {
-      id: '/_authenticated/game/play/equipment/select'
+    '/_authenticated/game/play/hub/equipment/select': {
+      id: '/_authenticated/game/play/hub/equipment/select'
       path: '/select'
-      fullPath: '/game/play/equipment/select'
-      preLoaderRoute: typeof AuthenticatedGamePlayEquipmentSelectImport
-      parentRoute: typeof AuthenticatedGamePlayEquipmentImport
+      fullPath: '/game/play/hub/equipment/select'
+      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentSelectImport
+      parentRoute: typeof AuthenticatedGamePlayHubEquipmentImport
     }
   }
 }
 
 // Create and export the route tree
 
-interface AuthenticatedGamePlayEquipmentRouteChildren {
-  AuthenticatedGamePlayEquipmentSelectRoute: typeof AuthenticatedGamePlayEquipmentSelectRoute
+interface AuthenticatedGamePlayHubEquipmentRouteChildren {
+  AuthenticatedGamePlayHubEquipmentSelectRoute: typeof AuthenticatedGamePlayHubEquipmentSelectRoute
 }
 
-const AuthenticatedGamePlayEquipmentRouteChildren: AuthenticatedGamePlayEquipmentRouteChildren =
+const AuthenticatedGamePlayHubEquipmentRouteChildren: AuthenticatedGamePlayHubEquipmentRouteChildren =
   {
-    AuthenticatedGamePlayEquipmentSelectRoute:
-      AuthenticatedGamePlayEquipmentSelectRoute,
+    AuthenticatedGamePlayHubEquipmentSelectRoute:
+      AuthenticatedGamePlayHubEquipmentSelectRoute,
   }
 
-const AuthenticatedGamePlayEquipmentRouteWithChildren =
-  AuthenticatedGamePlayEquipmentRoute._addFileChildren(
-    AuthenticatedGamePlayEquipmentRouteChildren,
+const AuthenticatedGamePlayHubEquipmentRouteWithChildren =
+  AuthenticatedGamePlayHubEquipmentRoute._addFileChildren(
+    AuthenticatedGamePlayHubEquipmentRouteChildren,
+  )
+
+interface AuthenticatedGamePlayHubRouteChildren {
+  AuthenticatedGamePlayHubCemeteryRoute: typeof AuthenticatedGamePlayHubCemeteryRoute
+  AuthenticatedGamePlayHubCharacterStatsRoute: typeof AuthenticatedGamePlayHubCharacterStatsRoute
+  AuthenticatedGamePlayHubCraftingRoute: typeof AuthenticatedGamePlayHubCraftingRoute
+  AuthenticatedGamePlayHubEquipmentRoute: typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
+  AuthenticatedGamePlayHubInventoryRoute: typeof AuthenticatedGamePlayHubInventoryRoute
+  AuthenticatedGamePlayHubShopRoute: typeof AuthenticatedGamePlayHubShopRoute
+  AuthenticatedGamePlayHubSpellsRoute: typeof AuthenticatedGamePlayHubSpellsRoute
+  AuthenticatedGamePlayHubBattleCharacterRoute: typeof AuthenticatedGamePlayHubBattleCharacterRoute
+}
+
+const AuthenticatedGamePlayHubRouteChildren: AuthenticatedGamePlayHubRouteChildren =
+  {
+    AuthenticatedGamePlayHubCemeteryRoute:
+      AuthenticatedGamePlayHubCemeteryRoute,
+    AuthenticatedGamePlayHubCharacterStatsRoute:
+      AuthenticatedGamePlayHubCharacterStatsRoute,
+    AuthenticatedGamePlayHubCraftingRoute:
+      AuthenticatedGamePlayHubCraftingRoute,
+    AuthenticatedGamePlayHubEquipmentRoute:
+      AuthenticatedGamePlayHubEquipmentRouteWithChildren,
+    AuthenticatedGamePlayHubInventoryRoute:
+      AuthenticatedGamePlayHubInventoryRoute,
+    AuthenticatedGamePlayHubShopRoute: AuthenticatedGamePlayHubShopRoute,
+    AuthenticatedGamePlayHubSpellsRoute: AuthenticatedGamePlayHubSpellsRoute,
+    AuthenticatedGamePlayHubBattleCharacterRoute:
+      AuthenticatedGamePlayHubBattleCharacterRoute,
+  }
+
+const AuthenticatedGamePlayHubRouteWithChildren =
+  AuthenticatedGamePlayHubRoute._addFileChildren(
+    AuthenticatedGamePlayHubRouteChildren,
   )
 
 interface AuthenticatedGamePlayRouteChildren {
-  AuthenticatedGamePlayCharacterStatsRoute: typeof AuthenticatedGamePlayCharacterStatsRoute
-  AuthenticatedGamePlayEquipmentRoute: typeof AuthenticatedGamePlayEquipmentRouteWithChildren
-  AuthenticatedGamePlayHubRoute: typeof AuthenticatedGamePlayHubRoute
-  AuthenticatedGamePlayInventoryRoute: typeof AuthenticatedGamePlayInventoryRoute
-  AuthenticatedGamePlayShopRoute: typeof AuthenticatedGamePlayShopRoute
-  AuthenticatedGamePlayBattleCharacterRoute: typeof AuthenticatedGamePlayBattleCharacterRoute
+  AuthenticatedGamePlayHubRoute: typeof AuthenticatedGamePlayHubRouteWithChildren
 }
 
 const AuthenticatedGamePlayRouteChildren: AuthenticatedGamePlayRouteChildren = {
-  AuthenticatedGamePlayCharacterStatsRoute:
-    AuthenticatedGamePlayCharacterStatsRoute,
-  AuthenticatedGamePlayEquipmentRoute:
-    AuthenticatedGamePlayEquipmentRouteWithChildren,
-  AuthenticatedGamePlayHubRoute: AuthenticatedGamePlayHubRoute,
-  AuthenticatedGamePlayInventoryRoute: AuthenticatedGamePlayInventoryRoute,
-  AuthenticatedGamePlayShopRoute: AuthenticatedGamePlayShopRoute,
-  AuthenticatedGamePlayBattleCharacterRoute:
-    AuthenticatedGamePlayBattleCharacterRoute,
+  AuthenticatedGamePlayHubRoute: AuthenticatedGamePlayHubRouteWithChildren,
 }
 
 const AuthenticatedGamePlayRouteWithChildren =
@@ -404,21 +429,15 @@ const AuthenticatedGamePlayRouteWithChildren =
   )
 
 interface AuthenticatedGameRouteChildren {
-  AuthenticatedGameCemeteryRoute: typeof AuthenticatedGameCemeteryRoute
-  AuthenticatedGameCraftingRoute: typeof AuthenticatedGameCraftingRoute
   AuthenticatedGameGuideRoute: typeof AuthenticatedGameGuideRoute
   AuthenticatedGamePlayRoute: typeof AuthenticatedGamePlayRouteWithChildren
   AuthenticatedGameRankingRoute: typeof AuthenticatedGameRankingRoute
-  AuthenticatedGameSpellsRoute: typeof AuthenticatedGameSpellsRoute
 }
 
 const AuthenticatedGameRouteChildren: AuthenticatedGameRouteChildren = {
-  AuthenticatedGameCemeteryRoute: AuthenticatedGameCemeteryRoute,
-  AuthenticatedGameCraftingRoute: AuthenticatedGameCraftingRoute,
   AuthenticatedGameGuideRoute: AuthenticatedGameGuideRoute,
   AuthenticatedGamePlayRoute: AuthenticatedGamePlayRouteWithChildren,
   AuthenticatedGameRankingRoute: AuthenticatedGameRankingRoute,
-  AuthenticatedGameSpellsRoute: AuthenticatedGameSpellsRoute,
 }
 
 const AuthenticatedGameRouteWithChildren =
@@ -487,21 +506,21 @@ export interface FileRoutesByFullPath {
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/auth': typeof PublicAuthRouteWithChildren
   '/logout': typeof PublicLogoutRoute
-  '/game/cemetery': typeof AuthenticatedGameCemeteryRoute
-  '/game/crafting': typeof AuthenticatedGameCraftingRoute
   '/game/guide': typeof AuthenticatedGameGuideRoute
   '/game/play': typeof AuthenticatedGamePlayRouteWithChildren
   '/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/game/spells': typeof AuthenticatedGameSpellsRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/game/play/character-stats': typeof AuthenticatedGamePlayCharacterStatsRoute
-  '/game/play/equipment': typeof AuthenticatedGamePlayEquipmentRouteWithChildren
-  '/game/play/hub': typeof AuthenticatedGamePlayHubRoute
-  '/game/play/inventory': typeof AuthenticatedGamePlayInventoryRoute
-  '/game/play/shop': typeof AuthenticatedGamePlayShopRoute
-  '/game/play/battle/$character': typeof AuthenticatedGamePlayBattleCharacterRoute
-  '/game/play/equipment/select': typeof AuthenticatedGamePlayEquipmentSelectRoute
+  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
+  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
+  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
+  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
+  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
+  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
+  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
+  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
+  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
+  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
 }
 
 export interface FileRoutesByTo {
@@ -513,21 +532,21 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersRouteWithChildren
   '/auth': typeof PublicAuthRouteWithChildren
   '/logout': typeof PublicLogoutRoute
-  '/game/cemetery': typeof AuthenticatedGameCemeteryRoute
-  '/game/crafting': typeof AuthenticatedGameCraftingRoute
   '/game/guide': typeof AuthenticatedGameGuideRoute
   '/game/play': typeof AuthenticatedGamePlayRouteWithChildren
   '/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/game/spells': typeof AuthenticatedGameSpellsRoute
   '/users/$id': typeof AuthenticatedUsersIdRoute
   '/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/game/play/character-stats': typeof AuthenticatedGamePlayCharacterStatsRoute
-  '/game/play/equipment': typeof AuthenticatedGamePlayEquipmentRouteWithChildren
-  '/game/play/hub': typeof AuthenticatedGamePlayHubRoute
-  '/game/play/inventory': typeof AuthenticatedGamePlayInventoryRoute
-  '/game/play/shop': typeof AuthenticatedGamePlayShopRoute
-  '/game/play/battle/$character': typeof AuthenticatedGamePlayBattleCharacterRoute
-  '/game/play/equipment/select': typeof AuthenticatedGamePlayEquipmentSelectRoute
+  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
+  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
+  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
+  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
+  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
+  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
+  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
+  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
+  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
+  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
 }
 
 export interface FileRoutesById {
@@ -541,21 +560,21 @@ export interface FileRoutesById {
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
   '/_public/auth': typeof PublicAuthRouteWithChildren
   '/_public/logout': typeof PublicLogoutRoute
-  '/_authenticated/game/cemetery': typeof AuthenticatedGameCemeteryRoute
-  '/_authenticated/game/crafting': typeof AuthenticatedGameCraftingRoute
   '/_authenticated/game/guide': typeof AuthenticatedGameGuideRoute
   '/_authenticated/game/play': typeof AuthenticatedGamePlayRouteWithChildren
   '/_authenticated/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/_authenticated/game/spells': typeof AuthenticatedGameSpellsRoute
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
   '/_public/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/_authenticated/game/play/character-stats': typeof AuthenticatedGamePlayCharacterStatsRoute
-  '/_authenticated/game/play/equipment': typeof AuthenticatedGamePlayEquipmentRouteWithChildren
-  '/_authenticated/game/play/hub': typeof AuthenticatedGamePlayHubRoute
-  '/_authenticated/game/play/inventory': typeof AuthenticatedGamePlayInventoryRoute
-  '/_authenticated/game/play/shop': typeof AuthenticatedGamePlayShopRoute
-  '/_authenticated/game/play/battle/$character': typeof AuthenticatedGamePlayBattleCharacterRoute
-  '/_authenticated/game/play/equipment/select': typeof AuthenticatedGamePlayEquipmentSelectRoute
+  '/_authenticated/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
+  '/_authenticated/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
+  '/_authenticated/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
+  '/_authenticated/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
+  '/_authenticated/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
+  '/_authenticated/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
+  '/_authenticated/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
+  '/_authenticated/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
+  '/_authenticated/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
+  '/_authenticated/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
 }
 
 export interface FileRouteTypes {
@@ -569,21 +588,21 @@ export interface FileRouteTypes {
     | '/users'
     | '/auth'
     | '/logout'
-    | '/game/cemetery'
-    | '/game/crafting'
     | '/game/guide'
     | '/game/play'
     | '/game/ranking'
-    | '/game/spells'
     | '/users/$id'
     | '/auth/verify-email'
-    | '/game/play/character-stats'
-    | '/game/play/equipment'
     | '/game/play/hub'
-    | '/game/play/inventory'
-    | '/game/play/shop'
-    | '/game/play/battle/$character'
-    | '/game/play/equipment/select'
+    | '/game/play/hub/cemetery'
+    | '/game/play/hub/character-stats'
+    | '/game/play/hub/crafting'
+    | '/game/play/hub/equipment'
+    | '/game/play/hub/inventory'
+    | '/game/play/hub/shop'
+    | '/game/play/hub/spells'
+    | '/game/play/hub/battle/$character'
+    | '/game/play/hub/equipment/select'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -594,21 +613,21 @@ export interface FileRouteTypes {
     | '/users'
     | '/auth'
     | '/logout'
-    | '/game/cemetery'
-    | '/game/crafting'
     | '/game/guide'
     | '/game/play'
     | '/game/ranking'
-    | '/game/spells'
     | '/users/$id'
     | '/auth/verify-email'
-    | '/game/play/character-stats'
-    | '/game/play/equipment'
     | '/game/play/hub'
-    | '/game/play/inventory'
-    | '/game/play/shop'
-    | '/game/play/battle/$character'
-    | '/game/play/equipment/select'
+    | '/game/play/hub/cemetery'
+    | '/game/play/hub/character-stats'
+    | '/game/play/hub/crafting'
+    | '/game/play/hub/equipment'
+    | '/game/play/hub/inventory'
+    | '/game/play/hub/shop'
+    | '/game/play/hub/spells'
+    | '/game/play/hub/battle/$character'
+    | '/game/play/hub/equipment/select'
   id:
     | '__root__'
     | '/'
@@ -620,21 +639,21 @@ export interface FileRouteTypes {
     | '/_authenticated/users'
     | '/_public/auth'
     | '/_public/logout'
-    | '/_authenticated/game/cemetery'
-    | '/_authenticated/game/crafting'
     | '/_authenticated/game/guide'
     | '/_authenticated/game/play'
     | '/_authenticated/game/ranking'
-    | '/_authenticated/game/spells'
     | '/_authenticated/users/$id'
     | '/_public/auth/verify-email'
-    | '/_authenticated/game/play/character-stats'
-    | '/_authenticated/game/play/equipment'
     | '/_authenticated/game/play/hub'
-    | '/_authenticated/game/play/inventory'
-    | '/_authenticated/game/play/shop'
-    | '/_authenticated/game/play/battle/$character'
-    | '/_authenticated/game/play/equipment/select'
+    | '/_authenticated/game/play/hub/cemetery'
+    | '/_authenticated/game/play/hub/character-stats'
+    | '/_authenticated/game/play/hub/crafting'
+    | '/_authenticated/game/play/hub/equipment'
+    | '/_authenticated/game/play/hub/inventory'
+    | '/_authenticated/game/play/hub/shop'
+    | '/_authenticated/game/play/hub/spells'
+    | '/_authenticated/game/play/hub/battle/$character'
+    | '/_authenticated/game/play/hub/equipment/select'
   fileRoutesById: FileRoutesById
 }
 
@@ -692,12 +711,9 @@ export const routeTree = rootRoute
       "filePath": "_authenticated/game.tsx",
       "parent": "/_authenticated",
       "children": [
-        "/_authenticated/game/cemetery",
-        "/_authenticated/game/crafting",
         "/_authenticated/game/guide",
         "/_authenticated/game/play",
-        "/_authenticated/game/ranking",
-        "/_authenticated/game/spells"
+        "/_authenticated/game/ranking"
       ]
     },
     "/_authenticated/profile": {
@@ -722,14 +738,6 @@ export const routeTree = rootRoute
       "filePath": "_public/logout.tsx",
       "parent": "/_public"
     },
-    "/_authenticated/game/cemetery": {
-      "filePath": "_authenticated/game/cemetery.tsx",
-      "parent": "/_authenticated/game"
-    },
-    "/_authenticated/game/crafting": {
-      "filePath": "_authenticated/game/crafting.tsx",
-      "parent": "/_authenticated/game"
-    },
     "/_authenticated/game/guide": {
       "filePath": "_authenticated/game/guide.tsx",
       "parent": "/_authenticated/game"
@@ -738,20 +746,11 @@ export const routeTree = rootRoute
       "filePath": "_authenticated/game/play.tsx",
       "parent": "/_authenticated/game",
       "children": [
-        "/_authenticated/game/play/character-stats",
-        "/_authenticated/game/play/equipment",
-        "/_authenticated/game/play/hub",
-        "/_authenticated/game/play/inventory",
-        "/_authenticated/game/play/shop",
-        "/_authenticated/game/play/battle/$character"
+        "/_authenticated/game/play/hub"
       ]
     },
     "/_authenticated/game/ranking": {
       "filePath": "_authenticated/game/ranking.tsx",
-      "parent": "/_authenticated/game"
-    },
-    "/_authenticated/game/spells": {
-      "filePath": "_authenticated/game/spells.tsx",
       "parent": "/_authenticated/game"
     },
     "/_authenticated/users/$id": {
@@ -762,36 +761,58 @@ export const routeTree = rootRoute
       "filePath": "_public/auth/verify-email.tsx",
       "parent": "/_public/auth"
     },
-    "/_authenticated/game/play/character-stats": {
-      "filePath": "_authenticated/game/play/character-stats.tsx",
-      "parent": "/_authenticated/game/play"
-    },
-    "/_authenticated/game/play/equipment": {
-      "filePath": "_authenticated/game/play/equipment.tsx",
-      "parent": "/_authenticated/game/play",
-      "children": [
-        "/_authenticated/game/play/equipment/select"
-      ]
-    },
     "/_authenticated/game/play/hub": {
       "filePath": "_authenticated/game/play/hub.tsx",
-      "parent": "/_authenticated/game/play"
+      "parent": "/_authenticated/game/play",
+      "children": [
+        "/_authenticated/game/play/hub/cemetery",
+        "/_authenticated/game/play/hub/character-stats",
+        "/_authenticated/game/play/hub/crafting",
+        "/_authenticated/game/play/hub/equipment",
+        "/_authenticated/game/play/hub/inventory",
+        "/_authenticated/game/play/hub/shop",
+        "/_authenticated/game/play/hub/spells",
+        "/_authenticated/game/play/hub/battle/$character"
+      ]
     },
-    "/_authenticated/game/play/inventory": {
-      "filePath": "_authenticated/game/play/inventory.tsx",
-      "parent": "/_authenticated/game/play"
+    "/_authenticated/game/play/hub/cemetery": {
+      "filePath": "_authenticated/game/play/hub/cemetery.tsx",
+      "parent": "/_authenticated/game/play/hub"
     },
-    "/_authenticated/game/play/shop": {
-      "filePath": "_authenticated/game/play/shop.tsx",
-      "parent": "/_authenticated/game/play"
+    "/_authenticated/game/play/hub/character-stats": {
+      "filePath": "_authenticated/game/play/hub/character-stats.tsx",
+      "parent": "/_authenticated/game/play/hub"
     },
-    "/_authenticated/game/play/battle/$character": {
-      "filePath": "_authenticated/game/play/battle/$character.tsx",
-      "parent": "/_authenticated/game/play"
+    "/_authenticated/game/play/hub/crafting": {
+      "filePath": "_authenticated/game/play/hub/crafting.tsx",
+      "parent": "/_authenticated/game/play/hub"
     },
-    "/_authenticated/game/play/equipment/select": {
-      "filePath": "_authenticated/game/play/equipment/select.tsx",
-      "parent": "/_authenticated/game/play/equipment"
+    "/_authenticated/game/play/hub/equipment": {
+      "filePath": "_authenticated/game/play/hub/equipment.tsx",
+      "parent": "/_authenticated/game/play/hub",
+      "children": [
+        "/_authenticated/game/play/hub/equipment/select"
+      ]
+    },
+    "/_authenticated/game/play/hub/inventory": {
+      "filePath": "_authenticated/game/play/hub/inventory.tsx",
+      "parent": "/_authenticated/game/play/hub"
+    },
+    "/_authenticated/game/play/hub/shop": {
+      "filePath": "_authenticated/game/play/hub/shop.tsx",
+      "parent": "/_authenticated/game/play/hub"
+    },
+    "/_authenticated/game/play/hub/spells": {
+      "filePath": "_authenticated/game/play/hub/spells.tsx",
+      "parent": "/_authenticated/game/play/hub"
+    },
+    "/_authenticated/game/play/hub/battle/$character": {
+      "filePath": "_authenticated/game/play/hub/battle/$character.tsx",
+      "parent": "/_authenticated/game/play/hub"
+    },
+    "/_authenticated/game/play/hub/equipment/select": {
+      "filePath": "_authenticated/game/play/hub/equipment/select.tsx",
+      "parent": "/_authenticated/game/play/hub/equipment"
     }
   }
 }

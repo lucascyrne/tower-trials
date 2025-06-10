@@ -12,14 +12,22 @@ interface Props {
 // Hook simples para gerenciamento de tema
 function useTheme() {
   useEffect(() => {
-    // Aplicar tema inicial baseado na preferência do sistema ou localStorage
+    // Aplicar tema inicial - padrão escuro, a menos que explicitamente definido como claro
     const savedTheme = localStorage.getItem('tower-trials-theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
+    // Padrão é escuro, exceto se explicitamente salvo como claro
+    if (savedTheme === 'light') {
       document.documentElement.classList.remove('dark');
+    } else if (savedTheme === 'dark' || savedTheme === 'system') {
+      if (savedTheme === 'system' && !prefersDark) {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    } else {
+      // Sem preferência salva - padrão escuro
+      document.documentElement.classList.add('dark');
     }
   }, []);
 
