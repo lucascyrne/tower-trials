@@ -3,13 +3,13 @@ export interface DeadCharacter {
   id: string;
   user_id: string;
   original_character_id: string;
-  
+
   // Dados básicos na morte
   name: string;
   level: number;
   xp: number;
   gold: number;
-  
+
   // Atributos primários na morte
   strength: number;
   dexterity: number;
@@ -17,14 +17,14 @@ export interface DeadCharacter {
   wisdom: number;
   vitality: number;
   luck: number;
-  
+
   // Stats derivados na morte
   max_hp: number;
   max_mana: number;
   atk: number;
   def: number;
   speed: number;
-  
+
   // Dados da jornada
   floor_reached: number;
   highest_floor: number;
@@ -33,11 +33,11 @@ export interface DeadCharacter {
   total_damage_taken: number;
   total_spells_cast: number;
   total_potions_used: number;
-  
+
   // Causa da morte
   death_cause: string;
   killed_by_monster?: string;
-  
+
   // Timestamps
   character_created_at: string;
   died_at: string;
@@ -70,4 +70,4 @@ export interface CemeterySearchParams {
   limit?: number;
   sortBy?: 'died_at' | 'level' | 'floor_reached' | 'survival_time_minutes';
   sortOrder?: 'asc' | 'desc';
-} 
+}

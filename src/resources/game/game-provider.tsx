@@ -15,12 +15,10 @@ export function GameProvider({ children }: GameProviderProps) {
       <LogProvider>
         <CharacterProvider>
           <BattleProvider>
-            <EventProvider>
-              {children}
-            </EventProvider>
+            <EventProvider>{children}</EventProvider>
           </BattleProvider>
         </CharacterProvider>
       </LogProvider>
     </GameStateProvider>
   );
-} 
+}

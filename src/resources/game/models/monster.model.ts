@@ -15,13 +15,13 @@ export interface Monster {
   reward_gold: number;
   image?: string;
   possible_drops?: MonsterDropChance[];
-  
+
   // Novos campos para sistema cíclico
   tier?: number; // Representa o "elo" ou ciclo do monstro (1, 2, 3, etc.)
   base_tier?: number; // Tier original do monstro (para referência)
   cycle_position?: number; // Posição dentro do ciclo (1-20 por exemplo)
   is_boss?: boolean; // Se é um monstro boss
-  
+
   // Atributos primários
   strength?: number;
   dexterity?: number;
@@ -29,21 +29,21 @@ export interface Monster {
   wisdom?: number;
   vitality?: number;
   luck?: number;
-  
+
   // Propriedades de combate avançadas
   critical_chance?: number;
   critical_damage?: number;
   critical_resistance?: number;
-  
+
   // Resistências
   physical_resistance?: number;
   magical_resistance?: number;
   debuff_resistance?: number;
-  
+
   // Vulnerabilidades
   physical_vulnerability?: number;
   magical_vulnerability?: number;
-  
+
   // Características especiais
   primary_trait?: string;
   secondary_trait?: string;
@@ -79,16 +79,16 @@ export const MONSTER_BEHAVIOR = {
   AGGRESSIVE: {
     attack_multiplier: 1.2,
     defense_multiplier: 0.8,
-    description: 'Prioriza ataques fortes, mas tem defesa reduzida'
+    description: 'Prioriza ataques fortes, mas tem defesa reduzida',
   },
   DEFENSIVE: {
     attack_multiplier: 0.8,
     defense_multiplier: 1.2,
-    description: 'Prioriza defesa, mas tem ataque reduzido'
+    description: 'Prioriza defesa, mas tem ataque reduzido',
   },
   BALANCED: {
     attack_multiplier: 1.0,
     defense_multiplier: 1.0,
-    description: 'Mantém um equilíbrio entre ataque e defesa'
-  }
-} as const; 
+    description: 'Mantém um equilíbrio entre ataque e defesa',
+  },
+} as const;

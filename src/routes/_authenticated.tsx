@@ -1,16 +1,16 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
-import AuthenticatedOnlyFeature from '@/components/hocs/authenticated-only-feature'
-import { EmailVerifiedOnlyFeature } from '@/components/hocs/email-verified-only-feature'
-import Footer from '@/components/core/footer'
-import { useAuth } from '@/resources/auth/auth-hook'
-import { Header } from '@/components/core/header'
+import { createFileRoute, Outlet } from '@tanstack/react-router';
+import AuthenticatedOnlyFeature from '@/components/hocs/authenticated-only-feature';
+import { EmailVerifiedOnlyFeature } from '@/components/hocs/email-verified-only-feature';
+import Footer from '@/components/core/footer';
+import { useAuth } from '@/resources/auth/auth-hook';
+import { Header } from '@/components/core/header';
 
 export const Route = createFileRoute('/_authenticated')({
   component: AuthenticatedLayout,
-})
+});
 
 function AuthenticatedLayoutInner() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -20,7 +20,7 @@ function AuthenticatedLayoutInner() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
 
 function AuthenticatedLayout() {
@@ -30,5 +30,5 @@ function AuthenticatedLayout() {
         <AuthenticatedLayoutInner />
       </EmailVerifiedOnlyFeature>
     </AuthenticatedOnlyFeature>
-  )
-} 
+  );
+}

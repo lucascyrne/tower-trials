@@ -1,241 +1,255 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
-import { RankingService, type RankingEntry, type RankingMode } from '@/resources/game/ranking.service'
-import { useAuth } from '@/resources/auth/auth-hook'
-import RankingFilters, { type CharacterStatusFilter } from '@/components/ranking/ranking-filters'
-import RankingTable from '@/components/ranking/ranking-table'
-import UserStats from '@/components/ranking/user-stats'
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import {
+  RankingService,
+  type RankingEntry,
+  type RankingMode,
+} from '@/resources/game/ranking.service';
+import { useAuth } from '@/resources/auth/auth-hook';
+import RankingFilters, { type CharacterStatusFilter } from '@/components/ranking/ranking-filters';
+import RankingTable from '@/components/ranking/ranking-table';
+import UserStats from '@/components/ranking/user-stats';
 
-const ITEMS_PER_PAGE = 20
+const ITEMS_PER_PAGE = 20;
 
 export const Route = createFileRoute('/_authenticated/game/ranking')({
   component: RankingPage,
-})
+});
 
 function RankingPage() {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
   // Estados para dados
-  const [rankingData, setRankingData] = useState<RankingEntry[]>([])
-  const [userRanking, setUserRanking] = useState<RankingEntry[]>([])
+  const [rankingData, setRankingData] = useState<RankingEntry[]>([]);
+  const [userRanking, setUserRanking] = useState<RankingEntry[]>([]);
   const [userStats, setUserStats] = useState({
     bestFloor: 0,
     bestLevel: 1,
     bestGold: 0,
     totalRuns: 0,
-    aliveCharacters: 0
-  })
-  
-  // Estados para filtros e UI
-  const [isLoading, setIsLoading] = useState(true)
+    aliveCharacters: 0,
+  });
 
-  const [rankingMode, setRankingMode] = useState<RankingMode>('floor')
-  const [statusFilter, setStatusFilter] = useState<CharacterStatusFilter>('all')
-  const [nameFilter, setNameFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  // Estados para filtros e UI
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [rankingMode, setRankingMode] = useState<RankingMode>('floor');
+  const [statusFilter, setStatusFilter] = useState<CharacterStatusFilter>('all');
+  const [nameFilter, setNameFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Debounce para o filtro de nome
-  const [debouncedNameFilter, setDebouncedNameFilter] = useState('')
-  
+  const [debouncedNameFilter, setDebouncedNameFilter] = useState('');
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedNameFilter(nameFilter)
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [nameFilter])
+      setDebouncedNameFilter(nameFilter);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [nameFilter]);
 
   // Reset página quando filtros mudam
   useEffect(() => {
-    setCurrentPage(1)
-  }, [rankingMode, statusFilter, debouncedNameFilter])
+    setCurrentPage(1);
+  }, [rankingMode, statusFilter, debouncedNameFilter]);
 
   useEffect(() => {
-    fetchRankingData()
-  }, [user?.id, rankingMode, statusFilter, debouncedNameFilter, currentPage])
+    fetchRankingData();
+  }, [user?.id, rankingMode, statusFilter, debouncedNameFilter, currentPage]);
 
   // Função para buscar total de entradas e calcular páginas
   const fetchTotalCount = useCallback(async () => {
     try {
-      const countResponse = await RankingService.countRankingEntries(statusFilter, debouncedNameFilter)
+      const countResponse = await RankingService.countRankingEntries(
+        statusFilter,
+        debouncedNameFilter
+      );
       if (countResponse.data !== null) {
-        const totalEntries = countResponse.data
-        const calculatedTotalPages = Math.max(1, Math.ceil(totalEntries / ITEMS_PER_PAGE))
-        setTotalPages(calculatedTotalPages)
-        
-        console.log(`[RankingPage] Total de entradas: ${totalEntries}, páginas: ${calculatedTotalPages}`)
+        const totalEntries = countResponse.data;
+        const calculatedTotalPages = Math.max(1, Math.ceil(totalEntries / ITEMS_PER_PAGE));
+        setTotalPages(calculatedTotalPages);
+
+        console.log(
+          `[RankingPage] Total de entradas: ${totalEntries}, páginas: ${calculatedTotalPages}`
+        );
       }
     } catch (error) {
-      console.error('Erro ao contar entradas:', error)
-      setTotalPages(1)
+      console.error('Erro ao contar entradas:', error);
+      setTotalPages(1);
     }
-  }, [statusFilter, debouncedNameFilter])
+  }, [statusFilter, debouncedNameFilter]);
 
   // Função para forçar atualização do ranking
   const refreshRanking = async () => {
-    console.log('[RankingPage] Forçando atualização do ranking...')
-    await fetchRankingData()
-  }
+    console.log('[RankingPage] Forçando atualização do ranking...');
+    await fetchRankingData();
+  };
 
   // Função para testar o sistema de ranking
   const testRankingSystem = async () => {
-    console.log('[RankingPage] Testando sistema de ranking...')
+    console.log('[RankingPage] Testando sistema de ranking...');
     try {
-      const testResult = await RankingService.testRankingSystem(user?.id)
+      const testResult = await RankingService.testRankingSystem(user?.id);
       if (testResult.error) {
-        console.error('Erro no teste:', testResult.error)
+        console.error('Erro no teste:', testResult.error);
       } else {
-        console.log('Resultado do teste:', testResult.data)
+        console.log('Resultado do teste:', testResult.data);
         // Mostrar resultado no console para debug
-        testResult.data.forEach((test) => {
-          console.log(`${test.test_name}: ${test.result} - ${test.details}`)
-        })
+        testResult.data.forEach(test => {
+          console.log(`${test.test_name}: ${test.result} - ${test.details}`);
+        });
       }
     } catch (error) {
-      console.error('Erro ao executar teste:', error)
+      console.error('Erro ao executar teste:', error);
     }
-  }
+  };
 
   const fetchRankingData = async () => {
     try {
-      setIsLoading(true)
-      
-      console.log(`[RankingPage] Iniciando busca de dados - modo: ${rankingMode}, filtro: ${statusFilter}, nome: ${debouncedNameFilter}, página: ${currentPage}`)
-      
+      setIsLoading(true);
+
+      console.log(
+        `[RankingPage] Iniciando busca de dados - modo: ${rankingMode}, filtro: ${statusFilter}, nome: ${debouncedNameFilter}, página: ${currentPage}`
+      );
+
       // Buscar contagem total primeiro
-      await fetchTotalCount()
-      
+      await fetchTotalCount();
+
       // Buscar ranking global dinâmico
       const globalResponse = await RankingService.getGlobalRanking(
-        rankingMode, 
-        ITEMS_PER_PAGE, 
-        statusFilter, 
+        rankingMode,
+        ITEMS_PER_PAGE,
+        statusFilter,
         debouncedNameFilter,
         currentPage
-      )
-      
+      );
+
       console.log(`[RankingPage] Resposta do ranking global:`, {
         success: !globalResponse.error,
         error: globalResponse.error,
         dataLength: globalResponse.data?.length || 0,
-        data: globalResponse.data
-      })
-      
+        data: globalResponse.data,
+      });
+
       if (globalResponse.error) {
-        console.error('Erro ao buscar ranking global:', globalResponse.error)
-        setRankingData([])
+        console.error('Erro ao buscar ranking global:', globalResponse.error);
+        setRankingData([]);
       } else {
-        setRankingData(globalResponse.data || [])
-        console.log(`[RankingPage] Ranking global carregado: ${globalResponse.data?.length || 0} entradas`)
-        
+        setRankingData(globalResponse.data || []);
+        console.log(
+          `[RankingPage] Ranking global carregado: ${globalResponse.data?.length || 0} entradas`
+        );
+
         // Log detalhado dos dados recebidos
         if (globalResponse.data && globalResponse.data.length > 0) {
-          console.log(`[RankingPage] Primeiros 5 personagens do ranking:`, 
+          console.log(
+            `[RankingPage] Primeiros 5 personagens do ranking:`,
             globalResponse.data.slice(0, 5).map(entry => ({
               name: entry.player_name,
               floor: entry.floor,
               level: entry.character_level,
               alive: entry.character_alive,
-              user_id: entry.user_id
+              user_id: entry.user_id,
             }))
-          )
+          );
         }
       }
-      
+
       // Buscar dados do usuário se estiver logado
       if (user?.id) {
         const [userRankingResponse, userStatsResponse] = await Promise.all([
           RankingService.getUserRanking(user.id, 15),
-          RankingService.getUserStats(user.id)
-        ])
-        
+          RankingService.getUserStats(user.id),
+        ]);
+
         if (userRankingResponse.error) {
-          console.error('Erro ao buscar ranking do usuário:', userRankingResponse.error)
-          setUserRanking([])
+          console.error('Erro ao buscar ranking do usuário:', userRankingResponse.error);
+          setUserRanking([]);
         } else {
-          setUserRanking(userRankingResponse.data || [])
-          console.log(`[RankingPage] Ranking do usuário carregado: ${userRankingResponse.data?.length || 0} entradas`)
+          setUserRanking(userRankingResponse.data || []);
+          console.log(
+            `[RankingPage] Ranking do usuário carregado: ${userRankingResponse.data?.length || 0} entradas`
+          );
         }
-        
+
         if (userStatsResponse.error) {
-          console.error('Erro ao buscar estatísticas do usuário:', userStatsResponse.error)
+          console.error('Erro ao buscar estatísticas do usuário:', userStatsResponse.error);
           setUserStats({
             bestFloor: 0,
             bestLevel: 1,
             bestGold: 0,
             totalRuns: 0,
-            aliveCharacters: 0
-          })
+            aliveCharacters: 0,
+          });
         } else {
-          setUserStats(userStatsResponse.data || {
-            bestFloor: 0,
-            bestLevel: 1,
-            bestGold: 0,
-            totalRuns: 0,
-            aliveCharacters: 0
-          })
-          console.log(`[RankingPage] Estatísticas do usuário carregadas:`, userStatsResponse.data)
+          setUserStats(
+            userStatsResponse.data || {
+              bestFloor: 0,
+              bestLevel: 1,
+              bestGold: 0,
+              totalRuns: 0,
+              aliveCharacters: 0,
+            }
+          );
+          console.log(`[RankingPage] Estatísticas do usuário carregadas:`, userStatsResponse.data);
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar dados do ranking:', error)
-      setRankingData([])
-      setUserRanking([])
+      console.error('Erro ao buscar dados do ranking:', error);
+      setRankingData([]);
+      setUserRanking([]);
       setUserStats({
         bestFloor: 0,
         bestLevel: 1,
         bestGold: 0,
         totalRuns: 0,
-        aliveCharacters: 0
-      })
+        aliveCharacters: 0,
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const getModeTitle = (mode: RankingMode): string => {
     switch (mode) {
       case 'floor':
-        return 'Ranking por Andar Mais Alto'
+        return 'Ranking por Andar Mais Alto';
       case 'level':
-        return 'Ranking por Nível Mais Alto'
+        return 'Ranking por Nível Mais Alto';
       case 'gold':
-        return 'Ranking por Mais Ouro'
+        return 'Ranking por Mais Ouro';
       default:
-        return 'Ranking'
+        return 'Ranking';
     }
-  }
+  };
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-  }
+    setCurrentPage(page);
+  };
 
   const getFilterDescription = (): string => {
-    const parts = []
+    const parts = [];
     if (statusFilter !== 'all') {
-      parts.push(statusFilter === 'alive' ? 'vivos' : 'mortos')
+      parts.push(statusFilter === 'alive' ? 'vivos' : 'mortos');
     }
     if (debouncedNameFilter) {
-      parts.push(`nome: "${debouncedNameFilter}"`)
+      parts.push(`nome: "${debouncedNameFilter}"`);
     }
-    return parts.length > 0 ? ` (${parts.join(', ')})` : ''
-  }
+    return parts.length > 0 ? ` (${parts.join(', ')})` : '';
+  };
 
   return (
     <div className="container mx-auto p-4 max-w-7xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate({ to: '/game' })}
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/game' })}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar
           </Button>
@@ -246,22 +260,13 @@ function RankingPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={refreshRanking}
-            disabled={isLoading}
-          >
+          <Button variant="outline" size="sm" onClick={refreshRanking} disabled={isLoading}>
             Atualizar
           </Button>
           {process.env.NODE_ENV === 'development' && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={testRankingSystem}
-            >
+            <Button variant="outline" size="sm" onClick={testRankingSystem}>
               Testar Sistema
             </Button>
           )}
@@ -291,30 +296,26 @@ function RankingPage() {
         {/* Estatísticas do Usuário */}
         {user && (
           <div className="lg:col-span-1">
-            <UserStats 
+            <UserStats
               stats={userStats}
               userRanking={userRanking.map(entry => ({
                 highest_floor: entry.floor,
                 character_level: entry.character_level,
                 character_gold: entry.character_gold,
                 character_alive: entry.character_alive,
-                created_at: entry.created_at
+                created_at: entry.created_at,
               }))}
             />
           </div>
         )}
-        
+
         {/* Tabela de Ranking */}
-        <div className={user ? "lg:col-span-3" : "lg:col-span-4"}>
+        <div className={user ? 'lg:col-span-3' : 'lg:col-span-4'}>
           <Card>
             <CardContent className="p-0">
-              <RankingTable
-                entries={rankingData}
-                mode={rankingMode}
-                currentUserId={user?.id}
-              />
+              <RankingTable entries={rankingData} mode={rankingMode} currentUserId={user?.id} />
             </CardContent>
-            
+
             {/* Paginação */}
             {totalPages > 1 && (
               <CardFooter className="flex justify-center gap-2">
@@ -326,11 +327,11 @@ function RankingPage() {
                 >
                   Anterior
                 </Button>
-                
+
                 <span className="flex items-center px-4 text-sm text-muted-foreground">
                   Página {currentPage} de {totalPages}
                 </span>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -345,5 +346,5 @@ function RankingPage() {
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

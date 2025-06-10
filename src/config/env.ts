@@ -3,7 +3,7 @@ import { z } from 'zod';
 export enum Environment {
   LOCAL = 'LOCAL',
   DEV = 'DEV',
-  PROD = 'PROD'
+  PROD = 'PROD',
 }
 
 // Schema de validação para variáveis de ambiente do Vite
@@ -14,7 +14,7 @@ const envSchema = z.object({
   VITE_SUPABASE_ANON_KEY: z.string(),
   VITE_SERVICE_ROLE: z.string().optional(),
   VITE_LOGIN_URL: z.string().url().optional(),
-  
+
   // URLs locais do Supabase (quando rodando via Docker)
   VITE_SUPABASE_LOCAL_URL: z.string().url().optional(),
   VITE_SUPABASE_LOCAL_ANON_KEY: z.string().optional(),
@@ -39,17 +39,17 @@ function createViteEnv() {
   } catch (error) {
     console.error('❌ Erro de configuração de ambiente:');
     if (error instanceof z.ZodError) {
-      error.errors.forEach((err) => {
+      error.errors.forEach(err => {
         console.error(`- ${err.path.join('.')}: ${err.message}`);
       });
     }
-    
+
     console.error('\n📋 Variáveis necessárias:');
     console.error('- VITE_ENV (LOCAL, DEV, ou PROD)');
     console.error('- VITE_SUPABASE_URL');
     console.error('- VITE_SUPABASE_ANON_KEY');
     console.error('\n💡 Crie um arquivo .env.local com essas variáveis');
-    
+
     throw new Error('Configuração de ambiente inválida');
   }
 }

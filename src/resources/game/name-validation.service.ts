@@ -8,40 +8,176 @@ export class NameValidationService {
   // Blacklist de palavras ofensivas (português, inglês, espanhol)
   private static readonly BLACKLIST_WORDS = [
     // Português - palavras de baixo calão
-    'porra', 'merda', 'caralho', 'puta', 'putaria', 'viado', 'bicha', 'cu', 'buceta', 
-    'piroca', 'pinto', 'rola', 'foda', 'foder', 'fodido', 'cuzao', 'cuzão', 'babaca',
-    'otario', 'otário', 'idiota', 'imbecil', 'retardado', 'mongoloide', 'burro',
-    'desgraça', 'desgraçado', 'filho da puta', 'fdp', 'vagabundo', 'safado',
-    'cachorro', 'cadela', 'prostituta', 'vagabunda', 'piranha', 'galinha',
-    
+    'porra',
+    'merda',
+    'caralho',
+    'puta',
+    'putaria',
+    'viado',
+    'bicha',
+    'cu',
+    'buceta',
+    'piroca',
+    'pinto',
+    'rola',
+    'foda',
+    'foder',
+    'fodido',
+    'cuzao',
+    'cuzão',
+    'babaca',
+    'otario',
+    'otário',
+    'idiota',
+    'imbecil',
+    'retardado',
+    'mongoloide',
+    'burro',
+    'desgraça',
+    'desgraçado',
+    'filho da puta',
+    'fdp',
+    'vagabundo',
+    'safado',
+    'cachorro',
+    'cadela',
+    'prostituta',
+    'vagabunda',
+    'piranha',
+    'galinha',
+
     // Inglês - palavras de baixo calão
-    'fuck', 'shit', 'bitch', 'damn', 'hell', 'ass', 'asshole', 'bastard',
-    'crap', 'piss', 'dick', 'cock', 'pussy', 'cunt', 'whore', 'slut',
-    'fag', 'faggot', 'nigger', 'retard', 'moron', 'idiot', 'stupid',
-    'gay', 'lesbian', 'homo', 'nazi', 'hitler', 'rape', 'kill', 'murder',
-    
-    // Espanhol - palavras de baixo calão  
-    'mierda', 'joder', 'puta', 'puto', 'cabron', 'cabrón', 'pendejo', 'idiota',
-    'estupido', 'estúpido', 'culo', 'coño', 'verga', 'chingar', 'pinche',
-    'mamada', 'putada', 'hijo de puta', 'hdp', 'marica', 'maricon', 'maricón',
-    
+    'fuck',
+    'shit',
+    'bitch',
+    'damn',
+    'hell',
+    'ass',
+    'asshole',
+    'bastard',
+    'crap',
+    'piss',
+    'dick',
+    'cock',
+    'pussy',
+    'cunt',
+    'whore',
+    'slut',
+    'fag',
+    'faggot',
+    'nigger',
+    'retard',
+    'moron',
+    'idiot',
+    'stupid',
+    'gay',
+    'lesbian',
+    'homo',
+    'nazi',
+    'hitler',
+    'rape',
+    'kill',
+    'murder',
+
+    // Espanhol - palavras de baixo calão
+    'mierda',
+    'joder',
+    'puta',
+    'puto',
+    'cabron',
+    'cabrón',
+    'pendejo',
+    'idiota',
+    'estupido',
+    'estúpido',
+    'culo',
+    'coño',
+    'verga',
+    'chingar',
+    'pinche',
+    'mamada',
+    'putada',
+    'hijo de puta',
+    'hdp',
+    'marica',
+    'maricon',
+    'maricón',
+
     // Palavras relacionadas a drogas
-    'droga', 'cocaina', 'heroina', 'crack', 'cocaine',
-    'heroin', 'drug', 'dealer', 'traficante',
-    
+    'droga',
+    'cocaina',
+    'heroina',
+    'crack',
+    'cocaine',
+    'heroin',
+    'drug',
+    'dealer',
+    'traficante',
+
     // Termos inadequados gerais
-    'sexo', 'sex', 'porn', 'porno', 'nude', 'naked', 'xxx', 'fetish',
-    'admin', 'moderador', 'mod', 'gm', 'gamemaster', 'suporte', 'support',
-    'oficial', 'staff', 'dev', 'developer', 'bot', 'sistema', 'system'
+    'sexo',
+    'sex',
+    'porn',
+    'porno',
+    'nude',
+    'naked',
+    'xxx',
+    'fetish',
+    'admin',
+    'moderador',
+    'mod',
+    'gm',
+    'gamemaster',
+    'suporte',
+    'support',
+    'oficial',
+    'staff',
+    'dev',
+    'developer',
+    'bot',
+    'sistema',
+    'system',
   ];
 
   // Palavras reservadas do sistema
   private static readonly RESERVED_WORDS = [
-    'admin', 'administrator', 'moderador', 'moderator', 'mod', 'gm', 'gamemaster',
-    'suporte', 'support', 'help', 'ajuda', 'oficial', 'official', 'staff',
-    'dev', 'developer', 'sistema', 'system', 'bot', 'null', 'undefined',
-    'test', 'teste', 'demo', 'sample', 'example', 'exemplo', 'guest', 'visitante',
-    'player', 'jogador', 'user', 'usuario', 'usuário', 'npc', 'monster', 'monstro'
+    'admin',
+    'administrator',
+    'moderador',
+    'moderator',
+    'mod',
+    'gm',
+    'gamemaster',
+    'suporte',
+    'support',
+    'help',
+    'ajuda',
+    'oficial',
+    'official',
+    'staff',
+    'dev',
+    'developer',
+    'sistema',
+    'system',
+    'bot',
+    'null',
+    'undefined',
+    'test',
+    'teste',
+    'demo',
+    'sample',
+    'example',
+    'exemplo',
+    'guest',
+    'visitante',
+    'player',
+    'jogador',
+    'user',
+    'usuario',
+    'usuário',
+    'npc',
+    'monster',
+    'monstro',
   ];
 
   // Padrões inadequados
@@ -65,7 +201,7 @@ export class NameValidationService {
     if (!name || typeof name !== 'string') {
       return {
         isValid: false,
-        error: 'Nome é obrigatório'
+        error: 'Nome é obrigatório',
       };
     }
 
@@ -76,14 +212,14 @@ export class NameValidationService {
     if (cleanName.length < 3) {
       return {
         isValid: false,
-        error: 'Nome deve ter pelo menos 3 caracteres'
+        error: 'Nome deve ter pelo menos 3 caracteres',
       };
     }
 
     if (cleanName.length > 20) {
       return {
         isValid: false,
-        error: 'Nome deve ter no máximo 20 caracteres'
+        error: 'Nome deve ter no máximo 20 caracteres',
       };
     }
 
@@ -92,7 +228,7 @@ export class NameValidationService {
       if (pattern.test(cleanName)) {
         return {
           isValid: false,
-          error: this.getPatternError(pattern)
+          error: this.getPatternError(pattern),
         };
       }
     }
@@ -103,7 +239,7 @@ export class NameValidationService {
       if (this.BLACKLIST_WORDS.includes(word)) {
         return {
           isValid: false,
-          error: 'Nome contém palavras inadequadas'
+          error: 'Nome contém palavras inadequadas',
         };
       }
     }
@@ -114,7 +250,7 @@ export class NameValidationService {
       if (nameLower.includes(blacklistWord)) {
         return {
           isValid: false,
-          error: 'Nome contém termos inadequados'
+          error: 'Nome contém termos inadequados',
         };
       }
     }
@@ -124,7 +260,7 @@ export class NameValidationService {
       if (nameLower.includes(reservedWord)) {
         return {
           isValid: false,
-          error: 'Nome contém termos reservados do sistema'
+          error: 'Nome contém termos reservados do sistema',
         };
       }
     }
@@ -133,24 +269,24 @@ export class NameValidationService {
     if (!/[a-zA-ZÀ-ÿ]/.test(cleanName)) {
       return {
         isValid: false,
-        error: 'Nome deve conter pelo menos uma letra'
+        error: 'Nome deve conter pelo menos uma letra',
       };
     }
 
     // Verificar proporção de números
     const letterCount = (cleanName.match(/[a-zA-ZÀ-ÿ]/g) || []).length;
     const numberCount = (cleanName.match(/[0-9]/g) || []).length;
-    
+
     if (numberCount > letterCount) {
       return {
         isValid: false,
-        error: 'Nome não pode ter mais números que letras'
+        error: 'Nome não pode ter mais números que letras',
       };
     }
 
     // Nome válido
     return {
-      isValid: true
+      isValid: true,
     };
   }
 
@@ -160,14 +296,14 @@ export class NameValidationService {
    */
   private static getPatternError(pattern: RegExp): string {
     const patternStr = pattern.toString();
-    
+
     if (patternStr.includes('^[0-9]+$')) {
       return 'Nome não pode ser apenas números';
     }
     if (patternStr.includes('^[^a-zA-ZÀ-ÿ]')) {
       return 'Nome deve começar com uma letra';
     }
-    if (patternStr.includes('[^a-zA-ZÀ-ÿ0-9\\s\'\\-]')) {
+    if (patternStr.includes("[^a-zA-ZÀ-ÿ0-9\\s'\\-]")) {
       return 'Nome contém caracteres especiais não permitidos';
     }
     if (patternStr.includes('\\d{3,}')) {
@@ -182,7 +318,7 @@ export class NameValidationService {
     if (patternStr.includes('\\s{2,}')) {
       return 'Nome não pode ter espaços múltiplos';
     }
-    
+
     return 'Nome contém formato inválido';
   }
 
@@ -193,13 +329,13 @@ export class NameValidationService {
    */
   static formatCharacterName(name: string): string {
     if (!name) return '';
-    
+
     // Limpar espaços extras
     let formatted = name.trim().replace(/\s+/g, ' ');
-    
+
     // Capitalizar primeira letra de cada palavra
-    formatted = formatted.replace(/\b\w/g, (char) => char.toUpperCase());
-    
+    formatted = formatted.replace(/\b\w/g, char => char.toUpperCase());
+
     return formatted;
   }
 
@@ -211,35 +347,43 @@ export class NameValidationService {
   static generateNameSuggestions(originalName: string): string[] {
     const suggestions: string[] = [];
     const cleanName = originalName.replace(/[^a-zA-ZÀ-ÿ]/g, '');
-    
+
     if (cleanName.length >= 3) {
       // Adicionar números no final
       for (let i = 1; i <= 3; i++) {
         const randomNum = Math.floor(Math.random() * 100);
         suggestions.push(this.formatCharacterName(cleanName + randomNum));
       }
-      
+
       // Adicionar sufixos comuns
       const suffixes = ['Jr', 'II', 'III', 'X', 'Prime', 'Neo'];
       for (const suffix of suffixes.slice(0, 2)) {
         suggestions.push(this.formatCharacterName(cleanName + suffix));
       }
     }
-    
+
     // Nomes genéricos seguros se não conseguir gerar do original
     if (suggestions.length === 0) {
       const genericNames = [
-        'Aventureiro', 'Guerreiro', 'Explorador', 'Heroi', 'Campeao',
-        'Bravo', 'Valente', 'Nobre', 'Lenda', 'Mestre'
+        'Aventureiro',
+        'Guerreiro',
+        'Explorador',
+        'Heroi',
+        'Campeao',
+        'Bravo',
+        'Valente',
+        'Nobre',
+        'Lenda',
+        'Mestre',
       ];
-      
+
       for (let i = 0; i < 3; i++) {
         const randomName = genericNames[Math.floor(Math.random() * genericNames.length)];
         const randomNum = Math.floor(Math.random() * 1000);
         suggestions.push(`${randomName}${randomNum}`);
       }
     }
-    
+
     return suggestions.slice(0, 3);
   }
 
@@ -251,21 +395,21 @@ export class NameValidationService {
    */
   static isTooSimilar(name: string, existingNames: string[]): boolean {
     const nameLower = name.toLowerCase().replace(/[^a-zA-ZÀ-ÿ0-9]/g, '');
-    
+
     for (const existingName of existingNames) {
       const existingLower = existingName.toLowerCase().replace(/[^a-zA-ZÀ-ÿ0-9]/g, '');
-      
+
       // Verificar se são idênticos sem considerar case e caracteres especiais
       if (nameLower === existingLower) {
         return true;
       }
-      
+
       // Verificar similaridade usando distância de Levenshtein simples
       if (this.calculateSimilarity(nameLower, existingLower) > 0.8) {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -276,9 +420,9 @@ export class NameValidationService {
   private static calculateSimilarity(str1: string, str2: string): number {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
-    
+
     if (longer.length === 0) return 1.0;
-    
+
     const editDistance = this.levenshteinDistance(longer, shorter);
     return (longer.length - editDistance) / longer.length;
   }
@@ -288,16 +432,18 @@ export class NameValidationService {
    * @private
    */
   private static levenshteinDistance(str1: string, str2: string): number {
-    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
-    
+    const matrix = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
+
     for (let i = 0; i <= str1.length; i += 1) {
       matrix[0][i] = i;
     }
-    
+
     for (let j = 0; j <= str2.length; j += 1) {
       matrix[j][0] = j;
     }
-    
+
     for (let j = 1; j <= str2.length; j += 1) {
       for (let i = 1; i <= str1.length; i += 1) {
         const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
@@ -308,7 +454,7 @@ export class NameValidationService {
         );
       }
     }
-    
+
     return matrix[str2.length][str1.length];
   }
-} 
+}

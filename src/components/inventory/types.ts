@@ -9,4 +9,4 @@ export interface CharacterDrop {
 
 export type EquipmentFilter = 'all' | 'weapon' | 'armor' | 'accessory';
 export type WeaponSubtypeFilter = 'all' | 'sword' | 'axe' | 'blunt' | 'staff' | 'dagger';
-export type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'; 
+export type RarityFilter = 'all' | 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';

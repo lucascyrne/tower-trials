@@ -20,7 +20,7 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
   equipment,
   onSlotSelected,
   currentMainHand,
-  currentOffHand
+  currentOffHand,
 }) => {
   const handleSlotSelection = (slotType: 'main_hand' | 'off_hand') => {
     onSlotSelected(slotType);
@@ -33,7 +33,7 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
       uncommon: 'text-green-400 bg-green-900/50',
       rare: 'text-blue-400 bg-blue-900/50',
       epic: 'text-purple-400 bg-purple-900/50',
-      legendary: 'text-yellow-400 bg-yellow-900/50'
+      legendary: 'text-yellow-400 bg-yellow-900/50',
     };
     return colors[rarity];
   };
@@ -59,7 +59,7 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
                   {equipment.rarity}
                 </span>
                 <p className="text-sm text-muted-foreground mt-2">{equipment.description}</p>
-                
+
                 <div className="flex gap-4 mt-2 text-sm">
                   {equipment.atk_bonus > 0 && (
                     <span className="text-red-400">+{equipment.atk_bonus} Ataque</span>
@@ -86,27 +86,24 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
           <div className="grid grid-cols-2 gap-4">
             {/* Mão Principal */}
             <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer border-2 border-primary/20 hover:border-primary/40">
-              <button
-                onClick={() => handleSlotSelection('main_hand')}
-                className="w-full text-left"
-              >
+              <button onClick={() => handleSlotSelection('main_hand')} className="w-full text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <Sword className="h-6 w-6 text-primary" />
                   <h3 className="text-lg font-semibold">Mão Principal</h3>
                 </div>
-                
+
                 {currentMainHand ? (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Equipado atualmente:</p>
                     <div className="bg-muted p-2 rounded">
                       <p className="font-medium text-sm">{currentMainHand.name}</p>
-                      <span className={`px-2 py-1 rounded text-xs ${getRarityColor(currentMainHand.rarity)}`}>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${getRarityColor(currentMainHand.rarity)}`}
+                      >
                         {currentMainHand.rarity}
                       </span>
                     </div>
-                    <p className="text-xs text-yellow-500">
-                      ⚠️ Substituirá o item atual
-                    </p>
+                    <p className="text-xs text-yellow-500">⚠️ Substituirá o item atual</p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Slot vazio</p>
@@ -116,27 +113,24 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
 
             {/* Mão Secundária */}
             <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer border-2 border-primary/20 hover:border-primary/40">
-              <button
-                onClick={() => handleSlotSelection('off_hand')}
-                className="w-full text-left"
-              >
+              <button onClick={() => handleSlotSelection('off_hand')} className="w-full text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <Shield className="h-6 w-6 text-blue-400" />
                   <h3 className="text-lg font-semibold">Mão Secundária</h3>
                 </div>
-                
+
                 {currentOffHand ? (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">Equipado atualmente:</p>
                     <div className="bg-muted p-2 rounded">
                       <p className="font-medium text-sm">{currentOffHand.name}</p>
-                      <span className={`px-2 py-1 rounded text-xs ${getRarityColor(currentOffHand.rarity)}`}>
+                      <span
+                        className={`px-2 py-1 rounded text-xs ${getRarityColor(currentOffHand.rarity)}`}
+                      >
                         {currentOffHand.rarity}
                       </span>
                     </div>
-                    <p className="text-xs text-yellow-500">
-                      ⚠️ Substituirá o item atual
-                    </p>
+                    <p className="text-xs text-yellow-500">⚠️ Substituirá o item atual</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -159,4 +153,4 @@ export const WeaponSlotSelectionModal: React.FC<WeaponSlotSelectionModalProps> =
       </DialogContent>
     </Dialog>
   );
-}; 
+};

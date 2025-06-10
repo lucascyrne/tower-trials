@@ -3,18 +3,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Sword, 
-  Shield, 
-  Gem, 
-  Coins, 
-  Package, 
+import {
+  Sword,
+  Shield,
+  Gem,
+  Coins,
+  Package,
   Sparkles,
   Zap,
   Star,
   Filter,
   ShoppingCart,
-  ShoppingBag
+  ShoppingBag,
 } from 'lucide-react';
 import { type Equipment } from '@/resources/game/models/equipment.model';
 import { type Consumable } from '@/resources/game/models/consumable.model';
@@ -40,7 +40,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
   availableConsumables,
   onEquipmentPurchase,
   onConsumablePurchase,
-  onOpenInventory
+  onOpenInventory,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<ShopCategory>('equipment');
   const [selectedItem, setSelectedItem] = useState<Equipment | Consumable | null>(null);
@@ -65,26 +65,34 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
       uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
       rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
       epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
-      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
+      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600',
     };
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
   const getEquipmentTypeIcon = (type: string) => {
     switch (type) {
-      case 'weapon': return <Sword className="h-4 w-4 text-red-400" />;
-      case 'armor': return <Shield className="h-4 w-4 text-blue-400" />;
-      case 'accessory': return <Gem className="h-4 w-4 text-purple-400" />;
-      default: return <Package className="h-4 w-4 text-slate-400" />;
+      case 'weapon':
+        return <Sword className="h-4 w-4 text-red-400" />;
+      case 'armor':
+        return <Shield className="h-4 w-4 text-blue-400" />;
+      case 'accessory':
+        return <Gem className="h-4 w-4 text-purple-400" />;
+      default:
+        return <Package className="h-4 w-4 text-slate-400" />;
     }
   };
 
   const getConsumableTypeIcon = (type: string) => {
     switch (type) {
-      case 'potion': return <Sparkles className="h-4 w-4 text-blue-500" />;
-      case 'antidote': return <Shield className="h-4 w-4 text-green-500" />;
-      case 'buff': return <Zap className="h-4 w-4 text-purple-500" />;
-      default: return <Package className="h-4 w-4" />;
+      case 'potion':
+        return <Sparkles className="h-4 w-4 text-blue-500" />;
+      case 'antidote':
+        return <Shield className="h-4 w-4 text-green-500" />;
+      case 'buff':
+        return <Zap className="h-4 w-4 text-purple-500" />;
+      default:
+        return <Package className="h-4 w-4" />;
     }
   };
 
@@ -95,7 +103,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     const isSelected = selectedItem?.id === equipment.id;
 
     return (
-      <Card 
+      <Card
         key={equipment.id}
         className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 border-slate-700/50 bg-slate-800/50 backdrop-blur-sm ${
           isSelected ? 'ring-2 ring-primary/60 shadow-lg shadow-primary/30' : ''
@@ -110,10 +118,15 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm truncate text-slate-100">{equipment.name}</h3>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className={`text-xs border ${getRarityColor(equipment.rarity)}`}>
+                <Badge
+                  variant="outline"
+                  className={`text-xs border ${getRarityColor(equipment.rarity)}`}
+                >
                   {equipment.rarity}
                 </Badge>
-                {equipment.rarity === 'legendary' && <Star className="h-3 w-3 text-amber-400 animate-pulse" />}
+                {equipment.rarity === 'legendary' && (
+                  <Star className="h-3 w-3 text-amber-400 animate-pulse" />
+                )}
                 {equipment.rarity === 'epic' && <Sparkles className="h-3 w-3 text-purple-400" />}
               </div>
               <div className="flex items-center gap-1 mt-2">
@@ -134,7 +147,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     const isSelected = selectedItem?.id === consumable.id;
 
     return (
-      <Card 
+      <Card
         key={consumable.id}
         className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 border-slate-700/50 bg-slate-800/50 backdrop-blur-sm ${
           isSelected ? 'ring-2 ring-primary/60 shadow-lg shadow-primary/30' : ''
@@ -149,9 +162,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm truncate text-slate-100">{consumable.name}</h3>
               <p className="text-xs text-slate-400 mt-1">
-                {consumable.type === 'potion' ? `+${consumable.effect_value}` : 
-                 consumable.type === 'antidote' ? 'Remove debuffs' : 
-                 `+${consumable.effect_value} por 3 turnos`}
+                {consumable.type === 'potion'
+                  ? `+${consumable.effect_value}`
+                  : consumable.type === 'antidote'
+                    ? 'Remove debuffs'
+                    : `+${consumable.effect_value} por 3 turnos`}
               </p>
               <div className="flex items-center gap-1 mt-2">
                 <Coins className="h-3 w-3 text-amber-400" />
@@ -171,7 +186,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           <div className="text-center">
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg">Selecione um item para ver os detalhes</p>
-            <p className="text-sm mt-2 opacity-75">Clique em qualquer item da lista para visualizar suas informações completas</p>
+            <p className="text-sm mt-2 opacity-75">
+              Clique em qualquer item da lista para visualizar suas informações completas
+            </p>
           </div>
         </div>
       );
@@ -200,8 +217,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 {equipment.rarity}
               </Badge>
               <span className="text-sm text-slate-400">
-                {equipment.type === 'weapon' ? 'Arma' : 
-                 equipment.type === 'armor' ? 'Armadura' : 'Acessório'}
+                {equipment.type === 'weapon'
+                  ? 'Arma'
+                  : equipment.type === 'armor'
+                    ? 'Armadura'
+                    : 'Acessório'}
               </span>
             </div>
           </div>
@@ -231,13 +251,17 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               {equipment.mana_bonus > 0 && (
                 <div className="flex items-center gap-2 p-3 bg-purple-900/30 border border-purple-800/50 rounded-lg backdrop-blur-sm">
                   <Gem className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm text-purple-300 font-medium">+{equipment.mana_bonus}</span>
+                  <span className="text-sm text-purple-300 font-medium">
+                    +{equipment.mana_bonus}
+                  </span>
                 </div>
               )}
               {equipment.speed_bonus > 0 && (
                 <div className="flex items-center gap-2 p-3 bg-amber-900/30 border border-amber-800/50 rounded-lg backdrop-blur-sm">
                   <Zap className="h-4 w-4 text-amber-400" />
-                  <span className="text-sm text-amber-300 font-medium">+{equipment.speed_bonus}</span>
+                  <span className="text-sm text-amber-300 font-medium">
+                    +{equipment.speed_bonus}
+                  </span>
                 </div>
               )}
             </div>
@@ -259,7 +283,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center p-2 bg-slate-700/30 rounded border border-slate-600/30">
                 <span className="text-sm text-slate-300">Nível:</span>
-                <span className={`text-sm font-medium ${hasLevel ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span
+                  className={`text-sm font-medium ${hasLevel ? 'text-emerald-400' : 'text-red-400'}`}
+                >
                   {equipment.level_requirement}
                 </span>
               </div>
@@ -267,7 +293,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 <span className="text-sm text-slate-300">Preço:</span>
                 <div className="flex items-center gap-1">
                   <Coins className="h-3 w-3 text-amber-400" />
-                  <span className={`text-sm font-medium ${canAfford ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span
+                    className={`text-sm font-medium ${canAfford ? 'text-emerald-400' : 'text-red-400'}`}
+                  >
                     {equipment.price}
                   </span>
                 </div>
@@ -275,16 +303,22 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={() => onEquipmentPurchase(equipment)}
             disabled={!canBuy}
-            className={`w-full font-semibold ${canBuy 
-              ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25' 
-              : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'}`}
+            className={`w-full font-semibold ${
+              canBuy
+                ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25'
+                : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
+            }`}
           >
-            {!equipment.is_unlocked ? 'Item Bloqueado' :
-             !hasLevel ? `Requer Nível ${equipment.level_requirement}` :
-             !canAfford ? 'Gold Insuficiente' : 'Comprar'}
+            {!equipment.is_unlocked
+              ? 'Item Bloqueado'
+              : !hasLevel
+                ? `Requer Nível ${equipment.level_requirement}`
+                : !canAfford
+                  ? 'Gold Insuficiente'
+                  : 'Comprar'}
           </Button>
         </div>
       );
@@ -304,8 +338,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               <h2 className="text-xl font-bold text-slate-100">{consumable.name}</h2>
             </div>
             <span className="text-sm text-slate-400">
-              {consumable.type === 'potion' ? 'Poção' :
-               consumable.type === 'antidote' ? 'Antídoto' : 'Fortalecimento'}
+              {consumable.type === 'potion'
+                ? 'Poção'
+                : consumable.type === 'antidote'
+                  ? 'Antídoto'
+                  : 'Fortalecimento'}
             </span>
           </div>
 
@@ -320,9 +357,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <h3 className="font-semibold mb-2 text-slate-200">Efeito</h3>
             <div className="p-3 bg-emerald-900/30 border border-emerald-800/50 rounded-lg backdrop-blur-sm">
               <span className="text-sm text-emerald-300">
-                {consumable.type === 'potion' ? `Restaura ${consumable.effect_value} pontos` : 
-                 consumable.type === 'antidote' ? 'Remove todos os efeitos negativos' : 
-                 `Aumenta atributo em ${consumable.effect_value} por 3 turnos`}
+                {consumable.type === 'potion'
+                  ? `Restaura ${consumable.effect_value} pontos`
+                  : consumable.type === 'antidote'
+                    ? 'Remove todos os efeitos negativos'
+                    : `Aumenta atributo em ${consumable.effect_value} por 3 turnos`}
               </span>
             </div>
           </div>
@@ -344,9 +383,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 onClick={() => onConsumablePurchase(consumable, 1)}
                 disabled={!canBuy}
                 size="sm"
-                className={`${canBuy 
-                  ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20' 
-                  : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'}`}
+                className={`${
+                  canBuy
+                    ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20'
+                    : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
+                }`}
               >
                 1x
               </Button>
@@ -355,9 +396,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 disabled={!canBuy || character.gold < consumable.price * 5}
                 size="sm"
                 variant="outline"
-                className={`border-slate-600 ${!canBuy || character.gold < consumable.price * 5
-                  ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'}`}
+                className={`border-slate-600 ${
+                  !canBuy || character.gold < consumable.price * 5
+                    ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700'
+                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
+                }`}
               >
                 5x
               </Button>
@@ -366,9 +409,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 disabled={!canBuy || character.gold < consumable.price * 10}
                 size="sm"
                 variant="outline"
-                className={`border-slate-600 ${!canBuy || character.gold < consumable.price * 10
-                  ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'}`}
+                className={`border-slate-600 ${
+                  !canBuy || character.gold < consumable.price * 10
+                    ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700'
+                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
+                }`}
               >
                 10x
               </Button>
@@ -389,9 +434,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <Coins className="h-4 w-4 text-amber-400" />
             <span className="font-semibold text-amber-300">{character.gold}</span>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onOpenInventory}
             className="border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-100"
           >
@@ -409,9 +454,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               setSelectedCategory('equipment');
               setSelectedItem(null);
             }}
-            className={`flex-1 ${selectedCategory === 'equipment' 
-              ? 'bg-primary/20 text-primary border-primary/50' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+            className={`flex-1 ${
+              selectedCategory === 'equipment'
+                ? 'bg-primary/20 text-primary border-primary/50'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            }`}
           >
             <ShoppingCart className="h-4 w-4" />
           </Button>
@@ -422,9 +469,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               setSelectedCategory('consumables');
               setSelectedItem(null);
             }}
-            className={`flex-1 ${selectedCategory === 'consumables' 
-              ? 'bg-primary/20 text-primary border-primary/50' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+            className={`flex-1 ${
+              selectedCategory === 'consumables'
+                ? 'bg-primary/20 text-primary border-primary/50'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            }`}
           >
             <ShoppingBag className="h-4 w-4" />
           </Button>
@@ -437,9 +486,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('all')}
-              className={`${equipmentFilter === 'all' 
-                ? 'bg-slate-600/50 text-slate-200' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'}`}
+              className={`${
+                equipmentFilter === 'all'
+                  ? 'bg-slate-600/50 text-slate-200'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
+              }`}
             >
               <Filter className="h-3 w-3" />
             </Button>
@@ -447,9 +498,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('weapon')}
-              className={`${equipmentFilter === 'weapon' 
-                ? 'bg-red-900/30 text-red-400 border border-red-800/50' 
-                : 'text-slate-500 hover:text-red-400 hover:bg-red-900/20'}`}
+              className={`${
+                equipmentFilter === 'weapon'
+                  ? 'bg-red-900/30 text-red-400 border border-red-800/50'
+                  : 'text-slate-500 hover:text-red-400 hover:bg-red-900/20'
+              }`}
             >
               <Sword className="h-3 w-3" />
             </Button>
@@ -457,9 +510,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('armor')}
-              className={`${equipmentFilter === 'armor' 
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' 
-                : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'}`}
+              className={`${
+                equipmentFilter === 'armor'
+                  ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50'
+                  : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'
+              }`}
             >
               <Shield className="h-3 w-3" />
             </Button>
@@ -467,9 +522,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('accessory')}
-              className={`${equipmentFilter === 'accessory' 
-                ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50' 
-                : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'}`}
+              className={`${
+                equipmentFilter === 'accessory'
+                  ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50'
+                  : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'
+              }`}
             >
               <Gem className="h-3 w-3" />
             </Button>
@@ -482,9 +539,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('all')}
-              className={`${consumableFilter === 'all' 
-                ? 'bg-slate-600/50 text-slate-200' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'}`}
+              className={`${
+                consumableFilter === 'all'
+                  ? 'bg-slate-600/50 text-slate-200'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
+              }`}
             >
               <Filter className="h-3 w-3" />
             </Button>
@@ -492,9 +551,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('potion')}
-              className={`${consumableFilter === 'potion' 
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' 
-                : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'}`}
+              className={`${
+                consumableFilter === 'potion'
+                  ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50'
+                  : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'
+              }`}
             >
               <Sparkles className="h-3 w-3" />
             </Button>
@@ -502,9 +563,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('antidote')}
-              className={`${consumableFilter === 'antidote' 
-                ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50' 
-                : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-900/20'}`}
+              className={`${
+                consumableFilter === 'antidote'
+                  ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50'
+                  : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-900/20'
+              }`}
             >
               <Shield className="h-3 w-3" />
             </Button>
@@ -512,9 +575,11 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('buff')}
-              className={`${consumableFilter === 'buff' 
-                ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50' 
-                : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'}`}
+              className={`${
+                consumableFilter === 'buff'
+                  ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50'
+                  : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'
+              }`}
             >
               <Zap className="h-3 w-3" />
             </Button>
@@ -532,15 +597,13 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             ) : (
               filteredEquipment.map(renderEquipmentCard)
             )
+          ) : filteredConsumables.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Nenhum consumível encontrado</p>
+            </div>
           ) : (
-            filteredConsumables.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
-                <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhum consumível encontrado</p>
-              </div>
-            ) : (
-              filteredConsumables.map(renderConsumableCard)
-            )
+            filteredConsumables.map(renderConsumableCard)
           )}
         </div>
       </div>
@@ -548,11 +611,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
       {/* Coluna Direita - Detalhes do Item */}
       <div className="lg:col-span-2">
         <Card className="h-full border-slate-700/50 bg-slate-800/30 backdrop-blur-sm">
-          <CardContent className="p-6 h-full">
-            {renderItemDetails()}
-          </CardContent>
+          <CardContent className="p-6 h-full">{renderItemDetails()}</CardContent>
         </Card>
       </div>
     </div>
   );
-}; 
+};

@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 
-import { 
-  Sword, 
-  Shield, 
-  Zap, 
-  Star, 
+import {
+  Sword,
+  Shield,
+  Zap,
+  Star,
   Heart,
   Eye,
   Sparkles,
@@ -24,7 +24,7 @@ import {
   TrendingDown,
   Crosshair,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
 } from 'lucide-react';
 import { type GamePlayer, type Enemy } from '@/resources/game/game-model';
 import { formatLargeNumber } from '@/utils/number-utils';
@@ -38,7 +38,12 @@ interface BattleArenaProps {
   playerManaPercentage: number;
   enemyHpPercentage: number;
   isPlayerTurn: boolean;
-  onDamageDealt?: (damage: number, isPlayer: boolean, isCritical?: boolean, damageType?: string) => void;
+  onDamageDealt?: (
+    damage: number,
+    isPlayer: boolean,
+    isCritical?: boolean,
+    damageType?: string
+  ) => void;
 }
 
 interface FloatingDamage {
@@ -50,19 +55,23 @@ interface FloatingDamage {
   timestamp: number;
 }
 
-export function BattleArena({ 
-  player, 
-  currentEnemy, 
-  playerHpPercentage, 
-  playerManaPercentage, 
-  enemyHpPercentage, 
+export function BattleArena({
+  player,
+  currentEnemy,
+  playerHpPercentage,
+  playerManaPercentage,
+  enemyHpPercentage,
   isPlayerTurn,
 }: BattleArenaProps) {
   // Log para debug das props recebidas
   useEffect(() => {
     console.log('[BattleArena] Props recebidas:');
     console.log('- player:', player?.name, `(andar: ${player?.floor})`);
-    console.log('- currentEnemy:', currentEnemy?.name, `(HP: ${currentEnemy?.hp}/${currentEnemy?.maxHp})`);
+    console.log(
+      '- currentEnemy:',
+      currentEnemy?.name,
+      `(HP: ${currentEnemy?.hp}/${currentEnemy?.maxHp})`
+    );
     console.log('- playerHpPercentage:', playerHpPercentage);
     console.log('- enemyHpPercentage:', enemyHpPercentage);
     console.log('- isPlayerTurn:', isPlayerTurn);
@@ -106,20 +115,20 @@ export function BattleArena({
   }>({
     playerHp: player.hp,
     enemyHp: currentEnemy.hp,
-    battleId: `${player.floor}-${currentEnemy.name}-${Date.now()}`
+    battleId: `${player.floor}-${currentEnemy.name}-${Date.now()}`,
   });
 
   // OTIMIZADO: Detectar mudanças de HP de forma mais precisa
   useEffect(() => {
     // Gerar ID único para esta batalha
     const currentBattleId = `${player.floor}-${currentEnemy.name}`;
-    
+
     // Se mudou o inimigo ou andar, resetar estado
     if (!lastBattleState.battleId.includes(currentBattleId)) {
       setLastBattleState({
         playerHp: player.hp,
         enemyHp: currentEnemy.hp,
-        battleId: currentBattleId
+        battleId: currentBattleId,
       });
       return;
     }
@@ -127,7 +136,7 @@ export function BattleArena({
     let hasChanges = false;
 
     // Detectar dano no jogador (apenas se HP diminuiu significativamente)
-    if (player.hp < lastBattleState.playerHp && (lastBattleState.playerHp - player.hp) >= 1) {
+    if (player.hp < lastBattleState.playerHp && lastBattleState.playerHp - player.hp >= 1) {
       const damage = lastBattleState.playerHp - player.hp;
       console.log(`[BattleArena] Jogador recebeu ${damage} de dano`);
       showFloatingDamage(damage, true, false, 'physical');
@@ -135,10 +144,15 @@ export function BattleArena({
     }
 
     // Detectar dano no inimigo (apenas se HP diminuiu significativamente)
-    if (currentEnemy.hp < lastBattleState.enemyHp && (lastBattleState.enemyHp - currentEnemy.hp) >= 1) {
+    if (
+      currentEnemy.hp < lastBattleState.enemyHp &&
+      lastBattleState.enemyHp - currentEnemy.hp >= 1
+    ) {
       const damage = lastBattleState.enemyHp - currentEnemy.hp;
-      const isCritical = damage > (player.atk * 1.5);
-      console.log(`[BattleArena] Inimigo recebeu ${damage} de dano ${isCritical ? '(CRÍTICO)' : ''}`);
+      const isCritical = damage > player.atk * 1.5;
+      console.log(
+        `[BattleArena] Inimigo recebeu ${damage} de dano ${isCritical ? '(CRÍTICO)' : ''}`
+      );
       showFloatingDamage(damage, false, isCritical, 'physical');
       hasChanges = true;
     }
@@ -148,12 +162,17 @@ export function BattleArena({
       setLastBattleState({
         playerHp: player.hp,
         enemyHp: currentEnemy.hp,
-        battleId: currentBattleId
+        battleId: currentBattleId,
       });
     }
   }, [player.hp, currentEnemy.hp, player.atk, player.floor, currentEnemy.name]);
 
-  const showFloatingDamage = (damage: number, isPlayer: boolean, isCritical: boolean, damageType: string) => {
+  const showFloatingDamage = (
+    damage: number,
+    isPlayer: boolean,
+    isCritical: boolean,
+    damageType: string
+  ) => {
     const id = `${Date.now()}-${Math.random()}`;
     const newDamage: FloatingDamage = {
       id,
@@ -161,7 +180,7 @@ export function BattleArena({
       isPlayer,
       isCritical,
       damageType,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     setFloatingDamages(prev => [...prev, newDamage]);
@@ -174,48 +193,92 @@ export function BattleArena({
 
   const translateBehavior = (behavior: string) => {
     const translations = {
-      'aggressive': 'Agressivo',
-      'defensive': 'Defensivo', 
-      'balanced': 'Equilibrado'
+      aggressive: 'Agressivo',
+      defensive: 'Defensivo',
+      balanced: 'Equilibrado',
     };
     return translations[behavior as keyof typeof translations] || behavior;
   };
 
   const getBehaviorColor = (behavior: string) => {
     switch (behavior) {
-      case 'aggressive': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'defensive': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'balanced': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'aggressive':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'defensive':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'balanced':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      default:
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
   };
 
   const translateTrait = (trait: string) => {
     const translations = {
-      'armored': 'Blindado',
-      'swift': 'Veloz',
-      'magical': 'Mágico',
-      'brutish': 'Brutal',
-      'resilient': 'Resistente',
-      'berserker': 'Berserker',
-      'ethereal': 'Etéreo',
-      'venomous': 'Venenoso'
+      armored: 'Blindado',
+      swift: 'Veloz',
+      magical: 'Mágico',
+      brutish: 'Brutal',
+      resilient: 'Resistente',
+      berserker: 'Berserker',
+      ethereal: 'Etéreo',
+      venomous: 'Venenoso',
     };
     return translations[trait as keyof typeof translations] || trait;
   };
 
   const getTraitIcon = (trait: string) => {
     switch (trait) {
-      case 'armored': return <Shield className="h-3 w-3" />;
-      case 'swift': return <Zap className="h-3 w-3" />;
-      case 'magical': return <Sparkles className="h-3 w-3" />;
-      case 'brutish': return <Sword className="h-3 w-3" />;
-      case 'resilient': return <ShieldCheck className="h-3 w-3" />;
-      case 'berserker': return <Target className="h-3 w-3" />;
-      case 'ethereal': return <Eye className="h-3 w-3" />;
-      case 'venomous': return <Flame className="h-3 w-3" />;
-      default: return <Hexagon className="h-3 w-3" />;
+      case 'armored':
+        return <Shield className="h-3 w-3" />;
+      case 'swift':
+        return <Zap className="h-3 w-3" />;
+      case 'magical':
+        return <Sparkles className="h-3 w-3" />;
+      case 'brutish':
+        return <Sword className="h-3 w-3" />;
+      case 'resilient':
+        return <ShieldCheck className="h-3 w-3" />;
+      case 'berserker':
+        return <Target className="h-3 w-3" />;
+      case 'ethereal':
+        return <Eye className="h-3 w-3" />;
+      case 'venomous':
+        return <Flame className="h-3 w-3" />;
+      default:
+        return <Hexagon className="h-3 w-3" />;
     }
+  };
+
+  // Handlers de ação
+  const handleAttack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isPlayerTurn || loading.performAction) return;
+    handleAction('attack');
+  };
+
+  const handleDefend = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isPlayerTurn || loading.performAction) return;
+    handleAction('defend');
+  };
+
+  const handleSpecial = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isPlayerTurn || loading.performAction) return;
+    handleAction('special');
+  };
+
+  const handleSpellCast = (e: React.MouseEvent, spellId: string) => {
+    e.preventDefault();
+    if (!isPlayerTurn || loading.performAction) return;
+    handleAction('cast_spell', spellId);
+  };
+
+  const handlePotionUse = (e: React.MouseEvent, slotPosition: number) => {
+    e.preventDefault();
+    if (!isPlayerTurn || loading.performAction) return;
+    handleAction('use_potion', undefined, String(slotPosition));
   };
 
   return (
@@ -223,12 +286,16 @@ export function BattleArena({
       {/* Arena Background with Battle Atmosphere */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900/30 via-transparent to-slate-900/30 rounded-xl"></div>
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-red-500/5 rounded-xl"></div>
-      
-      <Card className={`relative border-2 backdrop-blur-sm overflow-hidden transition-all duration-500 ${
-        playerHpPercentage >= 70 ? 'battle-card-healthy' :
-        playerHpPercentage >= 30 ? 'battle-card-wounded' :
-        'battle-card-critical'
-      }`}>
+
+      <Card
+        className={`relative border-2 backdrop-blur-sm overflow-hidden transition-all duration-500 ${
+          playerHpPercentage >= 70
+            ? 'battle-card-healthy'
+            : playerHpPercentage >= 30
+              ? 'battle-card-wounded'
+              : 'battle-card-critical'
+        }`}
+      >
         <CardContent className="p-3 md:p-6">
           {/* Battle Header - Compacto */}
           <div className="text-center mb-3 md:mb-6">
@@ -239,19 +306,19 @@ export function BattleArena({
               </Badge>
               <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-primary animate-pulse"></div>
               <div className="flex items-center gap-1">
-                <Badge 
-                  variant={isPlayerTurn ? "default" : "secondary"} 
+                <Badge
+                  variant={isPlayerTurn ? 'default' : 'secondary'}
                   className={`px-2 py-1 text-xs ${
-                    isPlayerTurn 
-                      ? 'bg-primary text-primary-foreground border-primary' 
+                    isPlayerTurn
+                      ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-secondary text-secondary-foreground border-secondary'
                   }`}
                 >
-                  {isPlayerTurn ? "Seu Turno" : "Turno do Inimigo"}
+                  {isPlayerTurn ? 'Seu Turno' : 'Turno do Inimigo'}
                 </Badge>
                 {isPlayerTurn && (
                   <div className="relative" ref={tooltipRef}>
-                    <button 
+                    <button
                       className="ml-1 text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
                       onClick={toggleShortcutsTooltip}
                       onTouchStart={toggleShortcutsTooltip}
@@ -262,31 +329,57 @@ export function BattleArena({
                     {showShortcutsTooltip && (
                       <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50 bg-background border border-border rounded-lg shadow-xl p-4 w-72 md:w-80 max-w-[90vw]">
                         <div className="text-sm">
-                          <div className="font-semibold mb-3 text-center text-foreground">Atalhos de Teclado</div>
+                          <div className="font-semibold mb-3 text-center text-foreground">
+                            Atalhos de Teclado
+                          </div>
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex gap-1">
-                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">A</span>
-                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">S</span>
-                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">D</span>
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">
+                                  A
+                                </span>
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">
+                                  S
+                                </span>
+                                <span className="font-mono bg-primary/20 text-primary px-2 py-1 rounded text-xs border">
+                                  D
+                                </span>
                               </div>
-                              <span className="text-xs text-muted-foreground flex-1 text-right">Atacar, Defender, Fugir</span>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">
+                                Atacar, Defender, Fugir
+                              </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex gap-1">
-                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">1</span>
-                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">2</span>
-                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">3</span>
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">
+                                  1
+                                </span>
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">
+                                  2
+                                </span>
+                                <span className="font-mono bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs border border-blue-500/30">
+                                  3
+                                </span>
                               </div>
-                              <span className="text-xs text-muted-foreground flex-1 text-right">Magias 1, 2, 3</span>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">
+                                Magias 1, 2, 3
+                              </span>
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex gap-1">
-                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">Q</span>
-                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">W</span>
-                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">E</span>
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">
+                                  Q
+                                </span>
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">
+                                  W
+                                </span>
+                                <span className="font-mono bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs border border-green-500/30">
+                                  E
+                                </span>
                               </div>
-                              <span className="text-xs text-muted-foreground flex-1 text-right">Poções 1, 2, 3</span>
+                              <span className="text-xs text-muted-foreground flex-1 text-right">
+                                Poções 1, 2, 3
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -303,21 +396,19 @@ export function BattleArena({
 
           {/* Main Battle Display - Layout Responsivo */}
           <div className="grid grid-cols-2 gap-3 md:gap-8 items-start">
-            
             {/* Player Side */}
             <div className="space-y-2 md:space-y-4">
               {/* Player Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">
-                  <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center transition-all duration-500 overflow-hidden ${
-                    isPlayerTurn 
-                      ? 'border-blue-500 shadow-xl md:shadow-2xl shadow-blue-500/40 scale-105 md:scale-110' 
-                      : 'border-blue-500/30 scale-100'
-                  }`}>
-                    <ThiefIdleAnimation 
-                      size={64} 
-                      className="scale-75 md:scale-100 lg:scale-110" 
-                    />
+                  <div
+                    className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center transition-all duration-500 overflow-hidden ${
+                      isPlayerTurn
+                        ? 'border-blue-500 shadow-xl md:shadow-2xl shadow-blue-500/40 scale-105 md:scale-110'
+                        : 'border-blue-500/30 scale-100'
+                    }`}
+                  >
+                    <ThiefIdleAnimation size={64} className="scale-75 md:scale-100 lg:scale-110" />
                   </div>
                   {isPlayerTurn && (
                     <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2">
@@ -333,7 +424,7 @@ export function BattleArena({
                     </div>
                   )}
                 </div>
-                
+
                 <div className="space-y-1 md:space-y-2">
                   <h3 className="font-bold text-sm md:text-lg lg:text-xl flex items-center justify-center gap-1 md:gap-2">
                     <Crown className="h-3 w-3 md:h-5 md:w-5 text-yellow-500" />
@@ -344,7 +435,10 @@ export function BattleArena({
                       <Star className="h-2 w-2 md:h-3 md:w-3 mr-1" />
                       Nv {player.level}
                     </Badge>
-                    <Badge variant="outline" className="bg-background/50 text-yellow-400 text-xs px-1 md:px-2">
+                    <Badge
+                      variant="outline"
+                      className="bg-background/50 text-yellow-400 text-xs px-1 md:px-2"
+                    >
                       {player.gold.toLocaleString('pt-BR')}G
                     </Badge>
                   </div>
@@ -384,21 +478,27 @@ export function BattleArena({
                       <Heart className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
                       <span className="font-medium text-xs md:text-sm">HP</span>
                     </div>
-                    <span className="text-xs md:text-sm font-bold">{player.hp}/{player.max_hp}</span>
+                    <span className="text-xs md:text-sm font-bold">
+                      {player.hp}/{player.max_hp}
+                    </span>
                   </div>
                   <div className="relative">
-                  <Progress 
-                    value={playerHpPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
-                    <div 
+                    <Progress
+                      value={playerHpPercentage}
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)',
+                      }}
+                    />
+                    <div
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
-                        playerHpPercentage >= 70 ? 'bg-green-500' :
-                        playerHpPercentage >= 40 ? 'bg-yellow-500' :
-                        playerHpPercentage >= 20 ? 'bg-orange-500' : 'bg-red-500'
+                        playerHpPercentage >= 70
+                          ? 'bg-green-500'
+                          : playerHpPercentage >= 40
+                            ? 'bg-yellow-500'
+                            : playerHpPercentage >= 20
+                              ? 'bg-orange-500'
+                              : 'bg-red-500'
                       }`}
                       style={{ width: `${playerHpPercentage}%` }}
                     />
@@ -411,21 +511,27 @@ export function BattleArena({
                       <Sparkles className="h-3 w-3 md:h-4 md:w-4 text-blue-500" />
                       <span className="font-medium text-xs md:text-sm">MP</span>
                     </div>
-                    <span className="text-xs md:text-sm font-bold">{player.mana}/{player.max_mana}</span>
+                    <span className="text-xs md:text-sm font-bold">
+                      {player.mana}/{player.max_mana}
+                    </span>
                   </div>
                   <div className="relative">
-                  <Progress 
-                    value={playerManaPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
-                    <div 
+                    <Progress
+                      value={playerManaPercentage}
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)',
+                      }}
+                    />
+                    <div
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
-                        playerManaPercentage >= 70 ? 'bg-blue-500' :
-                        playerManaPercentage >= 40 ? 'bg-cyan-500' :
-                        playerManaPercentage >= 20 ? 'bg-indigo-500' : 'bg-purple-500'
+                        playerManaPercentage >= 70
+                          ? 'bg-blue-500'
+                          : playerManaPercentage >= 40
+                            ? 'bg-cyan-500'
+                            : playerManaPercentage >= 20
+                              ? 'bg-indigo-500'
+                              : 'bg-purple-500'
                       }`}
                       style={{ width: `${playerManaPercentage}%` }}
                     />
@@ -434,66 +540,84 @@ export function BattleArena({
               </div>
 
               {/* Player Combat Stats - Grid Adaptativo */}
-              <div className={`grid gap-1 md:gap-2 ${
-                player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0 
-                  ? 'grid-cols-4' 
-                  : 'grid-cols-3'
-              }`}>
+              <div
+                className={`grid gap-1 md:gap-2 ${
+                  player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0
+                    ? 'grid-cols-4'
+                    : 'grid-cols-3'
+                }`}
+              >
                 <div className="bg-red-500/10 border border-red-500/20 rounded p-1 md:p-2 text-center">
                   <Sword className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-red-400" />
                   <div className="text-xs text-red-300 mb-1">ATK</div>
                   <div className="text-xs font-bold text-red-400">
-                    <StatDisplay 
+                    <StatDisplay
                       value={player.atk || 0}
                       baseValue={player.base_atk}
                       equipmentBonus={player.equipment_atk_bonus}
-                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'atk') || []}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'atk'
+                        ) || []
+                      }
                       size="sm"
                       showTooltip={true}
                     />
                   </div>
                 </div>
-                
+
                 {/* Magic Attack - Só renderizar se valor for válido */}
                 {player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0 && (
                   <div className="bg-purple-500/10 border border-purple-500/20 rounded p-1 md:p-2 text-center">
                     <Sparkles className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-purple-400" />
                     <div className="text-xs text-purple-300 mb-1">MAG</div>
                     <div className="text-xs font-bold text-purple-400">
-                      <StatDisplay 
+                      <StatDisplay
                         value={player.magic_attack}
-                        modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'magic_attack') || []}
+                        modifications={
+                          player.active_effects?.attribute_modifications?.filter(
+                            mod => mod.attribute === 'magic_attack'
+                          ) || []
+                        }
                         size="sm"
                         showTooltip={true}
                       />
                     </div>
                   </div>
                 )}
-                
+
                 <div className="bg-blue-500/10 border border-blue-500/20 rounded p-1 md:p-2 text-center">
                   <Shield className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-blue-400" />
                   <div className="text-xs text-blue-300 mb-1">DEF</div>
                   <div className="text-xs font-bold text-blue-400">
-                    <StatDisplay 
+                    <StatDisplay
                       value={player.def || 0}
                       baseValue={player.base_def}
                       equipmentBonus={player.equipment_def_bonus}
-                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'def') || []}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'def'
+                        ) || []
+                      }
                       size="sm"
                       showTooltip={true}
                     />
                   </div>
                 </div>
-                
+
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-1 md:p-2 text-center">
                   <Zap className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-yellow-400" />
                   <div className="text-xs text-yellow-300 mb-1">SPD</div>
                   <div className="text-xs font-bold text-yellow-400">
-                    <StatDisplay 
+                    <StatDisplay
                       value={player.speed || 0}
                       baseValue={player.base_speed}
                       equipmentBonus={player.equipment_speed_bonus}
-                      modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'speed') || []}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'speed'
+                        ) || []
+                      }
                       size="sm"
                       showTooltip={true}
                     />
@@ -509,7 +633,11 @@ export function BattleArena({
                   onClick={() => setShowPlayerDetails(!showPlayerDetails)}
                   className="w-full h-8 text-xs bg-background/30 hover:bg-background/50"
                 >
-                  {showPlayerDetails ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                  {showPlayerDetails ? (
+                    <ChevronUp className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                  )}
                   {showPlayerDetails ? 'Menos' : 'Mais'} Detalhes
                 </Button>
 
@@ -518,64 +646,83 @@ export function BattleArena({
                   <div className="space-y-3 pt-2 border-t border-border/50 animate-in slide-in-from-top-2 duration-300">
                     {/* XP Progress Bar */}
                     <div className="space-y-2">
-                                              {/* CORRIGIDO: XP Progress com cálculo do nível atual */}
-                        {(() => {
-                          // Calcular XP do nível atual
-                          const calculateCurrentLevelXpRequirement = (level: number): number => {
-                            if (level <= 1) return 0;
-                            return Math.floor(100 * Math.pow(1.5, level - 2));
-                          };
-                          
-                          const currentLevelStartXp = calculateCurrentLevelXpRequirement(player.level);
-                          const currentLevelEndXp = player.xp_next_level;
-                          const xpInCurrentLevel = player.xp - currentLevelStartXp;
-                          const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
-                          const xpProgressPercent = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
-                          
-                          return (
-                            <>
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-3 w-3 text-yellow-500" />
-                                  <span className="font-medium text-xs text-muted-foreground">Experiência</span>
-                                </div>
-                                <div className="text-xs font-bold">
-                                  <span className="text-yellow-400">{formatLargeNumber(xpInCurrentLevel)}</span>
-                                  <span className="text-muted-foreground mx-1">/</span>
-                                  <span className="text-muted-foreground">{formatLargeNumber(xpNeededForNextLevel)}</span>
-                                </div>
-                              </div>
-                              <div className="relative">
-                                <div className="relative">
-                                  <Progress 
-                                    value={xpProgressPercent} 
-                                    className="h-2"
-                                    style={{
-                                      background: 'rgba(0,0,0,0.2)'
-                                    }}
-                                  />
-                                  <div 
-                                    className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
-                                    style={{ width: `${xpProgressPercent}%` }}
-                                  />
-                                </div>
-                                <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Nível {player.level}</span>
-                                <span className="text-yellow-400 font-medium">
-                                  {formatLargeNumber(xpNeededForNextLevel - xpInCurrentLevel)} para nv {player.level + 1}
+                      {/* CORRIGIDO: XP Progress com cálculo do nível atual */}
+                      {(() => {
+                        // Calcular XP do nível atual
+                        const calculateCurrentLevelXpRequirement = (level: number): number => {
+                          if (level <= 1) return 0;
+                          return Math.floor(100 * Math.pow(1.5, level - 2));
+                        };
+
+                        const currentLevelStartXp = calculateCurrentLevelXpRequirement(
+                          player.level
+                        );
+                        const currentLevelEndXp = player.xp_next_level;
+                        const xpInCurrentLevel = player.xp - currentLevelStartXp;
+                        const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
+                        const xpProgressPercent = Math.max(
+                          0,
+                          Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100)
+                        );
+
+                        return (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-1">
+                                <Star className="h-3 w-3 text-yellow-500" />
+                                <span className="font-medium text-xs text-muted-foreground">
+                                  Experiência
                                 </span>
                               </div>
-                            </>
-                          );
-                        })()}
+                              <div className="text-xs font-bold">
+                                <span className="text-yellow-400">
+                                  {formatLargeNumber(xpInCurrentLevel)}
+                                </span>
+                                <span className="text-muted-foreground mx-1">/</span>
+                                <span className="text-muted-foreground">
+                                  {formatLargeNumber(xpNeededForNextLevel)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="relative">
+                              <div className="relative">
+                                <Progress
+                                  value={xpProgressPercent}
+                                  className="h-2"
+                                  style={{
+                                    background: 'rgba(0,0,0,0.2)',
+                                  }}
+                                />
+                                <div
+                                  className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
+                                  style={{ width: `${xpProgressPercent}%` }}
+                                />
+                              </div>
+                              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-yellow-500/10 rounded-full pointer-events-none"></div>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">Nível {player.level}</span>
+                              <span className="text-yellow-400 font-medium">
+                                {formatLargeNumber(xpNeededForNextLevel - xpInCurrentLevel)} para nv{' '}
+                                {player.level + 1}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
-                    
+
                     {/* Atributos Primários do Jogador */}
-                    {(player.strength || player.dexterity || player.intelligence || player.wisdom || player.vitality || player.luck) && (
+                    {(player.strength ||
+                      player.dexterity ||
+                      player.intelligence ||
+                      player.wisdom ||
+                      player.vitality ||
+                      player.luck) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Atributos Primários:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Atributos Primários:
+                        </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           {player.strength && (
                             <div className="bg-red-500/10 rounded p-1 text-center">
@@ -622,11 +769,13 @@ export function BattleArena({
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Stats Derivados do Jogador */}
                     {(player.critical_chance || player.critical_damage) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Combate Avançado:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Combate Avançado:
+                        </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           {player.critical_chance && (
                             <div className="bg-background/20 rounded p-2">
@@ -635,9 +784,13 @@ export function BattleArena({
                                 <span>Crítico</span>
                               </div>
                               <div className="font-medium text-yellow-400">
-                                <StatDisplay 
+                                <StatDisplay
                                   value={player.critical_chance}
-                                  modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'critical_chance') || []}
+                                  modifications={
+                                    player.active_effects?.attribute_modifications?.filter(
+                                      mod => mod.attribute === 'critical_chance'
+                                    ) || []
+                                  }
                                   size="sm"
                                   showTooltip={true}
                                   label="%"
@@ -652,9 +805,13 @@ export function BattleArena({
                                 <span>Dano Crit</span>
                               </div>
                               <div className="font-medium text-orange-400">
-                                <StatDisplay 
+                                <StatDisplay
                                   value={player.critical_damage}
-                                  modifications={player.active_effects?.attribute_modifications?.filter(mod => mod.attribute === 'critical_damage') || []}
+                                  modifications={
+                                    player.active_effects?.attribute_modifications?.filter(
+                                      mod => mod.attribute === 'critical_damage'
+                                    ) || []
+                                  }
                                   size="sm"
                                   showTooltip={true}
                                   label="%"
@@ -665,7 +822,7 @@ export function BattleArena({
                         </div>
                       </div>
                     )}
-                    
+
                     {/* DEBUG: Skills do Personagem */}
                     <div className="space-y-2">
                       <div className="text-xs font-medium text-muted-foreground">Habilidades:</div>
@@ -675,7 +832,9 @@ export function BattleArena({
                             <Sword className="h-3 w-3 mx-auto mb-1 text-red-400" />
                             <div className="text-muted-foreground">Espada</div>
                             <div className="font-medium">Lv {player.sword_mastery}</div>
-                            <div className="text-xs text-muted-foreground">{player.sword_mastery_xp || 0} XP</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.sword_mastery_xp || 0} XP
+                            </div>
                           </div>
                         )}
                         {(player.axe_mastery || 0) > 1 && (
@@ -683,7 +842,9 @@ export function BattleArena({
                             <Target className="h-3 w-3 mx-auto mb-1 text-orange-400" />
                             <div className="text-muted-foreground">Machado</div>
                             <div className="font-medium">Lv {player.axe_mastery}</div>
-                            <div className="text-xs text-muted-foreground">{player.axe_mastery_xp || 0} XP</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.axe_mastery_xp || 0} XP
+                            </div>
                           </div>
                         )}
                         {(player.blunt_mastery || 0) > 1 && (
@@ -691,7 +852,9 @@ export function BattleArena({
                             <Activity className="h-3 w-3 mx-auto mb-1 text-brown-400" />
                             <div className="text-muted-foreground">Concussão</div>
                             <div className="font-medium">Lv {player.blunt_mastery}</div>
-                            <div className="text-xs text-muted-foreground">{player.blunt_mastery_xp || 0} XP</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.blunt_mastery_xp || 0} XP
+                            </div>
                           </div>
                         )}
                         {(player.defense_mastery || 0) > 1 && (
@@ -699,7 +862,9 @@ export function BattleArena({
                             <Shield className="h-3 w-3 mx-auto mb-1 text-blue-400" />
                             <div className="text-muted-foreground">Defesa</div>
                             <div className="font-medium">Lv {player.defense_mastery}</div>
-                            <div className="text-xs text-muted-foreground">{player.defense_mastery_xp || 0} XP</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.defense_mastery_xp || 0} XP
+                            </div>
                           </div>
                         )}
                         {(player.magic_mastery || 0) > 1 && (
@@ -707,15 +872,17 @@ export function BattleArena({
                             <Sparkles className="h-3 w-3 mx-auto mb-1 text-purple-400" />
                             <div className="text-muted-foreground">Magia</div>
                             <div className="font-medium">Lv {player.magic_mastery}</div>
-                            <div className="text-xs text-muted-foreground">{player.magic_mastery_xp || 0} XP</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.magic_mastery_xp || 0} XP
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Pontos de Atributo Disponíveis */}
                     {Boolean(player.attribute_points && player.attribute_points > 0) && (
-                      <button 
+                      <button
                         onClick={() => {
                           // Disparar evento customizado para abrir o modal
                           window.dispatchEvent(new CustomEvent('openAttributeModal'));
@@ -731,18 +898,20 @@ export function BattleArena({
                         </div>
                       </button>
                     )}
-                    
+
                     {Boolean(player.isDefending) && (
                       <div className="flex items-center gap-2 text-blue-400 bg-blue-500/10 rounded p-2">
                         <Shield className="h-4 w-4" />
                         <span className="text-sm font-medium">Postura Defensiva Ativa</span>
                       </div>
                     )}
-                    
+
                     {Boolean(player.defenseCooldown > 0) && (
                       <div className="flex items-center gap-2 text-orange-400 bg-orange-500/10 rounded p-2">
                         <Activity className="h-4 w-4" />
-                        <span className="text-sm">Defesa em Cooldown: {player.defenseCooldown} turnos</span>
+                        <span className="text-sm">
+                          Defesa em Cooldown: {player.defenseCooldown} turnos
+                        </span>
                       </div>
                     )}
                   </div>
@@ -755,11 +924,13 @@ export function BattleArena({
               {/* Enemy Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">
-                  <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 md:border-3 flex items-center justify-center text-2xl md:text-4xl lg:text-5xl transition-all duration-500 ${
-                    !isPlayerTurn 
-                      ? 'border-red-500 shadow-xl md:shadow-2xl shadow-red-500/40 scale-105 md:scale-110' 
-                      : 'border-red-500/30 scale-100'
-                  }`}>
+                  <div
+                    className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 md:border-3 flex items-center justify-center text-2xl md:text-4xl lg:text-5xl transition-all duration-500 ${
+                      !isPlayerTurn
+                        ? 'border-red-500 shadow-xl md:shadow-2xl shadow-red-500/40 scale-105 md:scale-110'
+                        : 'border-red-500/30 scale-100'
+                    }`}
+                  >
                     {currentEnemy.image || '👾'}
                   </div>
                   {!isPlayerTurn && (
@@ -769,7 +940,7 @@ export function BattleArena({
                     </div>
                   )}
                 </div>
-                
+
                 <div className="space-y-1 md:space-y-2">
                   <h3 className="font-bold text-sm md:text-lg lg:text-xl flex items-center justify-center gap-1 md:gap-2">
                     <Skull className="h-3 w-3 md:h-5 md:w-5 text-red-500" />
@@ -781,7 +952,10 @@ export function BattleArena({
                       Nv {currentEnemy.level}
                     </Badge>
                     {currentEnemy.tier && currentEnemy.tier > 1 && (
-                      <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs px-1 md:px-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs px-1 md:px-2"
+                      >
                         <Star className="h-2 w-2 md:h-3 md:w-3 mr-1" />
                         Tier {currentEnemy.tier}
                       </Badge>
@@ -792,7 +966,9 @@ export function BattleArena({
                         BOSS
                       </Badge>
                     )}
-                    <Badge className={`text-xs border px-1 md:px-2 ${getBehaviorColor(currentEnemy.behavior)}`}>
+                    <Badge
+                      className={`text-xs border px-1 md:px-2 ${getBehaviorColor(currentEnemy.behavior)}`}
+                    >
                       {translateBehavior(currentEnemy.behavior)}
                     </Badge>
                   </div>
@@ -832,21 +1008,27 @@ export function BattleArena({
                       <Heart className="h-3 w-3 md:h-4 md:w-4 text-red-500" />
                       <span className="font-medium text-xs md:text-sm">HP</span>
                     </div>
-                    <span className="text-xs md:text-sm font-bold">{currentEnemy.hp}/{currentEnemy.maxHp}</span>
+                    <span className="text-xs md:text-sm font-bold">
+                      {currentEnemy.hp}/{currentEnemy.maxHp}
+                    </span>
                   </div>
                   <div className="relative">
-                  <Progress 
-                    value={enemyHpPercentage} 
-                    className="h-2 md:h-3"
-                    style={{
-                      background: 'rgba(0,0,0,0.2)'
-                    }}
-                  />
-                    <div 
+                    <Progress
+                      value={enemyHpPercentage}
+                      className="h-2 md:h-3"
+                      style={{
+                        background: 'rgba(0,0,0,0.2)',
+                      }}
+                    />
+                    <div
                       className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
-                        enemyHpPercentage >= 70 ? 'bg-green-500' :
-                        enemyHpPercentage >= 40 ? 'bg-yellow-500' :
-                        enemyHpPercentage >= 20 ? 'bg-orange-500' : 'bg-red-500'
+                        enemyHpPercentage >= 70
+                          ? 'bg-green-500'
+                          : enemyHpPercentage >= 40
+                            ? 'bg-yellow-500'
+                            : enemyHpPercentage >= 20
+                              ? 'bg-orange-500'
+                              : 'bg-red-500'
                       }`}
                       style={{ width: `${enemyHpPercentage}%` }}
                     />
@@ -864,9 +1046,11 @@ export function BattleArena({
                     </div>
                     <div className="relative">
                       <div className="h-2 md:h-3 bg-black/20 rounded-full"></div>
-                      <div 
+                      <div
                         className="absolute top-0 left-0 h-2 md:h-3 bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, (currentEnemy.mana / Math.max(currentEnemy.mana, 100)) * 100)}%` }}
+                        style={{
+                          width: `${Math.min(100, (currentEnemy.mana / Math.max(currentEnemy.mana, 100)) * 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -897,7 +1081,11 @@ export function BattleArena({
                   onClick={() => setShowEnemyDetails(!showEnemyDetails)}
                   className="w-full h-8 text-xs bg-background/30 hover:bg-background/50"
                 >
-                  {showEnemyDetails ? <ChevronUp className="h-3 w-3 mr-1" /> : <ChevronDown className="h-3 w-3 mr-1" />}
+                  {showEnemyDetails ? (
+                    <ChevronUp className="h-3 w-3 mr-1" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                  )}
                   {showEnemyDetails ? 'Menos' : 'Mais'} Detalhes
                 </Button>
 
@@ -911,14 +1099,20 @@ export function BattleArena({
                       </div>
                       <div className="bg-background/20 rounded p-2">
                         <div className="text-muted-foreground">Recompensa Gold</div>
-                        <div className="font-medium text-yellow-400">{currentEnemy.reward_gold}</div>
+                        <div className="font-medium text-yellow-400">
+                          {currentEnemy.reward_gold}
+                        </div>
                       </div>
                     </div>
-                    
+
                     {/* Atributos Primários do Inimigo */}
-                    {Boolean(currentEnemy.strength || currentEnemy.dexterity || currentEnemy.intelligence) && (
+                    {Boolean(
+                      currentEnemy.strength || currentEnemy.dexterity || currentEnemy.intelligence
+                    ) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Atributos Primários:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Atributos Primários:
+                        </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           {Boolean(currentEnemy.strength) && (
                             <div className="bg-red-500/10 rounded p-1 text-center">
@@ -944,11 +1138,13 @@ export function BattleArena({
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Propriedades de Combate Avançadas */}
                     {Boolean(currentEnemy.critical_chance || currentEnemy.critical_damage) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Combate Avançado:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Combate Avançado:
+                        </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           {Boolean(currentEnemy.critical_chance) && (
                             <div className="bg-background/20 rounded p-2">
@@ -975,87 +1171,133 @@ export function BattleArena({
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Resistências */}
-                    {Boolean(currentEnemy.physical_resistance || currentEnemy.magical_resistance || currentEnemy.debuff_resistance) && (
+                    {Boolean(
+                      currentEnemy.physical_resistance ||
+                        currentEnemy.magical_resistance ||
+                        currentEnemy.debuff_resistance
+                    ) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Resistências:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Resistências:
+                        </div>
                         <div className="space-y-1">
-                          {Boolean(currentEnemy.physical_resistance && currentEnemy.physical_resistance > 0) && (
+                          {Boolean(
+                            currentEnemy.physical_resistance && currentEnemy.physical_resistance > 0
+                          ) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <Shield className="h-3 w-3 text-red-400" />
                                 <span>Física</span>
                               </div>
-                              <span className="text-red-400">{((currentEnemy.physical_resistance || 0) * 100).toFixed(0)}%</span>
+                              <span className="text-red-400">
+                                {((currentEnemy.physical_resistance || 0) * 100).toFixed(0)}%
+                              </span>
                             </div>
                           )}
-                          {Boolean(currentEnemy.magical_resistance && currentEnemy.magical_resistance > 0) && (
+                          {Boolean(
+                            currentEnemy.magical_resistance && currentEnemy.magical_resistance > 0
+                          ) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <Sparkles className="h-3 w-3 text-blue-400" />
                                 <span>Mágica</span>
                               </div>
-                              <span className="text-blue-400">{((currentEnemy.magical_resistance || 0) * 100).toFixed(0)}%</span>
+                              <span className="text-blue-400">
+                                {((currentEnemy.magical_resistance || 0) * 100).toFixed(0)}%
+                              </span>
                             </div>
                           )}
-                          {Boolean(currentEnemy.debuff_resistance && currentEnemy.debuff_resistance > 0) && (
+                          {Boolean(
+                            currentEnemy.debuff_resistance && currentEnemy.debuff_resistance > 0
+                          ) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <ShieldCheck className="h-3 w-3 text-green-400" />
                                 <span>Debuffs</span>
                               </div>
-                              <span className="text-green-400">{((currentEnemy.debuff_resistance || 0) * 100).toFixed(0)}%</span>
+                              <span className="text-green-400">
+                                {((currentEnemy.debuff_resistance || 0) * 100).toFixed(0)}%
+                              </span>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Vulnerabilidades */}
-                    {Boolean((currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1) ||
-                     (currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1)) && (
+                    {Boolean(
+                      (currentEnemy.physical_vulnerability &&
+                        currentEnemy.physical_vulnerability > 1) ||
+                        (currentEnemy.magical_vulnerability &&
+                          currentEnemy.magical_vulnerability > 1)
+                    ) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Vulnerabilidades:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Vulnerabilidades:
+                        </div>
                         <div className="space-y-1">
-                          {Boolean(currentEnemy.physical_vulnerability && currentEnemy.physical_vulnerability > 1) && (
+                          {Boolean(
+                            currentEnemy.physical_vulnerability &&
+                              currentEnemy.physical_vulnerability > 1
+                          ) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <TrendingDown className="h-3 w-3 text-red-400" />
                                 <span>Física</span>
                               </div>
-                              <span className="text-red-400">+{(((currentEnemy.physical_vulnerability || 1) - 1) * 100).toFixed(0)}%</span>
+                              <span className="text-red-400">
+                                +
+                                {(((currentEnemy.physical_vulnerability || 1) - 1) * 100).toFixed(
+                                  0
+                                )}
+                                %
+                              </span>
                             </div>
                           )}
-                          {Boolean(currentEnemy.magical_vulnerability && currentEnemy.magical_vulnerability > 1) && (
+                          {Boolean(
+                            currentEnemy.magical_vulnerability &&
+                              currentEnemy.magical_vulnerability > 1
+                          ) && (
                             <div className="flex justify-between items-center text-xs">
                               <div className="flex items-center gap-1">
                                 <TrendingDown className="h-3 w-3 text-blue-400" />
                                 <span>Mágica</span>
                               </div>
-                              <span className="text-blue-400">+{(((currentEnemy.magical_vulnerability || 1) - 1) * 100).toFixed(0)}%</span>
+                              <span className="text-blue-400">
+                                +
+                                {(((currentEnemy.magical_vulnerability || 1) - 1) * 100).toFixed(0)}
+                                %
+                              </span>
                             </div>
                           )}
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Características Especiais */}
                     {Boolean(currentEnemy.primary_trait || currentEnemy.secondary_trait) && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium text-muted-foreground">Características:</div>
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Características:
+                        </div>
                         <div className="space-y-1">
                           {Boolean(currentEnemy.primary_trait) && (
-                                                          <div className="flex items-center gap-2 text-xs">
-                                {getTraitIcon(currentEnemy.primary_trait!)}
-                                <span className="text-purple-400">{translateTrait(currentEnemy.primary_trait!)}</span>
-                              </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {getTraitIcon(currentEnemy.primary_trait!)}
+                              <span className="text-purple-400">
+                                {translateTrait(currentEnemy.primary_trait!)}
+                              </span>
+                            </div>
                           )}
                           {Boolean(currentEnemy.secondary_trait) && (
-                                                          <div className="flex items-center gap-2 text-xs">
-                                {getTraitIcon(currentEnemy.secondary_trait!)}
-                                <span className="text-blue-400">{translateTrait(currentEnemy.secondary_trait!)}</span>
-                              </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              {getTraitIcon(currentEnemy.secondary_trait!)}
+                              <span className="text-blue-400">
+                                {translateTrait(currentEnemy.secondary_trait!)}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1069,4 +1311,4 @@ export function BattleArena({
       </Card>
     </div>
   );
-} 
+}

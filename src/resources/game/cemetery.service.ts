@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { type DeadCharacter, type CemeteryStats, type CemeteryResponse, type CemeterySearchParams } from './models/cemetery.model';
+import {
+  type DeadCharacter,
+  type CemeteryStats,
+  type CemeteryResponse,
+  type CemeterySearchParams,
+} from './models/cemetery.model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -17,12 +22,15 @@ export class CemeteryService {
     killedByMonster?: string
   ): Promise<ServiceResponse<string>> {
     try {
-      console.log(`[CemeteryService] Matando personagem ${characterId}:`, { deathCause, killedByMonster });
-      
+      console.log(`[CemeteryService] Matando personagem ${characterId}:`, {
+        deathCause,
+        killedByMonster,
+      });
+
       const { data, error } = await supabase.rpc('kill_character', {
         p_character_id: characterId,
         p_death_cause: deathCause,
-        p_killed_by_monster: killedByMonster || null
+        p_killed_by_monster: killedByMonster || null,
       });
 
       if (error) {
@@ -30,19 +38,21 @@ export class CemeteryService {
         throw error;
       }
 
-      console.log(`[CemeteryService] Personagem ${characterId} morto com sucesso, ID no cemitério: ${data}`);
-      
+      console.log(
+        `[CemeteryService] Personagem ${characterId} morto com sucesso, ID no cemitério: ${data}`
+      );
+
       return {
         success: true,
         data: data as string, // ID do registro no cemitério
-        error: null
+        error: null,
       };
     } catch (error) {
       console.error('[CemeteryService] Erro crítico ao matar personagem:', error);
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Erro desconhecido ao matar personagem'
+        error: error instanceof Error ? error.message : 'Erro desconhecido ao matar personagem',
       };
     }
   }
@@ -55,36 +65,33 @@ export class CemeteryService {
     params: CemeterySearchParams = {}
   ): Promise<ServiceResponse<CemeteryResponse>> {
     try {
-      const {
-        page = 1,
-        limit = 10,
-      } = params;
+      const { page = 1, limit = 10 } = params;
 
       const offset = (page - 1) * limit;
 
       // Buscar personagens mortos
-      const { data: charactersData, error: charactersError } = await supabase
-        .rpc('get_user_cemetery', {
+      const { data: charactersData, error: charactersError } = await supabase.rpc(
+        'get_user_cemetery',
+        {
           p_user_id: userId,
           p_limit: limit,
-          p_offset: offset
-        });
+          p_offset: offset,
+        }
+      );
 
       if (charactersError) throw charactersError;
 
       // Contar total
-      const { data: totalData, error: totalError } = await supabase
-        .rpc('count_user_cemetery', {
-          p_user_id: userId
-        });
+      const { data: totalData, error: totalError } = await supabase.rpc('count_user_cemetery', {
+        p_user_id: userId,
+      });
 
       if (totalError) throw totalError;
 
       // Buscar estatísticas
-      const { data: statsData, error: statsError } = await supabase
-        .rpc('get_cemetery_stats', {
-          p_user_id: userId
-        });
+      const { data: statsData, error: statsError } = await supabase.rpc('get_cemetery_stats', {
+        p_user_id: userId,
+      });
 
       if (statsError) throw statsError;
 
@@ -96,7 +103,7 @@ export class CemeteryService {
         highest_floor_reached: 0,
         total_survival_time_hours: 0,
         most_common_death_cause: 'N/A',
-        deadliest_monster: 'N/A'
+        deadliest_monster: 'N/A',
       }) as CemeteryStats;
 
       const hasMore = offset + characters.length < total;
@@ -107,16 +114,16 @@ export class CemeteryService {
           characters,
           total,
           stats,
-          hasMore
+          hasMore,
         },
-        error: null
+        error: null,
       };
     } catch (error) {
       console.error('[CemeteryService] Erro ao buscar cemitério:', error);
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Erro ao buscar cemitério'
+        error: error instanceof Error ? error.message : 'Erro ao buscar cemitério',
       };
     }
   }
@@ -126,10 +133,9 @@ export class CemeteryService {
    */
   static async getCemeteryStats(userId: string): Promise<ServiceResponse<CemeteryStats>> {
     try {
-      const { data, error } = await supabase
-        .rpc('get_cemetery_stats', {
-          p_user_id: userId
-        });
+      const { data, error } = await supabase.rpc('get_cemetery_stats', {
+        p_user_id: userId,
+      });
 
       if (error) throw error;
 
@@ -139,20 +145,20 @@ export class CemeteryService {
         highest_floor_reached: 0,
         total_survival_time_hours: 0,
         most_common_death_cause: 'N/A',
-        deadliest_monster: 'N/A'
+        deadliest_monster: 'N/A',
       }) as CemeteryStats;
 
       return {
         success: true,
         data: stats,
-        error: null
+        error: null,
       };
     } catch (error) {
       console.error('[CemeteryService] Erro ao buscar estatísticas do cemitério:', error);
       return {
         success: false,
         data: null,
-        error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas'
+        error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas',
       };
     }
   }
@@ -162,24 +168,23 @@ export class CemeteryService {
    */
   static async hasCemetery(userId: string): Promise<ServiceResponse<boolean>> {
     try {
-      const { data, error } = await supabase
-        .rpc('count_user_cemetery', {
-          p_user_id: userId
-        });
+      const { data, error } = await supabase.rpc('count_user_cemetery', {
+        p_user_id: userId,
+      });
 
       if (error) throw error;
 
       return {
         success: true,
         data: (data as number) > 0,
-        error: null
+        error: null,
       };
     } catch (error) {
       console.error('[CemeteryService] Erro ao verificar cemitério:', error);
       return {
         success: false,
         data: false,
-        error: error instanceof Error ? error.message : 'Erro ao verificar cemitério'
+        error: error instanceof Error ? error.message : 'Erro ao verificar cemitério',
       };
     }
   }
@@ -190,7 +195,8 @@ export class CemeteryService {
   static formatSurvivalTime(minutes: number): string {
     if (minutes < 60) {
       return `${minutes} min`;
-    } else if (minutes < 1440) { // menos de 24 horas
+    } else if (minutes < 1440) {
+      // menos de 24 horas
       const hours = Math.floor(minutes / 60);
       const remainingMinutes = minutes % 60;
       return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
@@ -216,4 +222,4 @@ export class CemeteryService {
         return cause;
     }
   }
-} 
+}

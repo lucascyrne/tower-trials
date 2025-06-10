@@ -19,7 +19,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
   selectedItem,
   selectedSlot,
   character,
-  onEquipmentChange
+  onEquipmentChange,
 }) => {
   const getEquipmentIcon = (item: Equipment) => {
     switch (item.type) {
@@ -40,18 +40,23 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
       uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
       rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
       epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
-      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
+      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600',
     };
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
   const getSlotName = (slotType: string) => {
     switch (slotType) {
-      case 'main_hand': return 'Mão Principal';
-      case 'off_hand': return 'Mão Secundária';
-      case 'armor': return 'Armadura';
-      case 'accessory': return 'Acessório';
-      default: return slotType;
+      case 'main_hand':
+        return 'Mão Principal';
+      case 'off_hand':
+        return 'Mão Secundária';
+      case 'armor':
+        return 'Armadura';
+      case 'accessory':
+        return 'Acessório';
+      default:
+        return slotType;
     }
   };
 
@@ -59,11 +64,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
     if (!selectedItem || !selectedSlot) return;
 
     try {
-      const result = await EquipmentService.toggleEquipment(
-        character.id,
-        selectedItem.id,
-        false
-      );
+      const result = await EquipmentService.toggleEquipment(character.id, selectedItem.id, false);
 
       if (result.success) {
         toast.success('Item desequipado com sucesso!');
@@ -121,9 +122,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
               )}
             </div>
             {selectedSlot && (
-              <p className="text-sm text-slate-400">
-                Equipado em: {getSlotName(selectedSlot)}
-              </p>
+              <p className="text-sm text-slate-400">Equipado em: {getSlotName(selectedSlot)}</p>
             )}
           </div>
         </div>
@@ -167,8 +166,6 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
               </div>
             )}
 
-
-
             {selectedItem.speed_bonus && selectedItem.speed_bonus > 0 && (
               <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
@@ -187,11 +184,13 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
             <h4 className="text-sm font-medium text-slate-300 mb-2">Requisitos</h4>
             <div className="flex items-center gap-2">
               <span className="text-slate-400">Nível mínimo:</span>
-              <span className={`font-bold ${
-                character.level >= selectedItem.level_requirement 
-                  ? 'text-green-400' 
-                  : 'text-red-400'
-              }`}>
+              <span
+                className={`font-bold ${
+                  character.level >= selectedItem.level_requirement
+                    ? 'text-green-400'
+                    : 'text-red-400'
+                }`}
+              >
                 {selectedItem.level_requirement}
               </span>
             </div>
@@ -221,4 +220,4 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
       </CardContent>
     </Card>
   );
-}; 
+};

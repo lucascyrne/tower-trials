@@ -136,4 +136,4 @@ export function RegisterForm({ onSubmit, isLoading }: RegisterFormProps) {
       </form>
     </Form>
   );
-} 
+}

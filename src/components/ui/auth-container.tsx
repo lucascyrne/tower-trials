@@ -10,9 +10,7 @@ export default function AuthContainer({ title, description, form, footer }: Auth
     <div className="w-full max-w-[400px] flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
-        {description && (
-          <p className="text-sm text-neutral-500">{description}</p>
-        )}
+        {description && <p className="text-sm text-neutral-500">{description}</p>}
       </div>
 
       <div className="flex flex-col gap-6">
@@ -21,4 +19,4 @@ export default function AuthContainer({ title, description, form, footer }: Auth
       </div>
     </div>
   );
-} 
+}

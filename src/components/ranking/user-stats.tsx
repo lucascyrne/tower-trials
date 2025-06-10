@@ -24,9 +24,9 @@ interface UserStatsProps {
 const UserStats: React.FC<UserStatsProps> = ({ stats, userRanking }) => {
   const [isStatsExpanded, setIsStatsExpanded] = useState(true);
   const [isLastRunExpanded, setIsLastRunExpanded] = useState(false);
-  
+
   const lastRun = userRanking[0];
-  
+
   return (
     <div className="space-y-4">
       {/* Estatísticas Principais - Minimalista */}
@@ -45,41 +45,34 @@ const UserStats: React.FC<UserStatsProps> = ({ stats, userRanking }) => {
             )}
           </Button>
         </CardHeader>
-        
+
         {isStatsExpanded && (
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Melhor Andar */}
               <div className="text-center p-4 bg-muted/30 rounded-lg border">
                 <Trophy className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-                <div className="text-2xl font-bold mb-1">
-                  {stats.bestFloor}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Melhor Andar
-                </div>
+                <div className="text-2xl font-bold mb-1">{stats.bestFloor}</div>
+                <div className="text-xs text-muted-foreground">Melhor Andar</div>
               </div>
-              
+
               {/* Maior Nível */}
               <div className="text-center p-4 bg-muted/30 rounded-lg border">
                 <TrendingUp className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-                <div className="text-2xl font-bold mb-1">
-                  {stats.bestLevel}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Maior Nível
-                </div>
+                <div className="text-2xl font-bold mb-1">{stats.bestLevel}</div>
+                <div className="text-xs text-muted-foreground">Maior Nível</div>
               </div>
-              
+
               {/* Mais Rico */}
               <div className="text-center p-4 bg-muted/30 rounded-lg border">
                 <Coins className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-                                 <div className="text-xl font-bold mb-1" title={`${stats.bestGold.toLocaleString('pt-BR')} Gold`}>
-                   {formatLargeNumber(stats.bestGold)}
-                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Mais Rico
+                <div
+                  className="text-xl font-bold mb-1"
+                  title={`${stats.bestGold.toLocaleString('pt-BR')} Gold`}
+                >
+                  {formatLargeNumber(stats.bestGold)}
                 </div>
+                <div className="text-xs text-muted-foreground">Mais Rico</div>
               </div>
             </div>
           </CardContent>
@@ -106,7 +99,7 @@ const UserStats: React.FC<UserStatsProps> = ({ stats, userRanking }) => {
               )}
             </Button>
           </CardHeader>
-          
+
           {isLastRunExpanded && (
             <CardContent className="pt-0">
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
@@ -150,4 +143,4 @@ const UserStats: React.FC<UserStatsProps> = ({ stats, userRanking }) => {
   );
 };
 
-export default UserStats; 
+export default UserStats;

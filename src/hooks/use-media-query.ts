@@ -42,7 +42,7 @@ export function useMobileLandscape(): boolean {
     const checkMobileLandscape = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      
+
       // Detectar mobile landscape baseado em:
       // 1. Largura maior que altura (landscape)
       // 2. Altura menor que 500px (mobile)
@@ -50,12 +50,12 @@ export function useMobileLandscape(): boolean {
       const isLandscape = width > height;
       const isMobileHeight = height <= 500;
       const isNotDesktop = width <= 1024;
-      
+
       setIsMobileLandscape(isLandscape && isMobileHeight && isNotDesktop);
     };
 
     checkMobileLandscape();
-    
+
     window.addEventListener('resize', checkMobileLandscape);
     window.addEventListener('orientationchange', () => {
       // Delay para aguardar a mudança de orientação completar
@@ -69,4 +69,4 @@ export function useMobileLandscape(): boolean {
   }, []);
 
   return isMobileLandscape;
-} 
+}

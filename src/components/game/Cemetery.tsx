@@ -2,22 +2,22 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Skull, 
-  ChevronLeft, 
-  ChevronRight, 
-  Eye, 
-  Clock, 
-  Zap, 
-  Sword, 
-  Shield, 
+import {
+  Skull,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Clock,
+  Zap,
+  Sword,
+  Shield,
   Star,
   Target,
   Calendar,
   AlertTriangle,
   Trophy,
   Timer,
-  Coins
+  Coins,
 } from 'lucide-react';
 import { type DeadCharacter, type CemeteryStats } from '@/resources/game/models/cemetery.model';
 import { CemeteryService } from '@/resources/game/cemetery.service';
@@ -31,7 +31,11 @@ interface CemeteryProps {
   collapsible?: boolean;
 }
 
-export function Cemetery({ className = '', showHeader = true, collapsible = false }: CemeteryProps) {
+export function Cemetery({
+  className = '',
+  showHeader = true,
+  collapsible = false,
+}: CemeteryProps) {
   const { user } = useAuth();
   const [characters, setCharacters] = useState<DeadCharacter[]>([]);
   const [stats, setStats] = useState<CemeteryStats | null>(null);
@@ -52,12 +56,12 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
 
   const loadCemetery = async () => {
     if (!user?.id) return;
-    
+
     setLoading(true);
     try {
       const response = await CemeteryService.getUserCemetery(user.id, {
         page,
-        limit: ITEMS_PER_PAGE
+        limit: ITEMS_PER_PAGE,
       });
 
       if (response.success && response.data) {
@@ -67,7 +71,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
         setHasMore(response.data.hasMore);
       } else {
         toast.error('Erro ao carregar cemitério', {
-          description: response.error || 'Erro desconhecido'
+          description: response.error || 'Erro desconhecido',
         });
       }
     } catch (error) {
@@ -92,7 +96,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -155,11 +159,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
               </Badge>
             </CardTitle>
             {collapsible && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsCollapsed(!isCollapsed)}>
                 {isCollapsed ? <Eye className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </Button>
             )}
@@ -176,23 +176,28 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
               <div className="text-sm text-muted-foreground">Maior Nível</div>
               <div className="text-xl font-bold text-red-400">{stats.highest_level_reached}</div>
             </div>
-            
+
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-center">
               <Target className="h-6 w-6 mx-auto mb-2 text-orange-400" />
               <div className="text-sm text-muted-foreground">Maior Andar</div>
               <div className="text-xl font-bold text-orange-400">{stats.highest_floor_reached}</div>
             </div>
-            
+
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
               <Timer className="h-6 w-6 mx-auto mb-2 text-blue-400" />
               <div className="text-sm text-muted-foreground">Tempo Total</div>
-              <div className="text-xl font-bold text-blue-400">{stats.total_survival_time_hours}h</div>
+              <div className="text-xl font-bold text-blue-400">
+                {stats.total_survival_time_hours}h
+              </div>
             </div>
-            
+
             <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-center">
               <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-purple-400" />
               <div className="text-sm text-muted-foreground">Maior Ameaça</div>
-              <div className="text-xs font-bold text-purple-400 truncate" title={stats.deadliest_monster}>
+              <div
+                className="text-xs font-bold text-purple-400 truncate"
+                title={stats.deadliest_monster}
+              >
                 {stats.deadliest_monster}
               </div>
             </div>
@@ -206,7 +211,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
                 {characters.length} de {total}
               </div>
             </div>
-            
+
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[1, 2, 3].map(i => (
@@ -221,7 +226,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {characters.map((character) => (
+                {characters.map(character => (
                   <Card
                     key={character.id}
                     className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 bg-red-500/5 border-red-500/20"
@@ -257,7 +262,9 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
                         <div className="space-y-2 text-xs text-muted-foreground">
                           <div className="flex items-center justify-between">
                             <span>Andar alcançado:</span>
-                            <span className="font-medium text-orange-400">{character.floor_reached}</span>
+                            <span className="font-medium text-orange-400">
+                              {character.floor_reached}
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Tempo de vida:</span>
@@ -302,11 +309,11 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Anterior
               </Button>
-              
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 Página {page} de {Math.ceil(total / ITEMS_PER_PAGE)}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -329,7 +336,9 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
               <CardTitle className="flex items-center gap-2">
                 <Skull className="h-5 w-5 text-red-500" />
                 {selectedCharacter.name}
-                <Badge variant="outline" className="ml-2">Nível {selectedCharacter.level}</Badge>
+                <Badge variant="outline" className="ml-2">
+                  Nível {selectedCharacter.level}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -358,12 +367,16 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
                 <div className="bg-purple-500/10 border border-purple-500/20 rounded p-3 text-center">
                   <Star className="h-5 w-5 mx-auto mb-2 text-purple-400" />
                   <div className="text-sm text-muted-foreground">Mana Máxima</div>
-                  <div className="text-xl font-bold text-purple-400">{selectedCharacter.max_mana}</div>
+                  <div className="text-xl font-bold text-purple-400">
+                    {selectedCharacter.max_mana}
+                  </div>
                 </div>
                 <div className="bg-orange-500/10 border border-orange-500/20 rounded p-3 text-center">
                   <Target className="h-5 w-5 mx-auto mb-2 text-orange-400" />
                   <div className="text-sm text-muted-foreground">Andar Alcançado</div>
-                  <div className="text-xl font-bold text-orange-400">{selectedCharacter.floor_reached}</div>
+                  <div className="text-xl font-bold text-orange-400">
+                    {selectedCharacter.floor_reached}
+                  </div>
                 </div>
               </div>
 
@@ -439,7 +452,10 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
                   <div className="flex items-center gap-2">
                     <Skull className="h-4 w-4 text-red-400" />
                     <span className="font-medium">
-                      {formatDeathCause(selectedCharacter.death_cause, selectedCharacter.killed_by_monster)}
+                      {formatDeathCause(
+                        selectedCharacter.death_cause,
+                        selectedCharacter.killed_by_monster
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -450,9 +466,7 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={() => setSelectedCharacter(null)}>
-                  Fechar
-                </Button>
+                <Button onClick={() => setSelectedCharacter(null)}>Fechar</Button>
               </div>
             </CardContent>
           </Card>
@@ -460,4 +474,4 @@ export function Cemetery({ className = '', showHeader = true, collapsible = fals
       )}
     </Card>
   );
-} 
+}

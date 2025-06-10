@@ -16,18 +16,21 @@ export class SpecialEventService {
   static async getSpecialEventForFloor(floor: number): Promise<ServiceResponse<SpecialEvent>> {
     try {
       console.log(`[SpecialEventService] Buscando evento especial para o andar ${floor}`);
-      
+
       const { data, error } = await supabase
         .rpc('get_special_event_for_floor', {
-          p_floor: floor
+          p_floor: floor,
         })
         .single();
 
       if (error) {
-        console.error(`[SpecialEventService] Erro ao buscar evento para andar ${floor}:`, error.message);
+        console.error(
+          `[SpecialEventService] Erro ao buscar evento para andar ${floor}:`,
+          error.message
+        );
         throw error;
       }
-      
+
       if (!data) {
         console.error(`[SpecialEventService] Nenhum evento retornado para andar ${floor}`);
         throw new Error('Nenhum evento encontrado para este andar');
@@ -35,14 +38,17 @@ export class SpecialEventService {
 
       const event = data as SpecialEvent;
       console.log(`[SpecialEventService] Evento obtido para andar ${floor}: ${event.name}`);
-      
+
       return { data: event, error: null, success: true };
     } catch (error) {
-      console.error(`[SpecialEventService] Falha ao buscar evento para andar ${floor}:`, error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
+      console.error(
+        `[SpecialEventService] Falha ao buscar evento para andar ${floor}:`,
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
         error: error instanceof Error ? error.message : 'Erro ao buscar evento especial',
-        success: false 
+        success: false,
       };
     }
   }
@@ -54,16 +60,18 @@ export class SpecialEventService {
    * @returns Resultado da interação
    */
   static async processSpecialEvent(
-    characterId: string, 
+    characterId: string,
     eventId: string
   ): Promise<ServiceResponse<SpecialEventResult>> {
     try {
-      console.log(`[SpecialEventService] Processando evento ${eventId} para personagem ${characterId}`);
-      
+      console.log(
+        `[SpecialEventService] Processando evento ${eventId} para personagem ${characterId}`
+      );
+
       const { data, error } = await supabase
         .rpc('process_special_event', {
           p_character_id: characterId,
-          p_event_id: eventId
+          p_event_id: eventId,
         })
         .single();
 
@@ -71,21 +79,24 @@ export class SpecialEventService {
         console.error(`[SpecialEventService] Erro ao processar evento:`, error.message);
         throw error;
       }
-      
+
       if (!data) {
         throw new Error('Resposta inválida do servidor');
       }
 
       const result = data as SpecialEventResult;
       console.log(`[SpecialEventService] Evento processado com sucesso:`, result);
-      
+
       return { data: result, error: null, success: true };
     } catch (error) {
-      console.error(`[SpecialEventService] Falha ao processar evento:`, error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
+      console.error(
+        `[SpecialEventService] Falha ao processar evento:`,
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
         error: error instanceof Error ? error.message : 'Erro ao processar evento especial',
-        success: false 
+        success: false,
       };
     }
   }
@@ -100,7 +111,7 @@ export class SpecialEventService {
     if (floorType === 'event') {
       return Math.random() < 0.7;
     }
-    
+
     // Outros tipos de piso sempre geram monstros
     return false;
   }
@@ -140,4 +151,4 @@ export class SpecialEventService {
         return 'text-purple-500';
     }
   }
-} 
+}

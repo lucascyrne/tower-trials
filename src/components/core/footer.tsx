@@ -27,8 +27,18 @@ export default function Footer() {
           </div>
           <div className="flex flex-col gap-3">
             <h5 className="font-bold text-primary">Links</h5>
-            <Link to="/game/ranking" className="text-muted-foreground hover:text-primary transition-colors">Ranking Global</Link>
-            <Link to="/game/guide" className="text-muted-foreground hover:text-primary transition-colors">Guia do Jogo</Link>
+            <Link
+              to="/game/ranking"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Ranking Global
+            </Link>
+            <Link
+              to="/game/guide"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Guia do Jogo
+            </Link>
           </div>
           <div className="flex flex-col gap-3">
             <h5 className="font-bold text-primary">Legal</h5>
@@ -38,14 +48,24 @@ export default function Footer() {
         </Container>
         <Container className="not-prose mt-8 flex flex-col justify-between gap-6 border-t border-border pt-8 md:flex-row md:items-center md:gap-2">
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary transition-colors">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
               <Github className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary transition-colors">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
               <Twitter className="h-5 w-5" />
             </Button>
           </div>
-          <p className="text-muted-foreground">© 2024 Tower Trials. Todos os direitos reservados.</p>
+          <p className="text-muted-foreground">
+            © 2024 Tower Trials. Todos os direitos reservados.
+          </p>
         </Container>
       </Section>
     </footer>

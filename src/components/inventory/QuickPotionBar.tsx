@@ -18,18 +18,20 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
   const [isUsing, setIsUsing] = useState<string | null>(null);
 
   // Filtrar poções de vida e mana
-  const healthPotions = consumables.filter(c => 
-    c.consumable && 
-    c.consumable.type === 'potion' && 
-    (c.consumable.description.includes('HP') || c.consumable.description.includes('Vida')) &&
-    c.quantity > 0
+  const healthPotions = consumables.filter(
+    c =>
+      c.consumable &&
+      c.consumable.type === 'potion' &&
+      (c.consumable.description.includes('HP') || c.consumable.description.includes('Vida')) &&
+      c.quantity > 0
   );
 
-  const manaPotions = consumables.filter(c => 
-    c.consumable && 
-    c.consumable.type === 'potion' && 
-    c.consumable.description.includes('Mana') &&
-    c.quantity > 0
+  const manaPotions = consumables.filter(
+    c =>
+      c.consumable &&
+      c.consumable.type === 'potion' &&
+      c.consumable.description.includes('Mana') &&
+      c.quantity > 0
   );
 
   // Pegar a melhor poção disponível (maior effect_value)
@@ -61,8 +63,8 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
 
     try {
       const result = await ConsumableService.consumeItem(
-        character.id, 
-        consumable.consumable_id, 
+        character.id,
+        consumable.consumable_id,
         character
       );
 
@@ -71,7 +73,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
         onConsumableUsed();
       } else {
         toast.error('Erro ao usar poção', {
-          description: result.error
+          description: result.error,
         });
       }
     } catch (error) {
@@ -97,16 +99,18 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
           <h4 className="text-sm font-medium text-slate-200">Acesso Rápido</h4>
           <div className="text-xs text-slate-400">Q / W</div>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2">
           {/* Poção de Vida */}
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Heart className="h-3 w-3" />
-              <span>HP: {character.hp}/{character.max_hp}</span>
+              <span>
+                HP: {character.hp}/{character.max_hp}
+              </span>
             </div>
             <div className="bg-slate-800 rounded-sm h-1.5">
-              <div 
+              <div
                 className="bg-red-500 h-full rounded-sm transition-all duration-300"
                 style={{ width: `${getHealthPercent()}%` }}
               />
@@ -116,7 +120,9 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 variant="outline"
                 size="sm"
                 onClick={() => handleUsePotion(bestHealthPotion, 'health')}
-                disabled={isUsing === bestHealthPotion.consumable_id || character.hp >= character.max_hp}
+                disabled={
+                  isUsing === bestHealthPotion.consumable_id || character.hp >= character.max_hp
+                }
                 className="w-full h-8 text-xs bg-red-900/20 border-red-600/30 hover:bg-red-800/30 text-red-200"
               >
                 {isUsing === bestHealthPotion.consumable_id ? (
@@ -142,7 +148,10 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
               </Button>
             )}
             {bestHealthPotion && (
-              <div className="text-xs text-slate-400 text-center truncate" title={formatPotionInfo(bestHealthPotion)}>
+              <div
+                className="text-xs text-slate-400 text-center truncate"
+                title={formatPotionInfo(bestHealthPotion)}
+              >
                 +{bestHealthPotion.consumable?.effect_value}
               </div>
             )}
@@ -152,10 +161,12 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
           <div className="space-y-1">
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Zap className="h-3 w-3" />
-              <span>MP: {character.mana}/{character.max_mana}</span>
+              <span>
+                MP: {character.mana}/{character.max_mana}
+              </span>
             </div>
             <div className="bg-slate-800 rounded-sm h-1.5">
-              <div 
+              <div
                 className="bg-blue-500 h-full rounded-sm transition-all duration-300"
                 style={{ width: `${getManaPercent()}%` }}
               />
@@ -165,7 +176,9 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 variant="outline"
                 size="sm"
                 onClick={() => handleUsePotion(bestManaPotion, 'mana')}
-                disabled={isUsing === bestManaPotion.consumable_id || character.mana >= character.max_mana}
+                disabled={
+                  isUsing === bestManaPotion.consumable_id || character.mana >= character.max_mana
+                }
                 className="w-full h-8 text-xs bg-blue-900/20 border-blue-600/30 hover:bg-blue-800/30 text-blue-200"
               >
                 {isUsing === bestManaPotion.consumable_id ? (
@@ -191,7 +204,10 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
               </Button>
             )}
             {bestManaPotion && (
-              <div className="text-xs text-slate-400 text-center truncate" title={formatPotionInfo(bestManaPotion)}>
+              <div
+                className="text-xs text-slate-400 text-center truncate"
+                title={formatPotionInfo(bestManaPotion)}
+              >
                 +{bestManaPotion.consumable?.effect_value}
               </div>
             )}
@@ -200,4 +216,4 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
       </CardContent>
     </Card>
   );
-} 
+}

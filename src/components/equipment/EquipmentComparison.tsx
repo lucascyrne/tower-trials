@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { type Equipment, type EquipmentComparison as EquipmentComparisonType, compareEquipment } from '@/resources/game/models/equipment.model';
+import {
+  type Equipment,
+  type EquipmentComparison as EquipmentComparisonType,
+  compareEquipment,
+} from '@/resources/game/models/equipment.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { FaArrowUp, FaArrowDown, FaEquals, FaSpinner } from 'react-icons/fa';
 
@@ -18,7 +22,7 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
   slotType,
   currentEquipment,
   showTitle = true,
-  compact = false
+  compact = false,
 }) => {
   const [comparisons, setComparisons] = useState<EquipmentComparisonType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +52,7 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
               current_value: item.current_value,
               new_value: item.new_value,
               difference: item.difference,
-              is_improvement: item.is_improvement
+              is_improvement: item.is_improvement,
             }));
             setComparisons(formattedComparisons);
           } else {
@@ -109,7 +113,9 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
     return (
       <div className={`${compact ? 'p-2' : 'p-4'} border rounded-lg bg-gray-50`}>
         <p className="text-sm text-gray-600">
-          {currentEquipment === null ? 'Nenhum equipamento equipado atualmente' : 'Nenhuma mudança nos atributos'}
+          {currentEquipment === null
+            ? 'Nenhum equipamento equipado atualmente'
+            : 'Nenhuma mudança nos atributos'}
         </p>
       </div>
     );
@@ -122,29 +128,27 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
           Comparação de Atributos
         </h4>
       )}
-      
+
       <div className="space-y-1">
         {comparisons.map((comparison, index) => (
           <div
             key={index}
             className={`flex items-center justify-between ${compact ? 'text-xs' : 'text-sm'} py-1`}
           >
-            <span className="text-gray-700 font-medium">
-              {comparison.stat_name}:
-            </span>
-            
+            <span className="text-gray-700 font-medium">{comparison.stat_name}:</span>
+
             <div className="flex items-center space-x-2">
               <span className="text-gray-600">
                 {comparison.current_value.toFixed(comparison.current_value % 1 === 0 ? 0 : 2)}
               </span>
-              
+
               <div className="flex items-center space-x-1">
                 {getChangeIcon(comparison.is_improvement, comparison.difference)}
                 <span className={getChangeColor(comparison.is_improvement, comparison.difference)}>
                   {getChangeText(comparison.difference, comparison.is_improvement)}
                 </span>
               </div>
-              
+
               <span className="text-gray-800 font-semibold">
                 {comparison.new_value.toFixed(comparison.new_value % 1 === 0 ? 0 : 2)}
               </span>
@@ -152,7 +156,7 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
           </div>
         ))}
       </div>
-      
+
       {!compact && (
         <div className="mt-3 pt-2 border-t border-gray-200">
           <div className="flex items-center space-x-4 text-xs text-gray-500">
@@ -173,4 +177,4 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
       )}
     </div>
   );
-}; 
+};

@@ -33,7 +33,7 @@ export function usePWAInstall() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
       const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
       const isMinimalUI = window.matchMedia('(display-mode: minimal-ui)').matches;
-      
+
       if (isStandalone || isFullscreen || isMinimalUI) {
         setIsInstalled(true);
       }
@@ -41,7 +41,7 @@ export function usePWAInstall() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-    
+
     checkIfInstalled();
 
     return () => {
@@ -58,13 +58,13 @@ export function usePWAInstall() {
     try {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
+
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
         setIsInstallable(false);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Erro ao instalar PWA:', error);
@@ -78,4 +78,4 @@ export function usePWAInstall() {
     isInstalled,
     canInstall: isInstallable && !isInstalled,
   };
-} 
+}

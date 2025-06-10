@@ -33,9 +33,7 @@ export function BaseCard({ title, onView, onEdit, onDelete, children }: BaseCard
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {children}
-      </CardContent>
+      <CardContent className="space-y-4">{children}</CardContent>
     </Card>
   );
-} 
+}

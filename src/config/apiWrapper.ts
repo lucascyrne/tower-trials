@@ -22,5 +22,5 @@ class ApiWrapper {
 }
 
 export const apiWrapper = new ApiWrapper({
-  baseURL: environment.VITE_BASE_URL || 'http://localhost:3000'
+  baseURL: environment.VITE_BASE_URL || 'http://localhost:3000',
 });

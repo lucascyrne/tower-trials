@@ -10,7 +10,7 @@ const initialActiveEffects: ActiveEffects = {
   debuffs: [],
   dots: [],
   hots: [],
-  attribute_modifications: []
+  attribute_modifications: [],
 };
 
 // Valores padrão para o jogador
@@ -53,7 +53,7 @@ export const defaultPlayer: GamePlayer = {
   double_attack_chance: 0,
   magic_attack: 0,
   magic_mastery: 1,
-  magic_damage_bonus: 0
+  magic_damage_bonus: 0,
 };
 
 // Estado inicial do jogo
@@ -69,7 +69,7 @@ export const initialGameState: GameState = {
   selectedSpell: null,
   battleRewards: null,
   fleeSuccessful: false,
-  characterDeleted: false
+  characterDeleted: false,
 };
 
 // Tipo do contexto do jogo
@@ -83,7 +83,20 @@ export interface GameContextType {
   };
   error: string | null;
   gameMessage: string;
-  gameLog: { text: string; type: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' | 'enemy_action' | 'player_action' | 'damage' | 'healing' }[];
+  gameLog: {
+    text: string;
+    type:
+      | 'system'
+      | 'battle'
+      | 'lore'
+      | 'equipment'
+      | 'skill_xp'
+      | 'level_up'
+      | 'enemy_action'
+      | 'player_action'
+      | 'damage'
+      | 'healing';
+  }[];
   characters: Character[];
   selectedCharacter: Character | null;
   startGame: (name: string) => Promise<void>;
@@ -93,7 +106,20 @@ export interface GameContextType {
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
   returnToMenu: () => void;
   resetError: () => void;
-  addGameLogMessage: (message: string, type?: 'system' | 'battle' | 'lore' | 'equipment' | 'skill_xp' | 'level_up' | 'enemy_action' | 'player_action' | 'damage' | 'healing') => void;
+  addGameLogMessage: (
+    message: string,
+    type?:
+      | 'system'
+      | 'battle'
+      | 'lore'
+      | 'equipment'
+      | 'skill_xp'
+      | 'level_up'
+      | 'enemy_action'
+      | 'player_action'
+      | 'damage'
+      | 'healing'
+  ) => void;
   saveProgress: () => Promise<void>;
   updatePlayerStats: (hp: number, mana: number) => void;
   updatePlayerConsumables: (consumables: CharacterConsumable[]) => void;
@@ -123,5 +149,5 @@ export const GameContext = createContext<GameContextType>({
   addGameLogMessage: () => {},
   saveProgress: async () => {},
   updatePlayerStats: () => {},
-  updatePlayerConsumables: () => {}
-}); 
+  updatePlayerConsumables: () => {},
+});

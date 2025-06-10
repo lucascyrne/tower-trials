@@ -23,7 +23,12 @@ export interface SpeedComparison {
 }
 
 export interface TurnEvent {
-  type: 'turn_start' | 'turn_end' | 'initiative_calculated' | 'extra_turn_granted' | 'enemy_thinking';
+  type:
+    | 'turn_start'
+    | 'turn_end'
+    | 'initiative_calculated'
+    | 'extra_turn_granted'
+    | 'enemy_thinking';
   actor: 'player' | 'enemy';
   message: string;
   data?: {
@@ -77,20 +82,20 @@ export interface ActionLock {
 // Utilitários para geração de IDs únicos
 export class TurnIdGenerator {
   private static counter = 0;
-  
+
   static generateTurnId(battleId: string, actor: 'player' | 'enemy'): string {
     this.counter++;
     return `${battleId}-${actor}-turn-${Date.now()}-${this.counter}`;
   }
-  
+
   static generateActionId(turnId: string, actionType: string): string {
     return `${turnId}-${actionType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
-  
+
   static generateBattleId(floor: number, enemyName: string): string {
     return `battle-${floor}-${enemyName.replace(/\s+/g, '_')}-${Date.now()}`;
   }
-  
+
   static generateSessionId(): string {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -116,4 +121,4 @@ export interface BuildAnalysis {
   synergies: string[];
   efficiency: number; // 0-100
   diversity: AttributeDiversityInfo;
-} 
+}

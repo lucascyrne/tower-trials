@@ -24,10 +24,14 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
 
   const getFloorIcon = (type: FloorType) => {
     switch (type) {
-      case 'boss': return '👑';
-      case 'elite': return '⭐';
-      case 'event': return '❓';
-      default: return '🗺️';
+      case 'boss':
+        return '👑';
+      case 'elite':
+        return '⭐';
+      case 'event':
+        return '❓';
+      default:
+        return '🗺️';
     }
   };
 
@@ -45,7 +49,7 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
           <h2 className="text-2xl font-bold text-primary">
             {getFloorIcon(currentFloor.type)} {currentFloor.description}
           </h2>
-          
+
           {/* Badge do andar */}
           <Badge variant="outline" className="bg-background/50">
             <Building className="h-3 w-3 mr-1" />
@@ -103,4 +107,4 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
       </div>
     </div>
   );
-} 
+}

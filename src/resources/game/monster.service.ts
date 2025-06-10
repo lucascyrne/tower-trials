@@ -22,10 +22,10 @@ export class MonsterService {
       // Validar andar
       if (floor <= 0) {
         console.warn(`[MonsterService] Tentativa de gerar monstro para andar inválido: ${floor}`);
-        return { 
-          data: null, 
-          error: `Andar inválido: ${floor}`, 
-          success: false 
+        return {
+          data: null,
+          error: `Andar inválido: ${floor}`,
+          success: false,
         };
       }
 
@@ -33,9 +33,11 @@ export class MonsterService {
       const cachedMonster = this.monsterCache.get(floor);
       const cacheExpiry = this.cacheExpiry.get(floor);
       const now = Date.now();
-      
+
       if (cachedMonster && cacheExpiry && now < cacheExpiry) {
-        console.log(`[MonsterService] Retornando monstro do cache para andar ${floor}: ${cachedMonster.name}`);
+        console.log(
+          `[MonsterService] Retornando monstro do cache para andar ${floor}: ${cachedMonster.name}`
+        );
         return { data: cachedMonster, error: null, success: true };
       }
 
@@ -53,7 +55,7 @@ export class MonsterService {
       // Criar promessa para requisição e armazenar no mapa
       const requestPromise = this.fetchMonsterFromServer(floor);
       this.pendingRequests.set(floor, requestPromise);
-      
+
       // Limpar da lista de pendentes quando concluído
       requestPromise.finally(() => {
         this.pendingRequests.delete(floor);
@@ -62,10 +64,10 @@ export class MonsterService {
       return requestPromise;
     } catch (error) {
       console.error(`[MonsterService] EXCEÇÃO ao obter monstro para andar ${floor}:`, error);
-      return { 
-        data: null, 
+      return {
+        data: null,
         error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
-        success: false 
+        success: false,
       };
     }
   }
@@ -78,26 +80,33 @@ export class MonsterService {
     try {
       // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
-      
+
       // Tentar primeiro a função padrão get_monster_for_floor
-      let { data, error } = await supabase
-        .rpc('get_monster_for_floor', {
-          p_floor: floor
-        });
-        
+      let { data, error } = await supabase.rpc('get_monster_for_floor', {
+        p_floor: floor,
+      });
+
       // Se a função padrão falhar, verificar se há uma função com iniciativa disponível
-      if (error && error.message?.includes('function') && error.message?.includes('does not exist')) {
-        console.log(`[MonsterService] Função get_monster_for_floor não existe, tentando get_monster_for_floor_with_initiative...`);
-        
+      if (
+        error &&
+        error.message?.includes('function') &&
+        error.message?.includes('does not exist')
+      ) {
+        console.log(
+          `[MonsterService] Função get_monster_for_floor não existe, tentando get_monster_for_floor_with_initiative...`
+        );
+
         // Tentar função com iniciativa
-        const { data: initiativeData, error: initiativeError } = await supabase
-          .rpc('get_monster_for_floor_with_initiative', {
-            p_floor: floor
-          });
-          
+        const { data: initiativeData, error: initiativeError } = await supabase.rpc(
+          'get_monster_for_floor_with_initiative',
+          {
+            p_floor: floor,
+          }
+        );
+
         if (initiativeError) {
           console.log(`[MonsterService] Função com iniciativa também falhou, usando fallback...`);
-          
+
           // Fallback: buscar monstro diretamente da tabela usando lógica básica
           const { data: monsterResult, error: monsterError } = await supabase
             .from('monsters')
@@ -105,7 +114,7 @@ export class MonsterService {
             .lte('min_floor', floor)
             .order('min_floor', { ascending: false })
             .limit(1);
-            
+
           if (monsterError) {
             data = null;
             error = monsterError;
@@ -131,16 +140,21 @@ export class MonsterService {
         isArray: Array.isArray(data),
         dataLength: Array.isArray(data) ? data.length : 'not-array',
         errorMessage: error?.message,
-        errorCode: error?.code
+        errorCode: error?.code,
       });
 
       if (error) {
         console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error);
-        
+
         // Tratar erro específico de incompatibilidade de tipos (42804)
-        if (error.code === '42804' || error.message?.includes('does not match function result type')) {
-          console.log(`[MonsterService] Erro de tipo detectado, tentando buscar diretamente da tabela...`);
-          
+        if (
+          error.code === '42804' ||
+          error.message?.includes('does not match function result type')
+        ) {
+          console.log(
+            `[MonsterService] Erro de tipo detectado, tentando buscar diretamente da tabela...`
+          );
+
           // Fallback: buscar diretamente da tabela monsters
           try {
             const { data: fallbackData, error: fallbackError } = await supabase
@@ -149,17 +163,19 @@ export class MonsterService {
               .lte('min_floor', floor)
               .order('min_floor', { ascending: false })
               .limit(1);
-              
+
             if (fallbackError) {
               throw fallbackError;
             }
-            
+
             if (fallbackData && fallbackData.length > 0) {
               console.log(`[MonsterService] Fallback bem-sucedido, usando monstro da tabela`);
               data = fallbackData[0];
               error = null;
             } else {
-              console.warn(`[MonsterService] Nenhum monstro encontrado na tabela, gerando monstro básico`);
+              console.warn(
+                `[MonsterService] Nenhum monstro encontrado na tabela, gerando monstro básico`
+              );
               const basicMonster = this.generateBasicMonster(floor);
               return { data: basicMonster, error: null, success: true };
             }
@@ -176,56 +192,68 @@ export class MonsterService {
           return { data: basicMonster, error: null, success: true };
         }
       }
-      
+
       if (!data || (Array.isArray(data) && data.length === 0)) {
         console.error(`[MonsterService] Nenhum monstro retornado para andar ${floor}`);
-        return { 
-          data: null, 
-          error: 'Nenhum monstro encontrado para este andar', 
-          success: false 
+        return {
+          data: null,
+          error: 'Nenhum monstro encontrado para este andar',
+          success: false,
         };
       }
 
       // Garantir que temos um objeto único
       const monsterData = Array.isArray(data) ? data[0] : data;
-      
+
       if (!monsterData || !monsterData.id || !monsterData.name) {
-        console.error(`[MonsterService] Dados de monstro inválidos para andar ${floor}:`, monsterData);
-        return { 
-          data: null, 
-          error: 'Dados do monstro inválidos', 
-          success: false 
+        console.error(
+          `[MonsterService] Dados de monstro inválidos para andar ${floor}:`,
+          monsterData
+        );
+        return {
+          data: null,
+          error: 'Dados do monstro inválidos',
+          success: false,
         };
       }
 
       // Garantir que stats básicos existem (fallback para valores calculados se necessário)
       if (!monsterData.hp || !monsterData.atk || !monsterData.def) {
-        console.log(`[MonsterService] Calculando stats básicos para ${monsterData.name} (andar ${floor})`);
-        
+        console.log(
+          `[MonsterService] Calculando stats básicos para ${monsterData.name} (andar ${floor})`
+        );
+
         // Calcular stats básicos se não existirem
         const level = monsterData.level || Math.max(1, Math.floor(floor / 5) + 1);
         const tier = monsterData.tier || Math.max(1, Math.floor(floor / 20) + 1);
-        
-        monsterData.hp = monsterData.hp || Math.floor(50 + (level * 15) + (tier * 25));
-        monsterData.atk = monsterData.atk || Math.floor(10 + (level * 3) + (tier * 5));
-        monsterData.def = monsterData.def || Math.floor(5 + (level * 2) + (tier * 3));
-        monsterData.reward_xp = monsterData.reward_xp || Math.floor(5 + (level * 2) + (tier * 2));
-        monsterData.reward_gold = monsterData.reward_gold || Math.floor(3 + (level * 1) + (tier * 1));
+
+        monsterData.hp = monsterData.hp || Math.floor(50 + level * 15 + tier * 25);
+        monsterData.atk = monsterData.atk || Math.floor(10 + level * 3 + tier * 5);
+        monsterData.def = monsterData.def || Math.floor(5 + level * 2 + tier * 3);
+        monsterData.reward_xp = monsterData.reward_xp || Math.floor(5 + level * 2 + tier * 2);
+        monsterData.reward_gold = monsterData.reward_gold || Math.floor(3 + level * 1 + tier * 1);
       }
 
       console.log(`[MonsterService] === MONSTRO ENCONTRADO ===`);
       console.log(`[MonsterService] ID: ${monsterData.id}`);
       console.log(`[MonsterService] Nome: ${monsterData.name}`);
-      console.log(`[MonsterService] HP: ${monsterData.hp}, ATK: ${monsterData.atk}, DEF: ${monsterData.def}`);
-      console.log(`[MonsterService] Tier: ${monsterData.tier || 1}, Ciclo: ${monsterData.cycle_position || 'N/A'}, Boss: ${monsterData.is_boss || false}`);
-      console.log(`[MonsterService] Level: ${monsterData.level}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`);
+      console.log(
+        `[MonsterService] HP: ${monsterData.hp}, ATK: ${monsterData.atk}, DEF: ${monsterData.def}`
+      );
+      console.log(
+        `[MonsterService] Tier: ${monsterData.tier || 1}, Ciclo: ${monsterData.cycle_position || 'N/A'}, Boss: ${monsterData.is_boss || false}`
+      );
+      console.log(
+        `[MonsterService] Level: ${monsterData.level}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`
+      );
 
       // NOVO: Buscar os possible_drops do monstro
       console.log(`[MonsterService] Buscando possible_drops para monstro ${monsterData.id}...`);
-      
+
       const { data: possibleDropsData, error: dropsError } = await supabase
         .from('monster_possible_drops')
-        .select(`
+        .select(
+          `
           drop_id,
           drop_chance,
           min_quantity,
@@ -237,11 +265,15 @@ export class MonsterService {
             rarity,
             value
           )
-        `)
+        `
+        )
         .eq('monster_id', monsterData.id);
 
       if (dropsError) {
-        console.warn(`[MonsterService] Erro ao buscar drops do monstro ${monsterData.id}:`, dropsError);
+        console.warn(
+          `[MonsterService] Erro ao buscar drops do monstro ${monsterData.id}:`,
+          dropsError
+        );
         // Continuar sem drops em caso de erro
       }
 
@@ -252,12 +284,18 @@ export class MonsterService {
         min_quantity: dropData.min_quantity,
         max_quantity: dropData.max_quantity,
         // Incluir dados do drop para referência (pegar primeiro elemento do array)
-        drop_info: Array.isArray(dropData.monster_drops) ? dropData.monster_drops[0] : dropData.monster_drops
+        drop_info: Array.isArray(dropData.monster_drops)
+          ? dropData.monster_drops[0]
+          : dropData.monster_drops,
       }));
 
-      console.log(`[MonsterService] Encontrados ${possibleDrops.length} possible_drops para ${monsterData.name}`);
+      console.log(
+        `[MonsterService] Encontrados ${possibleDrops.length} possible_drops para ${monsterData.name}`
+      );
       possibleDrops.forEach(drop => {
-        console.log(`[MonsterService] - ${drop.drop_info?.name || 'Drop desconhecido'} (chance: ${(drop.drop_chance * 100).toFixed(1)}%, qtd: ${drop.min_quantity}-${drop.max_quantity})`);
+        console.log(
+          `[MonsterService] - ${drop.drop_info?.name || 'Drop desconhecido'} (chance: ${(drop.drop_chance * 100).toFixed(1)}%, qtd: ${drop.min_quantity}-${drop.max_quantity})`
+        );
       });
 
       // Converter para Monster com estrutura correta
@@ -298,26 +336,30 @@ export class MonsterService {
         magical_vulnerability: monsterData.magical_vulnerability,
         primary_trait: monsterData.primary_trait,
         secondary_trait: monsterData.secondary_trait,
-        special_abilities: monsterData.special_abilities || []
+        special_abilities: monsterData.special_abilities || [],
       };
 
       console.log(`[MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===`);
-      console.log(`[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`);
+      console.log(
+        `[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`
+      );
       console.log(`[MonsterService] Possible drops: ${monster.possible_drops?.length || 0} tipos`);
-      
+
       // NOVO: Cachear o resultado por 30 segundos
       const now = Date.now();
       this.monsterCache.set(floor, monster);
       this.cacheExpiry.set(floor, now + 30000); // 30 segundos
-      
-      return { data: monster, error: null, success: true };
 
+      return { data: monster, error: null, success: true };
     } catch (error) {
-      console.error(`[MonsterService] EXCEÇÃO ao buscar monstro do servidor para andar ${floor}:`, error);
-      return { 
-        data: null, 
+      console.error(
+        `[MonsterService] EXCEÇÃO ao buscar monstro do servidor para andar ${floor}:`,
+        error
+      );
+      return {
+        data: null,
         error: error instanceof Error ? error.message : 'Erro ao buscar monstro do servidor',
-        success: false 
+        success: false,
       };
     }
   }
@@ -332,10 +374,12 @@ export class MonsterService {
   static clearCache(): void {
     const now = Date.now();
     if (now - this.lastClearTime < this.MIN_CLEAR_INTERVAL) {
-      console.log(`[MonsterService] Cache clear throttled - última limpeza há ${now - this.lastClearTime}ms`);
+      console.log(
+        `[MonsterService] Cache clear throttled - última limpeza há ${now - this.lastClearTime}ms`
+      );
       return;
     }
-    
+
     this.monsterCache.clear();
     this.cacheExpiry.clear();
     this.pendingRequests.clear();
@@ -351,33 +395,41 @@ export class MonsterService {
     const level = Math.max(1, Math.floor(floor / 5) + 1);
     const tier = Math.max(1, Math.floor(floor / 20) + 1);
     const isBoss = floor % 10 === 0;
-    
+
     // Nomes básicos baseados no andar
     const monsterNames = [
-      'Slime', 'Goblin', 'Orc', 'Skeleton', 'Wolf', 
-      'Spider', 'Troll', 'Dragon', 'Demon', 'Lich'
+      'Slime',
+      'Goblin',
+      'Orc',
+      'Skeleton',
+      'Wolf',
+      'Spider',
+      'Troll',
+      'Dragon',
+      'Demon',
+      'Lich',
     ];
-    
+
     const nameIndex = Math.floor(floor / 2) % monsterNames.length;
     const baseName = monsterNames[nameIndex];
     const tierSuffix = tier > 1 ? ` Tier ${tier}` : '';
     const bossPrefix = isBoss ? 'Boss ' : '';
-    
+
     const name = `${bossPrefix}${baseName}${tierSuffix}`;
-    
+
     // Stats básicos escalados
     const baseHp = isBoss ? 80 : 50;
     const baseAtk = isBoss ? 15 : 10;
     const baseDef = isBoss ? 8 : 5;
-    
-    const hp = Math.floor(baseHp + (level * 15) + (tier * 25));
-    const atk = Math.floor(baseAtk + (level * 3) + (tier * 5));
-    const def = Math.floor(baseDef + (level * 2) + (tier * 3));
-    const speed = Math.floor(10 + (level * 1) + (tier * 2));
-    
-    const reward_xp = Math.floor((5 + (level * 2) + (tier * 2)) * (isBoss ? 2.5 : 1));
-    const reward_gold = Math.floor((3 + (level * 1) + (tier * 1)) * (isBoss ? 2.5 : 1));
-    
+
+    const hp = Math.floor(baseHp + level * 15 + tier * 25);
+    const atk = Math.floor(baseAtk + level * 3 + tier * 5);
+    const def = Math.floor(baseDef + level * 2 + tier * 3);
+    const speed = Math.floor(10 + level * 1 + tier * 2);
+
+    const reward_xp = Math.floor((5 + level * 2 + tier * 2) * (isBoss ? 2.5 : 1));
+    const reward_gold = Math.floor((3 + level * 1 + tier * 1) * (isBoss ? 2.5 : 1));
+
     return {
       id: `generated_${floor}_${Date.now()}`,
       name,
@@ -385,7 +437,7 @@ export class MonsterService {
       hp,
       atk,
       def,
-      mana: Math.floor(20 + (level * 5)),
+      mana: Math.floor(20 + level * 5),
       speed,
       behavior: 'balanced',
       min_floor: floor,
@@ -397,14 +449,14 @@ export class MonsterService {
       base_tier: 1,
       cycle_position: ((floor - 1) % 20) + 1,
       is_boss: isBoss,
-      strength: Math.floor(10 + (level * 2)),
-      dexterity: Math.floor(10 + (level * 1)),
-      intelligence: Math.floor(8 + (level * 1)),
-      wisdom: Math.floor(8 + (level * 1)),
-      vitality: Math.floor(12 + (level * 2)),
+      strength: Math.floor(10 + level * 2),
+      dexterity: Math.floor(10 + level * 1),
+      intelligence: Math.floor(8 + level * 1),
+      wisdom: Math.floor(8 + level * 1),
+      vitality: Math.floor(12 + level * 2),
       luck: Math.floor(5 + level),
-      critical_chance: 0.05 + (level * 0.005),
-      critical_damage: 1.5 + (level * 0.05),
+      critical_chance: 0.05 + level * 0.005,
+      critical_damage: 1.5 + level * 0.05,
       critical_resistance: 0.1,
       physical_resistance: 0.0,
       magical_resistance: 0.0,
@@ -413,7 +465,7 @@ export class MonsterService {
       magical_vulnerability: 1.0,
       primary_trait: isBoss ? 'boss' : 'common',
       secondary_trait: 'basic',
-      special_abilities: isBoss ? ['Boss Fury'] : []
+      special_abilities: isBoss ? ['Boss Fury'] : [],
     };
   }
 
@@ -448,4 +500,4 @@ export class MonsterService {
 
     return Math.max(1, Math.floor(finalAtk - finalDef / 2));
   }
-} 
+}

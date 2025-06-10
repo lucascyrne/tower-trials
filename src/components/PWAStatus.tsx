@@ -21,7 +21,7 @@ export function PWAStatus() {
       const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
       setIsStandalone(isStandaloneMode || isFullscreen);
     };
-    
+
     checkStandalone();
 
     return () => {
@@ -35,26 +35,26 @@ export function PWAStatus() {
       name: 'Modo Offline',
       status: 'serviceWorker' in navigator,
       icon: isOnline ? Wifi : WifiOff,
-      description: isOnline ? 'Online' : 'Offline'
+      description: isOnline ? 'Online' : 'Offline',
     },
     {
       name: 'PWA Instalado',
       status: isInstalled,
       icon: isInstalled ? CheckCircle : Download,
-      description: isInstalled ? 'Instalado' : (canInstall ? 'Disponível' : 'Não disponível')
+      description: isInstalled ? 'Instalado' : canInstall ? 'Disponível' : 'Não disponível',
     },
     {
       name: 'Modo Tela Cheia',
       status: isStandalone,
       icon: Smartphone,
-      description: isStandalone ? 'Ativo' : 'Navegador'
+      description: isStandalone ? 'Ativo' : 'Navegador',
     },
     {
       name: 'Service Worker',
       status: 'serviceWorker' in navigator,
       icon: 'serviceWorker' in navigator ? CheckCircle : XCircle,
-      description: 'serviceWorker' in navigator ? 'Suportado' : 'Não suportado'
-    }
+      description: 'serviceWorker' in navigator ? 'Suportado' : 'Não suportado',
+    },
   ];
 
   return (
@@ -66,7 +66,7 @@ export function PWAStatus() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {features.map((feature) => {
+        {features.map(feature => {
           const Icon = feature.icon;
           return (
             <div key={feature.name} className="flex items-center justify-between">
@@ -80,7 +80,7 @@ export function PWAStatus() {
             </div>
           );
         })}
-        
+
         {!isOnline && (
           <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
             <p className="text-sm text-orange-800 dark:text-orange-200">
@@ -91,4 +91,4 @@ export function PWAStatus() {
       </CardContent>
     </Card>
   );
-} 
+}

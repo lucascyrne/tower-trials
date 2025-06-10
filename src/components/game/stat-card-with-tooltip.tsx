@@ -35,7 +35,7 @@ export function StatCardWithTooltip({
   color,
   bgColor,
   borderColor,
-  tooltipData
+  tooltipData,
 }: StatCardWithTooltipProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -73,12 +73,12 @@ export function StatCardWithTooltip({
 
   return (
     <>
-      <div 
+      <div
         ref={elementRef}
         className={`p-3 rounded-lg border ${bgColor} ${borderColor} ${isMobile ? 'cursor-pointer' : 'cursor-help group'} relative`}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
-        title={isMobile ? `Toque para ver a fórmula de ${label}` : "Clique para ver a fórmula"}
+        title={isMobile ? `Toque para ver a fórmula de ${label}` : 'Clique para ver a fórmula'}
       >
         <div className="flex items-center gap-2 mb-1">
           <Icon className={`h-4 w-4 ${color}`} />
@@ -87,16 +87,18 @@ export function StatCardWithTooltip({
         <div className={`text-2xl font-bold ${color}`}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
-        
+
         {/* Desktop Tooltip */}
         {!isMobile && (
-          <div className={`absolute z-50 invisible group-hover:visible min-w-[280px] ${
-            tooltipPosition === 'left' 
-              ? 'right-full mr-2 -top-2' // Tooltip à esquerda
-              : tooltipPosition === 'right'
-              ? 'left-full ml-2 -top-2'  // Tooltip à direita
-              : 'top-full mt-2 left-1/2 transform -translate-x-1/2' // Tooltip abaixo centralizado
-          }`}>
+          <div
+            className={`absolute z-50 invisible group-hover:visible min-w-[280px] ${
+              tooltipPosition === 'left'
+                ? 'right-full mr-2 -top-2' // Tooltip à esquerda
+                : tooltipPosition === 'right'
+                  ? 'left-full ml-2 -top-2' // Tooltip à direita
+                  : 'top-full mt-2 left-1/2 transform -translate-x-1/2' // Tooltip abaixo centralizado
+            }`}
+          >
             <TooltipContent />
           </div>
         )}
@@ -129,4 +131,4 @@ export function StatCardWithTooltip({
       )}
     </>
   );
-} 
+}

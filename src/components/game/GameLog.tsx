@@ -1,14 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Filter, Eye, EyeOff, Sword, Shield, Zap, Sparkles } from "lucide-react";
+import { MessageCircle, Filter, Eye, EyeOff, Sword, Shield, Zap, Sparkles } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface GameLogEntry {
   text: string;
-  type: 'system' | 'battle' | 'lore' | 'skill_xp' | 'level_up' | 'equipment' | 'enemy_action' | 'player_action' | 'damage' | 'healing';
+  type:
+    | 'system'
+    | 'battle'
+    | 'lore'
+    | 'skill_xp'
+    | 'level_up'
+    | 'equipment'
+    | 'enemy_action'
+    | 'player_action'
+    | 'damage'
+    | 'healing';
 }
 
 interface GameLogProps {
@@ -46,7 +56,9 @@ export function GameLog({ gameLog }: GameLogProps) {
   // Auto-scroll para o final quando novos logs chegarem
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      );
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
@@ -76,54 +88,85 @@ export function GameLog({ gameLog }: GameLogProps) {
 
   const getLogColor = (type: GameLogEntry['type']) => {
     switch (type) {
-      case 'system': return 'text-blue-400';
-      case 'battle': return 'text-foreground';
-      case 'lore': return 'text-purple-400 italic';
-      case 'skill_xp': return 'text-green-400';
-      case 'level_up': return 'text-yellow-400 font-semibold';
-      case 'equipment': return 'text-orange-400';
-      case 'enemy_action': return 'text-red-400';
-      case 'player_action': return 'text-blue-400';
-      case 'damage': return 'text-red-300';
-      case 'healing': return 'text-green-300';
-      default: return 'text-foreground';
+      case 'system':
+        return 'text-blue-400';
+      case 'battle':
+        return 'text-foreground';
+      case 'lore':
+        return 'text-purple-400 italic';
+      case 'skill_xp':
+        return 'text-green-400';
+      case 'level_up':
+        return 'text-yellow-400 font-semibold';
+      case 'equipment':
+        return 'text-orange-400';
+      case 'enemy_action':
+        return 'text-red-400';
+      case 'player_action':
+        return 'text-blue-400';
+      case 'damage':
+        return 'text-red-300';
+      case 'healing':
+        return 'text-green-300';
+      default:
+        return 'text-foreground';
     }
   };
 
   const getLogIcon = (type: GameLogEntry['type']) => {
     switch (type) {
-      case 'enemy_action': return <Sword className="h-3 w-3 text-red-400 mr-2" />;
-      case 'player_action': return <Shield className="h-3 w-3 text-blue-400 mr-2" />;
-      case 'damage': return <Zap className="h-3 w-3 text-red-300 mr-2" />;
-      case 'healing': return <Sparkles className="h-3 w-3 text-green-300 mr-2" />;
-      case 'level_up': return <span className="mr-2">🌟</span>;
-      case 'equipment': return <span className="mr-2">⚔️</span>;
-      case 'skill_xp': return <span className="mr-2">📈</span>;
-      case 'lore': return <span className="mr-2">📜</span>;
-      default: return null;
+      case 'enemy_action':
+        return <Sword className="h-3 w-3 text-red-400 mr-2" />;
+      case 'player_action':
+        return <Shield className="h-3 w-3 text-blue-400 mr-2" />;
+      case 'damage':
+        return <Zap className="h-3 w-3 text-red-300 mr-2" />;
+      case 'healing':
+        return <Sparkles className="h-3 w-3 text-green-300 mr-2" />;
+      case 'level_up':
+        return <span className="mr-2">🌟</span>;
+      case 'equipment':
+        return <span className="mr-2">⚔️</span>;
+      case 'skill_xp':
+        return <span className="mr-2">📈</span>;
+      case 'lore':
+        return <span className="mr-2">📜</span>;
+      default:
+        return null;
     }
   };
 
   const getFilterLabel = (type: keyof LogFilter) => {
     switch (type) {
-      case 'system': return 'Sistema';
-      case 'battle': return 'Batalha';
-      case 'lore': return 'História';
-      case 'skill_xp': return 'XP de Habilidade';
-      case 'level_up': return 'Level Up';
-      case 'equipment': return 'Equipamentos';
-      case 'enemy_action': return 'Ações do Inimigo';
-      case 'player_action': return 'Ações do Jogador';
-      case 'damage': return 'Dano';
-      case 'healing': return 'Cura';
-      default: return type;
+      case 'system':
+        return 'Sistema';
+      case 'battle':
+        return 'Batalha';
+      case 'lore':
+        return 'História';
+      case 'skill_xp':
+        return 'XP de Habilidade';
+      case 'level_up':
+        return 'Level Up';
+      case 'equipment':
+        return 'Equipamentos';
+      case 'enemy_action':
+        return 'Ações do Inimigo';
+      case 'player_action':
+        return 'Ações do Jogador';
+      case 'damage':
+        return 'Dano';
+      case 'healing':
+        return 'Cura';
+      default:
+        return type;
     }
   };
 
   const formatLogMessage = (log: GameLogEntry) => {
     // Melhorar a formatação de mensagens de batalha
     let message = log.text;
-    
+
     // Detectar e formatar danos
     if (message.includes('causou') && message.includes('de dano')) {
       const damageMatch = message.match(/(\d+)\s+de dano/);
@@ -132,7 +175,7 @@ export function GameLog({ gameLog }: GameLogProps) {
         message = message.replace(`${damage} de dano`, `**${damage}** de dano`);
       }
     }
-    
+
     // Detectar e formatar cura
     if (message.includes('recuperou') && message.includes('HP')) {
       const healMatch = message.match(/(\d+)\s+HP/);
@@ -141,7 +184,7 @@ export function GameLog({ gameLog }: GameLogProps) {
         message = message.replace(`${heal} HP`, `**${heal}** HP`);
       }
     }
-    
+
     return message;
   };
 
@@ -193,7 +236,7 @@ export function GameLog({ gameLog }: GameLogProps) {
                       <Checkbox
                         id={key}
                         checked={value}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={checked =>
                           handleFilterChange(key as keyof LogFilter, !!checked)
                         }
                       />
@@ -212,32 +255,44 @@ export function GameLog({ gameLog }: GameLogProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea ref={scrollAreaRef} className="h-56 rounded border p-3 bg-card/50 backdrop-blur-sm">
+        <ScrollArea
+          ref={scrollAreaRef}
+          className="h-56 rounded border p-3 bg-card/50 backdrop-blur-sm"
+        >
           {filteredLogs.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
                 <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">
-                  {gameLog.length === 0 ? 'Nenhum evento ainda' : 'Nenhum evento corresponde aos filtros'}
+                  {gameLog.length === 0
+                    ? 'Nenhum evento ainda'
+                    : 'Nenhum evento corresponde aos filtros'}
                 </p>
               </div>
             </div>
           ) : (
             <div className="space-y-2">
               {filteredLogs.map((log, index) => (
-                <div 
+                <div
                   key={`${index}-${log.text.substring(0, 20)}`}
                   className={`flex items-start text-sm leading-relaxed ${getLogColor(log.type)} transition-all duration-200 hover:bg-muted/20 rounded p-2 -m-2`}
                 >
                   {getLogIcon(log.type)}
-                  <span 
+                  <span
                     className="flex-1"
                     dangerouslySetInnerHTML={{
-                      __html: formatLogMessage(log).replace(/\*\*(.+?)\*\*/g, '<strong class="text-yellow-300">$1</strong>')
+                      __html: formatLogMessage(log).replace(
+                        /\*\*(.+?)\*\*/g,
+                        '<strong class="text-yellow-300">$1</strong>'
+                      ),
                     }}
                   />
                   <span className="text-xs text-muted-foreground/60 ml-2 flex-shrink-0">
-                    {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    {new Date().toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
                   </span>
                 </div>
               ))}
@@ -247,4 +302,4 @@ export function GameLog({ gameLog }: GameLogProps) {
       </CardContent>
     </Card>
   );
-} 
+}

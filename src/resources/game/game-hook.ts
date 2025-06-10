@@ -20,13 +20,13 @@ export function useGame() {
     updateLoading: gameState.updateLoading,
     setError: gameState.setError,
     resetError: gameState.resetError,
-    
+
     // GameLog provider
     gameMessage: gameLog.gameMessage,
     gameLog: gameLog.gameLog,
     addGameLogMessage: gameLog.addGameLogMessage,
     setGameMessage: gameLog.setGameMessage,
-    
+
     // Character provider
     characters: character.characters,
     selectedCharacter: character.selectedCharacter,
@@ -36,13 +36,13 @@ export function useGame() {
     initializeBattle: character.initializeBattle,
     updatePlayerStats: character.updatePlayerStats,
     reloadCharacters: character.reloadCharacters,
-    
+
     // Battle provider
     performAction: battle.performAction,
-    
+
     // Event provider
     interactWithEvent: event.interactWithEvent,
-    
+
     // Legacy methods for compatibility
     startGame: character.createCharacter,
     clearGameState: () => {
@@ -79,7 +79,7 @@ export function useGame() {
             debuffs: [],
             dots: [],
             hots: [],
-            attribute_modifications: []
+            attribute_modifications: [],
           },
           strength: 10,
           dexterity: 10,
@@ -92,7 +92,7 @@ export function useGame() {
           double_attack_chance: 0,
           magic_attack: 0,
           magic_mastery: 1,
-          magic_damage_bonus: 0
+          magic_damage_bonus: 0,
         },
         currentEnemy: null,
         currentFloor: null,
@@ -103,27 +103,29 @@ export function useGame() {
         selectedSpell: null,
         battleRewards: null,
         fleeSuccessful: false,
-        characterDeleted: false
+        characterDeleted: false,
       });
     },
     returnToMenu: () => {
       gameState.setGameState({
         ...gameState.gameState,
-        mode: 'menu'
+        mode: 'menu',
       });
     },
     saveProgress: async () => {
       // TODO: Implement save progress if needed
     },
-    updatePlayerConsumables: (consumables: import('./models/consumable.model').CharacterConsumable[]) => {
+    updatePlayerConsumables: (
+      consumables: import('./models/consumable.model').CharacterConsumable[]
+    ) => {
       gameState.setGameState({
         ...gameState.gameState,
         player: {
           ...gameState.gameState.player,
-          consumables
-        }
+          consumables,
+        },
       });
-    }
+    },
   };
 }
 
@@ -131,4 +133,4 @@ export { useGameState } from './providers/game-state.provider';
 export { useGameLog } from './providers/log.provider';
 export { useCharacter } from './providers/character.provider';
 export { useBattle } from './providers/battle.provider';
-export { useEvent } from './providers/event.provider'; 
+export { useEvent } from './providers/event.provider';

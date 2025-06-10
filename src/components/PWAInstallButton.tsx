@@ -36,4 +36,4 @@ export function PWAInstallButton() {
       Instalar App
     </Button>
   );
-} 
+}

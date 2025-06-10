@@ -19,14 +19,14 @@ function AuthenticatedOnlyFeature({ children }: Props): JSX.Element {
   useLayoutEffect(() => {
     // Verificar se o estado de autenticação mudou
     const currentAuthState = user !== null;
-    
+
     // Se o estado não mudou, não fazer nada
     if (lastAuthCheck.current === currentAuthState) {
       return;
     }
-    
+
     lastAuthCheck.current = currentAuthState;
-    
+
     // Resetar flag quando o estado de auth muda
     redirectAttempted.current = false;
   }, [user]);
@@ -45,41 +45,41 @@ function AuthenticatedOnlyFeature({ children }: Props): JSX.Element {
     // Se usuário não está autenticado e não tentamos redirecionar ainda
     if (user === null && !redirectAttempted.current) {
       redirectAttempted.current = true;
-      
+
       // Evitar redirecionamento se já estamos na página de auth
       if (location.pathname.startsWith('/auth')) {
         return;
       }
-      
+
       // Construir path atual de forma segura
       const currentPath = `${location.pathname}${location.search || ''}`;
-      
+
       // Validar e redirecionar
       if (currentPath && currentPath !== '/auth') {
         try {
           // Garantir que o path é uma string válida antes de codificar
           const pathToEncode = typeof currentPath === 'string' ? currentPath : '/game';
           const encodedPath = encodeURIComponent(pathToEncode);
-          
-          navigate({ 
-            to: '/auth', 
+
+          navigate({
+            to: '/auth',
             search: { auth: encodedPath },
-            replace: true // Usar replace para evitar histórico desnecessário
+            replace: true, // Usar replace para evitar histórico desnecessário
           });
         } catch (error) {
           console.warn('Erro ao codificar path:', error);
-          navigate({ 
-            to: '/auth', 
+          navigate({
+            to: '/auth',
             search: { auth: encodeURIComponent('/game') },
-            replace: true
+            replace: true,
           });
         }
       } else {
         // Se não temos um path válido, redirecionar com parâmetro vazio
-        navigate({ 
+        navigate({
           to: '/auth',
           search: { auth: '' },
-          replace: true
+          replace: true,
         });
       }
     }

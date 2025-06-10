@@ -29,32 +29,32 @@ export const CONSUMABLE_EFFECTS = {
     name: 'Poção de Vida',
     description: 'Recupera uma quantidade de HP',
     type: 'potion' as ConsumableType,
-    effect: 'restore_hp'
+    effect: 'restore_hp',
   },
   MANA_POTION: {
     name: 'Poção de Mana',
     description: 'Recupera uma quantidade de Mana',
     type: 'potion' as ConsumableType,
-    effect: 'restore_mana'
+    effect: 'restore_mana',
   },
   ANTIDOTE: {
     name: 'Antídoto',
     description: 'Remove efeitos negativos',
     type: 'antidote' as ConsumableType,
-    effect: 'remove_debuff'
+    effect: 'remove_debuff',
   },
   STRENGTH_ELIXIR: {
     name: 'Elixir de Força',
     description: 'Aumenta o ataque temporariamente',
     type: 'buff' as ConsumableType,
-    effect: 'buff_attack'
+    effect: 'buff_attack',
   },
   DEFENSE_ELIXIR: {
     name: 'Elixir de Defesa',
     description: 'Aumenta a defesa temporariamente',
     type: 'buff' as ConsumableType,
-    effect: 'buff_defense'
-  }
+    effect: 'buff_defense',
+  },
 } as const;
 
 // Interface para ingredientes de crafting
@@ -80,4 +80,4 @@ export interface MonsterDrop {
   description: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
   value: number; // valor de venda
-} 
+}

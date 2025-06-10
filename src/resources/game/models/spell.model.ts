@@ -40,4 +40,4 @@ export interface ActiveEffects {
   dots: SpellEffect[];
   hots: SpellEffect[];
   attribute_modifications: AttributeModification[]; // Nova propriedade
-} 
+}

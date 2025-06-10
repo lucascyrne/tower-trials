@@ -171,34 +171,33 @@ export const AuthService = {
         await supabase.rpc('create_user_profile', {
           p_uid: data.user.id,
           p_username: username,
-          p_email: email
+          p_email: email,
         });
       } catch (rpcError) {
         console.error('Erro ao chamar RPC:', rpcError);
-        
+
         // Fallback: inserção direta se a RPC falhar
         try {
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({
-              uid: data.user.id,
-              username,
-              email,
-              role: 'PLAYER',
-              highest_floor: 0,
-              total_games: 0,
-              total_victories: 0,
-              total_character_level: 0,
-              max_character_slots: 3,
-              is_active: true,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
+          const { error: insertError } = await supabase.from('users').insert({
+            uid: data.user.id,
+            username,
+            email,
+            role: 'PLAYER',
+            highest_floor: 0,
+            total_games: 0,
+            total_victories: 0,
+            total_character_level: 0,
+            max_character_slots: 3,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
 
           if (insertError) {
             console.error('Erro no fallback de inserção:', insertError);
-            if (insertError.code === '23505') { // Duplicate key
-              return { 
+            if (insertError.code === '23505') {
+              // Duplicate key
+              return {
                 user: {
                   ...data.user,
                   username,
@@ -209,8 +208,8 @@ export const AuthService = {
                   total_character_level: 0,
                   max_character_slots: 3,
                   is_active: true,
-                } as User, 
-                session: data.session 
+                } as User,
+                session: data.session,
               };
             }
             throw insertError;
@@ -222,7 +221,7 @@ export const AuthService = {
         }
       }
 
-      return { 
+      return {
         user: {
           ...data.user,
           username,
@@ -233,8 +232,8 @@ export const AuthService = {
           total_character_level: 0,
           max_character_slots: 3,
           is_active: true,
-        } as User, 
-        session: data.session 
+        } as User,
+        session: data.session,
       };
     } catch (error: unknown) {
       console.error('Erro no registro:', error instanceof Error ? error.message : error);

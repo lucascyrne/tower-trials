@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CharacterService } from '@/resources/game/character.service';
@@ -19,11 +25,11 @@ interface Checkpoint {
   description: string;
 }
 
-export const MapModal: React.FC<MapModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  character, 
-  onStartFromCheckpoint 
+export const MapModal: React.FC<MapModalProps> = ({
+  isOpen,
+  onClose,
+  character,
+  onStartFromCheckpoint,
 }) => {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,28 +44,32 @@ export const MapModal: React.FC<MapModalProps> = ({
   const loadCheckpoints = async () => {
     setLoading(true);
     try {
-      console.log(`[MapModal] Carregando checkpoints para personagem ${character.name} (ID: ${character.id})`);
+      console.log(
+        `[MapModal] Carregando checkpoints para personagem ${character.name} (ID: ${character.id})`
+      );
       console.log(`[MapModal] Andar atual do personagem: ${character.floor}`);
-      
+
       const response = await CharacterService.getUnlockedCheckpoints(character.id);
-      
+
       console.log(`[MapModal] Resposta do CharacterService:`, response);
-      
+
       if (response.success && response.data) {
         console.log(`[MapModal] Checkpoints carregados:`, response.data);
         setCheckpoints(response.data);
-        
+
         // Selecionar o checkpoint mais alto por padrão (normalmente o andar atual)
         if (response.data.length > 0) {
           const currentFloorCheckpoint = response.data.find(cp => cp.floor === character.floor);
-          const defaultCheckpoint = currentFloorCheckpoint ? currentFloorCheckpoint.floor : response.data[response.data.length - 1].floor;
+          const defaultCheckpoint = currentFloorCheckpoint
+            ? currentFloorCheckpoint.floor
+            : response.data[response.data.length - 1].floor;
           setSelectedCheckpoint(defaultCheckpoint);
           console.log(`[MapModal] Checkpoint selecionado por padrão: ${defaultCheckpoint}`);
         }
       } else {
         console.error(`[MapModal] Erro ao carregar checkpoints:`, response.error);
         toast.error('Erro ao carregar checkpoints', {
-          description: response.error
+          description: response.error,
         });
       }
     } catch (error) {
@@ -117,8 +127,8 @@ export const MapModal: React.FC<MapModalProps> = ({
             Mapa da Torre - Checkpoints Desbloqueados
           </DialogTitle>
           <DialogDescription>
-            Escolha de qual andar você deseja iniciar sua aventura. 
-            Você só pode acessar checkpoints que já alcançou antes.
+            Escolha de qual andar você deseja iniciar sua aventura. Você só pode acessar checkpoints
+            que já alcançou antes.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,19 +141,21 @@ export const MapModal: React.FC<MapModalProps> = ({
             <>
               {/* Lista de Checkpoints */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {checkpoints.map((checkpoint) => (
-                  <Card 
+                {checkpoints.map(checkpoint => (
+                  <Card
                     key={checkpoint.floor}
                     className={`cursor-pointer transition-all hover:shadow-md ${
-                      selectedCheckpoint === checkpoint.floor 
-                        ? 'ring-2 ring-primary bg-primary/5' 
+                      selectedCheckpoint === checkpoint.floor
+                        ? 'ring-2 ring-primary bg-primary/5'
                         : 'hover:bg-accent/50'
                     }`}
                     onClick={() => setSelectedCheckpoint(checkpoint.floor)}
                   >
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <div className={`p-1 rounded-full text-white ${getCheckpointColor(checkpoint.floor)}`}>
+                        <div
+                          className={`p-1 rounded-full text-white ${getCheckpointColor(checkpoint.floor)}`}
+                        >
                           {getCheckpointIcon(checkpoint.floor)}
                         </div>
                         {checkpoint.description}
@@ -157,9 +169,7 @@ export const MapModal: React.FC<MapModalProps> = ({
                         {getCheckpointLabel(checkpoint.floor)}
                       </div>
                       {character.floor === checkpoint.floor && (
-                        <div className="text-xs text-green-600 font-medium mt-1">
-                          Posição Atual
-                        </div>
+                        <div className="text-xs text-green-600 font-medium mt-1">Posição Atual</div>
                       )}
                     </CardContent>
                   </Card>
@@ -182,15 +192,10 @@ export const MapModal: React.FC<MapModalProps> = ({
 
               {/* Botões de ação */}
               <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={onClose}
-                  className="flex-1"
-                  disabled={loading}
-                >
+                <Button variant="outline" onClick={onClose} className="flex-1" disabled={loading}>
                   Cancelar
                 </Button>
-                <Button 
+                <Button
                   onClick={handleStartAdventure}
                   className="flex-1"
                   disabled={loading || selectedCheckpoint === null}
@@ -209,4 +214,4 @@ export const MapModal: React.FC<MapModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-}; 
+};

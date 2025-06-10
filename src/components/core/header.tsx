@@ -1,13 +1,4 @@
-import {
-  Menu,
-  User,
-  Trophy,
-  Scroll,
-  LogOut,
-  Swords,
-  Moon,
-  Sun,
-} from 'lucide-react';
+import { Menu, User, Trophy, Scroll, LogOut, Swords, Moon, Sun } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
 import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
@@ -18,11 +9,15 @@ import { useTheme } from '@/hooks/use-theme';
 const getMenuItemsByRole = (role?: string, isInGamePages?: boolean) => {
   const baseItems = [
     // Só mostrar "Jogar" se não estiver nas páginas de jogo
-    ...(isInGamePages ? [] : [{
-      href: '/game',
-      icon: Swords,
-      label: 'Jogar',
-    }]),
+    ...(isInGamePages
+      ? []
+      : [
+          {
+            href: '/game',
+            icon: Swords,
+            label: 'Jogar',
+          },
+        ]),
     {
       href: '/game/ranking',
       icon: Trophy,
@@ -60,7 +55,7 @@ export function Header({ userName }: HeaderProps) {
   const pathname = location.pathname;
   const { user } = useAuth();
   const { resolvedTheme, setTheme } = useTheme();
-  
+
   // Verificar se está nas páginas de jogo
   const isInGamePages = pathname.startsWith('/game/play/');
   const menuItems = getMenuItemsByRole(user?.role, isInGamePages);
@@ -79,9 +74,9 @@ export function Header({ userName }: HeaderProps) {
           </h1>
         </button>
 
-                <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <PWAInstallButton />
-          
+
           <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
             <User className="h-4 w-4" />
             <span className="text-sm">{userName}</span>
@@ -94,43 +89,46 @@ export function Header({ userName }: HeaderProps) {
             className="text-muted-foreground hover:text-primary transition-colors"
             title={resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro'}
           >
-            {resolvedTheme === 'dark' ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
+            {resolvedTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-muted-foreground hover:text-primary transition-colors"
             onClick={() => handleNavigation('/profile')}
           >
-              <User className="h-5 w-5" />
-            </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
+            <User className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
             className="text-muted-foreground hover:text-primary transition-colors"
             onClick={() => handleNavigation('/logout')}
           >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          
+            <LogOut className="h-5 w-5" />
+          </Button>
+
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary transition-colors lg:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-primary transition-colors lg:hidden"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] bg-background border-r border-border p-0">
+            <SheetContent
+              side="left"
+              className="w-[300px] bg-background border-r border-border p-0"
+            >
               <SheetHeader className="border-b border-border p-4">
                 <SheetTitle>Menu Principal</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col py-2">
-                {menuItems.map((item) => {
+                {menuItems.map(item => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
 
@@ -147,7 +145,7 @@ export function Header({ userName }: HeaderProps) {
                     </button>
                   );
                 })}
-                
+
                 <button
                   onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
                   className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent text-muted-foreground text-left"
@@ -173,7 +171,7 @@ export function Header({ userName }: HeaderProps) {
       {/* Navegação desktop */}
       <nav className="hidden border-t border-border lg:block">
         <div className="flex items-center justify-center gap-1 px-2">
-          {menuItems.map((item) => {
+          {menuItems.map(item => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 

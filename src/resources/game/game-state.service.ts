@@ -6,6 +6,7 @@ import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { FloorService } from './floor.service';
 import { MonsterService } from './monster.service';
+import type { CharacterConsumable } from './models/consumable.model';
 
 // Interface para progresso do jogo salvo no banco
 interface GameProgressData {
@@ -37,7 +38,7 @@ export class GameStateService {
     try {
       // Usar o método que retorna stats detalhados com bônus de equipamentos
       const characterResponse = await CharacterService.getCharacterForGame(characterId);
-      
+
       if (!characterResponse.success || !characterResponse.data) {
         throw new Error(characterResponse.error || 'Personagem não encontrado');
       }
@@ -46,25 +47,36 @@ export class GameStateService {
 
       // Carregar magias equipadas do personagem (usando slots)
       const spellsResponse = await SpellService.getCharacterEquippedSpells(characterId);
-      const playerSpells = spellsResponse.success && spellsResponse.data 
-        ? spellsResponse.data 
-        : [];
+      const playerSpells = spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
 
-      // Carregar consumíveis
+      // CORRIGIDO: Carregar consumíveis com log detalhado
+      console.log('[GameStateService] Carregando consumíveis para personagem:', characterId);
       const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
-      const consumables = consumablesResponse.success ? consumablesResponse.data || [] : [];
+      console.log('[GameStateService] Resposta dos consumíveis:', consumablesResponse);
+
+      const consumables =
+        consumablesResponse.success && consumablesResponse.data
+          ? consumablesResponse.data
+              .map(c => ({
+                ...c,
+                consumable: c.consumable || null, // Garantir que o consumable está presente
+              }))
+              .filter(c => c.quantity > 0) // Filtrar apenas consumíveis com quantidade > 0
+          : [];
+
+      console.log('[GameStateService] Consumíveis carregados:', consumables.length);
 
       return {
         ...character,
         spells: playerSpells,
-        consumables,
+        consumables: consumables as CharacterConsumable[], // CORRIGIDO: Usar consumíveis filtrados
         active_effects: {
           buffs: [],
           debuffs: [],
           dots: [],
           hots: [],
-          attribute_modifications: []
-        }
+          attribute_modifications: [],
+        },
       };
     } catch (error) {
       console.error('[GameStateService] Erro ao carregar personagem para o jogo:', error);
@@ -75,9 +87,12 @@ export class GameStateService {
   /**
    * Salvar o progresso do jogo
    */
-  static async saveGameProgress(gameState: GameState, userId: string): Promise<{ success: boolean; error?: string }> {
+  static async saveGameProgress(
+    gameState: GameState,
+    userId: string
+  ): Promise<{ success: boolean; error?: string }> {
     const { player, currentFloor } = gameState;
-    
+
     const progressData: Omit<GameProgressData, 'id' | 'created_at' | 'updated_at'> = {
       user_id: userId,
       player_name: player.name,
@@ -86,31 +101,28 @@ export class GameStateService {
       max_hp: player.max_hp,
       atk: player.atk,
       def: player.def,
-      highest_floor: Math.max(player.floor, currentFloor?.floorNumber || 1)
+      highest_floor: Math.max(player.floor, currentFloor?.floorNumber || 1),
     };
 
     try {
-      const { error } = await supabase
-        .from('game_progress')
-        .upsert(progressData)
-        .select();
+      const { error } = await supabase.from('game_progress').upsert(progressData).select();
 
       if (error) {
         console.error('[GameStateService] Erro ao salvar progresso:', error);
         return {
           success: false,
-          error: error.message
+          error: error.message,
         };
       }
 
       return {
-        success: true
+        success: true,
       };
     } catch (error) {
       console.error('[GameStateService] Erro geral ao salvar:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
@@ -118,7 +130,9 @@ export class GameStateService {
   /**
    * Carregar o progresso do jogo
    */
-  static async loadGameProgress(userId: string): Promise<{ success: boolean; error?: string; data?: GameProgressData }> {
+  static async loadGameProgress(
+    userId: string
+  ): Promise<{ success: boolean; error?: string; data?: GameProgressData }> {
     try {
       const { data, error } = await supabase
         .from('game_progress')
@@ -131,19 +145,19 @@ export class GameStateService {
         console.error('[GameStateService] Erro ao carregar progresso:', error);
         return {
           success: false,
-          error: error.message
+          error: error.message,
         };
       }
 
       return {
         success: true,
-        data: data[0] as GameProgressData || undefined
+        data: (data[0] as GameProgressData) || undefined,
       };
     } catch (error) {
       console.error('[GameStateService] Erro geral ao carregar:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       };
     }
   }
@@ -172,7 +186,7 @@ export class GameStateService {
         debuffs: [],
         dots: [],
         hots: [],
-        attribute_modifications: []
+        attribute_modifications: [],
       },
       tier: monsterData.tier,
       base_tier: monsterData.base_tier,
@@ -194,7 +208,7 @@ export class GameStateService {
       magical_vulnerability: monsterData.magical_vulnerability,
       primary_trait: monsterData.primary_trait,
       secondary_trait: monsterData.secondary_trait,
-      special_abilities: monsterData.special_abilities || []
+      special_abilities: monsterData.special_abilities || [],
     };
   }
 
@@ -204,7 +218,7 @@ export class GameStateService {
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
     const { player } = gameState;
     const nextFloor = player.floor + 1;
-    
+
     console.log(`[GameStateService] Avançando do andar ${player.floor} para ${nextFloor}`);
 
     try {
@@ -246,12 +260,12 @@ export class GameStateService {
           isPlayerTurn: true,
           isDefending: false,
           potionUsedThisTurn: false,
-          defenseCooldown: Math.max(0, (player.defenseCooldown || 0) - 1)
+          defenseCooldown: Math.max(0, (player.defenseCooldown || 0) - 1),
         },
         currentFloor: nextFloorData,
         currentEnemy: specialEvent ? null : nextEnemy,
         currentSpecialEvent: specialEvent,
-        gameMessage: specialEvent 
+        gameMessage: specialEvent
           ? `Evento especial encontrado: ${specialEvent.name}!`
           : `Andar ${nextFloor}: ${nextFloorData.description}. Um ${nextEnemy.name} apareceu!`,
         isPlayerTurn: true,
@@ -259,29 +273,28 @@ export class GameStateService {
         selectedSpell: null,
         characterDeleted: false,
         fleeSuccessful: false,
-        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor)
+        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor),
       };
-
     } catch (error) {
       console.error(`[GameStateService] Erro crítico ao avançar para andar ${nextFloor}:`, error);
-      
+
       try {
         const fallbackMonsterResult = await MonsterService.getMonsterForFloor(nextFloor);
-        
+
         if (!fallbackMonsterResult.success || !fallbackMonsterResult.data) {
           throw new Error(`Não foi possível gerar inimigo para o andar ${nextFloor}`);
         }
-        
+
         const fallbackEnemy = this.convertMonsterToEnemy(fallbackMonsterResult.data, nextFloor);
-        
+
         const fallbackFloor = {
           floorNumber: nextFloor,
           type: 'common' as FloorType,
           isCheckpoint: nextFloor % 10 === 0,
           minLevel: Math.max(1, Math.floor(nextFloor / 5)),
-          description: `Andar ${nextFloor} - Área Desconhecida`
+          description: `Andar ${nextFloor} - Área Desconhecida`,
         };
-        
+
         return {
           ...gameState,
           player: {
@@ -289,7 +302,7 @@ export class GameStateService {
             floor: nextFloor,
             isPlayerTurn: true,
             isDefending: false,
-            potionUsedThisTurn: false
+            potionUsedThisTurn: false,
           },
           currentFloor: fallbackFloor,
           currentEnemy: fallbackEnemy,
@@ -298,16 +311,16 @@ export class GameStateService {
           isPlayerTurn: true,
           battleRewards: null,
           mode: 'battle',
-          selectedSpell: null
+          selectedSpell: null,
         };
       } catch (fallbackError) {
         console.error(`[GameStateService] Falha ao criar estado de fallback:`, fallbackError);
-        
+
         return {
           ...gameState,
-          gameMessage: `Erro crítico ao avançar para o andar ${nextFloor}: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Retorne ao hub e tente novamente.`
+          gameMessage: `Erro crítico ao avançar para o andar ${nextFloor}: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Retorne ao hub e tente novamente.`,
         };
       }
     }
   }
-} 
+}

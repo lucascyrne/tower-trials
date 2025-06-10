@@ -1,5 +1,12 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Trophy, Heart, Skull, TrendingUp, Coins } from 'lucide-react';
 import { type RankingEntry, type RankingMode } from '@/resources/game/ranking.service';
 import { formatLargeNumber } from '@/utils/number-utils';
@@ -10,17 +17,17 @@ interface RankingTableProps {
   currentUserId?: string;
 }
 
-const RankingTable: React.FC<RankingTableProps> = ({
-  entries,
-  mode,
-  currentUserId
-}) => {
+const RankingTable: React.FC<RankingTableProps> = ({ entries, mode, currentUserId }) => {
   const getMedalColor = (position: number): string => {
     switch (position) {
-      case 0: return 'text-yellow-500'; // Ouro
-      case 1: return 'text-gray-400';   // Prata
-      case 2: return 'text-amber-700';  // Bronze
-      default: return 'text-gray-300';  // Outros
+      case 0:
+        return 'text-yellow-500'; // Ouro
+      case 1:
+        return 'text-gray-400'; // Prata
+      case 2:
+        return 'text-amber-700'; // Bronze
+      default:
+        return 'text-gray-300'; // Outros
     }
   };
 
@@ -69,9 +76,7 @@ const RankingTable: React.FC<RankingTableProps> = ({
     return (
       <div className="text-center py-8">
         <ModeIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">
-          Nenhum registro encontrado para esta modalidade.
-        </p>
+        <p className="text-muted-foreground">Nenhum registro encontrado para esta modalidade.</p>
       </div>
     );
   }
@@ -89,8 +94,8 @@ const RankingTable: React.FC<RankingTableProps> = ({
       </TableHeader>
       <TableBody>
         {entries.map((entry, index) => (
-          <TableRow 
-            key={entry.id} 
+          <TableRow
+            key={entry.id}
             className={entry.user_id === currentUserId ? 'bg-primary/5' : ''}
           >
             <TableCell className="text-center font-medium">
@@ -100,7 +105,7 @@ const RankingTable: React.FC<RankingTableProps> = ({
                 <span className="text-muted-foreground">{index + 1}</span>
               )}
             </TableCell>
-            
+
             <TableCell>
               <div className="flex items-center gap-2">
                 <div className="flex flex-col">
@@ -123,23 +128,21 @@ const RankingTable: React.FC<RankingTableProps> = ({
                 </div>
               </div>
             </TableCell>
-            
-            <TableCell className="text-right font-medium">
-              {getValueForMode(entry, mode)}
-            </TableCell>
-            
+
+            <TableCell className="text-right font-medium">{getValueForMode(entry, mode)}</TableCell>
+
             <TableCell className="text-right text-muted-foreground hidden sm:table-cell">
               {getSecondaryInfo(entry, mode)}
             </TableCell>
-            
+
             <TableCell className="text-right text-muted-foreground">
-              {entry.created_at 
+              {entry.created_at
                 ? new Date(entry.created_at).toLocaleDateString('pt-BR', {
                     day: '2-digit',
                     month: '2-digit',
                     year: '2-digit',
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
                   })
                 : '-'}
             </TableCell>
@@ -150,4 +153,4 @@ const RankingTable: React.FC<RankingTableProps> = ({
   );
 };
 
-export default RankingTable; 
+export default RankingTable;

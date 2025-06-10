@@ -5,7 +5,15 @@ import { type CharacterConsumable } from './models/consumable.model';
 import { type BattleSession, type TurnControl } from './models/game-battle.model';
 
 export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event' | 'fled';
-export type ActionType = 'attack' | 'defend' | 'special' | 'spell' | 'flee' | 'consumable' | 'continue' | 'interact_event';
+export type ActionType =
+  | 'attack'
+  | 'defend'
+  | 'special'
+  | 'spell'
+  | 'flee'
+  | 'consumable'
+  | 'continue'
+  | 'interact_event';
 export type FloorType = 'common' | 'elite' | 'event' | 'boss';
 export type SpecialEventType = 'bonfire' | 'treasure_chest' | 'magic_fountain';
 
@@ -54,13 +62,13 @@ export interface Enemy {
   reward_gold: number;
   possible_drops?: MonsterDropChance[];
   active_effects: ActiveEffects;
-  
+
   // Campos do sistema cíclico
   tier?: number;
   base_tier?: number;
   cycle_position?: number;
   is_boss?: boolean;
-  
+
   // Atributos primários
   strength?: number;
   dexterity?: number;
@@ -68,21 +76,21 @@ export interface Enemy {
   wisdom?: number;
   vitality?: number;
   luck?: number;
-  
+
   // Propriedades de combate avançadas
   critical_chance?: number;
   critical_damage?: number;
   critical_resistance?: number;
-  
+
   // Resistências
   physical_resistance?: number;
   magical_resistance?: number;
   debuff_resistance?: number;
-  
+
   // Vulnerabilidades
   physical_vulnerability?: number;
   magical_vulnerability?: number;
-  
+
   // Características especiais
   primary_trait?: string;
   secondary_trait?: string;
@@ -116,7 +124,7 @@ export interface GamePlayer {
   consumables?: CharacterConsumable[];
   active_effects: ActiveEffects;
   potionUsedThisTurn?: boolean;
-  
+
   // Atributos primários
   strength?: number;
   dexterity?: number;
@@ -125,27 +133,27 @@ export interface GamePlayer {
   vitality?: number;
   luck?: number;
   attribute_points?: number;
-  
+
   // Habilidades específicas
   sword_mastery?: number;
   axe_mastery?: number;
   blunt_mastery?: number;
   defense_mastery?: number;
   magic_mastery?: number;
-  
+
   // XP das habilidades
   sword_mastery_xp?: number;
   axe_mastery_xp?: number;
   blunt_mastery_xp?: number;
   defense_mastery_xp?: number;
   magic_mastery_xp?: number;
-  
+
   // Stats derivados (calculados)
   critical_chance?: number;
   critical_damage?: number;
   magic_damage_bonus?: number;
   double_attack_chance?: number;
-  
+
   // Stats base (sem equipamentos) para exibição de bônus
   base_hp?: number;
   base_max_hp?: number;
@@ -154,7 +162,7 @@ export interface GamePlayer {
   base_atk?: number;
   base_def?: number;
   base_speed?: number;
-  
+
   // Bônus de equipamentos para exibição
   equipment_hp_bonus?: number;
   equipment_mana_bonus?: number;
@@ -176,7 +184,7 @@ export interface GameState {
   battleRewards: BattleRewards | null;
   characterDeleted?: boolean;
   fleeSuccessful?: boolean;
-  
+
   // NOVO: Sistema robusto de controle de turnos
   battleSession?: BattleSession;
   currentTurnControl?: TurnControl;
@@ -196,7 +204,17 @@ export interface GameResponse {
   data?: unknown;
 }
 
-export type GameLogType = 'system' | 'battle' | 'lore' | 'skill_xp' | 'level_up' | 'equipment' | 'enemy_action' | 'player_action' | 'damage' | 'healing';
+export type GameLogType =
+  | 'system'
+  | 'battle'
+  | 'lore'
+  | 'skill_xp'
+  | 'level_up'
+  | 'equipment'
+  | 'enemy_action'
+  | 'player_action'
+  | 'damage'
+  | 'healing';
 
 export interface GameLogEntry {
   text: string;
@@ -220,7 +238,7 @@ export interface BattleActionResult {
     leveledUp: boolean;
     newLevel?: number;
   };
-} 
+}
 
 export interface BattleRewards {
   xp: number;

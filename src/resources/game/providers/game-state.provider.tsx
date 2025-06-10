@@ -26,11 +26,11 @@ export function GameStateProvider({ children }: GameStateProviderProps) {
       loadProgress: false,
       startGame: false,
       performAction: false,
-      saveProgress: false
+      saveProgress: false,
     },
     error: null,
     gameMessage: 'Bem-vindo ao Tower Trials! Crie um personagem para iniciar sua aventura.',
-    gameLog: [{ text: 'Bem-vindo ao Tower Trials!', type: 'system' }]
+    gameLog: [{ text: 'Bem-vindo ao Tower Trials!', type: 'system' }],
   });
 
   // Função auxiliar para atualizar estado de loading
@@ -87,20 +87,16 @@ export function GameStateProvider({ children }: GameStateProviderProps) {
     [state]
   );
 
-  return (
-    <GameStateContext.Provider value={contextValue}>
-      {children}
-    </GameStateContext.Provider>
-  );
+  return <GameStateContext.Provider value={contextValue}>{children}</GameStateContext.Provider>;
 }
 
 // Hook personalizado para usar o contexto
 export function useGameState() {
   const context = useContext(GameStateContext);
-  
+
   if (!context) {
     throw new Error('useGameState deve ser usado dentro de um GameStateProvider');
   }
-  
+
   return context;
-} 
+}

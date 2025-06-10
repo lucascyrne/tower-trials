@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_authenticated/403')({
   component: ForbiddenPage,
-})
+});
 
 function ForbiddenPage() {
   return (
@@ -11,5 +11,5 @@ function ForbiddenPage() {
         A página que você tentou acessar não existe ou você não possui a permissão necessária.
       </h1>
     </div>
-  )
-} 
+  );
+}

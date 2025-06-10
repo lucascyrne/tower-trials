@@ -1,4 +1,11 @@
-import { type Enemy, type GameResponse, type GameState, type FloorType, type ActionType, type GamePlayer } from './game-model';
+import {
+  type Enemy,
+  type GameResponse,
+  type GameState,
+  type FloorType,
+  type ActionType,
+  type GamePlayer,
+} from './game-model';
 import { supabase } from '@/lib/supabase';
 import { type SkillXpGain } from './skill-xp.service';
 import { MonsterService } from './monster.service';
@@ -60,16 +67,19 @@ export class GameService {
   static async generateEnemy(floor: number): Promise<Enemy | null> {
     try {
       console.log(`[GameService] Iniciando geração de inimigo para andar ${floor}`);
-      
+
       const { data: monsterData, error, success } = await MonsterService.getMonsterForFloor(floor);
-      
+
       if (!success || error || !monsterData) {
         console.error(`[GameService] Erro ao buscar monstro para andar ${floor}:`, error);
         throw new Error(`Nenhum monstro encontrado para o andar ${floor}: ${error}`);
       }
 
       if (!monsterData.name || !monsterData.hp || !monsterData.atk || !monsterData.def) {
-        console.error(`[GameService] Dados de monstro incompletos para andar ${floor}:`, monsterData);
+        console.error(
+          `[GameService] Dados de monstro incompletos para andar ${floor}:`,
+          monsterData
+        );
         throw new Error(`Dados de monstro incompletos para o andar ${floor}`);
       }
 
@@ -93,7 +103,7 @@ export class GameService {
           debuffs: [],
           dots: [],
           hots: [],
-          attribute_modifications: []
+          attribute_modifications: [],
         },
         tier: monsterData.tier,
         base_tier: monsterData.base_tier,
@@ -115,12 +125,16 @@ export class GameService {
         magical_vulnerability: monsterData.magical_vulnerability,
         primary_trait: monsterData.primary_trait,
         secondary_trait: monsterData.secondary_trait,
-        special_abilities: monsterData.special_abilities || []
+        special_abilities: monsterData.special_abilities || [],
       };
 
-      console.log(`[GameService] Monstro real gerado: ${enemy.name} (Tier ${enemy.tier || 1}, Pos ${enemy.cycle_position || 'N/A'})`);
-      console.log(`[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, Boss: ${enemy.is_boss ? 'SIM' : 'NÃO'}`);
-      
+      console.log(
+        `[GameService] Monstro real gerado: ${enemy.name} (Tier ${enemy.tier || 1}, Pos ${enemy.cycle_position || 'N/A'})`
+      );
+      console.log(
+        `[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, Boss: ${enemy.is_boss ? 'SIM' : 'NÃO'}`
+      );
+
       return enemy;
     } catch (error) {
       console.error(`[GameService] Erro ao gerar inimigo para andar ${floor}:`, error);
@@ -133,7 +147,7 @@ export class GameService {
    */
   static async saveGameProgress(gameState: GameState, userId: string): Promise<GameResponse> {
     const { player, currentFloor } = gameState;
-    
+
     const progressData: SaveProgressData = {
       user_id: userId,
       player_name: player.name,
@@ -142,35 +156,32 @@ export class GameService {
       max_hp: player.max_hp,
       attack: player.atk,
       defense: player.def,
-      highest_floor: Math.max(player.floor, currentFloor?.floorNumber || 1)
+      highest_floor: Math.max(player.floor, currentFloor?.floorNumber || 1),
     };
 
     try {
-      const { data, error } = await supabase
-        .from('game_progress')
-        .upsert(progressData)
-        .select();
+      const { data, error } = await supabase.from('game_progress').upsert(progressData).select();
 
       if (error) {
         console.error('Erro ao salvar progresso:', error);
         return {
           success: false,
           error: error.message,
-          data: null
+          data: null,
         };
       }
 
       return {
         success: true,
         error: undefined,
-        data: data[0] as GameProgressEntry
+        data: data[0] as GameProgressEntry,
       };
     } catch (error) {
       console.error('Erro geral ao salvar:', error instanceof Error ? error.message : error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
-        data: null
+        data: null,
       };
     }
   }
@@ -192,21 +203,21 @@ export class GameService {
         return {
           success: false,
           error: error.message,
-          data: null
+          data: null,
         };
       }
 
       return {
         success: true,
         error: undefined,
-        data: data[0] as GameProgressEntry || null
+        data: (data[0] as GameProgressEntry) || null,
       };
     } catch (error) {
       console.error('Erro geral ao carregar:', error instanceof Error ? error.message : error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
-        data: null
+        data: null,
       };
     }
   }
@@ -215,23 +226,24 @@ export class GameService {
    * Processar ação do jogador - delega para BattleService
    */
   static async processPlayerAction(
-    action: ActionType, 
+    action: ActionType,
     gameState: GameState,
     spellId?: string,
     consumableId?: string
-  ): Promise<{ 
+  ): Promise<{
     newState: GameState;
     skipTurn: boolean;
     message: string;
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
-    gameLogMessages?: { message: string; type: 'player_action' | 'damage' | 'system' | 'skill_xp' }[];
+    gameLogMessages?: {
+      message: string;
+      type: 'player_action' | 'damage' | 'system' | 'skill_xp';
+    }[];
   }> {
     console.log(`[GameService] Delegando ação do jogador para BattleService: ${action}`);
     return BattleService.processPlayerAction(action, gameState, spellId, consumableId);
   }
-
-
 
   /**
    * Processar a derrota do inimigo - delega para RewardService
@@ -246,7 +258,7 @@ export class GameService {
    * Processar ação do inimigo com delay - delega para BattleService
    */
   static async processEnemyActionWithDelay(
-    gameState: GameState, 
+    gameState: GameState,
     playerDefendAction: boolean,
     delayMs?: number
   ): Promise<{
@@ -255,26 +267,26 @@ export class GameService {
     skillMessages?: string[];
   }> {
     console.log('[GameService] === PROCESSANDO TURNO DO INIMIGO ===');
-    
+
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
       console.log('[GameService] Inimigo morto antes do delay - cancelando ação');
       return { newState: gameState };
     }
-    
-    const finalDelay = delayMs ?? (1500 + Math.random() * 1000);
-    
+
+    const finalDelay = delayMs ?? 1500 + Math.random() * 1000;
+
     const enemyName = gameState.currentEnemy?.name || 'Inimigo';
     console.log(`[GameService] ${enemyName} está pensando... (${Math.round(finalDelay)}ms)`);
-    
+
     await new Promise(resolve => setTimeout(resolve, finalDelay));
-    
+
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
       console.log('[GameService] Inimigo morto após delay - cancelando ação');
       return { newState: gameState };
     }
-    
+
     console.log(`[GameService] ${enemyName} decidiu sua ação!`);
-    
+
     // Delegar para BattleService
     return BattleService.processEnemyAction(gameState, playerDefendAction);
   }
@@ -285,7 +297,7 @@ export class GameService {
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
     const { player } = gameState;
     const nextFloor = player.floor + 1;
-    
+
     console.log(`[GameService] Avançando do andar ${player.floor} para ${nextFloor}`);
 
     try {
@@ -296,7 +308,7 @@ export class GameService {
       console.log(`[GameService] === ATUALIZANDO ANDAR NO BANCO ===`);
       console.log(`[GameService] Personagem: ${player.id}`);
       console.log(`[GameService] Andar atual: ${player.floor} -> Próximo andar: ${nextFloor}`);
-      
+
       const updateResult = await CharacterService.updateCharacterFloor(player.id, nextFloor);
       if (!updateResult.success) {
         console.error(`[GameService] ERRO ao atualizar andar:`, updateResult.error);
@@ -311,18 +323,23 @@ export class GameService {
         throw new Error(`Erro ao gerar dados do andar ${nextFloor}`);
       }
 
-      console.log(`[GameService] Dados do andar ${nextFloor} carregados:`, nextFloorData.description);
+      console.log(
+        `[GameService] Dados do andar ${nextFloor} carregados:`,
+        nextFloorData.description
+      );
 
       console.log(`[GameService] === GERANDO INIMIGO PARA ANDAR ${nextFloor} ===`);
-      
+
       const nextEnemy = await this.generateEnemy(nextFloor);
-      
+
       if (!nextEnemy) {
         console.error(`[GameService] Falha ao gerar inimigo para andar ${nextFloor}`);
         throw new Error(`Falha ao gerar inimigo para o andar ${nextFloor}`);
       }
 
-      console.log(`[GameService] Inimigo gerado: ${nextEnemy.name} (HP: ${nextEnemy.hp}/${nextEnemy.maxHp})`);
+      console.log(
+        `[GameService] Inimigo gerado: ${nextEnemy.name} (HP: ${nextEnemy.hp}/${nextEnemy.maxHp})`
+      );
 
       // Verificar evento especial usando FloorService
       const specialEvent = await FloorService.checkForSpecialEvent(nextFloor);
@@ -336,12 +353,12 @@ export class GameService {
           isPlayerTurn: true,
           isDefending: false,
           potionUsedThisTurn: false,
-          defenseCooldown: Math.max(0, (player.defenseCooldown || 0) - 1)
+          defenseCooldown: Math.max(0, (player.defenseCooldown || 0) - 1),
         },
         currentFloor: nextFloorData,
         currentEnemy: specialEvent ? null : nextEnemy,
         currentSpecialEvent: specialEvent,
-        gameMessage: specialEvent 
+        gameMessage: specialEvent
           ? `Evento especial encontrado: ${specialEvent.name}!`
           : `Andar ${nextFloor}: ${nextFloorData.description}. Um ${nextEnemy.name} apareceu!`,
         isPlayerTurn: true,
@@ -349,7 +366,7 @@ export class GameService {
         selectedSpell: null,
         characterDeleted: false,
         fleeSuccessful: false,
-        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor)
+        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor),
       };
 
       console.log(`[GameService] Estado do jogo atualizado para andar ${nextFloor} com sucesso`);
@@ -357,31 +374,30 @@ export class GameService {
       console.log(`[GameService] - Andar: ${newGameState.currentFloor?.description}`);
       console.log(`[GameService] - Inimigo: ${newGameState.currentEnemy?.name || 'N/A'}`);
       console.log(`[GameService] - Evento: ${newGameState.currentSpecialEvent?.name || 'N/A'}`);
-      
-      return newGameState;
 
+      return newGameState;
     } catch (error) {
       console.error(`[GameService] Erro crítico ao avançar para andar ${nextFloor}:`, error);
-      
+
       console.log(`[GameService] Tentando criar estado de fallback para andar ${nextFloor}...`);
-      
+
       try {
         const fallbackEnemy = await this.generateEnemy(nextFloor);
-        
+
         if (!fallbackEnemy) {
           throw new Error(`Não foi possível gerar inimigo para o andar ${nextFloor}`);
         }
-        
+
         const fallbackFloor = {
           floorNumber: nextFloor,
           type: 'common' as FloorType,
           isCheckpoint: nextFloor % 10 === 0,
           minLevel: Math.max(1, Math.floor(nextFloor / 5)),
-          description: `Andar ${nextFloor} - Área Desconhecida`
+          description: `Andar ${nextFloor} - Área Desconhecida`,
         };
-        
+
         console.log(`[GameService] Estado de fallback criado para andar ${nextFloor}`);
-        
+
         return {
           ...gameState,
           player: {
@@ -389,7 +405,7 @@ export class GameService {
             floor: nextFloor,
             isPlayerTurn: true,
             isDefending: false,
-            potionUsedThisTurn: false
+            potionUsedThisTurn: false,
           },
           currentFloor: fallbackFloor,
           currentEnemy: fallbackEnemy,
@@ -398,14 +414,14 @@ export class GameService {
           isPlayerTurn: true,
           battleRewards: null,
           mode: 'battle',
-          selectedSpell: null
+          selectedSpell: null,
         };
       } catch (fallbackError) {
         console.error(`[GameService] Falha ao criar estado de fallback:`, fallbackError);
-        
+
         return {
           ...gameState,
-          gameMessage: `Erro crítico ao avançar para o andar ${nextFloor}: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Retorne ao hub e tente novamente.`
+          gameMessage: `Erro crítico ao avançar para o andar ${nextFloor}: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Retorne ao hub e tente novamente.`,
         };
       }
     }
@@ -414,9 +430,7 @@ export class GameService {
   /**
    * Processar interação com evento especial - delega para FloorService
    */
-  static async processSpecialEventInteraction(
-    gameState: GameState,
-  ): Promise<GameState> {
+  static async processSpecialEventInteraction(gameState: GameState): Promise<GameState> {
     return FloorService.processSpecialEventInteraction(gameState);
   }
 
@@ -440,4 +454,4 @@ export class GameService {
   // Delegações para FloorService
   static getFloorData = FloorService.getFloorData;
   static calculateFloorRewards = FloorService.calculateFloorRewards;
-} 
+}

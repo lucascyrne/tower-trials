@@ -22,7 +22,7 @@ export const DropCard: React.FC<DropCardProps> = ({ item }) => {
       uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
       rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
       epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
-      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
+      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600',
     };
     return colors[rarity];
   };
@@ -40,7 +40,10 @@ export const DropCard: React.FC<DropCardProps> = ({ item }) => {
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-slate-100 truncate">{item.drop.name}</h4>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className={`text-xs border ${getRarityColor(item.drop.rarity)}`}>
+            <Badge
+              variant="outline"
+              className={`text-xs border ${getRarityColor(item.drop.rarity)}`}
+            >
               <Star className="h-3 w-3 mr-1" />
               {item.drop.rarity}
             </Badge>
@@ -59,4 +62,4 @@ export const DropCard: React.FC<DropCardProps> = ({ item }) => {
       </div>
     </Card>
   );
-}; 
+};

@@ -19,7 +19,7 @@ const AnimatedModal = ({
   setIsOpen,
   children,
   onBack,
-  size = 'md'
+  size = 'md',
 }: AnimatedModalProps) => {
   return (
     <AnimatePresence>
@@ -29,7 +29,8 @@ const AnimatedModal = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setIsOpen(false)}
-          className="bg-slate-900/20 backdrop-blur fixed inset-0 z-50 grid place-items-center overflow-y-scroll cursor-pointer">
+          className="bg-slate-900/20 backdrop-blur fixed inset-0 z-50 grid place-items-center overflow-y-scroll cursor-pointer"
+        >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -40,7 +41,8 @@ const AnimatedModal = ({
             onClick={e => e.stopPropagation()}
             className={`bg-white text-black my-8 p-8 rounded-lg w-full
             ${size === 'sm' ? 'max-w-xl' : size === 'md' ? 'max-w-3xl' : 'max-w-6xl'} max-h-[90vh]
-            shadow-xl cursor-default relative overflow-y-auto scrollbar-thin`}>
+            shadow-xl cursor-default relative overflow-y-auto scrollbar-thin`}
+          >
             <div className="flex flex-col relative z-10">
               <div className="flex gap-2 mb-8 items-start">
                 <div className="flex flex-col gap-4">

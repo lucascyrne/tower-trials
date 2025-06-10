@@ -11,11 +11,11 @@ interface HubNotificationsProps {
   onDismissHealNotification: () => void;
 }
 
-export function HubNotifications({ 
-  player, 
-  showHealNotification, 
-  healInfo, 
-  onDismissHealNotification 
+export function HubNotifications({
+  player,
+  showHealNotification,
+  healInfo,
+  onDismissHealNotification,
 }: HubNotificationsProps) {
   const hasAttributePoints = player.attribute_points && player.attribute_points > 0;
 
@@ -38,9 +38,13 @@ export function HubNotifications({
                   Pontos de Atributo Disponíveis
                 </h3>
                 <div className="text-xs text-amber-300/80">
-                  Você tem <Badge variant="outline" className="mx-1 text-amber-200 bg-amber-600/20 border-amber-500/50 text-xs px-1.5 py-0.5">
+                  Você tem{' '}
+                  <Badge
+                    variant="outline"
+                    className="mx-1 text-amber-200 bg-amber-600/20 border-amber-500/50 text-xs px-1.5 py-0.5"
+                  >
                     {player.attribute_points}
-                  </Badge> 
+                  </Badge>
                   ponto(s) para distribuir em &quot;Atributos&quot;.
                 </div>
               </div>
@@ -68,7 +72,10 @@ export function HubNotifications({
                     <span className="font-mono bg-emerald-900/50 px-2 py-0.5 rounded text-xs">
                       {healInfo.oldHp} → {healInfo.newHp}
                     </span>
-                    <Badge variant="outline" className="text-emerald-300 border-emerald-500/50 bg-emerald-600/20 text-xs px-1.5 py-0.5">
+                    <Badge
+                      variant="outline"
+                      className="text-emerald-300 border-emerald-500/50 bg-emerald-600/20 text-xs px-1.5 py-0.5"
+                    >
                       +{healInfo.newHp - healInfo.oldHp}
                     </Badge>
                   </div>
@@ -88,4 +95,4 @@ export function HubNotifications({
       )}
     </div>
   );
-} 
+}

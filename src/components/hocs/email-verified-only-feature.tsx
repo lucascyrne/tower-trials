@@ -17,14 +17,14 @@ export function EmailVerifiedOnlyFeature({ children }: { children: React.ReactNo
     }
 
     const currentVerificationStatus = !!user.email_confirmed_at;
-    
+
     // Se o status não mudou, não fazer nada
     if (lastVerificationStatus.current === currentVerificationStatus) {
       return;
     }
-    
+
     lastVerificationStatus.current = currentVerificationStatus;
-    
+
     // Resetar flag quando o status de verificação muda
     redirectAttempted.current = false;
   }, [user?.email_confirmed_at]);
@@ -43,10 +43,10 @@ export function EmailVerifiedOnlyFeature({ children }: { children: React.ReactNo
     // Se email não está verificado e não tentamos redirecionar ainda
     if (!user.email_confirmed_at && !redirectAttempted.current) {
       redirectAttempted.current = true;
-      navigate({ 
-        to: '/auth/verify-email', 
+      navigate({
+        to: '/auth/verify-email',
         search: { auth: 'true' },
-        replace: true
+        replace: true,
       });
     }
   }, [user, navigate]);

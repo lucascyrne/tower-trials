@@ -1,16 +1,16 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { 
-  Sparkles, 
-  Zap, 
-  Heart, 
-  Shield, 
-  Skull, 
-  Flame, 
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  Sparkles,
+  Zap,
+  Heart,
+  Shield,
+  Skull,
+  Flame,
   Search,
   ArrowLeft,
   Save,
@@ -20,162 +20,160 @@ import {
   Clock,
   Droplet,
   Star,
-  TrendingUp
-} from 'lucide-react'
-import { SpellService, type AvailableSpell, type SpellStats } from '@/resources/game/spell.service'
-import { CharacterService } from '@/resources/game/character.service'
-import type { Character } from '@/resources/game/models/character.model'
-import type { SpellEffectType } from '@/resources/game/models/spell.model'
-import { toast } from 'sonner'
-import { ScrollArea } from '@/components/ui/scroll-area'
+  TrendingUp,
+} from 'lucide-react';
+import { SpellService, type AvailableSpell, type SpellStats } from '@/resources/game/spell.service';
+import { CharacterService } from '@/resources/game/character.service';
+import type { Character } from '@/resources/game/models/character.model';
+import type { SpellEffectType } from '@/resources/game/models/spell.model';
+import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SpellSelectionState {
-  slot1: AvailableSpell | null
-  slot2: AvailableSpell | null
-  slot3: AvailableSpell | null
+  slot1: AvailableSpell | null;
+  slot2: AvailableSpell | null;
+  slot3: AvailableSpell | null;
 }
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/spells')({
   component: SpellsPage,
-  validateSearch: (search) => ({
+  validateSearch: search => ({
     character: (search.character as string) || '',
   }),
-})
+});
 
 function SpellsPage() {
-  const navigate = useNavigate()
-  const { character: characterId } = Route.useSearch()
+  const navigate = useNavigate();
+  const { character: characterId } = Route.useSearch();
 
-  const [character, setCharacter] = useState<Character | null>(null)
-  const [spells, setSpells] = useState<AvailableSpell[]>([])
-  const [spellStats, setSpellStats] = useState<SpellStats | null>(null)
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [spells, setSpells] = useState<AvailableSpell[]>([]);
+  const [spellStats, setSpellStats] = useState<SpellStats | null>(null);
   const [selectedSpells, setSelectedSpells] = useState<SpellSelectionState>({
     slot1: null,
     slot2: null,
-    slot3: null
-  })
+    slot3: null,
+  });
   const [originalSelection, setOriginalSelection] = useState<SpellSelectionState>({
     slot1: null,
     slot2: null,
-    slot3: null
-  })
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<SpellEffectType | 'all'>('all')
-  const [filterLevel, setFilterLevel] = useState<'early' | 'mid' | 'high' | 'all'>('all')
+    slot3: null,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<SpellEffectType | 'all'>('all');
+  const [filterLevel, setFilterLevel] = useState<'early' | 'mid' | 'high' | 'all'>('all');
 
   useEffect(() => {
     if (!characterId) {
-      toast.error('Personagem não especificado')
-      navigate({ to: '/game/play' })
-      return
+      toast.error('Personagem não especificado');
+      navigate({ to: '/game/play' });
+      return;
     }
 
-    loadData()
-  }, [characterId])
+    loadData();
+  }, [characterId]);
 
   const loadData = async () => {
-    if (!characterId) return
+    if (!characterId) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
       // Carregar dados do personagem
-      const characterResponse = await CharacterService.getCharacter(characterId)
+      const characterResponse = await CharacterService.getCharacter(characterId);
       if (!characterResponse.success || !characterResponse.data) {
-        throw new Error('Erro ao carregar personagem')
+        throw new Error('Erro ao carregar personagem');
       }
-      setCharacter(characterResponse.data)
+      setCharacter(characterResponse.data);
 
       // Carregar magias disponíveis
-      const spellsResponse = await SpellService.getCharacterAvailableSpells(characterId)
+      const spellsResponse = await SpellService.getCharacterAvailableSpells(characterId);
       if (!spellsResponse.success || !spellsResponse.data) {
-        throw new Error('Erro ao carregar magias')
+        throw new Error('Erro ao carregar magias');
       }
-      setSpells(spellsResponse.data)
+      setSpells(spellsResponse.data);
 
       // Carregar estatísticas
-      const statsResponse = await SpellService.getCharacterSpellStats(characterId)
+      const statsResponse = await SpellService.getCharacterSpellStats(characterId);
       if (statsResponse.success && statsResponse.data) {
-        setSpellStats(statsResponse.data)
+        setSpellStats(statsResponse.data);
       }
 
       // Carregar seleção atual
-      const equippedSpells = spellsResponse.data.filter(spell => spell.is_equipped)
+      const equippedSpells = spellsResponse.data.filter(spell => spell.is_equipped);
       const newSelection: SpellSelectionState = {
         slot1: equippedSpells.find(spell => spell.slot_position === 1) || null,
         slot2: equippedSpells.find(spell => spell.slot_position === 2) || null,
-        slot3: equippedSpells.find(spell => spell.slot_position === 3) || null
-      }
-      setSelectedSpells(newSelection)
-      setOriginalSelection(newSelection)
-
+        slot3: equippedSpells.find(spell => spell.slot_position === 3) || null,
+      };
+      setSelectedSpells(newSelection);
+      setOriginalSelection(newSelection);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-      toast.error('Erro ao carregar dados das magias')
+      console.error('Erro ao carregar dados:', error);
+      toast.error('Erro ao carregar dados das magias');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSpellSelect = (spell: AvailableSpell, slot: 'slot1' | 'slot2' | 'slot3') => {
     setSelectedSpells(prev => {
-      const newSelection = { ...prev }
-      
+      const newSelection = { ...prev };
+
       // Se a magia já está equipada em outro slot, remover de lá
       Object.keys(newSelection).forEach(key => {
-        const slotKey = key as keyof SpellSelectionState
+        const slotKey = key as keyof SpellSelectionState;
         if (newSelection[slotKey]?.id === spell.id) {
-          newSelection[slotKey] = null
+          newSelection[slotKey] = null;
         }
-      })
-      
+      });
+
       // Equipar no slot selecionado
-      newSelection[slot] = spell
-      
-      return newSelection
-    })
-  }
+      newSelection[slot] = spell;
+
+      return newSelection;
+    });
+  };
 
   const handleSlotClear = (slot: 'slot1' | 'slot2' | 'slot3') => {
     setSelectedSpells(prev => ({
       ...prev,
-      [slot]: null
-    }))
-  }
+      [slot]: null,
+    }));
+  };
 
   const handleSaveSelection = async () => {
-    if (!characterId) return
+    if (!characterId) return;
 
-    setSaving(true)
+    setSaving(true);
     try {
       const spellIds = [
         selectedSpells.slot1?.id || null,
         selectedSpells.slot2?.id || null,
-        selectedSpells.slot3?.id || null
-      ]
+        selectedSpells.slot3?.id || null,
+      ];
 
-      const response = await SpellService.setCharacterSpells(characterId, spellIds)
-      
+      const response = await SpellService.setCharacterSpells(characterId, spellIds);
+
       if (!response.success) {
-        throw new Error(response.error || 'Erro ao salvar seleção')
+        throw new Error(response.error || 'Erro ao salvar seleção');
       }
 
       // Atualizar estado original
-      setOriginalSelection({ ...selectedSpells })
-      
-      toast.success('Seleção de magias salva com sucesso!')
-      
+      setOriginalSelection({ ...selectedSpells });
+
+      toast.success('Seleção de magias salva com sucesso!');
+
       // Recarregar dados para refletir mudanças
-      await loadData()
-      
+      await loadData();
     } catch (error) {
-      console.error('Erro ao salvar seleção:', error)
-      toast.error('Erro ao salvar seleção de magias')
+      console.error('Erro ao salvar seleção:', error);
+      toast.error('Erro ao salvar seleção de magias');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const getSpellIcon = (effectType: SpellEffectType) => {
     const icons = {
@@ -184,10 +182,10 @@ function SpellsPage() {
       buff: <Shield className="h-5 w-5" />,
       debuff: <Skull className="h-5 w-5" />,
       dot: <Flame className="h-5 w-5" />,
-      hot: <Sparkles className="h-5 w-5" />
-    }
-    return icons[effectType] || <Zap className="h-5 w-5" />
-  }
+      hot: <Sparkles className="h-5 w-5" />,
+    };
+    return icons[effectType] || <Zap className="h-5 w-5" />;
+  };
 
   const getSpellColor = (effectType: SpellEffectType) => {
     const colors = {
@@ -196,36 +194,38 @@ function SpellsPage() {
       buff: 'text-blue-500 border-blue-500/30 bg-blue-500/5',
       debuff: 'text-purple-500 border-purple-500/30 bg-purple-500/5',
       dot: 'text-orange-500 border-orange-500/30 bg-orange-500/5',
-      hot: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5'
-    }
-    return colors[effectType] || 'text-gray-500 border-gray-500/30 bg-gray-500/5'
-  }
+      hot: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5',
+    };
+    return colors[effectType] || 'text-gray-500 border-gray-500/30 bg-gray-500/5';
+  };
 
   const getSpellLevelCategory = (level: number) => {
-    if (level <= 15) return 'early'
-    if (level <= 35) return 'mid'
-    return 'high'
-  }
+    if (level <= 15) return 'early';
+    if (level <= 35) return 'mid';
+    return 'high';
+  };
 
   const getLevelCategoryColor = (level: number) => {
-    const category = getSpellLevelCategory(level)
+    const category = getSpellLevelCategory(level);
     return {
       early: 'text-green-400',
       mid: 'text-yellow-400',
-      high: 'text-red-400'
-    }[category]
-  }
+      high: 'text-red-400',
+    }[category];
+  };
 
   const filteredSpells = spells.filter(spell => {
-    const matchesSearch = spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         spell.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === 'all' || spell.effect_type === filterType
-    const matchesLevel = filterLevel === 'all' || getSpellLevelCategory(spell.unlocked_at_level) === filterLevel
-    
-    return matchesSearch && matchesType && matchesLevel
-  })
+    const matchesSearch =
+      spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      spell.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || spell.effect_type === filterType;
+    const matchesLevel =
+      filterLevel === 'all' || getSpellLevelCategory(spell.unlocked_at_level) === filterLevel;
 
-  const hasChanges = JSON.stringify(selectedSpells) !== JSON.stringify(originalSelection)
+    return matchesSearch && matchesType && matchesLevel;
+  });
+
+  const hasChanges = JSON.stringify(selectedSpells) !== JSON.stringify(originalSelection);
 
   if (loading) {
     return (
@@ -235,7 +235,7 @@ function SpellsPage() {
           <p className="text-muted-foreground">Carregando magias...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!character) {
@@ -248,7 +248,7 @@ function SpellsPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -257,8 +257,8 @@ function SpellsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => navigate({ to: '/game/play/hub', search: { character: characterId } })}
             >
@@ -271,13 +271,14 @@ function SpellsPage() {
                 Grimório de Magias
               </h1>
               <p className="text-muted-foreground">
-                Gerencie as magias de <span className="font-medium text-primary">{character.name}</span>
+                Gerencie as magias de{' '}
+                <span className="font-medium text-primary">{character.name}</span>
               </p>
             </div>
           </div>
-          
+
           {hasChanges && (
-            <Button 
+            <Button
               onClick={handleSaveSelection}
               disabled={saving}
               size="lg"
@@ -310,11 +311,15 @@ function SpellsPage() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-500">{spellStats.total_available}</div>
+                  <div className="text-2xl font-bold text-blue-500">
+                    {spellStats.total_available}
+                  </div>
                   <div className="text-sm text-muted-foreground">Magias Disponíveis</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-500">{spellStats.total_equipped}/3</div>
+                  <div className="text-2xl font-bold text-purple-500">
+                    {spellStats.total_equipped}/3
+                  </div>
                   <div className="text-sm text-muted-foreground">Magias Equipadas</div>
                 </div>
                 <div className="text-center">
@@ -322,7 +327,9 @@ function SpellsPage() {
                   <div className="text-sm text-muted-foreground">Nível Atual</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-500">{spellStats.highest_level_unlocked}</div>
+                  <div className="text-2xl font-bold text-green-500">
+                    {spellStats.highest_level_unlocked}
+                  </div>
                   <div className="text-sm text-muted-foreground">Máximo Desbloqueado</div>
                 </div>
               </div>
@@ -345,7 +352,7 @@ function SpellsPage() {
                     <Input
                       placeholder="Buscar magias..."
                       value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onChange={e => setSearchTerm(e.target.value)}
                       className="pl-10"
                     />
                   </div>
@@ -353,7 +360,7 @@ function SpellsPage() {
                 <div className="flex gap-2">
                   <select
                     value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as SpellEffectType | 'all')}
+                    onChange={e => setFilterType(e.target.value as SpellEffectType | 'all')}
                     className="px-3 py-2 border border-border rounded-md bg-background text-sm"
                   >
                     <option value="all">Todos os Tipos</option>
@@ -366,7 +373,9 @@ function SpellsPage() {
                   </select>
                   <select
                     value={filterLevel}
-                    onChange={(e) => setFilterLevel(e.target.value as 'early' | 'mid' | 'high' | 'all')}
+                    onChange={e =>
+                      setFilterLevel(e.target.value as 'early' | 'mid' | 'high' | 'all')
+                    }
                     className="px-3 py-2 border border-border rounded-md bg-background text-sm"
                   >
                     <option value="all">Todos os Níveis</option>
@@ -380,43 +389,47 @@ function SpellsPage() {
             <CardContent>
               <ScrollArea className="h-[600px]">
                 <div className="grid gap-3">
-                  {filteredSpells.map((spell) => {
-                    const isSelected = Object.values(selectedSpells).some(selected => selected?.id === spell.id)
-                    const isAvailable = spell.unlocked_at_level <= character.level
-                    
+                  {filteredSpells.map(spell => {
+                    const isSelected = Object.values(selectedSpells).some(
+                      selected => selected?.id === spell.id
+                    );
+                    const isAvailable = spell.unlocked_at_level <= character.level;
+
                     return (
-                      <Card 
+                      <Card
                         key={spell.id}
                         className={`transition-all cursor-pointer ${
-                          isSelected 
-                            ? 'ring-2 ring-purple-500 bg-purple-500/10' 
-                            : isAvailable 
-                              ? 'hover:bg-accent/50' 
+                          isSelected
+                            ? 'ring-2 ring-purple-500 bg-purple-500/10'
+                            : isAvailable
+                              ? 'hover:bg-accent/50'
                               : 'opacity-50 cursor-not-allowed'
                         } ${getSpellColor(spell.effect_type)}`}
                         onClick={() => {
-                          if (!isAvailable) return
-                          
+                          if (!isAvailable) return;
+
                           // Se já está selecionada, desselecionar
                           if (isSelected) {
                             Object.keys(selectedSpells).forEach(key => {
-                              const slotKey = key as keyof SpellSelectionState
+                              const slotKey = key as keyof SpellSelectionState;
                               if (selectedSpells[slotKey]?.id === spell.id) {
-                                handleSlotClear(slotKey)
+                                handleSlotClear(slotKey);
                               }
-                            })
-                            return
+                            });
+                            return;
                           }
-                          
+
                           // Encontrar primeiro slot vazio
                           if (!selectedSpells.slot1) {
-                            handleSpellSelect(spell, 'slot1')
+                            handleSpellSelect(spell, 'slot1');
                           } else if (!selectedSpells.slot2) {
-                            handleSpellSelect(spell, 'slot2')
+                            handleSpellSelect(spell, 'slot2');
                           } else if (!selectedSpells.slot3) {
-                            handleSpellSelect(spell, 'slot3')
+                            handleSpellSelect(spell, 'slot3');
                           } else {
-                            toast.warning('Você já selecionou 3 magias! Remova uma para adicionar outra.')
+                            toast.warning(
+                              'Você já selecionou 3 magias! Remova uma para adicionar outra.'
+                            );
                           }
                         }}
                       >
@@ -429,7 +442,10 @@ function SpellsPage() {
                               <div className="flex items-center gap-2 mb-1">
                                 <h3 className="font-semibold truncate">{spell.name}</h3>
                                 {isSelected && (
-                                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-400">
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-purple-500/20 text-purple-400"
+                                  >
                                     Selecionada
                                   </Badge>
                                 )}
@@ -455,8 +471,8 @@ function SpellsPage() {
                                   <Target className="h-3 w-3" />
                                   {spell.effect_value}
                                 </Badge>
-                                <Badge 
-                                  variant="outline" 
+                                <Badge
+                                  variant="outline"
                                   className={`flex items-center gap-1 ${getLevelCategoryColor(spell.unlocked_at_level)}`}
                                 >
                                   <Star className="h-3 w-3" />
@@ -467,9 +483,9 @@ function SpellsPage() {
                           </div>
                         </CardContent>
                       </Card>
-                    )
+                    );
                   })}
-                  
+
                   {filteredSpells.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -490,16 +506,16 @@ function SpellsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {([1, 2, 3] as const).map((slotNumber) => {
-                const slotKey = `slot${slotNumber}` as keyof SpellSelectionState
-                const selectedSpell = selectedSpells[slotKey]
-                
+              {([1, 2, 3] as const).map(slotNumber => {
+                const slotKey = `slot${slotNumber}` as keyof SpellSelectionState;
+                const selectedSpell = selectedSpells[slotKey];
+
                 return (
-                  <Card 
+                  <Card
                     key={slotNumber}
                     className={`p-4 border-2 border-dashed transition-all ${
-                      selectedSpell 
-                        ? `border-solid ${getSpellColor(selectedSpell.effect_type)}` 
+                      selectedSpell
+                        ? `border-solid ${getSpellColor(selectedSpell.effect_type)}`
                         : 'border-muted-foreground/20 hover:border-muted-foreground/40'
                     }`}
                   >
@@ -518,11 +534,13 @@ function SpellsPage() {
                         </Button>
                       )}
                     </div>
-                    
+
                     {selectedSpell ? (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className={`p-1 rounded ${getSpellColor(selectedSpell.effect_type)}`}>
+                          <div
+                            className={`p-1 rounded ${getSpellColor(selectedSpell.effect_type)}`}
+                          >
                             {getSpellIcon(selectedSpell.effect_type)}
                           </div>
                           <div>
@@ -558,9 +576,9 @@ function SpellsPage() {
                       </div>
                     )}
                   </Card>
-                )
+                );
               })}
-              
+
               {hasChanges && (
                 <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                   <p className="text-sm text-yellow-400 flex items-center gap-2">
@@ -574,5 +592,5 @@ function SpellsPage() {
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

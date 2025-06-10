@@ -13,20 +13,24 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ type, hasFilters = false
       case 'equipment':
         return {
           icon: Package,
-          title: hasFilters ? 'Nenhum equipamento encontrado com os filtros aplicados' : 'Nenhum equipamento no inventário',
-          subtitle: hasFilters ? 'Tente ajustar os filtros de busca' : 'Derrote inimigos para obter equipamentos'
+          title: hasFilters
+            ? 'Nenhum equipamento encontrado com os filtros aplicados'
+            : 'Nenhum equipamento no inventário',
+          subtitle: hasFilters
+            ? 'Tente ajustar os filtros de busca'
+            : 'Derrote inimigos para obter equipamentos',
         };
       case 'consumables':
         return {
           icon: Zap,
           title: 'Nenhum consumível no inventário',
-          subtitle: 'Consumíveis podem ser comprados na loja ou encontrados em batalhas'
+          subtitle: 'Consumíveis podem ser comprados na loja ou encontrados em batalhas',
         };
       case 'drops':
         return {
           icon: Sparkles,
           title: 'Nenhum material no inventário',
-          subtitle: 'Derrote monstros para obter materiais valiosos'
+          subtitle: 'Derrote monstros para obter materiais valiosos',
         };
     }
   };
@@ -40,4 +44,4 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ type, hasFilters = false
       <p className="text-sm text-muted-foreground mt-2">{subtitle}</p>
     </Card>
   );
-}; 
+};

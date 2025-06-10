@@ -35,4 +35,4 @@ export interface CriteriosPesquisaUser {
   email?: string;
   role?: UserRole;
   ativo?: boolean;
-} 
+}

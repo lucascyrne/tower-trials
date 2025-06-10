@@ -125,7 +125,7 @@ export const RARITY_MULTIPLIERS = {
   uncommon: 1.2,
   rare: 1.5,
   epic: 2.0,
-  legendary: 3.0
+  legendary: 3.0,
 } as const;
 
 // Interface para compatibilidade com código legado
@@ -146,7 +146,7 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     critical_chance: 0,
     critical_damage: 0,
     double_attack_chance: 0,
-    magic_damage: 0
+    magic_damage: 0,
   };
 
   // Função helper para adicionar bônus de um equipamento
@@ -172,8 +172,12 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   addEquipmentBonus(slots.accessory_2 ?? null);
 
   // Bônus especial para dual-wielding (15% extra de ataque se ambas as mãos tiverem armas)
-  if (slots.main_hand && slots.off_hand && 
-      slots.main_hand.type === 'weapon' && slots.off_hand.type === 'weapon') {
+  if (
+    slots.main_hand &&
+    slots.off_hand &&
+    slots.main_hand.type === 'weapon' &&
+    slots.off_hand.type === 'weapon'
+  ) {
     totalBonus.atk = Math.floor(totalBonus.atk * 1.15);
   }
 
@@ -210,19 +214,39 @@ export const compareEquipment = (
   newEquipment: Equipment
 ): EquipmentComparison[] => {
   const comparisons: EquipmentComparison[] = [];
-  
+
   const stats = [
     { name: 'Ataque', current: currentEquipment?.atk_bonus || 0, new: newEquipment.atk_bonus },
     { name: 'Defesa', current: currentEquipment?.def_bonus || 0, new: newEquipment.def_bonus },
     { name: 'Mana', current: currentEquipment?.mana_bonus || 0, new: newEquipment.mana_bonus },
-    { name: 'Velocidade', current: currentEquipment?.speed_bonus || 0, new: newEquipment.speed_bonus },
+    {
+      name: 'Velocidade',
+      current: currentEquipment?.speed_bonus || 0,
+      new: newEquipment.speed_bonus,
+    },
     { name: 'HP', current: currentEquipment?.hp_bonus || 0, new: newEquipment.hp_bonus },
-    { name: 'Chance Crítica', current: currentEquipment?.critical_chance_bonus || 0, new: newEquipment.critical_chance_bonus },
-    { name: 'Dano Crítico', current: currentEquipment?.critical_damage_bonus || 0, new: newEquipment.critical_damage_bonus },
-    { name: 'Duplo Ataque', current: currentEquipment?.double_attack_chance_bonus || 0, new: newEquipment.double_attack_chance_bonus },
-    { name: 'Dano Mágico', current: currentEquipment?.magic_damage_bonus || 0, new: newEquipment.magic_damage_bonus },
+    {
+      name: 'Chance Crítica',
+      current: currentEquipment?.critical_chance_bonus || 0,
+      new: newEquipment.critical_chance_bonus,
+    },
+    {
+      name: 'Dano Crítico',
+      current: currentEquipment?.critical_damage_bonus || 0,
+      new: newEquipment.critical_damage_bonus,
+    },
+    {
+      name: 'Duplo Ataque',
+      current: currentEquipment?.double_attack_chance_bonus || 0,
+      new: newEquipment.double_attack_chance_bonus,
+    },
+    {
+      name: 'Dano Mágico',
+      current: currentEquipment?.magic_damage_bonus || 0,
+      new: newEquipment.magic_damage_bonus,
+    },
   ];
-  
+
   stats.forEach(stat => {
     const difference = stat.new - stat.current;
     if (difference !== 0) {
@@ -231,10 +255,10 @@ export const compareEquipment = (
         current_value: stat.current,
         new_value: stat.new,
         difference,
-        is_improvement: difference > 0
+        is_improvement: difference > 0,
       });
     }
   });
-  
+
   return comparisons;
-}; 
+};

@@ -23,11 +23,11 @@ export function LogProvider({ children }: LogProviderProps) {
     setGameLog(prev => {
       const recentLogs = prev.slice(-5);
       const isDuplicate = recentLogs.some(log => log.text === message && log.type === type);
-      
+
       if (isDuplicate) {
         return prev;
       }
-      
+
       return [...prev, { text: message, type }];
     });
   }, []);
@@ -42,20 +42,16 @@ export function LogProvider({ children }: LogProviderProps) {
     [gameMessage, gameLog, addGameLogMessage, setGameMessage]
   );
 
-  return (
-    <LogContext.Provider value={contextValue}>
-      {children}
-    </LogContext.Provider>
-  );
+  return <LogContext.Provider value={contextValue}>{children}</LogContext.Provider>;
 }
 
 // Hook personalizado para usar o contexto
 export function useGameLog() {
   const context = useContext(LogContext);
-  
+
   if (!context) {
     throw new Error('useGameLog deve ser usado dentro de um LogProvider');
   }
-  
+
   return context;
-} 
+}

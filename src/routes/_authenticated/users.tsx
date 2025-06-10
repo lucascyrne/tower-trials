@@ -1,9 +1,9 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { useUser } from '@/resources/user/user-hook'
-import { type CriteriosPesquisaUser, type UserRole } from '@/resources/user/user-model'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { useUser } from '@/resources/user/user-hook';
+import { type CriteriosPesquisaUser, type UserRole } from '@/resources/user/user-model';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,49 +11,49 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature'
-import { Badge } from '@/components/ui/badge'
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature';
+import { Badge } from '@/components/ui/badge';
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: 'Administrador',
   PLAYER: 'Jogador',
-}
+};
 
 export const Route = createFileRoute('/_authenticated/users')({
   component: UsersPage,
-})
+});
 
 function UsersPage() {
-  const navigate = useNavigate()
-  const { users, loading, searchUsers } = useUser()
+  const navigate = useNavigate();
+  const { users, loading, searchUsers } = useUser();
   const [filtros, setFiltros] = useState<CriteriosPesquisaUser>({
     page: 1,
     limit: 10,
-  })
+  });
 
   useEffect(() => {
-    searchUsers(filtros)
-  }, [filtros, searchUsers])
+    searchUsers(filtros);
+  }, [filtros, searchUsers]);
 
   const getBadgeColor = (role: UserRole) => {
     switch (role) {
       case 'ADMIN':
-        return 'bg-red-500'
+        return 'bg-red-500';
       case 'PLAYER':
-        return 'bg-blue-500'
+        return 'bg-blue-500';
       default:
-        return 'bg-gray-500'
+        return 'bg-gray-500';
     }
-  }
+  };
 
   return (
     <AdministratorOnlyFeature>
@@ -73,16 +73,16 @@ function UsersPage() {
               <Input
                 placeholder="Nome"
                 value={filtros.nome || ''}
-                onChange={(e) => setFiltros({ ...filtros, nome: e.target.value })}
+                onChange={e => setFiltros({ ...filtros, nome: e.target.value })}
               />
               <Input
                 placeholder="Email"
                 value={filtros.email || ''}
-                onChange={(e) => setFiltros({ ...filtros, email: e.target.value })}
+                onChange={e => setFiltros({ ...filtros, email: e.target.value })}
               />
               <Select
                 value={filtros.role}
-                onValueChange={(value) => setFiltros({ ...filtros, role: value as UserRole })}
+                onValueChange={value => setFiltros({ ...filtros, role: value as UserRole })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Tipo de Usuário" />
@@ -122,7 +122,7 @@ function UsersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((user) => (
+                    users.map(user => (
                       <TableRow key={user.id}>
                         <TableCell>{user.nome}</TableCell>
                         <TableCell>{user.email}</TableCell>
@@ -152,5 +152,5 @@ function UsersPage() {
         </Card>
       </div>
     </AdministratorOnlyFeature>
-  )
-} 
+  );
+}

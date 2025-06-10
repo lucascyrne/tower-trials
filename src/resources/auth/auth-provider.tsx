@@ -39,16 +39,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const loadUser = useCallback(async () => {
     setState(prev => {
       if (!prev.isLoading) return prev;
-      
+
       return {
         ...prev,
-        loading: { ...prev.loading, onAuthUserChanged: true }
+        loading: { ...prev.loading, onAuthUserChanged: true },
       };
     });
 
     try {
       const session = await AuthService.getSession();
-      
+
       if (!session) {
         setState({
           ...initialState,
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (JSON.stringify(session) === JSON.stringify(prev.session)) {
           return prev;
         }
-        
+
         return {
           ...prev,
           session,
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       ...prev,
       loading: { ...prev.loading, signOut: true },
     }));
-    
+
     try {
       await AuthService.signOut();
       setState({
@@ -226,7 +226,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signOut,
       updateProfile,
     }),
-    [state],
+    [state]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

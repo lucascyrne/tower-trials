@@ -15,35 +15,41 @@ interface EquipmentSlotPanelProps {
 export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   equippedSlots,
   onSlotClick,
-  onSlotLongPress
+  onSlotLongPress,
 }) => {
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isLongPress, setIsLongPress] = useState(false);
 
-  const startPress = useCallback((slotType: string) => {
-    setIsLongPress(false);
-    const timer = setTimeout(() => {
-      setIsLongPress(true);
-      // Chamar o callback do componente pai que fará a navegação
-      onSlotLongPress(slotType);
-    }, 800); // 800ms para dar tempo suficiente para o usuário perceber
-    setPressTimer(timer);
-  }, [onSlotLongPress]);
+  const startPress = useCallback(
+    (slotType: string) => {
+      setIsLongPress(false);
+      const timer = setTimeout(() => {
+        setIsLongPress(true);
+        // Chamar o callback do componente pai que fará a navegação
+        onSlotLongPress(slotType);
+      }, 800); // 800ms para dar tempo suficiente para o usuário perceber
+      setPressTimer(timer);
+    },
+    [onSlotLongPress]
+  );
 
-  const endPress = useCallback((slotType: string, item: Equipment | null) => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      setPressTimer(null);
-    }
-    
-    // Só executa o click se não foi um long press
-    if (!isLongPress) {
-      onSlotClick(slotType, item);
-    }
-    
-    // Reset do estado após um pequeno delay
-    setTimeout(() => setIsLongPress(false), 100);
-  }, [pressTimer, isLongPress, onSlotClick]);
+  const endPress = useCallback(
+    (slotType: string, item: Equipment | null) => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        setPressTimer(null);
+      }
+
+      // Só executa o click se não foi um long press
+      if (!isLongPress) {
+        onSlotClick(slotType, item);
+      }
+
+      // Reset do estado após um pequeno delay
+      setTimeout(() => setIsLongPress(false), 100);
+    },
+    [pressTimer, isLongPress, onSlotClick]
+  );
 
   const cancelPress = useCallback(() => {
     if (pressTimer) {
@@ -82,13 +88,13 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
 
   const getRarityColor = (rarity?: string) => {
     if (!rarity) return 'border-slate-600 bg-slate-800/30';
-    
+
     const colors = {
       common: 'border-slate-600 bg-slate-800/30',
       uncommon: 'border-emerald-600 bg-emerald-900/30',
       rare: 'border-blue-600 bg-blue-900/30',
       epic: 'border-purple-600 bg-purple-900/30',
-      legendary: 'border-amber-600 bg-amber-900/30'
+      legendary: 'border-amber-600 bg-amber-900/30',
     };
     return colors[rarity as keyof typeof colors] || colors.common;
   };
@@ -104,8 +110,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           <Button
             variant="outline"
             className={`w-full h-32 p-4 border-2 transition-all duration-300 ${
-              isEmpty 
-                ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70' 
+              isEmpty
+                ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70'
                 : `${getRarityColor(item.rarity)} hover:brightness-110 shadow-lg`
             } hover:scale-[1.02] active:scale-[0.98] select-none`}
             // Mouse events
@@ -117,7 +123,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
             onTouchEnd={() => endPress(slotType, item ?? null)}
             onTouchCancel={cancelPress}
             // Prevent context menu on long press
-            onContextMenu={(e) => e.preventDefault()}
+            onContextMenu={e => e.preventDefault()}
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className={`p-3 rounded-lg ${isEmpty ? 'bg-slate-700/30' : 'bg-black/20'}`}>
@@ -137,10 +143,10 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
               )}
             </div>
           </Button>
-          
+
           {/* Indicador visual para long press */}
           <div className="absolute inset-0 rounded-lg border-2 border-transparent group-active:border-amber-400/50 transition-colors duration-200 pointer-events-none" />
-          
+
           {/* Tooltip sutil */}
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
             <div className="bg-slate-900/90 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 shadow-lg whitespace-nowrap">
@@ -155,13 +161,14 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   const renderArmorSlot = (index: number) => {
     // Apenas o primeiro slot (peitoral) está habilitado
     const isEnabled = index === 0;
-    const slotName = index === 0 ? 'Peitoral' : index === 1 ? 'Capacete' : index === 2 ? 'Pernas' : 'Botas';
-    
+    const slotName =
+      index === 0 ? 'Peitoral' : index === 1 ? 'Capacete' : index === 2 ? 'Pernas' : 'Botas';
+
     if (isEnabled) {
       // Usar o slot de armor existente para o peitoral
       return renderEquipmentSlot('armor', slotName);
     }
-    
+
     return (
       <div className="space-y-3">
         <label className="text-sm font-medium text-slate-300 block text-center">{slotName}</label>
@@ -186,7 +193,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   const renderAccessorySlot = (index: number) => {
     const hasItem = index === 0 && equippedSlots.accessory;
     const isDisabled = index > 0;
-    
+
     return (
       <div className="space-y-3">
         <label className="text-sm font-medium text-slate-300 block text-center">
@@ -199,8 +206,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
               hasItem
                 ? `${getRarityColor(equippedSlots.accessory!.rarity)} hover:brightness-110 shadow-lg hover:scale-[1.02]`
                 : isDisabled
-                ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 opacity-60'
-                : 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70 hover:scale-[1.02]'
+                  ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 opacity-60'
+                  : 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70 hover:scale-[1.02]'
             } active:scale-[0.98] select-none`}
             // Mouse events
             onMouseDown={() => index === 0 && startPress('accessory')}
@@ -211,7 +218,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
             onTouchEnd={() => index === 0 && endPress('accessory', equippedSlots.accessory ?? null)}
             onTouchCancel={cancelPress}
             // Prevent context menu on long press
-            onContextMenu={(e) => e.preventDefault()}
+            onContextMenu={e => e.preventDefault()}
             disabled={isDisabled}
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -221,8 +228,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
               {hasItem ? (
                 <div className="text-center space-y-1">
                   <div className="text-sm font-medium text-slate-200 leading-tight max-w-full">
-                    {equippedSlots.accessory!.name.length > 12 
-                      ? `${equippedSlots.accessory!.name.substring(0, 12)}...` 
+                    {equippedSlots.accessory!.name.length > 12
+                      ? `${equippedSlots.accessory!.name.substring(0, 12)}...`
                       : equippedSlots.accessory!.name}
                   </div>
                   <Badge variant="outline" className="text-xs px-2 py-0.5">
@@ -236,12 +243,12 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
               )}
             </div>
           </Button>
-          
+
           {/* Indicador visual para long press */}
           {!isDisabled && (
             <div className="absolute inset-0 rounded-lg border-2 border-transparent group-active:border-amber-400/50 transition-colors duration-200 pointer-events-none" />
           )}
-          
+
           {/* Tooltip sutil */}
           {!isDisabled && (
             <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
@@ -277,10 +284,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Armaduras</h3>
           <div className="grid grid-cols-2 gap-6">
-            {[0, 1, 2, 3].map((index) => (
-              <div key={`armor-slot-${index}`}>
-                {renderArmorSlot(index)}
-              </div>
+            {[0, 1, 2, 3].map(index => (
+              <div key={`armor-slot-${index}`}>{renderArmorSlot(index)}</div>
             ))}
           </div>
         </div>
@@ -289,10 +294,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Acessórios</h3>
           <div className="grid grid-cols-2 gap-6">
-            {[0, 1, 2, 3].map((index) => (
-              <div key={`accessory-slot-${index}`}>
-                {renderAccessorySlot(index)}
-              </div>
+            {[0, 1, 2, 3].map(index => (
+              <div key={`accessory-slot-${index}`}>{renderAccessorySlot(index)}</div>
             ))}
           </div>
         </div>
@@ -306,4 +309,4 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
       </CardContent>
     </Card>
   );
-}; 
+};

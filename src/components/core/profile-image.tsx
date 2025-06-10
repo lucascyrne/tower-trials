@@ -6,7 +6,7 @@ export enum ProfileImageSize {
   MEDIUM = 'medium',
   SEMIMEDIUM = 'semimedium',
   SMALL = 'small',
-  TINY = 'tiny'
+  TINY = 'tiny',
 }
 
 interface Props {
@@ -21,7 +21,7 @@ const profileImageSizeClasses = {
   [ProfileImageSize.MEDIUM]: 'w-24 h-24',
   [ProfileImageSize.SEMIMEDIUM]: 'w-16 h-16',
   [ProfileImageSize.SMALL]: 'w-14 h-14',
-  [ProfileImageSize.TINY]: 'w-8 h-8'
+  [ProfileImageSize.TINY]: 'w-8 h-8',
 };
 
 const iconSize = {
@@ -29,14 +29,14 @@ const iconSize = {
   [ProfileImageSize.MEDIUM]: 36,
   [ProfileImageSize.SEMIMEDIUM]: 32,
   [ProfileImageSize.SMALL]: 24,
-  [ProfileImageSize.TINY]: 12
+  [ProfileImageSize.TINY]: 12,
 };
 
 function ProfileImage({
   uploadedImage,
   imageUrl,
   size = ProfileImageSize.DEFAULT,
-  disabled = false
+  disabled = false,
 }: Props) {
   const baseClasses =
     'flex justify-center items-center text-4xl font-bold rounded-full bg-primary/20 text-primary';
@@ -66,7 +66,7 @@ function ProfileImage({
           style={{
             backgroundImage: uploadedImage ? `url(${getImageUrl()})` : `url(${imageUrl})`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center'
+            backgroundPosition: 'center',
           }}
         />
       </div>

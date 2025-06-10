@@ -1,6 +1,6 @@
-import { 
-  type Character, 
-  type CreateCharacterDTO, 
+import {
+  type Character,
+  type CreateCharacterDTO,
   type CharacterStats,
 } from '../models/character.model';
 import { supabase } from '@/lib/supabase';
@@ -30,10 +30,9 @@ export class CharacterService {
         return { data: cachedResult.characters, error: null, success: true };
       }
 
-      const { data, error } = await supabase
-        .rpc('get_user_characters', {
-          p_user_id: userId
-        });
+      const { data, error } = await supabase.rpc('get_user_characters', {
+        p_user_id: userId,
+      });
 
       if (error) throw error;
 
@@ -43,7 +42,11 @@ export class CharacterService {
       return { data: data as Character[], error: null, success: true };
     } catch (error) {
       console.error('Erro ao buscar personagens:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagens', success: false };
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagens',
+        success: false,
+      };
     }
   }
 
@@ -61,7 +64,9 @@ export class CharacterService {
       // Verificar se já existe uma requisição pendente
       const pendingRequest = CharacterCacheService.getPendingRequest(characterId);
       if (pendingRequest) {
-        console.log(`[CharacterService] Reutilizando requisição pendente para personagem ${characterId}`);
+        console.log(
+          `[CharacterService] Reutilizando requisição pendente para personagem ${characterId}`
+        );
         return pendingRequest;
       }
 
@@ -70,14 +75,16 @@ export class CharacterService {
       CharacterCacheService.setPendingRequest(characterId, request);
 
       const result = await request;
-      
+
       // Aplicar cura automática se o personagem foi carregado com sucesso
       if (result.success && result.data) {
         console.log(`[CharacterService] Aplicando cura automática para ${result.data.name}`);
         const healResult = await CharacterHealingService.applyAutoHeal(characterId);
-        
+
         if (healResult.success && healResult.data && healResult.data.healed) {
-          console.log(`[CharacterService] ${result.data.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`);
+          console.log(
+            `[CharacterService] ${result.data.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`
+          );
           return { data: healResult.data.character, error: null, success: true };
         }
       }
@@ -85,7 +92,11 @@ export class CharacterService {
       return result;
     } catch (error) {
       console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagem', success: false };
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
+        success: false,
+      };
     }
   }
 
@@ -93,12 +104,14 @@ export class CharacterService {
    * Buscar personagem do servidor
    * @private
    */
-  private static async fetchCharacterFromServer(characterId: string): Promise<ServiceResponse<Character>> {
+  private static async fetchCharacterFromServer(
+    characterId: string
+  ): Promise<ServiceResponse<Character>> {
     try {
       console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
       const { data, error } = await supabase
         .rpc('get_character_full_stats', {
-          p_character_id: characterId
+          p_character_id: characterId,
         })
         .single();
 
@@ -149,13 +162,13 @@ export class CharacterService {
         is_alive: true,
         created_at: '',
         updated_at: '',
-        last_activity: undefined
+        last_activity: undefined,
       };
 
       // Buscar dados adicionais que não estão na função get_character_full_stats
       const { data: basicData, error: basicError } = await supabase
         .rpc('get_character', {
-          p_character_id: character.id
+          p_character_id: character.id,
         })
         .single();
 
@@ -169,20 +182,31 @@ export class CharacterService {
         character.last_activity = basicCharacterData.last_activity;
       }
 
-      console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor})`);
+      console.log(
+        `[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor})`
+      );
       CharacterCacheService.setCachedCharacter(characterId, character);
 
       return { data: character, error: null, success: true };
     } catch (error) {
-      console.error('Erro ao buscar personagem do servidor:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagem', success: false };
+      console.error(
+        'Erro ao buscar personagem do servidor:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
+        success: false,
+      };
     }
   }
 
   /**
    * Criar um novo personagem
    */
-  static async createCharacter(data: CreateCharacterDTO): Promise<ServiceResponse<{ id: string; progressionUpdated?: boolean }>> {
+  static async createCharacter(
+    data: CreateCharacterDTO
+  ): Promise<ServiceResponse<{ id: string; progressionUpdated?: boolean }>> {
     try {
       // Validar nome do personagem no frontend primeiro
       const nameValidation = NameValidationService.validateCharacterName(data.name);
@@ -190,7 +214,7 @@ export class CharacterService {
         return {
           data: null,
           error: nameValidation.error || 'Nome inválido',
-          success: false
+          success: false,
         };
       }
 
@@ -199,11 +223,11 @@ export class CharacterService {
       if (!limitInfo.success || !limitInfo.data?.can_create) {
         const nextSlotLevel = limitInfo.data?.next_slot_required_level || 0;
         const currentSlots = limitInfo.data?.available_slots || 3;
-        
+
         return {
           data: null,
           error: `Limite de personagens atingido. Para criar o ${currentSlots + 1}º personagem, você precisa de ${nextSlotLevel} níveis totais entre todos os seus personagens.`,
-          success: false
+          success: false,
         };
       }
 
@@ -212,24 +236,27 @@ export class CharacterService {
 
       // Verificar se o usuário já tem personagem com nome similar
       const existingCharacters = await this.getUserCharacters(data.user_id);
-      if (existingCharacters.success && existingCharacters.data && existingCharacters.data.length > 0) {
+      if (
+        existingCharacters.success &&
+        existingCharacters.data &&
+        existingCharacters.data.length > 0
+      ) {
         const existingNames = existingCharacters.data.map(c => c.name);
         if (NameValidationService.isTooSimilar(formattedName, existingNames)) {
           const suggestions = NameValidationService.generateNameSuggestions(formattedName);
           return {
             data: null,
             error: `Nome muito similar a um personagem existente. Sugestões: ${suggestions.join(', ')}`,
-            success: false
+            success: false,
           };
         }
       }
 
       // Criar novo personagem usando a função RPC com nome formatado
-      const { data: result, error } = await supabase
-        .rpc('create_character', {
-          p_user_id: data.user_id,
-          p_name: formattedName
-        });
+      const { data: result, error } = await supabase.rpc('create_character', {
+        p_user_id: data.user_id,
+        p_name: formattedName,
+      });
 
       if (error) {
         // Tratar erros específicos de validação do banco
@@ -248,7 +275,11 @@ export class CharacterService {
       return { data: { id: result }, error: null, success: true };
     } catch (error) {
       console.error('Erro ao criar personagem:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao criar personagem', success: false };
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao criar personagem',
+        success: false,
+      };
     }
   }
 
@@ -259,23 +290,26 @@ export class CharacterService {
     try {
       // Obter dados do personagem antes de deletar para invalidar cache do usuário
       const character = await this.getCharacter(characterId);
-      
+
       // Se o personagem existe e tem progresso, salvar no ranking histórico primeiro
       if (character.success && character.data && character.data.floor > 0) {
-        console.log(`[CharacterService] Salvando personagem ${character.data.name} no ranking histórico antes de deletar`);
-        
+        console.log(
+          `[CharacterService] Salvando personagem ${character.data.name} no ranking histórico antes de deletar`
+        );
+
         try {
           // Usar a nova função para salvar no ranking histórico
-          const { error: rankingError } = await supabase
-            .rpc('save_ranking_entry_on_death', {
-              p_character_id: characterId
-            });
-          
+          const { error: rankingError } = await supabase.rpc('save_ranking_entry_on_death', {
+            p_character_id: characterId,
+          });
+
           if (rankingError) {
             console.error('Erro ao salvar no ranking histórico:', rankingError);
             // Continua com a deleção mesmo se falhar o ranking
           } else {
-            console.log(`[CharacterService] Personagem ${character.data.name} salvo no ranking histórico com sucesso`);
+            console.log(
+              `[CharacterService] Personagem ${character.data.name} salvo no ranking histórico com sucesso`
+            );
           }
         } catch (rankingError) {
           console.error('Erro ao salvar no ranking histórico:', rankingError);
@@ -284,16 +318,15 @@ export class CharacterService {
       }
 
       // Deletar o personagem usando a função RPC do banco
-      const { error } = await supabase
-        .rpc('delete_character', {
-          p_character_id: characterId
-        });
+      const { error } = await supabase.rpc('delete_character', {
+        p_character_id: characterId,
+      });
 
       if (error) throw error;
 
       // Invalidar cache do personagem deletado
       CharacterCacheService.invalidateCharacterCache(characterId);
-      
+
       // Invalidar cache do usuário para atualizar progressão
       if (character.success && character.data) {
         CharacterCacheService.invalidateUserCache(character.data.user_id);
@@ -314,17 +347,17 @@ export class CharacterService {
     try {
       // CRÍTICO: Usar a mesma fonte de dados que getCharacterForGame para garantir consistência
       const gamePlayerResponse = await this.getCharacterForGame(characterId);
-      
+
       if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
         return {
           success: false,
           error: gamePlayerResponse.error || 'Erro ao carregar dados do personagem',
-          data: null
+          data: null,
         };
       }
 
       const gamePlayer = gamePlayerResponse.data;
-      
+
       // Converter GamePlayer para CharacterStats usando exatamente os mesmos valores
       const characterStats: CharacterStats = {
         level: gamePlayer.level,
@@ -338,7 +371,7 @@ export class CharacterService {
         atk: gamePlayer.atk,
         def: gamePlayer.def,
         speed: gamePlayer.speed,
-        
+
         // Atributos primários
         strength: gamePlayer.strength || 10,
         dexterity: gamePlayer.dexterity || 10,
@@ -347,26 +380,26 @@ export class CharacterService {
         vitality: gamePlayer.vitality || 10,
         luck: gamePlayer.luck || 10,
         attribute_points: gamePlayer.attribute_points || 0,
-        
+
         // Stats derivados
         critical_chance: gamePlayer.critical_chance || 0,
         critical_damage: gamePlayer.critical_damage || 0,
         magic_damage_bonus: gamePlayer.magic_damage_bonus || 0,
         magic_attack: gamePlayer.magic_attack || 0,
-        
+
         // Habilidades
         sword_mastery: gamePlayer.sword_mastery || 1,
         axe_mastery: gamePlayer.axe_mastery || 1,
         blunt_mastery: gamePlayer.blunt_mastery || 1,
         defense_mastery: gamePlayer.defense_mastery || 1,
         magic_mastery: gamePlayer.magic_mastery || 1,
-        
+
         sword_mastery_xp: gamePlayer.sword_mastery_xp || 0,
         axe_mastery_xp: gamePlayer.axe_mastery_xp || 0,
         blunt_mastery_xp: gamePlayer.blunt_mastery_xp || 0,
         defense_mastery_xp: gamePlayer.defense_mastery_xp || 0,
         magic_mastery_xp: gamePlayer.magic_mastery_xp || 0,
-        
+
         // Stats base
         base_hp: gamePlayer.base_hp || gamePlayer.base_max_hp,
         base_max_hp: gamePlayer.base_max_hp,
@@ -375,13 +408,13 @@ export class CharacterService {
         base_atk: gamePlayer.base_atk,
         base_def: gamePlayer.base_def,
         base_speed: gamePlayer.base_speed,
-        
+
         // Bônus de equipamentos
         equipment_hp_bonus: gamePlayer.equipment_hp_bonus || 0,
         equipment_mana_bonus: gamePlayer.equipment_mana_bonus || 0,
         equipment_atk_bonus: gamePlayer.equipment_atk_bonus || 0,
         equipment_def_bonus: gamePlayer.equipment_def_bonus || 0,
-        equipment_speed_bonus: gamePlayer.equipment_speed_bonus || 0
+        equipment_speed_bonus: gamePlayer.equipment_speed_bonus || 0,
       };
 
       return { success: true, error: null, data: characterStats };
@@ -390,7 +423,7 @@ export class CharacterService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
-        data: null
+        data: null,
       };
     }
   }
@@ -413,21 +446,20 @@ export class CharacterService {
         return {
           success: false,
           error: 'Personagem não encontrado',
-          data: null
+          data: null,
         };
       }
 
       // Calcular stats derivados usando o CharacterStatsService
       const derivedStats = await CharacterStatsService.calculateDerivedStats(charData);
-      
+
       // Carregar magias equipadas do personagem
-      const spellsResponse = await import('../spell.service').then(m => 
+      const spellsResponse = await import('../spell.service').then(m =>
         m.SpellService.getCharacterEquippedSpells(characterId)
       );
-      const equippedSpells = spellsResponse.success && spellsResponse.data 
-        ? spellsResponse.data 
-        : [];
-      
+      const equippedSpells =
+        spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
+
       const gamePlayer: GamePlayer = {
         id: charData.id,
         user_id: charData.user_id,
@@ -457,9 +489,9 @@ export class CharacterService {
           debuffs: [],
           dots: [],
           hots: [],
-          attribute_modifications: []
+          attribute_modifications: [],
         },
-        
+
         // Atributos primários
         strength: charData.strength || 10,
         dexterity: charData.dexterity || 10,
@@ -468,27 +500,27 @@ export class CharacterService {
         vitality: charData.vitality || 10,
         luck: charData.luck || 10,
         attribute_points: charData.attribute_points || 0,
-        
+
         // Habilidades
         sword_mastery: charData.sword_mastery || 1,
         axe_mastery: charData.axe_mastery || 1,
         blunt_mastery: charData.blunt_mastery || 1,
         defense_mastery: charData.defense_mastery || 1,
         magic_mastery: charData.magic_mastery || 1,
-        
+
         sword_mastery_xp: charData.sword_mastery_xp || 0,
         axe_mastery_xp: charData.axe_mastery_xp || 0,
         blunt_mastery_xp: charData.blunt_mastery_xp || 0,
         defense_mastery_xp: charData.defense_mastery_xp || 0,
         magic_mastery_xp: charData.magic_mastery_xp || 0,
-        
+
         // Stats derivados calculados
         critical_chance: derivedStats.critical_chance,
         critical_damage: derivedStats.critical_damage,
         magic_damage_bonus: derivedStats.magic_damage_bonus,
         magic_attack: derivedStats.magic_attack,
         double_attack_chance: derivedStats.double_attack_chance,
-        
+
         // Stats base para exibição
         base_hp: derivedStats.hp,
         base_max_hp: derivedStats.max_hp,
@@ -497,13 +529,13 @@ export class CharacterService {
         base_atk: derivedStats.atk,
         base_def: derivedStats.def,
         base_speed: derivedStats.speed,
-        
+
         // Bônus de equipamentos para exibição
         equipment_hp_bonus: 0, // Será calculado pelo CharacterStatsService
         equipment_mana_bonus: 0,
         equipment_atk_bonus: 0,
         equipment_def_bonus: 0,
-        equipment_speed_bonus: 0
+        equipment_speed_bonus: 0,
       };
 
       return { success: true, error: null, data: gamePlayer };
@@ -512,7 +544,7 @@ export class CharacterService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
-        data: null
+        data: null,
       };
     }
   }
@@ -533,4 +565,4 @@ export class CharacterService {
   static updateGold = CharacterProgressionService.updateGold;
   static calculateDerivedStats = CharacterStatsService.calculateDerivedStats;
   static analyzeBuildDiversity = CharacterStatsService.analyzeBuildDiversity;
-} 
+}

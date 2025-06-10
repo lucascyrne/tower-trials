@@ -16,7 +16,7 @@ export function UnitList({ items, onAdd, type }: UnitListProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
-        {items.map((item) => (
+        {items.map(item => (
           <div
             key={item.id}
             className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 rounded-md text-sm"
@@ -27,16 +27,11 @@ export function UnitList({ items, onAdd, type }: UnitListProps) {
             <span>{item.name}</span>
           </div>
         ))}
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1"
-          onClick={onAdd}
-        >
+        <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={onAdd}>
           <Plus className="h-3.5 w-3.5" />
           <span>Adicionar {type === 'unit' ? 'unidade' : 'funcionário'}</span>
         </Button>
       </div>
     </div>
   );
-} 
+}

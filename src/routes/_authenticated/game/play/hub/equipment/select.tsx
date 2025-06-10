@@ -1,158 +1,175 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { CharacterService } from '@/resources/game/character.service'
-import { EquipmentService } from '@/resources/game/equipment.service'
-import type { Character } from '@/resources/game/models/character.model'
-import type { Equipment, CharacterEquipment } from '@/resources/game/models/equipment.model'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { ArrowLeft, Search, Sword, Shield, Shirt, Gem, Star, Zap, Package, Filter } from 'lucide-react'
-import { toast } from 'sonner'
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState, useEffect } from 'react';
+import { CharacterService } from '@/resources/game/character.service';
+import { EquipmentService } from '@/resources/game/equipment.service';
+import type { Character } from '@/resources/game/models/character.model';
+import type { Equipment, CharacterEquipment } from '@/resources/game/models/equipment.model';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  ArrowLeft,
+  Search,
+  Sword,
+  Shield,
+  Shirt,
+  Gem,
+  Star,
+  Zap,
+  Package,
+  Filter,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-type SlotType = 'main_hand' | 'off_hand' | 'armor' | 'accessory'
-type FilterType = 'all' | 'weapon' | 'armor' | 'accessory'
-type SortType = 'name' | 'level' | 'rarity' | 'attack' | 'defense'
+type SlotType = 'main_hand' | 'off_hand' | 'armor' | 'accessory';
+type FilterType = 'all' | 'weapon' | 'armor' | 'accessory';
+type SortType = 'name' | 'level' | 'rarity' | 'attack' | 'defense';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment/select')({
   component: EquipmentSelectPage,
-  validateSearch: (search) => ({
+  validateSearch: search => ({
     character: (search.character as string) || '',
     slot: (search.slot as SlotType) || 'main_hand',
   }),
-})
+});
 
 function EquipmentSelectPage() {
-  const navigate = useNavigate()
-  const { character: characterId, slot: slotType } = Route.useSearch()
-  
-  const [character, setCharacter] = useState<Character | null>(null)
-  const [availableEquipment, setAvailableEquipment] = useState<CharacterEquipment[]>([])
-  const [filteredEquipment, setFilteredEquipment] = useState<CharacterEquipment[]>([])
-  const [selectedItem, setSelectedItem] = useState<Equipment | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<FilterType>('all')
-  const [sortType, setSortType] = useState<SortType>('name')
-  const [equiping, setEquiping] = useState(false)
+  const navigate = useNavigate();
+  const { character: characterId, slot: slotType } = Route.useSearch();
+
+  const [character, setCharacter] = useState<Character | null>(null);
+  const [availableEquipment, setAvailableEquipment] = useState<CharacterEquipment[]>([]);
+  const [filteredEquipment, setFilteredEquipment] = useState<CharacterEquipment[]>([]);
+  const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [sortType, setSortType] = useState<SortType>('name');
+  const [equiping, setEquiping] = useState(false);
 
   // Carregar dados iniciais
   useEffect(() => {
     const loadData = async () => {
       if (!characterId || !slotType) {
-        navigate({ to: '/game/play/hub', search: { character: characterId } })
-        return
+        navigate({ to: '/game/play/hub', search: { character: characterId } });
+        return;
       }
-      
-      try {
-        setLoading(true)
-        
-        // Carregar personagem
-        const charResponse = await CharacterService.getCharacter(characterId)
-        if (charResponse.success && charResponse.data) {
-          setCharacter(charResponse.data)
-        }
-        
-        // Carregar equipamentos do personagem
-        const equipmentData = await EquipmentService.getCharacterEquipment(characterId)
-        setAvailableEquipment(equipmentData)
-        
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error)
-        toast.error('Erro ao carregar equipamentos')
-      } finally {
-        setLoading(false)
-      }
-    }
 
-    loadData()
-  }, [characterId, slotType, navigate])
+      try {
+        setLoading(true);
+
+        // Carregar personagem
+        const charResponse = await CharacterService.getCharacter(characterId);
+        if (charResponse.success && charResponse.data) {
+          setCharacter(charResponse.data);
+        }
+
+        // Carregar equipamentos do personagem
+        const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
+        setAvailableEquipment(equipmentData);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        toast.error('Erro ao carregar equipamentos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [characterId, slotType, navigate]);
 
   // Filtrar e ordenar equipamentos
   useEffect(() => {
     const filtered = availableEquipment.filter(item => {
-      if (!item.equipment) return false
-      
+      if (!item.equipment) return false;
+
       // Filtrar por tipo de slot
-      const equipment = item.equipment
-      const isCompatible = isEquipmentCompatibleWithSlot(equipment, slotType)
-      if (!isCompatible) return false
-      
+      const equipment = item.equipment;
+      const isCompatible = isEquipmentCompatibleWithSlot(equipment, slotType);
+      if (!isCompatible) return false;
+
       // Filtrar por tipo de equipamento
-      if (filterType !== 'all' && equipment.type !== filterType) return false
-      
+      if (filterType !== 'all' && equipment.type !== filterType) return false;
+
       // Filtrar por termo de busca
       if (searchTerm && !equipment.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false
+        return false;
       }
-      
-      return true
-    })
+
+      return true;
+    });
 
     // Ordenar
     filtered.sort((a, b) => {
-      const equipA = a.equipment!
-      const equipB = b.equipment!
-      
+      const equipA = a.equipment!;
+      const equipB = b.equipment!;
+
       switch (sortType) {
         case 'name':
-          return equipA.name.localeCompare(equipB.name)
+          return equipA.name.localeCompare(equipB.name);
         case 'level':
-          return (equipB.level_requirement || 0) - (equipA.level_requirement || 0)
+          return (equipB.level_requirement || 0) - (equipA.level_requirement || 0);
         case 'rarity': {
-          const rarityOrder = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 }
-          return (rarityOrder[equipB.rarity as keyof typeof rarityOrder] || 0) - 
-                 (rarityOrder[equipA.rarity as keyof typeof rarityOrder] || 0)
+          const rarityOrder = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+          return (
+            (rarityOrder[equipB.rarity as keyof typeof rarityOrder] || 0) -
+            (rarityOrder[equipA.rarity as keyof typeof rarityOrder] || 0)
+          );
         }
         case 'attack':
-          return equipB.atk_bonus - equipA.atk_bonus
+          return equipB.atk_bonus - equipA.atk_bonus;
         case 'defense':
-          return equipB.def_bonus - equipA.def_bonus
+          return equipB.def_bonus - equipA.def_bonus;
         default:
-          return 0
+          return 0;
       }
-    })
+    });
 
-    setFilteredEquipment(filtered)
-  }, [availableEquipment, searchTerm, filterType, sortType, slotType])
+    setFilteredEquipment(filtered);
+  }, [availableEquipment, searchTerm, filterType, sortType, slotType]);
 
   const isEquipmentCompatibleWithSlot = (equipment: Equipment, slot: SlotType): boolean => {
     switch (slot) {
       case 'main_hand':
       case 'off_hand':
-        return equipment.type === 'weapon'
+        return equipment.type === 'weapon';
       case 'armor':
-        return equipment.type === 'armor'
+        return equipment.type === 'armor';
       case 'accessory':
-        return equipment.type === 'accessory'
+        return equipment.type === 'accessory';
       default:
-        return false
+        return false;
     }
-  }
+  };
 
   const getSlotDisplayName = (slot: SlotType): string => {
     switch (slot) {
-      case 'main_hand': return 'Mão Principal'
-      case 'off_hand': return 'Mão Secundária'
-      case 'armor': return 'Armadura'
-      case 'accessory': return 'Acessório'
-      default: return slot
+      case 'main_hand':
+        return 'Mão Principal';
+      case 'off_hand':
+        return 'Mão Secundária';
+      case 'armor':
+        return 'Armadura';
+      case 'accessory':
+        return 'Acessório';
+      default:
+        return slot;
     }
-  }
+  };
 
   const getEquipmentIcon = (equipment: Equipment) => {
     switch (equipment.type) {
       case 'weapon':
-        return <Sword className="h-6 w-6 text-red-400" />
+        return <Sword className="h-6 w-6 text-red-400" />;
       case 'armor':
-        return <Shirt className="h-6 w-6 text-blue-400" />
+        return <Shirt className="h-6 w-6 text-blue-400" />;
       case 'accessory':
-        return <Gem className="h-6 w-6 text-purple-400" />
+        return <Gem className="h-6 w-6 text-purple-400" />;
       default:
-        return <Shield className="h-6 w-6 text-slate-400" />
+        return <Shield className="h-6 w-6 text-slate-400" />;
     }
-  }
+  };
 
   const getRarityColor = (rarity: string) => {
     const colors = {
@@ -160,68 +177,66 @@ function EquipmentSelectPage() {
       uncommon: 'border-emerald-600 bg-emerald-900/30 text-emerald-300',
       rare: 'border-blue-600 bg-blue-900/30 text-blue-300',
       epic: 'border-purple-600 bg-purple-900/30 text-purple-300',
-      legendary: 'border-amber-600 bg-amber-900/30 text-amber-300'
-    }
-    return colors[rarity as keyof typeof colors] || colors.common
-  }
+      legendary: 'border-amber-600 bg-amber-900/30 text-amber-300',
+    };
+    return colors[rarity as keyof typeof colors] || colors.common;
+  };
 
   const handleEquipItem = async (equipment: Equipment) => {
-    if (!characterId || equiping) return
-    
+    if (!characterId || equiping) return;
+
     try {
-      setEquiping(true)
-      
+      setEquiping(true);
+
       const result = await EquipmentService.toggleEquipment(
         characterId,
         equipment.id,
         true,
         slotType
-      )
+      );
 
       if (result.success) {
-        toast.success(`${equipment.name} equipado com sucesso!`)
-        navigate({ to: '/game/play/hub/equipment', search: { character: characterId } })
+        toast.success(`${equipment.name} equipado com sucesso!`);
+        navigate({ to: '/game/play/hub/equipment', search: { character: characterId } });
       } else {
-        toast.error(result.error || 'Erro ao equipar item')
+        toast.error(result.error || 'Erro ao equipar item');
       }
     } catch (error) {
-      console.error('Erro ao equipar item:', error)
-      toast.error('Erro ao equipar item')
+      console.error('Erro ao equipar item:', error);
+      toast.error('Erro ao equipar item');
     } finally {
-      setEquiping(false)
+      setEquiping(false);
     }
-  }
+  };
 
   const renderEquipmentCard = (item: CharacterEquipment) => {
-    if (!item.equipment) return null
-    
-    const equipment = item.equipment
-    const isSelected = selectedItem?.id === equipment.id
-    
+    if (!item.equipment) return null;
+
+    const equipment = item.equipment;
+    const isSelected = selectedItem?.id === equipment.id;
+
     return (
       <div
         key={equipment.id}
         className={`relative cursor-pointer transition-all duration-200 ${
-          isSelected 
-            ? 'transform scale-[1.02]' 
-            : 'hover:transform hover:scale-[1.01]'
+          isSelected ? 'transform scale-[1.02]' : 'hover:transform hover:scale-[1.01]'
         }`}
         onClick={() => setSelectedItem(equipment)}
       >
-        <Card className={`border-2 transition-all duration-200 ${
-          isSelected 
-            ? 'border-amber-400 bg-amber-900/20 shadow-lg shadow-amber-400/20' 
-            : `${getRarityColor(equipment.rarity)} hover:brightness-110`
-        }`}>
+        <Card
+          className={`border-2 transition-all duration-200 ${
+            isSelected
+              ? 'border-amber-400 bg-amber-900/20 shadow-lg shadow-amber-400/20'
+              : `${getRarityColor(equipment.rarity)} hover:brightness-110`
+          }`}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${getRarityColor(equipment.rarity)}`}>
                 {getEquipmentIcon(equipment)}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-slate-200 truncate">
-                  {equipment.name}
-                </h3>
+                <h3 className="font-medium text-slate-200 truncate">{equipment.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">
                     {equipment.rarity}
@@ -235,20 +250,17 @@ function EquipmentSelectPage() {
                 <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
                   {equipment.atk_bonus > 0 && (
                     <span className="flex items-center gap-1">
-                      <Sword className="h-3 w-3 text-red-400" />
-                      +{equipment.atk_bonus}
+                      <Sword className="h-3 w-3 text-red-400" />+{equipment.atk_bonus}
                     </span>
                   )}
                   {equipment.def_bonus > 0 && (
                     <span className="flex items-center gap-1">
-                      <Shield className="h-3 w-3 text-blue-400" />
-                      +{equipment.def_bonus}
+                      <Shield className="h-3 w-3 text-blue-400" />+{equipment.def_bonus}
                     </span>
                   )}
                   {equipment.mana_bonus > 0 && (
                     <span className="flex items-center gap-1">
-                      <Zap className="h-3 w-3 text-purple-400" />
-                      +{equipment.mana_bonus}
+                      <Zap className="h-3 w-3 text-purple-400" />+{equipment.mana_bonus}
                     </span>
                   )}
                 </div>
@@ -257,8 +269,8 @@ function EquipmentSelectPage() {
           </CardContent>
         </Card>
       </div>
-    )
-  }
+    );
+  };
 
   const renderItemDetails = () => {
     if (!selectedItem) {
@@ -267,15 +279,13 @@ function EquipmentSelectPage() {
           <div className="text-center">
             <Package className="h-16 w-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg">Selecione um equipamento</p>
-            <p className="text-sm mt-2 opacity-75">
-              Clique em um item para ver os detalhes
-            </p>
+            <p className="text-sm mt-2 opacity-75">Clique em um item para ver os detalhes</p>
           </div>
         </div>
-      )
+      );
     }
 
-    const canEquip = character ? character.level >= (selectedItem.level_requirement || 1) : false
+    const canEquip = character ? character.level >= (selectedItem.level_requirement || 1) : false;
 
     return (
       <div className="space-y-6">
@@ -378,8 +388,8 @@ function EquipmentSelectPage() {
             onClick={() => handleEquipItem(selectedItem)}
             disabled={!canEquip || equiping}
             className={`w-full ${
-              canEquip 
-                ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+              canEquip
+                ? 'bg-amber-600 hover:bg-amber-700 text-white'
                 : 'bg-slate-700 text-slate-400 cursor-not-allowed'
             }`}
           >
@@ -396,8 +406,8 @@ function EquipmentSelectPage() {
           </Button>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   if (loading) {
     return (
@@ -412,7 +422,7 @@ function EquipmentSelectPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!character) {
@@ -421,14 +431,16 @@ function EquipmentSelectPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <h1 className="text-2xl font-bold text-slate-100 mb-4">Personagem não encontrado</h1>
-            <Button onClick={() => navigate({ to: '/game/play/hub', search: { character: characterId } })}>
+            <Button
+              onClick={() => navigate({ to: '/game/play/hub', search: { character: characterId } })}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Hub
             </Button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -437,10 +449,12 @@ function EquipmentSelectPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
-              onClick={() => navigate({ to: '/game/play/hub/equipment', search: { character: characterId } })}
+              onClick={() =>
+                navigate({ to: '/game/play/hub/equipment', search: { character: characterId } })
+              }
               className="self-start"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -478,7 +492,7 @@ function EquipmentSelectPage() {
                   <Input
                     placeholder="Buscar equipamento..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={e => setSearchTerm(e.target.value)}
                     className="pl-10 bg-slate-700/50 border-slate-600 text-slate-200"
                   />
                 </div>
@@ -491,8 +505,8 @@ function EquipmentSelectPage() {
                       { value: 'all', label: 'Todos' },
                       { value: 'weapon', label: 'Armas' },
                       { value: 'armor', label: 'Armaduras' },
-                      { value: 'accessory', label: 'Acessórios' }
-                    ].map((filter) => (
+                      { value: 'accessory', label: 'Acessórios' },
+                    ].map(filter => (
                       <Button
                         key={filter.value}
                         variant={filterType === filter.value ? 'default' : 'outline'}
@@ -511,7 +525,7 @@ function EquipmentSelectPage() {
                   <label className="text-sm font-medium text-slate-300">Ordenar por</label>
                   <select
                     value={sortType}
-                    onChange={(e) => setSortType(e.target.value as SortType)}
+                    onChange={e => setSortType(e.target.value as SortType)}
                     className="w-full p-2 rounded-md bg-slate-700/50 border border-slate-600 text-slate-200 text-sm"
                   >
                     <option value="name">Nome</option>
@@ -550,13 +564,11 @@ function EquipmentSelectPage() {
               <CardHeader>
                 <CardTitle className="text-slate-100">Detalhes do Equipamento</CardTitle>
               </CardHeader>
-              <CardContent className="h-full">
-                {renderItemDetails()}
-              </CardContent>
+              <CardContent className="h-full">{renderItemDetails()}</CardContent>
             </Card>
           </div>
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

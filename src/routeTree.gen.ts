@@ -10,455 +10,441 @@
 
 // Import Routes
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as PublicImport } from './routes/_public'
-import { Route as AuthenticatedImport } from './routes/_authenticated'
-import { Route as IndexImport } from './routes/index'
-import { Route as PublicLogoutImport } from './routes/_public/logout'
-import { Route as PublicAuthImport } from './routes/_public/auth'
-import { Route as AuthenticatedUsersImport } from './routes/_authenticated/users'
-import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile'
-import { Route as AuthenticatedGameImport } from './routes/_authenticated/game'
-import { Route as Authenticated403Import } from './routes/_authenticated/403'
-import { Route as PublicAuthVerifyEmailImport } from './routes/_public/auth/verify-email'
-import { Route as AuthenticatedUsersIdImport } from './routes/_authenticated/users/$id'
-import { Route as AuthenticatedGameRankingImport } from './routes/_authenticated/game/ranking'
-import { Route as AuthenticatedGamePlayImport } from './routes/_authenticated/game/play'
-import { Route as AuthenticatedGameGuideImport } from './routes/_authenticated/game/guide'
-import { Route as AuthenticatedGamePlayHubImport } from './routes/_authenticated/game/play/hub'
-import { Route as AuthenticatedGamePlayHubSpellsImport } from './routes/_authenticated/game/play/hub/spells'
-import { Route as AuthenticatedGamePlayHubShopImport } from './routes/_authenticated/game/play/hub/shop'
-import { Route as AuthenticatedGamePlayHubInventoryImport } from './routes/_authenticated/game/play/hub/inventory'
-import { Route as AuthenticatedGamePlayHubEquipmentImport } from './routes/_authenticated/game/play/hub/equipment'
-import { Route as AuthenticatedGamePlayHubCraftingImport } from './routes/_authenticated/game/play/hub/crafting'
-import { Route as AuthenticatedGamePlayHubCharacterStatsImport } from './routes/_authenticated/game/play/hub/character-stats'
-import { Route as AuthenticatedGamePlayHubCemeteryImport } from './routes/_authenticated/game/play/hub/cemetery'
-import { Route as AuthenticatedGamePlayHubEquipmentSelectImport } from './routes/_authenticated/game/play/hub/equipment/select'
-import { Route as AuthenticatedGamePlayHubBattleCharacterImport } from './routes/_authenticated/game/play/hub/battle/$character'
+import { Route as rootRoute } from './routes/__root';
+import { Route as PublicImport } from './routes/_public';
+import { Route as AuthenticatedImport } from './routes/_authenticated';
+import { Route as IndexImport } from './routes/index';
+import { Route as PublicLogoutImport } from './routes/_public/logout';
+import { Route as PublicAuthImport } from './routes/_public/auth';
+import { Route as AuthenticatedUsersImport } from './routes/_authenticated/users';
+import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile';
+import { Route as AuthenticatedGameImport } from './routes/_authenticated/game';
+import { Route as Authenticated403Import } from './routes/_authenticated/403';
+import { Route as PublicAuthVerifyEmailImport } from './routes/_public/auth/verify-email';
+import { Route as AuthenticatedUsersIdImport } from './routes/_authenticated/users/$id';
+import { Route as AuthenticatedGameRankingImport } from './routes/_authenticated/game/ranking';
+import { Route as AuthenticatedGamePlayImport } from './routes/_authenticated/game/play';
+import { Route as AuthenticatedGameGuideImport } from './routes/_authenticated/game/guide';
+import { Route as AuthenticatedGamePlayHubImport } from './routes/_authenticated/game/play/hub';
+import { Route as AuthenticatedGamePlayHubSpellsImport } from './routes/_authenticated/game/play/hub/spells';
+import { Route as AuthenticatedGamePlayHubShopImport } from './routes/_authenticated/game/play/hub/shop';
+import { Route as AuthenticatedGamePlayHubInventoryImport } from './routes/_authenticated/game/play/hub/inventory';
+import { Route as AuthenticatedGamePlayHubEquipmentImport } from './routes/_authenticated/game/play/hub/equipment';
+import { Route as AuthenticatedGamePlayHubCraftingImport } from './routes/_authenticated/game/play/hub/crafting';
+import { Route as AuthenticatedGamePlayHubCharacterStatsImport } from './routes/_authenticated/game/play/hub/character-stats';
+import { Route as AuthenticatedGamePlayHubCemeteryImport } from './routes/_authenticated/game/play/hub/cemetery';
+import { Route as AuthenticatedGamePlayHubEquipmentSelectImport } from './routes/_authenticated/game/play/hub/equipment/select';
+import { Route as AuthenticatedGamePlayHubBattleCharacterImport } from './routes/_authenticated/game/play/hub/battle/$character';
 
 // Create/Update Routes
 
 const PublicRoute = PublicImport.update({
   id: '/_public',
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const AuthenticatedRoute = AuthenticatedImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const PublicLogoutRoute = PublicLogoutImport.update({
   id: '/logout',
   path: '/logout',
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 
 const PublicAuthRoute = PublicAuthImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => PublicRoute,
-} as any)
+} as any);
 
 const AuthenticatedUsersRoute = AuthenticatedUsersImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
+} as any);
 
 const AuthenticatedProfileRoute = AuthenticatedProfileImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
+} as any);
 
 const AuthenticatedGameRoute = AuthenticatedGameImport.update({
   id: '/game',
   path: '/game',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
+} as any);
 
 const Authenticated403Route = Authenticated403Import.update({
   id: '/403',
   path: '/403',
   getParentRoute: () => AuthenticatedRoute,
-} as any)
+} as any);
 
 const PublicAuthVerifyEmailRoute = PublicAuthVerifyEmailImport.update({
   id: '/verify-email',
   path: '/verify-email',
   getParentRoute: () => PublicAuthRoute,
-} as any)
+} as any);
 
 const AuthenticatedUsersIdRoute = AuthenticatedUsersIdImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AuthenticatedUsersRoute,
-} as any)
+} as any);
 
 const AuthenticatedGameRankingRoute = AuthenticatedGameRankingImport.update({
   id: '/ranking',
   path: '/ranking',
   getParentRoute: () => AuthenticatedGameRoute,
-} as any)
+} as any);
 
 const AuthenticatedGamePlayRoute = AuthenticatedGamePlayImport.update({
   id: '/play',
   path: '/play',
   getParentRoute: () => AuthenticatedGameRoute,
-} as any)
+} as any);
 
 const AuthenticatedGameGuideRoute = AuthenticatedGameGuideImport.update({
   id: '/guide',
   path: '/guide',
   getParentRoute: () => AuthenticatedGameRoute,
-} as any)
+} as any);
 
 const AuthenticatedGamePlayHubRoute = AuthenticatedGamePlayHubImport.update({
   id: '/hub',
   path: '/hub',
   getParentRoute: () => AuthenticatedGamePlayRoute,
-} as any)
+} as any);
 
-const AuthenticatedGamePlayHubSpellsRoute =
-  AuthenticatedGamePlayHubSpellsImport.update({
-    id: '/spells',
-    path: '/spells',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubSpellsRoute = AuthenticatedGamePlayHubSpellsImport.update({
+  id: '/spells',
+  path: '/spells',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
-const AuthenticatedGamePlayHubShopRoute =
-  AuthenticatedGamePlayHubShopImport.update({
-    id: '/shop',
-    path: '/shop',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubShopRoute = AuthenticatedGamePlayHubShopImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
-const AuthenticatedGamePlayHubInventoryRoute =
-  AuthenticatedGamePlayHubInventoryImport.update({
-    id: '/inventory',
-    path: '/inventory',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubInventoryRoute = AuthenticatedGamePlayHubInventoryImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
-const AuthenticatedGamePlayHubEquipmentRoute =
-  AuthenticatedGamePlayHubEquipmentImport.update({
-    id: '/equipment',
-    path: '/equipment',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubEquipmentRoute = AuthenticatedGamePlayHubEquipmentImport.update({
+  id: '/equipment',
+  path: '/equipment',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
-const AuthenticatedGamePlayHubCraftingRoute =
-  AuthenticatedGamePlayHubCraftingImport.update({
-    id: '/crafting',
-    path: '/crafting',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubCraftingRoute = AuthenticatedGamePlayHubCraftingImport.update({
+  id: '/crafting',
+  path: '/crafting',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
 const AuthenticatedGamePlayHubCharacterStatsRoute =
   AuthenticatedGamePlayHubCharacterStatsImport.update({
     id: '/character-stats',
     path: '/character-stats',
     getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+  } as any);
 
-const AuthenticatedGamePlayHubCemeteryRoute =
-  AuthenticatedGamePlayHubCemeteryImport.update({
-    id: '/cemetery',
-    path: '/cemetery',
-    getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+const AuthenticatedGamePlayHubCemeteryRoute = AuthenticatedGamePlayHubCemeteryImport.update({
+  id: '/cemetery',
+  path: '/cemetery',
+  getParentRoute: () => AuthenticatedGamePlayHubRoute,
+} as any);
 
 const AuthenticatedGamePlayHubEquipmentSelectRoute =
   AuthenticatedGamePlayHubEquipmentSelectImport.update({
     id: '/select',
     path: '/select',
     getParentRoute: () => AuthenticatedGamePlayHubEquipmentRoute,
-  } as any)
+  } as any);
 
 const AuthenticatedGamePlayHubBattleCharacterRoute =
   AuthenticatedGamePlayHubBattleCharacterImport.update({
     id: '/battle/$character',
     path: '/battle/$character',
     getParentRoute: () => AuthenticatedGamePlayHubRoute,
-  } as any)
+  } as any);
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexImport;
+      parentRoute: typeof rootRoute;
+    };
     '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthenticatedImport
-      parentRoute: typeof rootRoute
-    }
+      id: '/_authenticated';
+      path: '';
+      fullPath: '';
+      preLoaderRoute: typeof AuthenticatedImport;
+      parentRoute: typeof rootRoute;
+    };
     '/_public': {
-      id: '/_public'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PublicImport
-      parentRoute: typeof rootRoute
-    }
+      id: '/_public';
+      path: '';
+      fullPath: '';
+      preLoaderRoute: typeof PublicImport;
+      parentRoute: typeof rootRoute;
+    };
     '/_authenticated/403': {
-      id: '/_authenticated/403'
-      path: '/403'
-      fullPath: '/403'
-      preLoaderRoute: typeof Authenticated403Import
-      parentRoute: typeof AuthenticatedImport
-    }
+      id: '/_authenticated/403';
+      path: '/403';
+      fullPath: '/403';
+      preLoaderRoute: typeof Authenticated403Import;
+      parentRoute: typeof AuthenticatedImport;
+    };
     '/_authenticated/game': {
-      id: '/_authenticated/game'
-      path: '/game'
-      fullPath: '/game'
-      preLoaderRoute: typeof AuthenticatedGameImport
-      parentRoute: typeof AuthenticatedImport
-    }
+      id: '/_authenticated/game';
+      path: '/game';
+      fullPath: '/game';
+      preLoaderRoute: typeof AuthenticatedGameImport;
+      parentRoute: typeof AuthenticatedImport;
+    };
     '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileImport
-      parentRoute: typeof AuthenticatedImport
-    }
+      id: '/_authenticated/profile';
+      path: '/profile';
+      fullPath: '/profile';
+      preLoaderRoute: typeof AuthenticatedProfileImport;
+      parentRoute: typeof AuthenticatedImport;
+    };
     '/_authenticated/users': {
-      id: '/_authenticated/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AuthenticatedUsersImport
-      parentRoute: typeof AuthenticatedImport
-    }
+      id: '/_authenticated/users';
+      path: '/users';
+      fullPath: '/users';
+      preLoaderRoute: typeof AuthenticatedUsersImport;
+      parentRoute: typeof AuthenticatedImport;
+    };
     '/_public/auth': {
-      id: '/_public/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof PublicAuthImport
-      parentRoute: typeof PublicImport
-    }
+      id: '/_public/auth';
+      path: '/auth';
+      fullPath: '/auth';
+      preLoaderRoute: typeof PublicAuthImport;
+      parentRoute: typeof PublicImport;
+    };
     '/_public/logout': {
-      id: '/_public/logout'
-      path: '/logout'
-      fullPath: '/logout'
-      preLoaderRoute: typeof PublicLogoutImport
-      parentRoute: typeof PublicImport
-    }
+      id: '/_public/logout';
+      path: '/logout';
+      fullPath: '/logout';
+      preLoaderRoute: typeof PublicLogoutImport;
+      parentRoute: typeof PublicImport;
+    };
     '/_authenticated/game/guide': {
-      id: '/_authenticated/game/guide'
-      path: '/guide'
-      fullPath: '/game/guide'
-      preLoaderRoute: typeof AuthenticatedGameGuideImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
+      id: '/_authenticated/game/guide';
+      path: '/guide';
+      fullPath: '/game/guide';
+      preLoaderRoute: typeof AuthenticatedGameGuideImport;
+      parentRoute: typeof AuthenticatedGameImport;
+    };
     '/_authenticated/game/play': {
-      id: '/_authenticated/game/play'
-      path: '/play'
-      fullPath: '/game/play'
-      preLoaderRoute: typeof AuthenticatedGamePlayImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
+      id: '/_authenticated/game/play';
+      path: '/play';
+      fullPath: '/game/play';
+      preLoaderRoute: typeof AuthenticatedGamePlayImport;
+      parentRoute: typeof AuthenticatedGameImport;
+    };
     '/_authenticated/game/ranking': {
-      id: '/_authenticated/game/ranking'
-      path: '/ranking'
-      fullPath: '/game/ranking'
-      preLoaderRoute: typeof AuthenticatedGameRankingImport
-      parentRoute: typeof AuthenticatedGameImport
-    }
+      id: '/_authenticated/game/ranking';
+      path: '/ranking';
+      fullPath: '/game/ranking';
+      preLoaderRoute: typeof AuthenticatedGameRankingImport;
+      parentRoute: typeof AuthenticatedGameImport;
+    };
     '/_authenticated/users/$id': {
-      id: '/_authenticated/users/$id'
-      path: '/$id'
-      fullPath: '/users/$id'
-      preLoaderRoute: typeof AuthenticatedUsersIdImport
-      parentRoute: typeof AuthenticatedUsersImport
-    }
+      id: '/_authenticated/users/$id';
+      path: '/$id';
+      fullPath: '/users/$id';
+      preLoaderRoute: typeof AuthenticatedUsersIdImport;
+      parentRoute: typeof AuthenticatedUsersImport;
+    };
     '/_public/auth/verify-email': {
-      id: '/_public/auth/verify-email'
-      path: '/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof PublicAuthVerifyEmailImport
-      parentRoute: typeof PublicAuthImport
-    }
+      id: '/_public/auth/verify-email';
+      path: '/verify-email';
+      fullPath: '/auth/verify-email';
+      preLoaderRoute: typeof PublicAuthVerifyEmailImport;
+      parentRoute: typeof PublicAuthImport;
+    };
     '/_authenticated/game/play/hub': {
-      id: '/_authenticated/game/play/hub'
-      path: '/hub'
-      fullPath: '/game/play/hub'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubImport
-      parentRoute: typeof AuthenticatedGamePlayImport
-    }
+      id: '/_authenticated/game/play/hub';
+      path: '/hub';
+      fullPath: '/game/play/hub';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubImport;
+      parentRoute: typeof AuthenticatedGamePlayImport;
+    };
     '/_authenticated/game/play/hub/cemetery': {
-      id: '/_authenticated/game/play/hub/cemetery'
-      path: '/cemetery'
-      fullPath: '/game/play/hub/cemetery'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubCemeteryImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/cemetery';
+      path: '/cemetery';
+      fullPath: '/game/play/hub/cemetery';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCemeteryImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/character-stats': {
-      id: '/_authenticated/game/play/hub/character-stats'
-      path: '/character-stats'
-      fullPath: '/game/play/hub/character-stats'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubCharacterStatsImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/character-stats';
+      path: '/character-stats';
+      fullPath: '/game/play/hub/character-stats';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCharacterStatsImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/crafting': {
-      id: '/_authenticated/game/play/hub/crafting'
-      path: '/crafting'
-      fullPath: '/game/play/hub/crafting'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubCraftingImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/crafting';
+      path: '/crafting';
+      fullPath: '/game/play/hub/crafting';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubCraftingImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/equipment': {
-      id: '/_authenticated/game/play/hub/equipment'
-      path: '/equipment'
-      fullPath: '/game/play/hub/equipment'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/equipment';
+      path: '/equipment';
+      fullPath: '/game/play/hub/equipment';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/inventory': {
-      id: '/_authenticated/game/play/hub/inventory'
-      path: '/inventory'
-      fullPath: '/game/play/hub/inventory'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubInventoryImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/inventory';
+      path: '/inventory';
+      fullPath: '/game/play/hub/inventory';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubInventoryImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/shop': {
-      id: '/_authenticated/game/play/hub/shop'
-      path: '/shop'
-      fullPath: '/game/play/hub/shop'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubShopImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/shop';
+      path: '/shop';
+      fullPath: '/game/play/hub/shop';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubShopImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/spells': {
-      id: '/_authenticated/game/play/hub/spells'
-      path: '/spells'
-      fullPath: '/game/play/hub/spells'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubSpellsImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/spells';
+      path: '/spells';
+      fullPath: '/game/play/hub/spells';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubSpellsImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/battle/$character': {
-      id: '/_authenticated/game/play/hub/battle/$character'
-      path: '/battle/$character'
-      fullPath: '/game/play/hub/battle/$character'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubBattleCharacterImport
-      parentRoute: typeof AuthenticatedGamePlayHubImport
-    }
+      id: '/_authenticated/game/play/hub/battle/$character';
+      path: '/battle/$character';
+      fullPath: '/game/play/hub/battle/$character';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubBattleCharacterImport;
+      parentRoute: typeof AuthenticatedGamePlayHubImport;
+    };
     '/_authenticated/game/play/hub/equipment/select': {
-      id: '/_authenticated/game/play/hub/equipment/select'
-      path: '/select'
-      fullPath: '/game/play/hub/equipment/select'
-      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentSelectImport
-      parentRoute: typeof AuthenticatedGamePlayHubEquipmentImport
-    }
+      id: '/_authenticated/game/play/hub/equipment/select';
+      path: '/select';
+      fullPath: '/game/play/hub/equipment/select';
+      preLoaderRoute: typeof AuthenticatedGamePlayHubEquipmentSelectImport;
+      parentRoute: typeof AuthenticatedGamePlayHubEquipmentImport;
+    };
   }
 }
 
 // Create and export the route tree
 
 interface AuthenticatedGamePlayHubEquipmentRouteChildren {
-  AuthenticatedGamePlayHubEquipmentSelectRoute: typeof AuthenticatedGamePlayHubEquipmentSelectRoute
+  AuthenticatedGamePlayHubEquipmentSelectRoute: typeof AuthenticatedGamePlayHubEquipmentSelectRoute;
 }
 
 const AuthenticatedGamePlayHubEquipmentRouteChildren: AuthenticatedGamePlayHubEquipmentRouteChildren =
   {
-    AuthenticatedGamePlayHubEquipmentSelectRoute:
-      AuthenticatedGamePlayHubEquipmentSelectRoute,
-  }
+    AuthenticatedGamePlayHubEquipmentSelectRoute: AuthenticatedGamePlayHubEquipmentSelectRoute,
+  };
 
 const AuthenticatedGamePlayHubEquipmentRouteWithChildren =
   AuthenticatedGamePlayHubEquipmentRoute._addFileChildren(
-    AuthenticatedGamePlayHubEquipmentRouteChildren,
-  )
+    AuthenticatedGamePlayHubEquipmentRouteChildren
+  );
 
 interface AuthenticatedGamePlayHubRouteChildren {
-  AuthenticatedGamePlayHubCemeteryRoute: typeof AuthenticatedGamePlayHubCemeteryRoute
-  AuthenticatedGamePlayHubCharacterStatsRoute: typeof AuthenticatedGamePlayHubCharacterStatsRoute
-  AuthenticatedGamePlayHubCraftingRoute: typeof AuthenticatedGamePlayHubCraftingRoute
-  AuthenticatedGamePlayHubEquipmentRoute: typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
-  AuthenticatedGamePlayHubInventoryRoute: typeof AuthenticatedGamePlayHubInventoryRoute
-  AuthenticatedGamePlayHubShopRoute: typeof AuthenticatedGamePlayHubShopRoute
-  AuthenticatedGamePlayHubSpellsRoute: typeof AuthenticatedGamePlayHubSpellsRoute
-  AuthenticatedGamePlayHubBattleCharacterRoute: typeof AuthenticatedGamePlayHubBattleCharacterRoute
+  AuthenticatedGamePlayHubCemeteryRoute: typeof AuthenticatedGamePlayHubCemeteryRoute;
+  AuthenticatedGamePlayHubCharacterStatsRoute: typeof AuthenticatedGamePlayHubCharacterStatsRoute;
+  AuthenticatedGamePlayHubCraftingRoute: typeof AuthenticatedGamePlayHubCraftingRoute;
+  AuthenticatedGamePlayHubEquipmentRoute: typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren;
+  AuthenticatedGamePlayHubInventoryRoute: typeof AuthenticatedGamePlayHubInventoryRoute;
+  AuthenticatedGamePlayHubShopRoute: typeof AuthenticatedGamePlayHubShopRoute;
+  AuthenticatedGamePlayHubSpellsRoute: typeof AuthenticatedGamePlayHubSpellsRoute;
+  AuthenticatedGamePlayHubBattleCharacterRoute: typeof AuthenticatedGamePlayHubBattleCharacterRoute;
 }
 
-const AuthenticatedGamePlayHubRouteChildren: AuthenticatedGamePlayHubRouteChildren =
-  {
-    AuthenticatedGamePlayHubCemeteryRoute:
-      AuthenticatedGamePlayHubCemeteryRoute,
-    AuthenticatedGamePlayHubCharacterStatsRoute:
-      AuthenticatedGamePlayHubCharacterStatsRoute,
-    AuthenticatedGamePlayHubCraftingRoute:
-      AuthenticatedGamePlayHubCraftingRoute,
-    AuthenticatedGamePlayHubEquipmentRoute:
-      AuthenticatedGamePlayHubEquipmentRouteWithChildren,
-    AuthenticatedGamePlayHubInventoryRoute:
-      AuthenticatedGamePlayHubInventoryRoute,
-    AuthenticatedGamePlayHubShopRoute: AuthenticatedGamePlayHubShopRoute,
-    AuthenticatedGamePlayHubSpellsRoute: AuthenticatedGamePlayHubSpellsRoute,
-    AuthenticatedGamePlayHubBattleCharacterRoute:
-      AuthenticatedGamePlayHubBattleCharacterRoute,
-  }
+const AuthenticatedGamePlayHubRouteChildren: AuthenticatedGamePlayHubRouteChildren = {
+  AuthenticatedGamePlayHubCemeteryRoute: AuthenticatedGamePlayHubCemeteryRoute,
+  AuthenticatedGamePlayHubCharacterStatsRoute: AuthenticatedGamePlayHubCharacterStatsRoute,
+  AuthenticatedGamePlayHubCraftingRoute: AuthenticatedGamePlayHubCraftingRoute,
+  AuthenticatedGamePlayHubEquipmentRoute: AuthenticatedGamePlayHubEquipmentRouteWithChildren,
+  AuthenticatedGamePlayHubInventoryRoute: AuthenticatedGamePlayHubInventoryRoute,
+  AuthenticatedGamePlayHubShopRoute: AuthenticatedGamePlayHubShopRoute,
+  AuthenticatedGamePlayHubSpellsRoute: AuthenticatedGamePlayHubSpellsRoute,
+  AuthenticatedGamePlayHubBattleCharacterRoute: AuthenticatedGamePlayHubBattleCharacterRoute,
+};
 
-const AuthenticatedGamePlayHubRouteWithChildren =
-  AuthenticatedGamePlayHubRoute._addFileChildren(
-    AuthenticatedGamePlayHubRouteChildren,
-  )
+const AuthenticatedGamePlayHubRouteWithChildren = AuthenticatedGamePlayHubRoute._addFileChildren(
+  AuthenticatedGamePlayHubRouteChildren
+);
 
 interface AuthenticatedGamePlayRouteChildren {
-  AuthenticatedGamePlayHubRoute: typeof AuthenticatedGamePlayHubRouteWithChildren
+  AuthenticatedGamePlayHubRoute: typeof AuthenticatedGamePlayHubRouteWithChildren;
 }
 
 const AuthenticatedGamePlayRouteChildren: AuthenticatedGamePlayRouteChildren = {
   AuthenticatedGamePlayHubRoute: AuthenticatedGamePlayHubRouteWithChildren,
-}
+};
 
-const AuthenticatedGamePlayRouteWithChildren =
-  AuthenticatedGamePlayRoute._addFileChildren(
-    AuthenticatedGamePlayRouteChildren,
-  )
+const AuthenticatedGamePlayRouteWithChildren = AuthenticatedGamePlayRoute._addFileChildren(
+  AuthenticatedGamePlayRouteChildren
+);
 
 interface AuthenticatedGameRouteChildren {
-  AuthenticatedGameGuideRoute: typeof AuthenticatedGameGuideRoute
-  AuthenticatedGamePlayRoute: typeof AuthenticatedGamePlayRouteWithChildren
-  AuthenticatedGameRankingRoute: typeof AuthenticatedGameRankingRoute
+  AuthenticatedGameGuideRoute: typeof AuthenticatedGameGuideRoute;
+  AuthenticatedGamePlayRoute: typeof AuthenticatedGamePlayRouteWithChildren;
+  AuthenticatedGameRankingRoute: typeof AuthenticatedGameRankingRoute;
 }
 
 const AuthenticatedGameRouteChildren: AuthenticatedGameRouteChildren = {
   AuthenticatedGameGuideRoute: AuthenticatedGameGuideRoute,
   AuthenticatedGamePlayRoute: AuthenticatedGamePlayRouteWithChildren,
   AuthenticatedGameRankingRoute: AuthenticatedGameRankingRoute,
-}
+};
 
-const AuthenticatedGameRouteWithChildren =
-  AuthenticatedGameRoute._addFileChildren(AuthenticatedGameRouteChildren)
+const AuthenticatedGameRouteWithChildren = AuthenticatedGameRoute._addFileChildren(
+  AuthenticatedGameRouteChildren
+);
 
 interface AuthenticatedUsersRouteChildren {
-  AuthenticatedUsersIdRoute: typeof AuthenticatedUsersIdRoute
+  AuthenticatedUsersIdRoute: typeof AuthenticatedUsersIdRoute;
 }
 
 const AuthenticatedUsersRouteChildren: AuthenticatedUsersRouteChildren = {
   AuthenticatedUsersIdRoute: AuthenticatedUsersIdRoute,
-}
+};
 
-const AuthenticatedUsersRouteWithChildren =
-  AuthenticatedUsersRoute._addFileChildren(AuthenticatedUsersRouteChildren)
+const AuthenticatedUsersRouteWithChildren = AuthenticatedUsersRoute._addFileChildren(
+  AuthenticatedUsersRouteChildren
+);
 
 interface AuthenticatedRouteChildren {
-  Authenticated403Route: typeof Authenticated403Route
-  AuthenticatedGameRoute: typeof AuthenticatedGameRouteWithChildren
-  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren
+  Authenticated403Route: typeof Authenticated403Route;
+  AuthenticatedGameRoute: typeof AuthenticatedGameRouteWithChildren;
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute;
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRouteWithChildren;
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -466,119 +452,116 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedGameRoute: AuthenticatedGameRouteWithChildren,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRouteWithChildren,
-}
+};
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
-  AuthenticatedRouteChildren,
-)
+  AuthenticatedRouteChildren
+);
 
 interface PublicAuthRouteChildren {
-  PublicAuthVerifyEmailRoute: typeof PublicAuthVerifyEmailRoute
+  PublicAuthVerifyEmailRoute: typeof PublicAuthVerifyEmailRoute;
 }
 
 const PublicAuthRouteChildren: PublicAuthRouteChildren = {
   PublicAuthVerifyEmailRoute: PublicAuthVerifyEmailRoute,
-}
+};
 
-const PublicAuthRouteWithChildren = PublicAuthRoute._addFileChildren(
-  PublicAuthRouteChildren,
-)
+const PublicAuthRouteWithChildren = PublicAuthRoute._addFileChildren(PublicAuthRouteChildren);
 
 interface PublicRouteChildren {
-  PublicAuthRoute: typeof PublicAuthRouteWithChildren
-  PublicLogoutRoute: typeof PublicLogoutRoute
+  PublicAuthRoute: typeof PublicAuthRouteWithChildren;
+  PublicLogoutRoute: typeof PublicLogoutRoute;
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicAuthRoute: PublicAuthRouteWithChildren,
   PublicLogoutRoute: PublicLogoutRoute,
-}
+};
 
-const PublicRouteWithChildren =
-  PublicRoute._addFileChildren(PublicRouteChildren)
+const PublicRouteWithChildren = PublicRoute._addFileChildren(PublicRouteChildren);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '': typeof PublicRouteWithChildren
-  '/403': typeof Authenticated403Route
-  '/game': typeof AuthenticatedGameRouteWithChildren
-  '/profile': typeof AuthenticatedProfileRoute
-  '/users': typeof AuthenticatedUsersRouteWithChildren
-  '/auth': typeof PublicAuthRouteWithChildren
-  '/logout': typeof PublicLogoutRoute
-  '/game/guide': typeof AuthenticatedGameGuideRoute
-  '/game/play': typeof AuthenticatedGamePlayRouteWithChildren
-  '/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/users/$id': typeof AuthenticatedUsersIdRoute
-  '/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
-  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
-  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
-  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
-  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
-  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
-  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
-  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
-  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
-  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
+  '/': typeof IndexRoute;
+  '': typeof PublicRouteWithChildren;
+  '/403': typeof Authenticated403Route;
+  '/game': typeof AuthenticatedGameRouteWithChildren;
+  '/profile': typeof AuthenticatedProfileRoute;
+  '/users': typeof AuthenticatedUsersRouteWithChildren;
+  '/auth': typeof PublicAuthRouteWithChildren;
+  '/logout': typeof PublicLogoutRoute;
+  '/game/guide': typeof AuthenticatedGameGuideRoute;
+  '/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
+  '/game/ranking': typeof AuthenticatedGameRankingRoute;
+  '/users/$id': typeof AuthenticatedUsersIdRoute;
+  '/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
+  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
+  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
+  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute;
+  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren;
+  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute;
+  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute;
+  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute;
+  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute;
+  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute;
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '': typeof PublicRouteWithChildren
-  '/403': typeof Authenticated403Route
-  '/game': typeof AuthenticatedGameRouteWithChildren
-  '/profile': typeof AuthenticatedProfileRoute
-  '/users': typeof AuthenticatedUsersRouteWithChildren
-  '/auth': typeof PublicAuthRouteWithChildren
-  '/logout': typeof PublicLogoutRoute
-  '/game/guide': typeof AuthenticatedGameGuideRoute
-  '/game/play': typeof AuthenticatedGamePlayRouteWithChildren
-  '/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/users/$id': typeof AuthenticatedUsersIdRoute
-  '/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
-  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
-  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
-  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
-  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
-  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
-  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
-  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
-  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
-  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
+  '/': typeof IndexRoute;
+  '': typeof PublicRouteWithChildren;
+  '/403': typeof Authenticated403Route;
+  '/game': typeof AuthenticatedGameRouteWithChildren;
+  '/profile': typeof AuthenticatedProfileRoute;
+  '/users': typeof AuthenticatedUsersRouteWithChildren;
+  '/auth': typeof PublicAuthRouteWithChildren;
+  '/logout': typeof PublicLogoutRoute;
+  '/game/guide': typeof AuthenticatedGameGuideRoute;
+  '/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
+  '/game/ranking': typeof AuthenticatedGameRankingRoute;
+  '/users/$id': typeof AuthenticatedUsersIdRoute;
+  '/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
+  '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
+  '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
+  '/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute;
+  '/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren;
+  '/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute;
+  '/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute;
+  '/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute;
+  '/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute;
+  '/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute;
 }
 
 export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/_public': typeof PublicRouteWithChildren
-  '/_authenticated/403': typeof Authenticated403Route
-  '/_authenticated/game': typeof AuthenticatedGameRouteWithChildren
-  '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren
-  '/_public/auth': typeof PublicAuthRouteWithChildren
-  '/_public/logout': typeof PublicLogoutRoute
-  '/_authenticated/game/guide': typeof AuthenticatedGameGuideRoute
-  '/_authenticated/game/play': typeof AuthenticatedGamePlayRouteWithChildren
-  '/_authenticated/game/ranking': typeof AuthenticatedGameRankingRoute
-  '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute
-  '/_public/auth/verify-email': typeof PublicAuthVerifyEmailRoute
-  '/_authenticated/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren
-  '/_authenticated/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute
-  '/_authenticated/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute
-  '/_authenticated/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute
-  '/_authenticated/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren
-  '/_authenticated/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute
-  '/_authenticated/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute
-  '/_authenticated/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute
-  '/_authenticated/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute
-  '/_authenticated/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute
+  __root__: typeof rootRoute;
+  '/': typeof IndexRoute;
+  '/_authenticated': typeof AuthenticatedRouteWithChildren;
+  '/_public': typeof PublicRouteWithChildren;
+  '/_authenticated/403': typeof Authenticated403Route;
+  '/_authenticated/game': typeof AuthenticatedGameRouteWithChildren;
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute;
+  '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren;
+  '/_public/auth': typeof PublicAuthRouteWithChildren;
+  '/_public/logout': typeof PublicLogoutRoute;
+  '/_authenticated/game/guide': typeof AuthenticatedGameGuideRoute;
+  '/_authenticated/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
+  '/_authenticated/game/ranking': typeof AuthenticatedGameRankingRoute;
+  '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute;
+  '/_public/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/_authenticated/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
+  '/_authenticated/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
+  '/_authenticated/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
+  '/_authenticated/game/play/hub/crafting': typeof AuthenticatedGamePlayHubCraftingRoute;
+  '/_authenticated/game/play/hub/equipment': typeof AuthenticatedGamePlayHubEquipmentRouteWithChildren;
+  '/_authenticated/game/play/hub/inventory': typeof AuthenticatedGamePlayHubInventoryRoute;
+  '/_authenticated/game/play/hub/shop': typeof AuthenticatedGamePlayHubShopRoute;
+  '/_authenticated/game/play/hub/spells': typeof AuthenticatedGamePlayHubSpellsRoute;
+  '/_authenticated/game/play/hub/battle/$character': typeof AuthenticatedGamePlayHubBattleCharacterRoute;
+  '/_authenticated/game/play/hub/equipment/select': typeof AuthenticatedGamePlayHubEquipmentSelectRoute;
 }
 
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | ''
@@ -602,8 +585,8 @@ export interface FileRouteTypes {
     | '/game/play/hub/shop'
     | '/game/play/hub/spells'
     | '/game/play/hub/battle/$character'
-    | '/game/play/hub/equipment/select'
-  fileRoutesByTo: FileRoutesByTo
+    | '/game/play/hub/equipment/select';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | ''
@@ -627,7 +610,7 @@ export interface FileRouteTypes {
     | '/game/play/hub/shop'
     | '/game/play/hub/spells'
     | '/game/play/hub/battle/$character'
-    | '/game/play/hub/equipment/select'
+    | '/game/play/hub/equipment/select';
   id:
     | '__root__'
     | '/'
@@ -653,25 +636,25 @@ export interface FileRouteTypes {
     | '/_authenticated/game/play/hub/shop'
     | '/_authenticated/game/play/hub/spells'
     | '/_authenticated/game/play/hub/battle/$character'
-    | '/_authenticated/game/play/hub/equipment/select'
-  fileRoutesById: FileRoutesById
+    | '/_authenticated/game/play/hub/equipment/select';
+  fileRoutesById: FileRoutesById;
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  PublicRoute: typeof PublicRouteWithChildren
+  IndexRoute: typeof IndexRoute;
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren;
+  PublicRoute: typeof PublicRouteWithChildren;
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
-}
+};
 
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
 /* ROUTE_MANIFEST_START
 {

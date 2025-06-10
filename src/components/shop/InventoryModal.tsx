@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { type Equipment, type CharacterEquipment } from '@/resources/game/models/equipment.model';
-import { type CharacterConsumable, type MonsterDrop } from '@/resources/game/models/consumable.model';
+import {
+  type CharacterConsumable,
+  type MonsterDrop,
+} from '@/resources/game/models/consumable.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { type Character } from '@/resources/game/models/character.model';
@@ -26,11 +29,11 @@ interface CharacterDrop {
   drop?: MonsterDrop;
 }
 
-export const InventoryModal: React.FC<InventoryModalProps> = ({ 
-  character, 
-  isOpen, 
-  onClose, 
-  onItemSold 
+export const InventoryModal: React.FC<InventoryModalProps> = ({
+  character,
+  isOpen,
+  onClose,
+  onItemSold,
 }) => {
   const [equipment, setEquipment] = useState<CharacterEquipment[]>([]);
   const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
@@ -50,7 +53,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       const [equipmentData, consumablesRes, dropsRes] = await Promise.all([
         EquipmentService.getCharacterEquipment(character.id),
         ConsumableService.getCharacterConsumables(character.id),
-        ConsumableService.getCharacterDrops(character.id)
+        ConsumableService.getCharacterDrops(character.id),
       ]);
 
       setEquipment(equipmentData || []);
@@ -74,14 +77,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           item.equipment.id,
           !item.is_equipped
         );
-        
+
         if (result.success) {
           toast.success(item.is_equipped ? 'Item desequipado!' : 'Item equipado!');
           loadInventory();
         }
       } else if (action === 'sell') {
         const result = await EquipmentService.sellEquipment(character.id, item.equipment.id);
-        
+
         if (result.success && result.data?.newGold !== undefined) {
           toast.success(`${item.equipment.name} vendido!`);
           onItemSold(result.data.newGold);
@@ -127,7 +130,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       uncommon: 'text-emerald-400',
       rare: 'text-blue-400',
       epic: 'text-purple-400',
-      legendary: 'text-amber-400'
+      legendary: 'text-amber-400',
     };
     return colors[rarity as keyof typeof colors] || colors.common;
   };
@@ -146,41 +149,41 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       uncommon: 0.35,
       rare: 0.4,
       epic: 0.45,
-      legendary: 0.5
+      legendary: 0.5,
     };
     return Math.floor(item.price * rarityMultiplier[item.rarity]);
   };
 
   const canUseConsumable = (item: CharacterConsumable): boolean => {
     if (!item.consumable) return false;
-    
+
     if (item.consumable.type === 'potion') {
-      if (item.consumable.description.includes('HP') && character.hp >= character.max_hp) return false;
-      if (item.consumable.description.includes('Mana') && character.mana >= character.max_mana) return false;
+      if (item.consumable.description.includes('HP') && character.hp >= character.max_hp)
+        return false;
+      if (item.consumable.description.includes('Mana') && character.mana >= character.max_mana)
+        return false;
     }
-    
+
     return true;
   };
 
   const renderEquipmentItem = (item: CharacterEquipment) => {
     if (!item.equipment) return null;
-    
+
     const isActive = showActions === item.id;
-    
+
     return (
       <div key={item.id} className="relative">
         <div
           className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-            item.is_equipped 
-              ? 'bg-primary/10 border-primary/30' 
+            item.is_equipped
+              ? 'bg-primary/10 border-primary/30'
               : 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/30'
           } ${isActive ? 'ring-2 ring-primary/50' : ''}`}
           onClick={() => setShowActions(isActive ? null : item.id)}
         >
-          <div className="flex-shrink-0">
-            {getItemIcon(item.equipment.type)}
-          </div>
-          
+          <div className="flex-shrink-0">{getItemIcon(item.equipment.type)}</div>
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-200 truncate">
@@ -193,9 +196,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               )}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className={getRarityColor(item.equipment.rarity)}>
-                {item.equipment.rarity}
-              </span>
+              <span className={getRarityColor(item.equipment.rarity)}>{item.equipment.rarity}</span>
               {item.equipment.atk_bonus > 0 && (
                 <span className="text-red-400">+{item.equipment.atk_bonus} ATK</span>
               )}
@@ -204,18 +205,20 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               )}
             </div>
           </div>
-          
+
           <div className="text-xs text-amber-400">
             <Coins className="h-3 w-3 inline mr-1" />
             {getSellPrice(item.equipment)}
           </div>
         </div>
-        
+
         {isActive && (
           <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-lg space-y-3">
             {!item.is_equipped && (
               <div>
-                <h4 className="text-xs font-semibold text-slate-200 mb-2">Comparação se Equipado</h4>
+                <h4 className="text-xs font-semibold text-slate-200 mb-2">
+                  Comparação se Equipado
+                </h4>
                 <EquipmentComparison
                   characterId={character.id}
                   newEquipment={item.equipment}
@@ -228,7 +231,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             <div className="flex gap-2">
               <Button
                 size="sm"
-                variant={item.is_equipped ? "secondary" : "default"}
+                variant={item.is_equipped ? 'secondary' : 'default'}
                 onClick={() => handleEquipmentAction(item, 'toggle')}
                 className="flex-1 text-xs"
               >
@@ -251,16 +254,16 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
   const renderConsumableItem = (item: CharacterConsumable) => {
     if (!item.consumable) return null;
-    
+
     const isActive = showActions === item.id;
     const canUse = canUseConsumable(item);
-    
+
     return (
       <div key={item.id} className="relative">
         <div
           className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-            canUse 
-              ? 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/30' 
+            canUse
+              ? 'bg-slate-800/30 border-slate-700/30 hover:bg-slate-700/30'
               : 'bg-slate-800/20 border-slate-700/20 opacity-60'
           } ${isActive ? 'ring-2 ring-primary/50' : ''}`}
           onClick={() => canUse && setShowActions(isActive ? null : item.id)}
@@ -268,13 +271,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           <div className="flex-shrink-0">
             {item.consumable.type === 'potion' && item.consumable.description.includes('HP') ? (
               <Heart className="h-4 w-4 text-red-400" />
-            ) : item.consumable.type === 'potion' && item.consumable.description.includes('Mana') ? (
+            ) : item.consumable.type === 'potion' &&
+              item.consumable.description.includes('Mana') ? (
               <Zap className="h-4 w-4 text-blue-400" />
             ) : (
               <Sparkles className="h-4 w-4 text-purple-400" />
             )}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-slate-200 truncate">
@@ -289,7 +293,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
             </div>
           </div>
         </div>
-        
+
         {isActive && canUse && (
           <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-slate-800 border border-slate-600 rounded-lg p-2 shadow-lg">
             <Button
@@ -307,29 +311,26 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
   const renderDropItem = (item: CharacterDrop) => {
     if (!item.drop) return null;
-    
+
     return (
-      <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/30">
+      <div
+        key={item.id}
+        className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/30"
+      >
         <div className="flex-shrink-0">
           <Star className="h-4 w-4 text-purple-400" />
         </div>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-slate-200 truncate">
-              {item.drop.name}
-            </span>
+            <span className="text-sm font-medium text-slate-200 truncate">{item.drop.name}</span>
             <span className="text-xs bg-slate-700/50 text-slate-300 px-1.5 py-0.5 rounded">
               x{item.quantity}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <span className={getRarityColor(item.drop.rarity)}>
-              {item.drop.rarity}
-            </span>
-            <span className="text-amber-400">
-              {item.drop.value} gold cada
-            </span>
+            <span className={getRarityColor(item.drop.rarity)}>{item.drop.rarity}</span>
+            <span className="text-amber-400">{item.drop.value} gold cada</span>
           </div>
         </div>
       </div>
@@ -354,9 +355,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className="max-w-md max-h-[80vh] bg-slate-900/95 border-slate-700/50"
-        onClick={(e) => {
+        onClick={e => {
           // Fechar ações se clicar fora
           if (e.target === e.currentTarget) {
             setShowActions(null);
@@ -428,4 +429,4 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-}; 
+};

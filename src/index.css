@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -23,7 +23,7 @@
   --primary-foreground: oklch(0.98 0 0);
 
   /* Secundários */
-  --secondary: oklch(0.95 0.010 264.376);
+  --secondary: oklch(0.95 0.01 264.376);
   --secondary-foreground: oklch(0.243 0.024 264.376);
 
   /* Mutáveis */
@@ -31,7 +31,7 @@
   --muted-foreground: oklch(0.45 0.025 264.376);
 
   /* Acentos */
-  --accent: oklch(0.90 0.015 264.376);
+  --accent: oklch(0.9 0.015 264.376);
   --accent-foreground: oklch(0.243 0.024 264.376);
 
   /* Destrutivos */
@@ -44,10 +44,34 @@
   --ring: oklch(0.556 0.118 264.376);
 
   /* Gradientes dinâmicos de vida */
-  --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(21, 128, 61, 0.03) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.03) 80%, rgba(34, 197, 94, 0.08) 100%);
-  --battle-bg-wounded: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(161, 98, 7, 0.03) 20%, transparent 40%, transparent 60%, rgba(161, 98, 7, 0.03) 80%, rgba(234, 179, 8, 0.08) 100%);
-  --battle-bg-critical: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(185, 28, 28, 0.03) 20%, transparent 40%, transparent 60%, rgba(185, 28, 28, 0.03) 80%, rgba(239, 68, 68, 0.08) 100%);
-  
+  --battle-bg-healthy: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.08) 0%,
+    rgba(21, 128, 61, 0.03) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(21, 128, 61, 0.03) 80%,
+    rgba(34, 197, 94, 0.08) 100%
+  );
+  --battle-bg-wounded: linear-gradient(
+    135deg,
+    rgba(234, 179, 8, 0.08) 0%,
+    rgba(161, 98, 7, 0.03) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(161, 98, 7, 0.03) 80%,
+    rgba(234, 179, 8, 0.08) 100%
+  );
+  --battle-bg-critical: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.08) 0%,
+    rgba(185, 28, 28, 0.03) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(185, 28, 28, 0.03) 80%,
+    rgba(239, 68, 68, 0.08) 100%
+  );
+
   --battle-border-healthy: rgba(34, 197, 94, 0.2);
   --battle-border-wounded: rgba(234, 179, 8, 0.2);
   --battle-border-critical: rgba(239, 68, 68, 0.2);
@@ -146,10 +170,34 @@
   --ring: oklch(0.708 0.118 264.376);
 
   /* Gradientes dinâmicos de vida - tema escuro */
-  --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(21, 128, 61, 0.05) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.05) 80%, rgba(34, 197, 94, 0.12) 100%);
-  --battle-bg-wounded: linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(161, 98, 7, 0.05) 20%, transparent 40%, transparent 60%, rgba(161, 98, 7, 0.05) 80%, rgba(234, 179, 8, 0.12) 100%);
-  --battle-bg-critical: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.05) 20%, transparent 40%, transparent 60%, rgba(185, 28, 28, 0.05) 80%, rgba(239, 68, 68, 0.12) 100%);
-  
+  --battle-bg-healthy: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.12) 0%,
+    rgba(21, 128, 61, 0.05) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(21, 128, 61, 0.05) 80%,
+    rgba(34, 197, 94, 0.12) 100%
+  );
+  --battle-bg-wounded: linear-gradient(
+    135deg,
+    rgba(234, 179, 8, 0.12) 0%,
+    rgba(161, 98, 7, 0.05) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(161, 98, 7, 0.05) 80%,
+    rgba(234, 179, 8, 0.12) 100%
+  );
+  --battle-bg-critical: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(185, 28, 28, 0.05) 20%,
+    transparent 40%,
+    transparent 60%,
+    rgba(185, 28, 28, 0.05) 80%,
+    rgba(239, 68, 68, 0.12) 100%
+  );
+
   --battle-border-healthy: rgba(34, 197, 94, 0.3);
   --battle-border-wounded: rgba(234, 179, 8, 0.3);
   --battle-border-critical: rgba(239, 68, 68, 0.3);
@@ -208,11 +256,14 @@
 
 /* Animações suaves para barras de progresso */
 @keyframes progress-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 5px currentColor;
   }
   50% {
-    box-shadow: 0 0 15px currentColor, 0 0 25px currentColor;
+    box-shadow:
+      0 0 15px currentColor,
+      0 0 25px currentColor;
   }
 }
 
@@ -291,9 +342,23 @@
 }
 
 @keyframes potion-disabled-shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-  20%, 40%, 60%, 80% { transform: translateX(2px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(2px);
+  }
 }
 
 .animate-potion-use {
@@ -452,7 +517,9 @@
 
 .card-enhanced:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* Focus States for Better Accessibility */
@@ -463,7 +530,8 @@
 
 /* Loading Animation for Recipe Details */
 @keyframes skeleton-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -509,11 +577,14 @@
 
 /* Efeitos para modificações mágicas */
 @keyframes magical-glow {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 0 0 5px rgba(168, 85, 247, 0.3);
   }
   50% {
-    text-shadow: 0 0 10px rgba(168, 85, 247, 0.6), 0 0 20px rgba(168, 85, 247, 0.3);
+    text-shadow:
+      0 0 10px rgba(168, 85, 247, 0.6),
+      0 0 20px rgba(168, 85, 247, 0.3);
   }
 }
 
@@ -542,7 +613,8 @@
 
 /* Efeito de borda mágica */
 @keyframes magical-border {
-  0%, 100% {
+  0%,
+  100% {
     border-color: rgba(168, 85, 247, 0.3);
     box-shadow: 0 0 5px rgba(168, 85, 247, 0.2);
   }
@@ -577,7 +649,8 @@
 }
 
 @keyframes critical-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
   }
   50% {
@@ -601,14 +674,15 @@
 }
 
 @keyframes quick-play-glow {
-  0%, 100% {
-    box-shadow: 
+  0%,
+  100% {
+    box-shadow:
       0 4px 15px rgba(139, 92, 246, 0.3),
       0 0 20px rgba(139, 92, 246, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
   50% {
-    box-shadow: 
+    box-shadow:
       0 6px 25px rgba(139, 92, 246, 0.4),
       0 0 30px rgba(139, 92, 246, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -627,12 +701,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.2), 
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s ease-in-out;
 }
 
@@ -654,7 +723,8 @@
 
 /* Subtle pulsing effect for the quick start indicator */
 @keyframes quick-start-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
     transform: scale(1);
   }
@@ -728,12 +798,12 @@
     max-height: 95vh !important;
     overflow-y: auto;
   }
-  
+
   .victory-modal-landscape .dialog-content {
     margin: 0.5rem;
     padding: 0.75rem;
   }
-  
+
   .victory-modal-landscape .scroll-area {
     max-height: calc(100vh - 100px);
     overflow-y: auto;
@@ -747,7 +817,7 @@
     min-height: 36px;
     font-size: 0.75rem;
   }
-  
+
   .victory-modal-buttons .lucide {
     width: 0.75rem;
     height: 0.75rem;

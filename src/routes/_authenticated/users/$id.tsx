@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { type IUser } from '@/resources/user/user-model'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { type IUser } from '@/resources/user/user-model';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -10,77 +10,77 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature'
-import { userService } from '@/resources/user/user.service'
-import { RankingService, type RankingEntry } from '@/resources/game/ranking.service'
+} from '@/components/ui/table';
+import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature';
+import { userService } from '@/resources/user/user.service';
+import { RankingService, type RankingEntry } from '@/resources/game/ranking.service';
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Administrador',
   PLAYER: 'Jogador',
-}
+};
 
 export const Route = createFileRoute('/_authenticated/users/$id')({
   component: UserPage,
-})
+});
 
 function UserPage() {
-  const { id } = Route.useParams()
-  const [usuario, setUsuario] = useState<IUser | null>(null)
-  const [rankings, setRankings] = useState<RankingEntry[]>([])
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
+  const { id } = Route.useParams();
+  const [usuario, setUsuario] = useState<IUser | null>(null);
+  const [rankings, setRankings] = useState<RankingEntry[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        setCarregando(true)
-        setErro(null)
+        setCarregando(true);
+        setErro(null);
 
         // Buscar dados do usuário
         const { data: userData, error: userError } = await userService.searchUsers({
           page: 1,
           limit: 1,
           email: id,
-        })
+        });
 
         if (userError) {
-          setErro(`Erro ao buscar usuário: ${userError}`)
-          return
+          setErro(`Erro ao buscar usuário: ${userError}`);
+          return;
         }
 
         if (!userData || userData.length === 0) {
-          setErro('Usuário não encontrado')
-          return
+          setErro('Usuário não encontrado');
+          return;
         }
 
-        const user = userData[0]
-        setUsuario(user)
+        const user = userData[0];
+        setUsuario(user);
 
         // Buscar rankings do usuário
-        const { data: rankingData } = await RankingService.getUserRanking(user.uid)
-        setRankings(rankingData || [])
+        const { data: rankingData } = await RankingService.getUserRanking(user.uid);
+        setRankings(rankingData || []);
       } catch (error) {
-        console.error('Erro ao carregar dados:', error)
-        setErro('Erro ao carregar dados do usuário')
+        console.error('Erro ao carregar dados:', error);
+        setErro('Erro ao carregar dados do usuário');
       } finally {
-        setCarregando(false)
+        setCarregando(false);
       }
-    }
+    };
 
-    carregarDados()
-  }, [id])
+    carregarDados();
+  }, [id]);
 
   if (carregando) {
-    return <div>Carregando...</div>
+    return <div>Carregando...</div>;
   }
 
   if (erro) {
-    return <div className="text-red-500">{erro}</div>
+    return <div className="text-red-500">{erro}</div>;
   }
 
   if (!usuario) {
-    return <div>Usuário não encontrado</div>
+    return <div>Usuário não encontrado</div>;
   }
 
   return (
@@ -149,11 +149,13 @@ function UserPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    rankings.map((ranking) => (
+                    rankings.map(ranking => (
                       <TableRow key={ranking.id}>
                         <TableCell>{ranking.floor}</TableCell>
                         <TableCell>
-                          {ranking.created_at ? new Date(ranking.created_at).toLocaleDateString('pt-BR') : '-'}
+                          {ranking.created_at
+                            ? new Date(ranking.created_at).toLocaleDateString('pt-BR')
+                            : '-'}
                         </TableCell>
                       </TableRow>
                     ))
@@ -165,5 +167,5 @@ function UserPage() {
         </Card>
       </div>
     </AdministratorOnlyFeature>
-  )
-} 
+  );
+}

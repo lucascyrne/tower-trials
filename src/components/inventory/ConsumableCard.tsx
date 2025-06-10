@@ -17,16 +17,21 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
   item,
   character,
   isUsing,
-  onUseConsumable
+  onUseConsumable,
 }) => {
-  const checkCanUseConsumable = (item: CharacterConsumable): { allowed: boolean; reason?: string } => {
+  const checkCanUseConsumable = (
+    item: CharacterConsumable
+  ): { allowed: boolean; reason?: string } => {
     if (!item.consumable) {
       return { allowed: false, reason: 'Consumível inválido' };
     }
 
     switch (item.consumable.type) {
       case 'potion':
-        if (item.consumable.description.includes('HP') || item.consumable.description.includes('Vida')) {
+        if (
+          item.consumable.description.includes('HP') ||
+          item.consumable.description.includes('Vida')
+        ) {
           if (character.hp >= character.max_hp) {
             return { allowed: false, reason: 'HP já está no máximo' };
           }
@@ -66,11 +71,13 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
   const canUse = checkCanUseConsumable(item);
 
   return (
-    <Card className={`p-4 border-slate-700/50 backdrop-blur-sm transition-all duration-200 hover:shadow-lg ${
-      canUse.allowed 
-        ? 'bg-slate-800/50 hover:shadow-primary/20 hover:bg-slate-800/70' 
-        : 'bg-slate-800/30 opacity-60'
-    }`}>
+    <Card
+      className={`p-4 border-slate-700/50 backdrop-blur-sm transition-all duration-200 hover:shadow-lg ${
+        canUse.allowed
+          ? 'bg-slate-800/50 hover:shadow-primary/20 hover:bg-slate-800/70'
+          : 'bg-slate-800/30 opacity-60'
+      }`}
+    >
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
           {getConsumableIcon(item.consumable.type, item.consumable.description)}
@@ -78,7 +85,10 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-slate-100 truncate">{item.consumable.name}</h4>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="text-xs bg-slate-700/50 text-slate-300 border-slate-600">
+            <Badge
+              variant="outline"
+              className="text-xs bg-slate-700/50 text-slate-300 border-slate-600"
+            >
               {item.consumable.type}
             </Badge>
             <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
@@ -102,8 +112,8 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
         disabled={!canUse.allowed || isUsing}
         size="sm"
         className={`w-full h-8 text-xs ${
-          canUse.allowed 
-            ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20' 
+          canUse.allowed
+            ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20'
             : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'
         }`}
       >
@@ -120,4 +130,4 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
       </Button>
     </Card>
   );
-}; 
+};

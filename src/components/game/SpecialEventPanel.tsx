@@ -21,24 +21,19 @@ export default function SpecialEventPanel() {
   // Calcular preview dos benefícios
   const hpRestore = Math.ceil((player.max_hp * currentSpecialEvent.hp_restore_percent) / 100);
   const manaRestore = Math.ceil((player.max_mana * currentSpecialEvent.mana_restore_percent) / 100);
-  const goldRange = currentSpecialEvent.gold_reward_max > 0 
-    ? `${currentSpecialEvent.gold_reward_min}-${currentSpecialEvent.gold_reward_max}`
-    : '0';
+  const goldRange =
+    currentSpecialEvent.gold_reward_max > 0
+      ? `${currentSpecialEvent.gold_reward_min}-${currentSpecialEvent.gold_reward_max}`
+      : '0';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-4xl">
         {/* Cabeçalho do Evento */}
         <div className="text-center mb-8">
-          <div className={`text-8xl mb-4 ${eventColor}`}>
-            {eventIcon}
-          </div>
-          <h1 className="text-4xl font-bold mb-2">
-            {currentSpecialEvent.name}
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Andar {player.floor}
-          </p>
+          <div className={`text-8xl mb-4 ${eventColor}`}>{eventIcon}</div>
+          <h1 className="text-4xl font-bold mb-2">{currentSpecialEvent.name}</h1>
+          <p className="text-xl text-muted-foreground">Andar {player.floor}</p>
         </div>
 
         {/* Card do Evento */}
@@ -49,9 +44,7 @@ export default function SpecialEventPanel() {
           <CardContent className="p-8">
             {/* Descrição do Evento */}
             <div className="text-center mb-8">
-              <p className="text-lg leading-relaxed">
-                {currentSpecialEvent.description}
-              </p>
+              <p className="text-lg leading-relaxed">{currentSpecialEvent.description}</p>
             </div>
 
             {/* Preview dos Benefícios */}
@@ -80,9 +73,7 @@ export default function SpecialEventPanel() {
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-center">
                   <div className="text-2xl text-yellow-500 mb-2">💰</div>
                   <div className="font-semibold text-yellow-600">Recompensa de Gold</div>
-                  <div className="text-sm text-muted-foreground">
-                    {goldRange} Gold
-                  </div>
+                  <div className="text-sm text-muted-foreground">{goldRange} Gold</div>
                 </div>
               )}
             </div>
@@ -108,16 +99,12 @@ export default function SpecialEventPanel() {
                 <div>
                   <div className="text-2xl text-yellow-500">💰</div>
                   <div className="text-sm font-medium">Gold</div>
-                  <div className="text-sm text-muted-foreground">
-                    {player.gold}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{player.gold}</div>
                 </div>
                 <div>
                   <div className="text-2xl text-purple-500">🏢</div>
                   <div className="text-sm font-medium">Andar</div>
-                  <div className="text-sm text-muted-foreground">
-                    {player.floor}
-                  </div>
+                  <div className="text-sm text-muted-foreground">{player.floor}</div>
                 </div>
               </div>
             </div>
@@ -136,9 +123,7 @@ export default function SpecialEventPanel() {
                     Processando...
                   </>
                 ) : (
-                  <>
-                    {eventIcon} Interagir
-                  </>
+                  <>{eventIcon} Interagir</>
                 )}
               </Button>
             </div>
@@ -156,4 +141,4 @@ export default function SpecialEventPanel() {
       </div>
     </div>
   );
-} 
+}

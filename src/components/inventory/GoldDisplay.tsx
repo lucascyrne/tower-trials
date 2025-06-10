@@ -16,4 +16,4 @@ export const GoldDisplay: React.FC<GoldDisplayProps> = ({ gold }) => {
       </div>
     </Card>
   );
-}; 
+};

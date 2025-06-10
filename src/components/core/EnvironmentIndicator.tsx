@@ -17,21 +17,21 @@ export function EnvironmentIndicator() {
           label: 'LOCAL',
           color: 'bg-blue-500',
           icon: '🐳',
-          description: 'Docker'
+          description: 'Docker',
         };
       case Environment.DEV:
         return {
           label: 'DEV',
           color: 'bg-yellow-500',
           icon: '🌐',
-          description: 'Remoto'
+          description: 'Remoto',
         };
       default:
         return {
           label: 'UNKNOWN',
           color: 'bg-red-500',
           icon: '❓',
-          description: 'Desconhecido'
+          description: 'Desconhecido',
         };
     }
   };
@@ -40,7 +40,7 @@ export function EnvironmentIndicator() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      <div 
+      <div
         className={`${config.color} text-white px-3 py-1 rounded-full text-xs font-mono flex items-center gap-1 shadow-lg`}
         title={`Ambiente: ${config.label} (${config.description})`}
       >
@@ -50,4 +50,4 @@ export function EnvironmentIndicator() {
       </div>
     </div>
   );
-} 
+}

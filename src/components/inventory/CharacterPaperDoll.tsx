@@ -15,23 +15,31 @@ interface CharacterPaperDollProps {
 export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
   character,
   equippedItems,
-  onUnequipSlot
+  onUnequipSlot,
 }) => {
   const getSlotIcon = (slotType: keyof EquipmentSlots) => {
     switch (slotType) {
-      case 'main_hand': return <Sword className="h-8 w-8 text-red-400" />;
-      case 'off_hand': return <Shield className="h-8 w-8 text-blue-400" />;
-      case 'armor': return <ShirtIcon className="h-8 w-8 text-emerald-400" />;
-      case 'accessory': return <Gem className="h-8 w-8 text-purple-400" />;
+      case 'main_hand':
+        return <Sword className="h-8 w-8 text-red-400" />;
+      case 'off_hand':
+        return <Shield className="h-8 w-8 text-blue-400" />;
+      case 'armor':
+        return <ShirtIcon className="h-8 w-8 text-emerald-400" />;
+      case 'accessory':
+        return <Gem className="h-8 w-8 text-purple-400" />;
     }
   };
 
   const getSlotLabel = (slotType: keyof EquipmentSlots) => {
     switch (slotType) {
-      case 'main_hand': return 'Mão Principal';
-      case 'off_hand': return 'Mão Secundária';
-      case 'armor': return 'Armadura';
-      case 'accessory': return 'Acessório';
+      case 'main_hand':
+        return 'Mão Principal';
+      case 'off_hand':
+        return 'Mão Secundária';
+      case 'armor':
+        return 'Armadura';
+      case 'accessory':
+        return 'Acessório';
     }
   };
 
@@ -41,7 +49,7 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
       uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
       rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
       epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
-      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
+      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600',
     };
     return colors[rarity];
   };
@@ -59,20 +67,18 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
       <div className="space-y-3">
         {(['main_hand', 'off_hand', 'armor', 'accessory'] as const).map(slotType => {
           const equipment = equippedItems[slotType];
-          
+
           return (
-            <Card 
-              key={slotType} 
+            <Card
+              key={slotType}
               className={`p-4 border-2 transition-all duration-200 backdrop-blur-sm ${
-                equipment 
-                  ? 'bg-slate-800/60 border-primary/50 hover:border-primary/70 shadow-lg shadow-primary/10' 
+                equipment
+                  ? 'bg-slate-800/60 border-primary/50 hover:border-primary/70 shadow-lg shadow-primary/10'
                   : 'bg-slate-800/30 border-dashed border-slate-600/50 hover:border-slate-500/70'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 text-slate-400">
-                  {getSlotIcon(slotType)}
-                </div>
+                <div className="flex-shrink-0 text-slate-400">{getSlotIcon(slotType)}</div>
                 <div className="flex-1">
                   <h4 className="text-sm font-medium text-slate-300 mb-1">
                     {getSlotLabel(slotType)}
@@ -83,7 +89,10 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
                         <p className="text-sm font-semibold text-primary truncate">
                           {equipment.name}
                         </p>
-                        <Badge className={`${getRarityColor(equipment.rarity)} text-xs`} variant="outline">
+                        <Badge
+                          className={`${getRarityColor(equipment.rarity)} text-xs`}
+                          variant="outline"
+                        >
                           {equipment.rarity}
                         </Badge>
                       </div>
@@ -98,8 +107,8 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
                           <span className="text-purple-400">+{equipment.mana_bonus} MP</span>
                         )}
                       </div>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => onUnequipSlot(slotType)}
                         className="w-full mt-2 h-7 text-xs border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-100"
@@ -130,14 +139,18 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
           </div>
           <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
             <span className="text-slate-400">HP:</span>
-            <span className="font-medium text-emerald-400">{character.hp}/{character.max_hp}</span>
+            <span className="font-medium text-emerald-400">
+              {character.hp}/{character.max_hp}
+            </span>
           </div>
           <div className="flex justify-between p-2 bg-slate-800/30 rounded border border-slate-700/30">
             <span className="text-slate-400">MP:</span>
-            <span className="font-medium text-purple-400">{character.mana}/{character.max_mana}</span>
+            <span className="font-medium text-purple-400">
+              {character.mana}/{character.max_mana}
+            </span>
           </div>
         </div>
       </div>
     </Card>
   );
-}; 
+};

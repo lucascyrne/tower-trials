@@ -13,10 +13,10 @@ export function useUser() {
       setLoading(true);
       setError(null);
       const { data, error } = await userService.getUserProfile();
-      
+
       if (error) throw new Error(error);
       if (data) setUser(data);
-      
+
       return data;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao buscar perfil';
@@ -32,7 +32,7 @@ export function useUser() {
       setLoading(true);
       setError(null);
       const { data, error } = await userService.searchUsers(criterios);
-      
+
       if (error) throw new Error(error);
       if (data) setUsers(data);
     } catch (error) {
@@ -51,4 +51,4 @@ export function useUser() {
     getUserProfile,
     searchUsers,
   };
-} 
+}

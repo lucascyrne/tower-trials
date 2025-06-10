@@ -27,27 +27,32 @@ export class CharacterProgressionService {
   /**
    * Buscar informações de progressão do usuário
    */
-  static async getUserCharacterProgression(userId: string): Promise<ServiceResponse<CharacterProgressionInfo>> {
+  static async getUserCharacterProgression(
+    userId: string
+  ): Promise<ServiceResponse<CharacterProgressionInfo>> {
     try {
       const { data, error } = await supabase
         .rpc('get_user_character_progression', {
-          p_user_id: userId
+          p_user_id: userId,
         })
         .single();
 
       if (error) throw error;
 
-      return { 
-        data: data as CharacterProgressionInfo, 
-        error: null, 
-        success: true 
+      return {
+        data: data as CharacterProgressionInfo,
+        error: null,
+        success: true,
       };
     } catch (error) {
-      console.error('Erro ao buscar progressão de personagens:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar progressão', 
-        success: false 
+      console.error(
+        'Erro ao buscar progressão de personagens:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar progressão',
+        success: false,
       };
     }
   }
@@ -59,23 +64,26 @@ export class CharacterProgressionService {
     try {
       const { data, error } = await supabase
         .rpc('check_character_limit', {
-          p_user_id: userId
+          p_user_id: userId,
         })
         .single();
 
       if (error) throw error;
 
-      return { 
-        data: data as CharacterLimitInfo, 
-        error: null, 
-        success: true 
+      return {
+        data: data as CharacterLimitInfo,
+        error: null,
+        success: true,
       };
     } catch (error) {
-      console.error('Erro ao verificar limite de personagens:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao verificar limite', 
-        success: false 
+      console.error(
+        'Erro ao verificar limite de personagens:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao verificar limite',
+        success: false,
       };
     }
   }
@@ -91,12 +99,12 @@ export class CharacterProgressionService {
     try {
       // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
-      
+
       const { data, error } = await supabaseAdmin
         .rpc('secure_grant_xp', {
           p_character_id: characterId,
           p_xp_amount: xpAmount,
-          p_source: source
+          p_source: source,
         })
         .single();
 
@@ -114,17 +122,17 @@ export class CharacterProgressionService {
         }
       }
 
-      return { 
-        data: result, 
-        error: null, 
-        success: true 
+      return {
+        data: result,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao conceder XP:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao conceder XP', 
-        success: false 
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao conceder XP',
+        success: false,
       };
     }
   }
@@ -140,12 +148,12 @@ export class CharacterProgressionService {
     try {
       // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
-      
+
       const { data, error } = await supabaseAdmin
         .rpc('secure_grant_gold', {
           p_character_id: characterId,
           p_gold_amount: goldAmount,
-          p_source: source
+          p_source: source,
         })
         .single();
 
@@ -154,17 +162,17 @@ export class CharacterProgressionService {
       // Invalidar cache do personagem específico
       CharacterCacheService.invalidateCharacterCache(characterId);
 
-      return { 
-        data: data as number, 
-        error: null, 
-        success: true 
+      return {
+        data: data as number,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao conceder gold:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao conceder gold', 
-        success: false 
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao conceder gold',
+        success: false,
       };
     }
   }
@@ -182,7 +190,7 @@ export class CharacterProgressionService {
         .rpc('add_skill_xp', {
           p_character_id: characterId,
           p_skill_type: skillType,
-          p_xp_amount: xpAmount
+          p_xp_amount: xpAmount,
         })
         .single();
 
@@ -193,17 +201,20 @@ export class CharacterProgressionService {
         CharacterCacheService.invalidateCharacterCache(characterId);
       }
 
-      return { 
-        data: data as SkillXpResult, 
-        error: null, 
-        success: true 
+      return {
+        data: data as SkillXpResult,
+        error: null,
+        success: true,
       };
     } catch (error) {
-      console.error('Erro ao adicionar XP de habilidade:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao adicionar XP', 
-        success: false 
+      console.error(
+        'Erro ao adicionar XP de habilidade:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao adicionar XP',
+        success: false,
       };
     }
   }
@@ -226,10 +237,10 @@ export class CharacterProgressionService {
       return { data: null, error: null, success: true };
     } catch (error) {
       console.error('Erro ao atualizar gold:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao atualizar gold', 
-        success: false 
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao atualizar gold',
+        success: false,
       };
     }
   }
@@ -247,18 +258,18 @@ export class CharacterProgressionService {
 
       if (error) throw error;
 
-      return { 
-        data: data as Character, 
-        error: null, 
-        success: true 
+      return {
+        data: data as Character,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar personagem', 
-        success: false 
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
+        success: false,
       };
     }
   }
-} 
+}

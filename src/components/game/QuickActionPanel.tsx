@@ -5,16 +5,7 @@ import { type GamePlayer } from '@/resources/game/game-model';
 import { type PlayerSpell } from '@/resources/game/models/spell.model';
 import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
-import { 
-  Sword, 
-  Shield, 
-  ArrowLeft,
-  Zap,
-  Heart,
-  Sparkles,
-  Flame,
-  Snowflake
-} from 'lucide-react';
+import { Sword, Shield, ArrowLeft, Zap, Heart, Sparkles, Flame, Snowflake } from 'lucide-react';
 
 interface QuickActionPanelProps {
   handleAction: (action: ActionType, spellId?: string) => Promise<void>;
@@ -73,15 +64,15 @@ export function QuickActionPanel({
   loading,
   player,
   onPlayerStatsUpdate,
-  onPlayerConsumablesUpdate
+  onPlayerConsumablesUpdate,
 }: QuickActionPanelProps) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
-  
+
   // Top 3 spells para os atalhos 1-3
   const quickSpells = player.spells?.slice(0, 3) || [];
 
   // REMOVIDO: Captura de teclas de atalho para evitar duplo processamento
-  // O CombinedBattleInterface já possui sistema completo de captura de teclas 
+  // O CombinedBattleInterface já possui sistema completo de captura de teclas
   // com debounce e proteção contra ações duplicadas
   // O QuickActionPanel serve apenas para interface visual (cliques)
 
@@ -89,7 +80,7 @@ export function QuickActionPanel({
   useEffect(() => {
     const loadPotionSlots = async () => {
       if (!player.consumables) return;
-      
+
       const slots: PotionSlot[] = player.consumables
         .filter(c => c.consumable?.type === 'potion' && c.quantity > 0)
         .slice(0, 3) // 3 slots para os atalhos Q-W-E
@@ -100,11 +91,11 @@ export function QuickActionPanel({
             id: c.consumable!.id,
             name: c.consumable!.name,
             type: c.consumable!.type,
-            effect_value: c.consumable!.effect_value
+            effect_value: c.consumable!.effect_value,
           },
-          quantity: c.quantity
+          quantity: c.quantity,
         }));
-      
+
       setPotionSlots(slots);
     };
 
@@ -115,11 +106,7 @@ export function QuickActionPanel({
     if (!isPlayerTurn || loading.performAction || player.potionUsedThisTurn) return;
 
     try {
-      const result = await ConsumableService.consumeItem(
-        player.id,
-        slot.consumable_id,
-        player
-      );
+      const result = await ConsumableService.consumeItem(player.id, slot.consumable_id, player);
 
       if (result.success) {
         const healAmount = slot.consumable.effect_value;
@@ -127,14 +114,14 @@ export function QuickActionPanel({
         const newMana = Math.min(player.max_mana, player.mana);
 
         onPlayerStatsUpdate(newHp, newMana);
-        
+
         // Atualizar consumíveis
-        const updatedConsumables = player.consumables!.map(c => 
-          c.consumable_id === slot.consumable_id 
-            ? { ...c, quantity: c.quantity - 1 }
-            : c
-        ).filter(c => c.quantity > 0);
-        
+        const updatedConsumables = player
+          .consumables!.map(c =>
+            c.consumable_id === slot.consumable_id ? { ...c, quantity: c.quantity - 1 } : c
+          )
+          .filter(c => c.quantity > 0);
+
         onPlayerConsumablesUpdate(updatedConsumables);
       }
     } catch (error) {
@@ -171,7 +158,7 @@ export function QuickActionPanel({
             variant="outline"
             size="sm"
             onClick={() => handleAction('defend')}
-            disabled={isActionDisabled || (player.defenseCooldown > 0)}
+            disabled={isActionDisabled || player.defenseCooldown > 0}
             className={`quick-action-button w-12 h-12 p-0 bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/50 text-blue-400 transition-all duration-150 relative ${
               player.defenseCooldown > 0 ? 'opacity-50' : ''
             }`}
@@ -225,8 +212,11 @@ export function QuickActionPanel({
                   !canCast ? 'opacity-50' : ''
                 }`}
                 title={`${spell.name} (${1 + index}) - ${spell.mana_cost} Mana${
-                  spell.current_cooldown > 0 ? ` - Cooldown: ${spell.current_cooldown}` : 
-                  player.mana < spell.mana_cost ? ' - Mana insuficiente' : ''
+                  spell.current_cooldown > 0
+                    ? ` - Cooldown: ${spell.current_cooldown}`
+                    : player.mana < spell.mana_cost
+                      ? ' - Mana insuficiente'
+                      : ''
                 }`}
               >
                 {getSpellIcon(spell)}
@@ -236,9 +226,11 @@ export function QuickActionPanel({
                   </span>
                 )}
                 {/* Indicador de mana */}
-                <span className={`absolute -bottom-1 -right-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center ${
-                  player.mana >= spell.mana_cost ? 'bg-blue-600' : 'bg-red-600'
-                }`}>
+                <span
+                  className={`absolute -bottom-1 -right-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center ${
+                    player.mana >= spell.mana_cost ? 'bg-blue-600' : 'bg-red-600'
+                  }`}
+                >
                   {spell.mana_cost}
                 </span>
               </Button>
@@ -251,7 +243,7 @@ export function QuickActionPanel({
         })}
       </div>
 
-            {/* Divisor */}
+      {/* Divisor */}
       {potionSlots.length > 0 && <div className="h-px bg-slate-700/50 my-1" />}
 
       {/* Poções Rápidas */}
@@ -287,8 +279,6 @@ export function QuickActionPanel({
           </div>
         ))}
       </div>
-
-
     </div>
   );
-} 
+}

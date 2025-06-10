@@ -1,7 +1,17 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trophy, TrendingUp, Coins, Users, Heart, Skull, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Trophy,
+  TrendingUp,
+  Coins,
+  Users,
+  Heart,
+  Skull,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { type RankingMode } from '@/resources/game/ranking.service';
 
 export type CharacterStatusFilter = 'all' | 'alive' | 'dead';
@@ -29,27 +39,27 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  isLoading = false
+  isLoading = false,
 }) => {
   const modes = [
     {
       key: 'floor' as RankingMode,
       label: 'Andar Mais Alto',
       icon: Trophy,
-      color: 'text-yellow-500'
+      color: 'text-yellow-500',
     },
     {
       key: 'level' as RankingMode,
       label: 'Maior Nível',
       icon: TrendingUp,
-      color: 'text-blue-500'
+      color: 'text-blue-500',
     },
     {
       key: 'gold' as RankingMode,
       label: 'Mais Rico',
       icon: Coins,
-      color: 'text-amber-500'
-    }
+      color: 'text-amber-500',
+    },
   ];
 
   const statusOptions = [
@@ -58,22 +68,22 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
       label: 'Todos',
       shortLabel: 'Todos',
       icon: Users,
-      color: 'text-gray-500'
+      color: 'text-gray-500',
     },
     {
       key: 'alive' as CharacterStatusFilter,
       label: 'Apenas Vivos',
       shortLabel: 'Vivos',
       icon: Heart,
-      color: 'text-green-500'
+      color: 'text-green-500',
     },
     {
       key: 'dead' as CharacterStatusFilter,
       label: 'Apenas Mortos',
       shortLabel: 'Mortos',
       icon: Skull,
-      color: 'text-red-500'
-    }
+      color: 'text-red-500',
+    },
   ];
 
   return (
@@ -82,10 +92,10 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
       <div>
         <h3 className="text-sm font-medium mb-2 text-muted-foreground">Modalidade</h3>
         <div className="flex flex-wrap gap-2">
-          {modes.map((mode) => {
+          {modes.map(mode => {
             const Icon = mode.icon;
             const isActive = activeMode === mode.key;
-            
+
             return (
               <Button
                 key={mode.key}
@@ -98,8 +108,7 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
                 <Icon className={`h-3 w-3 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
                 <span className="hidden sm:inline">{mode.label}</span>
                 <span className="sm:hidden">
-                  {mode.key === 'floor' ? 'Andar' : 
-                   mode.key === 'level' ? 'Nível' : 'Ouro'}
+                  {mode.key === 'floor' ? 'Andar' : mode.key === 'level' ? 'Nível' : 'Ouro'}
                 </span>
               </Button>
             );
@@ -111,10 +120,10 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
       <div>
         <h3 className="text-sm font-medium mb-2 text-muted-foreground">Status</h3>
         <div className="flex flex-wrap gap-2">
-          {statusOptions.map((option) => {
+          {statusOptions.map(option => {
             const Icon = option.icon;
             const isActive = statusFilter === option.key;
-            
+
             return (
               <Button
                 key={option.key}
@@ -142,7 +151,7 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
             type="text"
             placeholder="Digite o nome do jogador..."
             value={nameFilter}
-            onChange={(e) => onNameFilterChange(e.target.value)}
+            onChange={e => onNameFilterChange(e.target.value)}
             disabled={isLoading}
             className="pl-10 text-sm"
           />
@@ -164,13 +173,13 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
               <ChevronLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Anterior</span>
             </Button>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
                 Página {currentPage} de {totalPages}
               </span>
             </div>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -188,4 +197,4 @@ const RankingFilters: React.FC<RankingFiltersProps> = ({
   );
 };
 
-export default RankingFilters; 
+export default RankingFilters;

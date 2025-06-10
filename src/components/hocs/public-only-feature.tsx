@@ -23,14 +23,14 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
   // Usar useLayoutEffect para sincronizar mudanças de estado
   useLayoutEffect(() => {
     const currentAuthState = user !== null;
-    
+
     // Se o estado não mudou, não fazer nada
     if (lastAuthCheck.current === currentAuthState) {
       return;
     }
-    
+
     lastAuthCheck.current = currentAuthState;
-    
+
     // Resetar flags quando o estado de auth muda
     if (!currentAuthState) {
       redirectAttempted.current = false;
@@ -62,17 +62,17 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
           // Garantir que o path é uma string válida antes de codificar
           const pathToEncode = typeof currentPath === 'string' ? currentPath : '';
           const encodedPath = pathToEncode ? encodeURIComponent(pathToEncode) : '';
-          navigate({ 
-            to: '/auth', 
+          navigate({
+            to: '/auth',
             search: { auth: encodedPath },
-            replace: true
+            replace: true,
           });
         } catch (error) {
           console.warn('Erro ao codificar path:', error);
-          navigate({ 
+          navigate({
             to: '/auth',
             search: { auth: '' },
-            replace: true
+            replace: true,
           });
         }
         return;
@@ -87,17 +87,27 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
     // Redirecionar usuários autenticados para área protegida
     if (user && !redirectAttempted.current && !alreadyLoggedOut.current) {
       redirectAttempted.current = true;
-      
+
       try {
-        if (authLastPath && typeof authLastPath === 'string' && authLastPath.trim() !== '' && authLastPath !== 'true') {
+        if (
+          authLastPath &&
+          typeof authLastPath === 'string' &&
+          authLastPath.trim() !== '' &&
+          authLastPath !== 'true'
+        ) {
           // Tentar decodificar e validar o path
           const decodedPath = decodeURIComponent(authLastPath);
-          if (decodedPath && decodedPath.startsWith('/') && !decodedPath.includes('[object') && !decodedPath.startsWith('/auth')) {
+          if (
+            decodedPath &&
+            decodedPath.startsWith('/') &&
+            !decodedPath.includes('[object') &&
+            !decodedPath.startsWith('/auth')
+          ) {
             navigate({ to: decodedPath, replace: true });
             return;
           }
         }
-        
+
         // Fallback para página padrão
         navigate({ to: '/game', replace: true });
       } catch (error) {
@@ -106,13 +116,13 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
       }
     }
   }, [
-    user, 
-    authLastPath, 
-    location.pathname, 
-    location.search, 
-    loading.onAuthUserChanged, 
-    signOut, 
-    navigate
+    user,
+    authLastPath,
+    location.pathname,
+    location.search,
+    loading.onAuthUserChanged,
+    signOut,
+    navigate,
   ]);
 
   // Mostrar loading enquanto verificamos a autenticação
@@ -121,10 +131,12 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
   }
 
   // Se o usuário estiver autenticado e não estiver na página de verificação ou logout
-  if (user && 
-      !alreadyLoggedOut.current && 
-      location.pathname !== '/auth/verify-email' &&
-      location.pathname !== '/logout') {
+  if (
+    user &&
+    !alreadyLoggedOut.current &&
+    location.pathname !== '/auth/verify-email' &&
+    location.pathname !== '/logout'
+  ) {
     return <LoadingSpin />;
   }
 

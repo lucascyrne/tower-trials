@@ -25,7 +25,9 @@
     "migrate:dev": "bash ./scripts/apply-migrations.sh dev",
     "# PWA": "",
     "pwa:icons": "node scripts/generate-pwa-icons.js",
-    "pwa:serve": "npm run build && npm run start"
+    "pwa:serve": "npm run build && npm run start",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -77,6 +79,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "prettier": "^3.5.3",
     "tw-animate-css": "^1.3.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",

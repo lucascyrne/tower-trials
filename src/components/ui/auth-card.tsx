@@ -1,7 +1,7 @@
 import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-interface AuthCardProps extends HTMLMotionProps<"div"> {
+interface AuthCardProps extends HTMLMotionProps<'div'> {
   children: React.ReactNode;
 }
 
@@ -22,4 +22,4 @@ export function AuthCard({ children, className, ...props }: AuthCardProps) {
       {children}
     </motion.div>
   );
-} 
+}

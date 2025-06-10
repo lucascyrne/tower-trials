@@ -12,8 +12,8 @@ export default function GameInfo() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Um jogo de aventura em que você sobe uma torre mágica, enfrentando inimigos cada
-          vez mais fortes em cada andar. Quanto mais alto você chegar, melhor será sua posição no ranking.
+          Um jogo de aventura em que você sobe uma torre mágica, enfrentando inimigos cada vez mais
+          fortes em cada andar. Quanto mais alto você chegar, melhor será sua posição no ranking.
         </p>
 
         <div className="grid grid-cols-1 gap-3 mt-4">
@@ -24,8 +24,8 @@ export default function GameInfo() {
             <div>
               <h3 className="font-medium mb-1">Progressão na Torre</h3>
               <p className="text-sm text-muted-foreground">
-                Cada andar apresenta um inimigo mais forte. A dificuldade aumenta conforme você sobe,
-                mas você recupera um pouco de HP a cada inimigo derrotado.
+                Cada andar apresenta um inimigo mais forte. A dificuldade aumenta conforme você
+                sobe, mas você recupera um pouco de HP a cada inimigo derrotado.
               </p>
             </div>
           </div>
@@ -37,8 +37,8 @@ export default function GameInfo() {
             <div>
               <h3 className="font-medium mb-1">Ataque</h3>
               <p className="text-sm text-muted-foreground">
-                Ataque direto ao inimigo, causando dano baseado no seu valor de ataque
-                menos a defesa do inimigo.
+                Ataque direto ao inimigo, causando dano baseado no seu valor de ataque menos a
+                defesa do inimigo.
               </p>
             </div>
           </div>
@@ -50,8 +50,8 @@ export default function GameInfo() {
             <div>
               <h3 className="font-medium mb-1">Defesa</h3>
               <p className="text-sm text-muted-foreground">
-                Aumenta temporariamente sua defesa, reduzindo o dano recebido no próximo ataque
-                do inimigo.
+                Aumenta temporariamente sua defesa, reduzindo o dano recebido no próximo ataque do
+                inimigo.
               </p>
             </div>
           </div>
@@ -63,8 +63,8 @@ export default function GameInfo() {
             <div>
               <h3 className="font-medium mb-1">Habilidade Especial</h3>
               <p className="text-sm text-muted-foreground">
-                Causa o dobro do seu dano de ataque, mas tem um cooldown de 3 turnos
-                antes de poder ser usada novamente.
+                Causa o dobro do seu dano de ataque, mas tem um cooldown de 3 turnos antes de poder
+                ser usada novamente.
               </p>
             </div>
           </div>
@@ -72,4 +72,4 @@ export default function GameInfo() {
       </CardContent>
     </Card>
   );
-} 
+}

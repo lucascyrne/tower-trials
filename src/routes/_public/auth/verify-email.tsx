@@ -1,18 +1,18 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Mail, ArrowLeft } from 'lucide-react'
-import { useAuth } from '@/resources/auth/auth-hook'
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Mail, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/resources/auth/auth-hook';
 
 export const Route = createFileRoute('/_public/auth/verify-email')({
   component: VerifyEmailPage,
-  validateSearch: (search) => ({
+  validateSearch: search => ({
     auth: (search.auth as string) || '',
   }),
-})
+});
 
 function VerifyEmailPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   return (
     <div className="container mx-auto flex min-h-screen items-center justify-center px-4">
@@ -57,5 +57,5 @@ function VerifyEmailPage() {
         </CardContent>
       </Card>
     </div>
-  )
-} 
+  );
+}

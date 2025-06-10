@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from '@/lib/supabase';
 
 export interface RankingEntry {
   id: string;
@@ -41,24 +41,23 @@ export class RankingService {
    */
   static async saveScore(data: SaveRankingData): Promise<ServiceResponse<string>> {
     try {
-      const { data: result, error } = await supabase
-        .rpc('save_ranking_entry', {
-          p_user_id: data.user_id,
-          p_player_name: data.player_name,
-          p_floor: data.floor,
-          p_character_level: data.character_level || 1,
-          p_character_gold: data.character_gold || 0,
-          p_character_alive: data.character_alive ?? true
-        });
+      const { data: result, error } = await supabase.rpc('save_ranking_entry', {
+        p_user_id: data.user_id,
+        p_player_name: data.player_name,
+        p_floor: data.floor,
+        p_character_level: data.character_level || 1,
+        p_character_gold: data.character_gold || 0,
+        p_character_alive: data.character_alive ?? true,
+      });
 
       if (error) throw error;
 
       return { data: result, error: null };
     } catch (error) {
       console.error('Erro ao salvar no ranking:', error);
-      return { 
-        data: '', 
-        error: error instanceof Error ? error.message : 'Erro ao salvar no ranking' 
+      return {
+        data: '',
+        error: error instanceof Error ? error.message : 'Erro ao salvar no ranking',
       };
     }
   }
@@ -75,10 +74,12 @@ export class RankingService {
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
       const offset = (page - 1) * limit;
-      console.log(`[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, nome: ${nameFilter}, página: ${page}, limite: ${limit}`);
-      
+      console.log(
+        `[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, nome: ${nameFilter}, página: ${page}, limite: ${limit}`
+      );
+
       let functionName: string;
-      
+
       switch (mode) {
         case 'floor':
           functionName = 'get_dynamic_ranking_by_highest_floor';
@@ -95,13 +96,12 @@ export class RankingService {
 
       console.log(`[RankingService] Chamando função: ${functionName}`);
 
-      const { data, error } = await supabase
-        .rpc(functionName, {
-          p_limit: limit,
-          p_status_filter: statusFilter,
-          p_name_filter: nameFilter,
-          p_offset: offset
-        });
+      const { data, error } = await supabase.rpc(functionName, {
+        p_limit: limit,
+        p_status_filter: statusFilter,
+        p_name_filter: nameFilter,
+        p_offset: offset,
+      });
 
       if (error) {
         console.error(`[RankingService] Erro na função ${functionName}:`, error);
@@ -114,9 +114,9 @@ export class RankingService {
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Erro ao buscar ranking global:', error);
-      return { 
-        data: [], 
-        error: error instanceof Error ? error.message : 'Erro ao buscar ranking' 
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : 'Erro ao buscar ranking',
       };
     }
   }
@@ -129,13 +129,14 @@ export class RankingService {
     nameFilter: string = ''
   ): Promise<ServiceResponse<number>> {
     try {
-      console.log(`[RankingService] Contando entradas - filtro: ${statusFilter}, nome: ${nameFilter}`);
-      
-      const { data, error } = await supabase
-        .rpc('count_ranking_entries', {
-          p_status_filter: statusFilter,
-          p_name_filter: nameFilter
-        });
+      console.log(
+        `[RankingService] Contando entradas - filtro: ${statusFilter}, nome: ${nameFilter}`
+      );
+
+      const { data, error } = await supabase.rpc('count_ranking_entries', {
+        p_status_filter: statusFilter,
+        p_name_filter: nameFilter,
+      });
 
       if (error) {
         console.error(`[RankingService] Erro ao contar entradas:`, error);
@@ -147,9 +148,9 @@ export class RankingService {
       return { data: data || 0, error: null };
     } catch (error) {
       console.error('Erro ao contar entradas do ranking:', error);
-      return { 
-        data: 0, 
-        error: error instanceof Error ? error.message : 'Erro ao contar entradas' 
+      return {
+        data: 0,
+        error: error instanceof Error ? error.message : 'Erro ao contar entradas',
       };
     }
   }
@@ -163,12 +164,11 @@ export class RankingService {
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
       console.log(`[RankingService] Buscando histórico do usuário: ${userId}, limite: ${limit}`);
-      
-      const { data, error } = await supabase
-        .rpc('get_dynamic_user_ranking_history', {
-          p_user_id: userId,
-          p_limit: limit
-        });
+
+      const { data, error } = await supabase.rpc('get_dynamic_user_ranking_history', {
+        p_user_id: userId,
+        p_limit: limit,
+      });
 
       if (error) {
         console.error(`[RankingService] Erro no histórico do usuário:`, error);
@@ -180,9 +180,9 @@ export class RankingService {
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Erro ao buscar ranking do usuário:', error);
-      return { 
-        data: [], 
-        error: error instanceof Error ? error.message : 'Erro ao buscar ranking do usuário' 
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : 'Erro ao buscar ranking do usuário',
       };
     }
   }
@@ -190,19 +190,21 @@ export class RankingService {
   /**
    * Obter estatísticas do usuário (dinâmico - inclui personagens vivos e mortos)
    */
-  static async getUserStats(userId: string): Promise<ServiceResponse<{
-    bestFloor: number;
-    bestLevel: number;
-    bestGold: number;
-    totalRuns: number;
-    aliveCharacters: number;
-  }>> {
+  static async getUserStats(userId: string): Promise<
+    ServiceResponse<{
+      bestFloor: number;
+      bestLevel: number;
+      bestGold: number;
+      totalRuns: number;
+      aliveCharacters: number;
+    }>
+  > {
     try {
       console.log(`[RankingService] Buscando estatísticas do usuário: ${userId}`);
-      
+
       const { data, error } = await supabase
         .rpc('get_dynamic_user_stats', {
-          p_user_id: userId
+          p_user_id: userId,
         })
         .single();
 
@@ -217,7 +219,7 @@ export class RankingService {
         bestLevel: statsData?.best_level || 1,
         bestGold: statsData?.best_gold || 0,
         totalRuns: statsData?.total_runs || 0,
-        aliveCharacters: statsData?.alive_characters || 0
+        aliveCharacters: statsData?.alive_characters || 0,
       };
 
       console.log(`[RankingService] Estatísticas do usuário recebidas:`, stats);
@@ -225,15 +227,15 @@ export class RankingService {
       return { data: stats, error: null };
     } catch (error) {
       console.error('Erro ao buscar estatísticas do usuário:', error);
-      return { 
+      return {
         data: {
           bestFloor: 0,
           bestLevel: 1,
           bestGold: 0,
           totalRuns: 0,
-          aliveCharacters: 0
-        }, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas' 
+          aliveCharacters: 0,
+        },
+        error: error instanceof Error ? error.message : 'Erro ao buscar estatísticas',
       };
     }
   }
@@ -241,25 +243,28 @@ export class RankingService {
   /**
    * Função de teste para verificar se o ranking está funcionando
    */
-  static async testRankingSystem(userId?: string): Promise<ServiceResponse<Array<{
-    test_name: string;
-    result: string;
-    details: string;
-  }>>> {
+  static async testRankingSystem(userId?: string): Promise<
+    ServiceResponse<
+      Array<{
+        test_name: string;
+        result: string;
+        details: string;
+      }>
+    >
+  > {
     try {
-      const { data, error } = await supabase
-        .rpc('test_ranking_system', {
-          p_user_id: userId || null
-        });
+      const { data, error } = await supabase.rpc('test_ranking_system', {
+        p_user_id: userId || null,
+      });
 
       if (error) throw error;
 
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Erro ao testar sistema de ranking:', error);
-      return { 
-        data: [], 
-        error: error instanceof Error ? error.message : 'Erro ao testar ranking' 
+      return {
+        data: [],
+        error: error instanceof Error ? error.message : 'Erro ao testar ranking',
       };
     }
   }
@@ -269,18 +274,17 @@ export class RankingService {
    */
   static async syncAllRankings(): Promise<ServiceResponse<string>> {
     try {
-      const { data, error } = await supabase
-        .rpc('refresh_all_rankings');
+      const { data, error } = await supabase.rpc('refresh_all_rankings');
 
       if (error) throw error;
 
       return { data: data || 'Sincronização concluída', error: null };
     } catch (error) {
       console.error('Erro ao sincronizar rankings:', error);
-      return { 
-        data: '', 
-        error: error instanceof Error ? error.message : 'Erro ao sincronizar rankings' 
+      return {
+        data: '',
+        error: error instanceof Error ? error.message : 'Erro ao sincronizar rankings',
       };
     }
   }
-} 
+}

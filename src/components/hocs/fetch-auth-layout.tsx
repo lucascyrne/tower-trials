@@ -46,7 +46,7 @@ export default function FetchAuthState({ children }: Props) {
   useEffect(() => {
     if (!loading.onAuthUserChanged && !initialCheckDone) {
       setInitialCheckDone(true);
-      
+
       // Limpar timeout se ainda existir
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);

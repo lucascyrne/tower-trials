@@ -13,7 +13,8 @@ const ReturnButton: FC<ReturnButtonProps> = ({ onClick }) => {
       onClick={onClick}
       whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }} // Transição de fundo
       whileTap={{ scale: 0.95 }} // Animação de pressionado
-      type="button">
+      type="button"
+    >
       <ArrowLeft />
     </motion.button>
   );

@@ -17,4 +17,4 @@ export function NavButton({ href, icon: Icon, label }: NavButtonProps) {
       <span className="text-sm font-medium">{label}</span>
     </Link>
   );
-} 
+}

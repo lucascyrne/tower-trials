@@ -1,96 +1,101 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { useGame } from '@/resources/game/game-hook'
-import { CharacterService } from '@/resources/game/character.service'
-import { toast } from 'sonner'
-import { InventoryPanel } from '@/components/inventory/InventoryPanel'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
-import type { Character } from '@/resources/game/models/character.model'
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useGame } from '@/resources/game/game-hook';
+import { CharacterService } from '@/resources/game/character.service';
+import { toast } from 'sonner';
+import { InventoryPanel } from '@/components/inventory/InventoryPanel';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import type { Character } from '@/resources/game/models/character.model';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/inventory')({
   component: InventoryPage,
-  validateSearch: (search) => ({
+  validateSearch: search => ({
     character: (search.character as string) || '',
   }),
-})
+});
 
 function InventoryPage() {
-  const navigate = useNavigate()
-  const { character: characterId } = Route.useSearch()
-  const { loadCharacterForHub } = useGame()
-  const [selectedChar, setSelectedChar] = useState<Character | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
-  const [characterLoaded, setCharacterLoaded] = useState(false)
+  const navigate = useNavigate();
+  const { character: characterId } = Route.useSearch();
+  const { loadCharacterForHub } = useGame();
+  const [selectedChar, setSelectedChar] = useState<Character | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [characterLoaded, setCharacterLoaded] = useState(false);
 
   const loadSelectedCharacter = async (showLoadingSpinner = true, skipCacheCheck = false) => {
     if (!characterId) {
-      navigate({ to: '/game/play' })
-      return
+      navigate({ to: '/game/play' });
+      return;
     }
 
     // Evitar carregamentos duplicados se não for um refresh manual
-    if (!skipCacheCheck && characterLoaded && selectedChar?.id === characterId && !showLoadingSpinner) {
-      return
+    if (
+      !skipCacheCheck &&
+      characterLoaded &&
+      selectedChar?.id === characterId &&
+      !showLoadingSpinner
+    ) {
+      return;
     }
 
     if (showLoadingSpinner) {
-      setLoading(true)
+      setLoading(true);
     } else {
-      setRefreshing(true)
+      setRefreshing(true);
     }
-    
-    setError(null)
+
+    setError(null);
 
     try {
-      const response = await CharacterService.getCharacter(characterId)
+      const response = await CharacterService.getCharacter(characterId);
       if (response.success && response.data) {
-        setSelectedChar(response.data)
-        await loadCharacterForHub(response.data)
-        setCharacterLoaded(true)
+        setSelectedChar(response.data);
+        await loadCharacterForHub(response.data);
+        setCharacterLoaded(true);
       } else {
-        const errorMsg = response.error || 'Erro desconhecido ao carregar personagem'
-        setError(errorMsg)
+        const errorMsg = response.error || 'Erro desconhecido ao carregar personagem';
+        setError(errorMsg);
         toast.error('Erro ao carregar personagem', {
-          description: errorMsg
-        })
+          description: errorMsg,
+        });
       }
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido'
-      console.error('Erro ao carregar personagem:', error)
-      setError(errorMsg)
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('Erro ao carregar personagem:', error);
+      setError(errorMsg);
       toast.error('Erro ao carregar personagem', {
-        description: errorMsg
-      })
+        description: errorMsg,
+      });
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  };
 
   useEffect(() => {
-    loadSelectedCharacter(true)
-  }, [characterId]) // Só executar quando o ID do personagem mudar
+    loadSelectedCharacter(true);
+  }, [characterId]); // Só executar quando o ID do personagem mudar
 
   const handleInventoryChange = () => {
     // Atualizar dados sem recarregar a página completa
-    loadSelectedCharacter(false, true) // true para skipCacheCheck
-  }
+    loadSelectedCharacter(false, true); // true para skipCacheCheck
+  };
 
   const handleRefresh = () => {
-    loadSelectedCharacter(false, true) // true para skipCacheCheck
-  }
+    loadSelectedCharacter(false, true); // true para skipCacheCheck
+  };
 
   const handleReturnToHub = () => {
     if (characterId) {
-      navigate({ to: '/game/play/hub', search: { character: characterId } })
+      navigate({ to: '/game/play/hub', search: { character: characterId } });
     } else {
-      navigate({ to: '/game/play' })
+      navigate({ to: '/game/play' });
     }
-  }
+  };
 
   // Loading state
   if (loading) {
@@ -102,7 +107,7 @@ function InventoryPage() {
           <p className="text-slate-400">Aguarde enquanto carregamos seus itens...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // Error state
@@ -139,7 +144,7 @@ function InventoryPage() {
           </Card>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -157,7 +162,7 @@ function InventoryPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Hub
             </Button>
-            
+
             <div>
               <h1 className="text-3xl font-bold text-slate-100">Inventário</h1>
               <p className="text-slate-400">
@@ -165,7 +170,7 @@ function InventoryPage() {
               </p>
             </div>
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -178,11 +183,8 @@ function InventoryPage() {
           </Button>
         </div>
 
-        <InventoryPanel 
-          character={selectedChar} 
-          onInventoryChange={handleInventoryChange} 
-        />
+        <InventoryPanel character={selectedChar} onInventoryChange={handleInventoryChange} />
       </div>
     </div>
-  )
-} 
+  );
+}

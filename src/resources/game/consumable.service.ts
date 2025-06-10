@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase';
-import { type Consumable, type CharacterConsumable, type CraftingRecipe, type MonsterDrop, type CraftingIngredient } from './models/consumable.model';
+import {
+  type Consumable,
+  type CharacterConsumable,
+  type CraftingRecipe,
+  type MonsterDrop,
+  type CraftingIngredient,
+} from './models/consumable.model';
 import { type GamePlayer } from './game-model';
 import { type MonsterDropChance } from './models/monster.model';
 import { type Character } from './models/character.model';
@@ -50,10 +56,7 @@ export class ConsumableService {
         return { data: cachedConsumables, error: null, success: true };
       }
 
-      const { data, error } = await supabase
-        .from('consumables')
-        .select('*')
-        .order('price');
+      const { data, error } = await supabase.from('consumables').select('*').order('price');
 
       if (error) throw error;
 
@@ -76,21 +79,28 @@ export class ConsumableService {
    * @param characterId ID do personagem
    * @returns Lista de consumíveis do personagem
    */
-  static async getCharacterConsumables(characterId: string): Promise<ServiceResponse<CharacterConsumable[]>> {
+  static async getCharacterConsumables(
+    characterId: string
+  ): Promise<ServiceResponse<CharacterConsumable[]>> {
     try {
       const { data, error } = await supabase
         .from('character_consumables')
-        .select(`
+        .select(
+          `
           *,
           consumable:consumable_id (*)
-        `)
+        `
+        )
         .eq('character_id', characterId);
 
       if (error) throw error;
 
       return { data: data as CharacterConsumable[], error: null, success: true };
     } catch (error) {
-      console.error('Erro ao buscar consumíveis do personagem:', error instanceof Error ? error.message : error);
+      console.error(
+        'Erro ao buscar consumíveis do personagem:',
+        error instanceof Error ? error.message : error
+      );
       return { data: null, error: 'Erro ao buscar consumíveis do personagem', success: false };
     }
   }
@@ -103,23 +113,29 @@ export class ConsumableService {
    * @returns Resultado da operação com novo gold
    */
   static async buyConsumable(
-    characterId: string, 
-    consumableId: string, 
+    characterId: string,
+    consumableId: string,
     quantity: number = 1
   ): Promise<ServiceResponse<{ newGold: number }>> {
     try {
-      const { data, error } = await supabase.rpc('buy_consumable', {
-        p_character_id: characterId,
-        p_consumable_id: consumableId,
-        p_quantity: quantity
-      }).single();
+      const { data, error } = await supabase
+        .rpc('buy_consumable', {
+          p_character_id: characterId,
+          p_consumable_id: consumableId,
+          p_quantity: quantity,
+        })
+        .single();
 
       if (error) throw error;
 
       return { data: { newGold: data as number }, error: null, success: true };
     } catch (error) {
       console.error('Erro ao comprar consumível:', error);
-      return { data: null, error: extractErrorMessage(error, 'Erro ao comprar consumível'), success: false };
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao comprar consumível'),
+        success: false,
+      };
     }
   }
 
@@ -139,10 +155,12 @@ export class ConsumableService {
       // Verificar se o jogador possui o consumível
       const { data, error } = await supabase
         .from('character_consumables')
-        .select(`
+        .select(
+          `
           *,
           consumable:consumable_id (*)
-        `)
+        `
+        )
         .eq('character_id', characterId)
         .eq('consumable_id', consumableId)
         .single();
@@ -166,23 +184,27 @@ export class ConsumableService {
             const oldHp = character.hp;
             const newHp = Math.min(character.max_hp, character.hp + consumable.effect_value);
             const actualHealing = newHp - oldHp;
-            
+
             character.hp = newHp;
             statsToUpdate.hp = newHp;
-            message = actualHealing > 0 ? `Recuperou ${actualHealing} HP!` : 'HP já estava no máximo!';
-          } 
+            message =
+              actualHealing > 0 ? `Recuperou ${actualHealing} HP!` : 'HP já estava no máximo!';
+          }
           // Poção de Mana
           else if (consumable.description.includes('Mana')) {
             const oldMana = character.mana;
             const newMana = Math.min(character.max_mana, character.mana + consumable.effect_value);
             const actualRecovery = newMana - oldMana;
-            
+
             character.mana = newMana;
             statsToUpdate.mana = newMana;
-            message = actualRecovery > 0 ? `Recuperou ${actualRecovery} Mana!` : 'Mana já estava no máximo!';
+            message =
+              actualRecovery > 0
+                ? `Recuperou ${actualRecovery} Mana!`
+                : 'Mana já estava no máximo!';
           }
           break;
-        
+
         case 'antidote':
           // Só funciona em batalha (GamePlayer), no inventário apenas mostra mensagem
           if ('active_effects' in character) {
@@ -193,29 +215,35 @@ export class ConsumableService {
             message = 'Antídoto só pode ser usado durante batalhas!';
           }
           break;
-        
+
         case 'buff':
           // Só funciona em batalha (GamePlayer), no inventário apenas mostra mensagem
           if ('active_effects' in character) {
             // Elixir de força
-            if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
+            if (
+              consumable.description.includes('Força') ||
+              consumable.description.includes('ataque')
+            ) {
               character.atk += consumable.effect_value;
               character.active_effects.buffs.push({
                 type: 'buff',
                 value: consumable.effect_value,
                 duration: 3,
-                source_spell: 'elixir_strength'
+                source_spell: 'elixir_strength',
               });
               message = `Ataque aumentado em ${consumable.effect_value} por 3 turnos!`;
-            } 
+            }
             // Elixir de defesa
-            else if (consumable.description.includes('Defesa') || consumable.description.includes('defesa')) {
+            else if (
+              consumable.description.includes('Defesa') ||
+              consumable.description.includes('defesa')
+            ) {
               character.def += consumable.effect_value;
               character.active_effects.buffs.push({
                 type: 'buff',
                 value: consumable.effect_value,
                 duration: 3,
-                source_spell: 'elixir_defense'
+                source_spell: 'elixir_defense',
               });
               message = `Defesa aumentada em ${consumable.effect_value} por 3 turnos!`;
             }
@@ -228,7 +256,7 @@ export class ConsumableService {
       // Atualizar quantidade no banco de dados usando a função RPC
       const { error: updateError } = await supabase.rpc('use_consumable', {
         p_character_id: characterId,
-        p_consumable_id: consumableId
+        p_consumable_id: consumableId,
       });
 
       if (updateError) throw updateError;
@@ -243,14 +271,18 @@ export class ConsumableService {
         if (statsError) throw statsError;
       }
 
-      return { 
-        data: { message }, 
-        error: null, 
-        success: true 
+      return {
+        data: { message },
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao usar consumível:', error);
-      return { data: null, error: extractErrorMessage(error, 'Erro ao usar consumível'), success: false };
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao usar consumível'),
+        success: false,
+      };
     }
   }
 
@@ -267,10 +299,7 @@ export class ConsumableService {
         return { data: cachedDrops, error: null, success: true };
       }
 
-      const { data, error } = await supabase
-        .from('monster_drops')
-        .select('*')
-        .order('rarity');
+      const { data, error } = await supabase.from('monster_drops').select('*').order('rarity');
 
       if (error) throw error;
 
@@ -295,7 +324,7 @@ export class ConsumableService {
    * @returns Lista de drops obtidos
    */
   static processMonsterDrops(
-    monsterLevel: number, 
+    monsterLevel: number,
     possibleDrops: MonsterDropChance[],
     chanceMultiplier: number = 1.0
   ): {
@@ -307,18 +336,19 @@ export class ConsumableService {
     possibleDrops.forEach(drop => {
       // Ajustar chance baseada no nível do monstro (opcional)
       const adjustedChance = drop.drop_chance * (1 + monsterLevel * 0.02) * chanceMultiplier;
-      
+
       // Verificar se o drop foi obtido
-      if (Math.random() <= Math.min(0.95, adjustedChance)) { // Cap em 95%
+      if (Math.random() <= Math.min(0.95, adjustedChance)) {
+        // Cap em 95%
         // Calcular quantidade
         const quantity = Math.floor(
           Math.random() * (drop.max_quantity - drop.min_quantity + 1) + drop.min_quantity
         );
-        
+
         if (quantity > 0) {
           obtainedDrops.push({
             drop_id: drop.drop_id,
-            quantity
+            quantity,
           });
         }
       }
@@ -341,23 +371,23 @@ export class ConsumableService {
       if (drops.length === 0) {
         return { data: 0, error: null, success: true };
       }
-      
+
       // Converter drops para o formato JSONB esperado pela função segura
       const dropsJson = drops.map(drop => ({
         drop_id: drop.drop_id,
-        quantity: drop.quantity
+        quantity: drop.quantity,
       }));
-      
+
       console.log(`[ConsumableService] Processando ${drops.length} drops via função segura`);
-      
+
       // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
-      
+
       // Usar o cliente admin para acessar a função restrita
       const { data, error } = await supabaseAdmin
         .rpc('secure_process_combat_drops', {
           p_character_id: characterId,
-          p_drops: dropsJson
+          p_drops: dropsJson,
         })
         .single();
 
@@ -365,21 +395,21 @@ export class ConsumableService {
         console.error('Erro na função secure_process_combat_drops:', error);
         throw error;
       }
-      
+
       const dropsProcessed = data as number;
       console.log(`[ConsumableService] ${dropsProcessed} drops processados com sucesso`);
 
-      return { 
-        data: dropsProcessed, 
-        error: null, 
-        success: true 
+      return {
+        data: dropsProcessed,
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao processar drops:', error);
-      return { 
-        data: null, 
-        error: extractErrorMessage(error, 'Erro ao processar drops'), 
-        success: false 
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao processar drops'),
+        success: false,
       };
     }
   }
@@ -397,9 +427,7 @@ export class ConsumableService {
         return { data: cachedRecipes, error: null, success: true };
       }
 
-      const { data, error } = await supabase
-        .from('crafting_recipes')
-        .select(`
+      const { data, error } = await supabase.from('crafting_recipes').select(`
           *,
           ingredients:crafting_ingredients (*)
         `);
@@ -432,22 +460,22 @@ export class ConsumableService {
     try {
       const { data, error } = await supabase.rpc('check_can_craft', {
         p_character_id: characterId,
-        p_recipe_id: recipeId
+        p_recipe_id: recipeId,
       });
 
       if (error) throw error;
 
-      return { 
-        data: data as { canCraft: boolean; missingIngredients: string[] }, 
-        error: null, 
-        success: true 
+      return {
+        data: data as { canCraft: boolean; missingIngredients: string[] },
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao verificar crafting:', error);
-      return { 
-        data: null, 
-        error: extractErrorMessage(error, 'Erro ao verificar crafting'), 
-        success: false 
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao verificar crafting'),
+        success: false,
       };
     }
   }
@@ -465,22 +493,22 @@ export class ConsumableService {
     try {
       const { error } = await supabase.rpc('craft_item', {
         p_character_id: characterId,
-        p_recipe_id: recipeId
+        p_recipe_id: recipeId,
       });
 
       if (error) throw error;
 
-      return { 
-        data: { message: 'Item criado com sucesso!' }, 
-        error: null, 
-        success: true 
+      return {
+        data: { message: 'Item criado com sucesso!' },
+        error: null,
+        success: true,
       };
     } catch (error) {
       console.error('Erro ao criar item:', error);
-      return { 
-        data: null, 
-        error: extractErrorMessage(error, 'Erro ao criar item'), 
-        success: false 
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao criar item'),
+        success: false,
       };
     }
   }
@@ -490,21 +518,34 @@ export class ConsumableService {
    * @param characterId ID do personagem
    * @returns Lista de drops do personagem
    */
-  static async getCharacterDrops(characterId: string): Promise<ServiceResponse<{ id: string; drop_id: string; quantity: number; drop?: MonsterDrop }[]>> {
+  static async getCharacterDrops(
+    characterId: string
+  ): Promise<
+    ServiceResponse<{ id: string; drop_id: string; quantity: number; drop?: MonsterDrop }[]>
+  > {
     try {
       const { data, error } = await supabase
         .from('character_drops')
-        .select(`
+        .select(
+          `
           *,
           drop:drop_id (*)
-        `)
+        `
+        )
         .eq('character_id', characterId);
 
       if (error) throw error;
 
-      return { data: data as { id: string; drop_id: string; quantity: number; drop?: MonsterDrop }[], error: null, success: true };
+      return {
+        data: data as { id: string; drop_id: string; quantity: number; drop?: MonsterDrop }[],
+        error: null,
+        success: true,
+      };
     } catch (error) {
-      console.error('Erro ao buscar drops do personagem:', error instanceof Error ? error.message : error);
+      console.error(
+        'Erro ao buscar drops do personagem:',
+        error instanceof Error ? error.message : error
+      );
       return { data: null, error: 'Erro ao buscar drops do personagem', success: false };
     }
   }
@@ -526,7 +567,7 @@ export class ConsumableService {
       // Buscar inventário do personagem
       const [consumablesRes, dropsRes] = await Promise.all([
         this.getCharacterConsumables(characterId),
-        this.getCharacterDrops(characterId)
+        this.getCharacterDrops(characterId),
       ]);
 
       const consumables = consumablesRes.success ? consumablesRes.data : [];
@@ -551,17 +592,20 @@ export class ConsumableService {
         }
       }
 
-      return { 
-        data: { hasAll, missing }, 
-        error: null, 
-        success: true 
+      return {
+        data: { hasAll, missing },
+        error: null,
+        success: true,
       };
     } catch (error) {
-      console.error('Erro ao verificar ingredientes:', error instanceof Error ? error.message : error);
-      return { 
-        data: null, 
-        error: 'Erro ao verificar ingredientes', 
-        success: false 
+      console.error(
+        'Erro ao verificar ingredientes:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: 'Erro ao verificar ingredientes',
+        success: false,
       };
     }
   }
@@ -571,7 +615,13 @@ export class ConsumableService {
    * @param dropIds IDs dos drops
    * @returns Informações dos drops
    */
-  static async getDropInfoByIds(dropIds: string[]): Promise<ServiceResponse<{id: string; name: string; description: string; rarity: string; value: number}[]>> {
+  static async getDropInfoByIds(
+    dropIds: string[]
+  ): Promise<
+    ServiceResponse<
+      { id: string; name: string; description: string; rarity: string; value: number }[]
+    >
+  > {
     try {
       if (dropIds.length === 0) {
         return { data: [], error: null, success: true };
@@ -593,4 +643,4 @@ export class ConsumableService {
       return { data: null, error: 'Erro ao buscar informações dos drops', success: false };
     }
   }
-} 
+}
