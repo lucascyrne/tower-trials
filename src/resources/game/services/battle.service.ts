@@ -416,9 +416,25 @@ export class BattleService {
         break;
 
       case 'continue':
-        // Ação de continuar (após coletar recompensas, etc.)
-        message = 'Continuando...';
-        skipTurn = false;
+        // Avançar para o próximo andar
+        try {
+          console.log('[BattleService] Processando ação de continuar para próximo andar');
+          const { GameService } = await import('../game.service');
+          const updatedState = await GameService.advanceToNextFloor(newState);
+
+          // CRÍTICO: Atualizar o estado com o resultado do avanço
+          Object.assign(newState, updatedState);
+
+          message = updatedState.gameMessage || 'Avançando para o próximo andar...';
+          console.log(
+            `[BattleService] Avanço processado - novo andar: ${updatedState.player.floor}`
+          );
+          skipTurn = false;
+        } catch (error) {
+          console.error('[BattleService] Erro ao avançar para próximo andar:', error);
+          message = 'Erro ao avançar para o próximo andar';
+          skipTurn = true;
+        }
         break;
 
       case 'interact_event':

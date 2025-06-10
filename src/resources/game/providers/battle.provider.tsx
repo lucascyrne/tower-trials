@@ -123,49 +123,28 @@ export function BattleProvider({ children }: BattleProviderProps) {
           }
         }
 
+        // CRÍTICO: Atualizar estado do jogo ANTES de processar efeitos
+        setGameState(newState);
+
         // Processar fuga
         if (action === 'flee' && (newState.fleeSuccessful === true || newState.mode === 'fled')) {
           console.log(`[BattleProvider] === FUGA BEM-SUCEDIDA ===`);
-
-          setGameState({
-            ...newState,
-            mode: 'fled',
-            fleeSuccessful: true,
-            currentEnemy: null,
-            battleRewards: null,
-            isPlayerTurn: true,
-          });
-
           addGameLogMessage(message, 'system');
-          lastActionRef.current.processing = false;
-          updateLoading('performAction', false);
           return;
         }
 
         // Verificar se deve pular turno
         if (skipTurn) {
-          setGameState({
-            ...newState,
-            gameMessage: message,
-          });
-
           addGameLogMessage(message, 'system');
-          lastActionRef.current.processing = false;
-          updateLoading('performAction', false);
           return;
         }
 
         // Verificar se inimigo foi derrotado
         if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
           console.log('[BattleProvider] === INIMIGO DERROTADO ===');
-
           const defeatedState = await GameService.processEnemyDefeat(newState);
-
           setGameState(defeatedState);
-
           addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'system');
-          lastActionRef.current.processing = false;
-          updateLoading('performAction', false);
           return;
         }
 
@@ -216,8 +195,6 @@ export function BattleProvider({ children }: BattleProviderProps) {
               // Verificar se jogador morreu
               if (finalState.mode === 'gameover') {
                 setGameState(finalState);
-                lastActionRef.current.processing = false;
-                updateLoading('performAction', false);
                 return;
               }
 
@@ -247,36 +224,18 @@ export function BattleProvider({ children }: BattleProviderProps) {
               });
             } catch (error) {
               console.error('[BattleProvider] Erro no turno do inimigo:', error);
-            } finally {
-              lastActionRef.current.processing = false;
-              updateLoading('performAction', false);
             }
-          }, 800);
-        } else {
-          // Não há turno do inimigo
-          setGameState({
-            ...newState,
-            gameMessage: message,
-          });
-
-          addGameLogMessage(message, 'player_action');
-          lastActionRef.current.processing = false;
-          updateLoading('performAction', false);
+          }, 1000);
         }
       } catch (error) {
-        console.error('[BattleProvider] Erro crítico na ação:', error);
-        setGameState({
-          ...gameState,
-          gameMessage: `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        });
+        console.error('[BattleProvider] Erro ao processar ação:', error);
       } finally {
-        // CLEANUP GARANTIDO - sempre executado mesmo em caso de erro
+        // CRÍTICO: Limpar estado de processamento SEMPRE
         lastActionRef.current.processing = false;
         updateLoading('performAction', false);
-        console.log(`[BattleProvider] Cleanup executado - ação ${action} finalizada`);
       }
     },
-    [gameState, selectedCharacter, setGameState, updateLoading, addGameLogMessage]
+    [gameState, selectedCharacter, setGameState, addGameLogMessage, updateLoading]
   );
 
   return <BattleContext.Provider value={{ performAction }}>{children}</BattleContext.Provider>;

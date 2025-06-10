@@ -250,37 +250,6 @@ export function BattleArena({
     }
   };
 
-  // Handlers de ação
-  const handleAttack = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!isPlayerTurn || loading.performAction) return;
-    handleAction('attack');
-  };
-
-  const handleDefend = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!isPlayerTurn || loading.performAction) return;
-    handleAction('defend');
-  };
-
-  const handleSpecial = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!isPlayerTurn || loading.performAction) return;
-    handleAction('special');
-  };
-
-  const handleSpellCast = (e: React.MouseEvent, spellId: string) => {
-    e.preventDefault();
-    if (!isPlayerTurn || loading.performAction) return;
-    handleAction('cast_spell', spellId);
-  };
-
-  const handlePotionUse = (e: React.MouseEvent, slotPosition: number) => {
-    e.preventDefault();
-    if (!isPlayerTurn || loading.performAction) return;
-    handleAction('use_potion', undefined, String(slotPosition));
-  };
-
   return (
     <div className="relative">
       {/* Arena Background with Battle Atmosphere */}

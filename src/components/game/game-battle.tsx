@@ -540,6 +540,9 @@ export default function GameBattle() {
       return;
     }
 
+    // CRÍTICO: Marcar como processando ANTES de qualquer operação
+    actionProcessingRef.current = true;
+
     console.log('[GameBattle] === CONTINUAR AVENTURA ===');
     console.log('[GameBattle] Estado atual:', {
       floor: gameState.player.floor,
@@ -551,9 +554,6 @@ export default function GameBattle() {
     // Fechar modal ANTES de prosseguir
     setShowVictoryModal(false);
 
-    // Aguardar um momento para garantir que o modal foi fechado
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     try {
       console.log("[GameBattle] Chamando performAction('continue')...");
       await handleAction('continue');
@@ -563,6 +563,9 @@ export default function GameBattle() {
       toast.error('Erro ao avançar para o próximo andar');
       // Reabrir modal em caso de erro
       setShowVictoryModal(true);
+    } finally {
+      // CRÍTICO: Desmarcar como processando SEMPRE
+      actionProcessingRef.current = false;
     }
   };
 
