@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Skull, Crown, Swords, Lock, Plus, Users, CheckCircle, AlertCircle } from 'lucide-react'
@@ -24,10 +24,23 @@ interface CharacterSlot {
 }
 
 export const Route = createFileRoute('/_authenticated/game/play')({
-  component: GamePlayPage,
+  component: GamePlayLayoutPage,
 })
 
-function GamePlayPage() {
+function GamePlayLayoutPage() {
+  const location = useLocation()
+  
+  // Se estamos exatamente na rota /game/play, mostrar a seleção de personagem
+  // Caso contrário, mostrar o Outlet com as rotas filhas (hub, shop, inventory, etc.)
+  if (location.pathname === '/game/play') {
+    return <GamePlaySelectionPage />
+  }
+  
+  // Para rotas filhas como /game/play/hub, /game/play/shop, etc.
+  return <Outlet />
+}
+
+function GamePlaySelectionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   
@@ -50,7 +63,7 @@ function GamePlayPage() {
     if (user?.id) {
       loadData()
     }
-  }, [user])
+  }, [user?.id])
 
   // Validar nome em tempo real
   useEffect(() => {

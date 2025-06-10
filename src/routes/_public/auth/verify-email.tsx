@@ -6,6 +6,9 @@ import { useAuth } from '@/resources/auth/auth-hook'
 
 export const Route = createFileRoute('/_public/auth/verify-email')({
   component: VerifyEmailPage,
+  validateSearch: (search) => ({
+    auth: (search.auth as string) || '',
+  }),
 })
 
 function VerifyEmailPage() {

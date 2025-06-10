@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,10 +8,23 @@ import { Info, X, Skull } from 'lucide-react'
 import GameInfo from '@/components/game/game-info'
 
 export const Route = createFileRoute('/_authenticated/game')({
-  component: GamePage,
+  component: GameLayoutPage,
 })
 
-function GamePage() {
+function GameLayoutPage() {
+  const location = useLocation()
+  
+  // Se estamos exatamente na rota /game, mostrar o menu principal
+  // Caso contrário, mostrar o Outlet com as rotas filhas
+  if (location.pathname === '/game') {
+    return <GameMenuPage />
+  }
+  
+  // Para rotas filhas como /game/ranking, /game/cemetery, etc.
+  return <Outlet />
+}
+
+function GameMenuPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [showInfo, setShowInfo] = useState(false)
@@ -22,6 +35,14 @@ function GamePage() {
       return
     }
     navigate({ to: '/game/play' })
+  }
+
+  const handleRankingClick = () => {
+    navigate({ to: '/game/ranking' })
+  }
+
+  const handleCemeteryClick = () => {
+    navigate({ to: '/game/play/hub/cemetery', search: { character: '' } })
   }
 
   return (
@@ -63,7 +84,7 @@ function GamePage() {
             </Button>
             
             <Button 
-              onClick={() => navigate({ to: '/game/ranking' })}
+              onClick={handleRankingClick}
               className="w-full py-6 text-lg" 
               variant="outline" 
               size="lg"
@@ -73,7 +94,7 @@ function GamePage() {
 
             {user && (
               <Button 
-                onClick={() => navigate({ to: '/game/cemetery' })}
+                onClick={handleCemeteryClick}
                 className="w-full py-4 text-base border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300" 
                 variant="ghost"
                 size="lg"

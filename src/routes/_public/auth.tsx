@@ -24,7 +24,22 @@ function AuthPage() {
   useEffect(() => {
     // Redirecionar se já estiver autenticado
     if (isAuthenticated) {
-      const redirectTo = auth || '/game'
+      let redirectTo = '/game'
+      
+      // Decodificar o parâmetro auth se existir e for válido
+      if (auth && typeof auth === 'string' && auth.trim() !== '' && auth !== 'true') {
+        try {
+          const decodedPath = decodeURIComponent(auth)
+          // Validar se é um path válido
+          if (decodedPath && decodedPath.startsWith('/') && !decodedPath.includes('[object') && !decodedPath.startsWith('/auth')) {
+            redirectTo = decodedPath
+          }
+        } catch (error) {
+          console.warn('Erro ao decodificar parâmetro auth:', error)
+          redirectTo = '/game'
+        }
+      }
+      
       navigate({ to: redirectTo })
     }
   }, [isAuthenticated, auth, navigate])

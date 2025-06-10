@@ -57,7 +57,7 @@ function RankingPage() {
 
   useEffect(() => {
     fetchRankingData()
-  }, [user, rankingMode, statusFilter, debouncedNameFilter, currentPage])
+  }, [user?.id, rankingMode, statusFilter, debouncedNameFilter, currentPage])
 
   // Função para buscar total de entradas e calcular páginas
   const fetchTotalCount = useCallback(async () => {
