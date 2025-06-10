@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { CharacterService } from '@/resources/game/character.service'
 import { EquipmentService } from '@/resources/game/equipment.service'
@@ -15,11 +15,24 @@ import { EquipmentDetailsPanel } from '@/components/equipment/EquipmentDetailsPa
 import { EquipmentSlotPanel } from '@/components/equipment/EquipmentSlotPanel'
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment')({
-  component: EquipmentPage,
+  component: EquipmentLayout,
   validateSearch: (search) => ({
     character: (search.character as string) || '',
   }),
 })
+
+function EquipmentLayout() {
+  const location = useLocation()
+  
+  // Se estamos exatamente na rota /equipment, mostrar a página principal
+  // Caso contrário, mostrar o Outlet com as páginas filhas
+  if (location.pathname === '/game/play/hub/equipment') {
+    return <EquipmentPage />
+  }
+  
+  // Para rotas filhas como /equipment/select
+  return <Outlet />
+}
 
 function EquipmentPage() {
   const navigate = useNavigate()
@@ -99,8 +112,13 @@ function EquipmentPage() {
   }
 
   const handleSlotLongPress = (slotType: string) => {
-    // TODO: Implementar navegação para subpágina de seleção
-    console.log('Long press on slot:', slotType)
+    navigate({ 
+      to: '/game/play/hub/equipment/select', 
+      search: { 
+        character: characterId!,
+        slot: slotType as 'main_hand' | 'off_hand' | 'armor' | 'accessory'
+      }
+    })
   }
 
   const refreshEquipment = async () => {
@@ -200,7 +218,6 @@ function EquipmentPage() {
               equippedSlots={equippedSlots}
               onSlotClick={handleSlotClick}
               onSlotLongPress={handleSlotLongPress}
-              characterId={characterId!}
             />
             
             {/* Slots de Poção */}

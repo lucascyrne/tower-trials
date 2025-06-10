@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import GameBattle from '@/components/game/game-battle'
 import { useGame } from '@/resources/game/game-hook'
 import { toast } from 'sonner'
@@ -9,12 +9,29 @@ function BattlePage() {
   const { character: characterId } = Route.useParams()
   const { loading } = useGame()
   const [isLoading, setIsLoading] = useState(true)
+  
+  // NOVO: Controle para evitar múltiplas inicializações
+  const initializedRef = useRef(false)
+  const mountedRef = useRef(false)
+
+  // Controle de montagem do componente
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      initializedRef.current = false
+    }
+  }, [])
 
   // Monitor de carregamento global - otimizado
   useEffect(() => {
+    if (!mountedRef.current) return
+    
     if (!loading.loadProgress && !loading.performAction) {
       const timer = setTimeout(() => {
-        setIsLoading(false)
+        if (mountedRef.current) {
+          setIsLoading(false)
+        }
       }, 100) // Reduzir delay para transições mais rápidas
       
       return () => clearTimeout(timer)
@@ -23,15 +40,22 @@ function BattlePage() {
     }
   }, [loading.loadProgress, loading.performAction])
 
-  // Validar se o personagem existe no URL - apenas uma vez
+  // Validar se o personagem existe no URL - apenas uma vez na montagem
   useEffect(() => {
+    if (!mountedRef.current) return
+    
     if (!characterId) {
+      if (initializedRef.current) return // Evitar múltiplas navegações
+      
+      initializedRef.current = true
       toast.error('Personagem não especificado', {
         description: 'Redirecionando para a seleção de personagens'
       })
       navigate({ to: '/game/play' })
+    } else {
+      initializedRef.current = true
     }
-  }, [characterId])
+  }, [characterId, navigate])
 
   // Renderizar skeleton loader enquanto carrega
   if (isLoading) {

@@ -19,7 +19,13 @@
     "env:dev": "bash ./scripts/setup-dev-env.sh",
     "# Workflows Completos": "",
     "local": "npm run env:local && npm run db:start && npm run dev",
-    "dev-remote": "npm run env:dev && npm run dev"
+    "dev-remote": "npm run env:dev && npm run dev",
+    "# Migrações Seguras": "",
+    "migrate:local": "bash ./scripts/apply-migrations.sh local",
+    "migrate:dev": "bash ./scripts/apply-migrations.sh dev",
+    "# PWA": "",
+    "pwa:icons": "node scripts/generate-pwa-icons.js",
+    "pwa:serve": "npm run build && npm run start"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

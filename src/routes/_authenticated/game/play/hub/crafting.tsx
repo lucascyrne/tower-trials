@@ -118,11 +118,8 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
   const handleCraft = async () => {
     if (!recipe.canCraft || isCrafting) return
     
-    const resultId = recipe.craftType === 'equipment' 
-      ? (recipe as ProcessedEquipmentRecipe).result_equipment_id 
-      : (recipe as ProcessedConsumableRecipe).result_id
-    
-    await onCraft(resultId, recipe.craftType)
+    // Passar o ID da receita, não o ID do resultado
+    await onCraft(recipe.id, recipe.craftType)
   }
 
   return (
@@ -729,7 +726,7 @@ function CraftingPage() {
     }
     
     processRecipes()
-  }, [mounted, consumableRecipes, equipmentRecipes, inventory, selectedCharacter, selectedRecipe?.id, allConsumables, allDrops, allEquipments, selectedRecipe])
+  }, [mounted, consumableRecipes, equipmentRecipes, inventory, selectedCharacter, selectedRecipe?.id, allConsumables, allDrops, allEquipments])
 
   // Receitas filtradas
   const filteredRecipes = useMemo(() => {
