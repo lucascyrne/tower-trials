@@ -29,11 +29,53 @@ export class MonsterService {
         };
       }
 
+      // NOVO: Verificar cache primeiro antes de fazer requisições
+      const cachedMonster = this.monsterCache.get(floor);
+      const cacheExpiry = this.cacheExpiry.get(floor);
+      const now = Date.now();
+      
+      if (cachedMonster && cacheExpiry && now < cacheExpiry) {
+        console.log(`[MonsterService] Retornando monstro do cache para andar ${floor}: ${cachedMonster.name}`);
+        return { data: cachedMonster, error: null, success: true };
+      }
+
+      // NOVO: Verificar se já existe requisição pendente
+      if (this.pendingRequests.has(floor)) {
+        console.log(`[MonsterService] Reutilizando requisição pendente para andar ${floor}`);
+        return this.pendingRequests.get(floor)!;
+      }
+
       console.log(`[MonsterService] === INÍCIO BUSCA MONSTRO ANDAR ${floor} ===`);
 
-      // CORRIGIDO: Limpar todo o cache para evitar conflitos de estado
-      this.clearCache();
+      // REMOVIDO: Limpeza excessiva de cache que causava loops
+      // this.clearCache(); // REMOVIDO para evitar invalidações desnecessárias
 
+      // Criar promessa para requisição e armazenar no mapa
+      const requestPromise = this.fetchMonsterFromServer(floor);
+      this.pendingRequests.set(floor, requestPromise);
+      
+      // Limpar da lista de pendentes quando concluído
+      requestPromise.finally(() => {
+        this.pendingRequests.delete(floor);
+      });
+
+      return requestPromise;
+    } catch (error) {
+      console.error(`[MonsterService] EXCEÇÃO ao obter monstro para andar ${floor}:`, error);
+      return { 
+        data: null, 
+        error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
+        success: false 
+      };
+    }
+  }
+
+  /**
+   * Buscar monstro do servidor (método privado para controle de cache)
+   * @private
+   */
+  private static async fetchMonsterFromServer(floor: number): Promise<ServiceResponse<Monster>> {
+    try {
       // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
@@ -45,24 +87,41 @@ export class MonsterService {
         
       // Se a função padrão falhar, verificar se há uma função com iniciativa disponível
       if (error && error.message?.includes('function') && error.message?.includes('does not exist')) {
-        console.log(`[MonsterService] Função get_monster_for_floor não existe, tentando fallback...`);
+        console.log(`[MonsterService] Função get_monster_for_floor não existe, tentando get_monster_for_floor_with_initiative...`);
         
-        // Fallback: buscar monstro diretamente da tabela usando lógica básica
-        const { data: monsterResult, error: monsterError } = await supabase
-          .from('monsters')
-          .select('*')
-          .lte('min_floor', floor)
-          .order('min_floor', { ascending: false })
-          .limit(1);
+        // Tentar função com iniciativa
+        const { data: initiativeData, error: initiativeError } = await supabase
+          .rpc('get_monster_for_floor_with_initiative', {
+            p_floor: floor
+          });
           
-        if (monsterError) {
-          data = null;
-          error = monsterError;
+        if (initiativeError) {
+          console.log(`[MonsterService] Função com iniciativa também falhou, usando fallback...`);
+          
+          // Fallback: buscar monstro diretamente da tabela usando lógica básica
+          const { data: monsterResult, error: monsterError } = await supabase
+            .from('monsters')
+            .select('*')
+            .lte('min_floor', floor)
+            .order('min_floor', { ascending: false })
+            .limit(1);
+            
+          if (monsterError) {
+            data = null;
+            error = monsterError;
+          } else {
+            // Simular o formato esperado da RPC
+            data = monsterResult && monsterResult.length > 0 ? monsterResult[0] : null;
+            error = null;
+            console.log(`[MonsterService] Usando fallback da tabela: ${data?.name || 'N/A'}`);
+          }
         } else {
-          // Simular o formato esperado da RPC
-          data = monsterResult && monsterResult.length > 0 ? monsterResult[0] : null;
-          error = null;
+          data = initiativeData;
+          error = initiativeError;
+          console.log(`[MonsterService] Usando função com iniciativa: ${data?.name || 'N/A'}`);
         }
+      } else if (!error) {
+        console.log(`[MonsterService] Usando função padrão: ${data?.name || 'N/A'}`);
       }
 
       console.log(`[MonsterService] Resposta da RPC get_monster_for_floor:`, {
@@ -100,26 +159,21 @@ export class MonsterService {
               data = fallbackData[0];
               error = null;
             } else {
-              return { 
-                data: null, 
-                error: 'Nenhum monstro encontrado na tabela para este andar', 
-                success: false 
-              };
+              console.warn(`[MonsterService] Nenhum monstro encontrado na tabela, gerando monstro básico`);
+              const basicMonster = this.generateBasicMonster(floor);
+              return { data: basicMonster, error: null, success: true };
             }
           } catch (fallbackError) {
-            console.error(`[MonsterService] Fallback também falhou:`, fallbackError);
-                         return { 
-               data: null, 
-               error: `Erro na função RPC e no fallback: ${error?.message || 'Erro desconhecido'}`, 
-               success: false 
-             };
+            console.error(`[MonsterService] Fallback da tabela também falhou:`, fallbackError);
+            console.log(`[MonsterService] Gerando monstro básico como último recurso`);
+            const basicMonster = this.generateBasicMonster(floor);
+            return { data: basicMonster, error: null, success: true };
           }
         } else {
-          return { 
-            data: null, 
-            error: error.message, 
-            success: false 
-          };
+          // Para outros tipos de erro, gerar monstro básico
+          console.log(`[MonsterService] Erro geral na RPC, gerando monstro básico`);
+          const basicMonster = this.generateBasicMonster(floor);
+          return { data: basicMonster, error: null, success: true };
         }
       }
       
@@ -251,27 +305,116 @@ export class MonsterService {
       console.log(`[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`);
       console.log(`[MonsterService] Possible drops: ${monster.possible_drops?.length || 0} tipos`);
       
+      // NOVO: Cachear o resultado por 30 segundos
+      const now = Date.now();
+      this.monsterCache.set(floor, monster);
+      this.cacheExpiry.set(floor, now + 30000); // 30 segundos
+      
       return { data: monster, error: null, success: true };
 
     } catch (error) {
-      console.error(`[MonsterService] EXCEÇÃO ao obter monstro para andar ${floor}:`, error);
+      console.error(`[MonsterService] EXCEÇÃO ao buscar monstro do servidor para andar ${floor}:`, error);
       return { 
         data: null, 
-        error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
+        error: error instanceof Error ? error.message : 'Erro ao buscar monstro do servidor',
         success: false 
       };
     }
   }
 
+  private static lastClearTime = 0;
+  private static MIN_CLEAR_INTERVAL = 1000; // Mínimo 1 segundo entre clears
+
   /**
-   * Limpar o cache de monstros
+   * Limpar o cache de monstros (com throttling)
    * @public
    */
   static clearCache(): void {
+    const now = Date.now();
+    if (now - this.lastClearTime < this.MIN_CLEAR_INTERVAL) {
+      console.log(`[MonsterService] Cache clear throttled - última limpeza há ${now - this.lastClearTime}ms`);
+      return;
+    }
+    
     this.monsterCache.clear();
     this.cacheExpiry.clear();
     this.pendingRequests.clear();
+    this.lastClearTime = now;
     console.log('[MonsterService] Cache de monstros limpo');
+  }
+
+  /**
+   * Gerar monstro básico como fallback quando RPC falha
+   * @private
+   */
+  private static generateBasicMonster(floor: number): Monster {
+    const level = Math.max(1, Math.floor(floor / 5) + 1);
+    const tier = Math.max(1, Math.floor(floor / 20) + 1);
+    const isBoss = floor % 10 === 0;
+    
+    // Nomes básicos baseados no andar
+    const monsterNames = [
+      'Slime', 'Goblin', 'Orc', 'Skeleton', 'Wolf', 
+      'Spider', 'Troll', 'Dragon', 'Demon', 'Lich'
+    ];
+    
+    const nameIndex = Math.floor(floor / 2) % monsterNames.length;
+    const baseName = monsterNames[nameIndex];
+    const tierSuffix = tier > 1 ? ` Tier ${tier}` : '';
+    const bossPrefix = isBoss ? 'Boss ' : '';
+    
+    const name = `${bossPrefix}${baseName}${tierSuffix}`;
+    
+    // Stats básicos escalados
+    const baseHp = isBoss ? 80 : 50;
+    const baseAtk = isBoss ? 15 : 10;
+    const baseDef = isBoss ? 8 : 5;
+    
+    const hp = Math.floor(baseHp + (level * 15) + (tier * 25));
+    const atk = Math.floor(baseAtk + (level * 3) + (tier * 5));
+    const def = Math.floor(baseDef + (level * 2) + (tier * 3));
+    const speed = Math.floor(10 + (level * 1) + (tier * 2));
+    
+    const reward_xp = Math.floor((5 + (level * 2) + (tier * 2)) * (isBoss ? 2.5 : 1));
+    const reward_gold = Math.floor((3 + (level * 1) + (tier * 1)) * (isBoss ? 2.5 : 1));
+    
+    return {
+      id: `generated_${floor}_${Date.now()}`,
+      name,
+      level,
+      hp,
+      atk,
+      def,
+      mana: Math.floor(20 + (level * 5)),
+      speed,
+      behavior: 'balanced',
+      min_floor: floor,
+      reward_xp,
+      reward_gold,
+      image: isBoss ? '👑' : '👾',
+      possible_drops: [],
+      tier,
+      base_tier: 1,
+      cycle_position: ((floor - 1) % 20) + 1,
+      is_boss: isBoss,
+      strength: Math.floor(10 + (level * 2)),
+      dexterity: Math.floor(10 + (level * 1)),
+      intelligence: Math.floor(8 + (level * 1)),
+      wisdom: Math.floor(8 + (level * 1)),
+      vitality: Math.floor(12 + (level * 2)),
+      luck: Math.floor(5 + level),
+      critical_chance: 0.05 + (level * 0.005),
+      critical_damage: 1.5 + (level * 0.05),
+      critical_resistance: 0.1,
+      physical_resistance: 0.0,
+      magical_resistance: 0.0,
+      debuff_resistance: 0.0,
+      physical_vulnerability: 1.0,
+      magical_vulnerability: 1.0,
+      primary_trait: isBoss ? 'boss' : 'common',
+      secondary_trait: 'basic',
+      special_abilities: isBoss ? ['Boss Fury'] : []
+    };
   }
 
   /**

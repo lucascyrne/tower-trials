@@ -26,8 +26,10 @@ export function EventProvider({ children }: EventProviderProps) {
     }
 
     try {
+      // 1. Processar evento especial
       const updatedState = await GameService.processSpecialEventInteraction(gameState);
       
+      // 2. Atualizar dados do personagem no banco
       if (selectedCharacter && updatedState.player) {
         if (updatedState.player.hp !== gameState.player.hp || 
             updatedState.player.mana !== gameState.player.mana) {
@@ -44,18 +46,32 @@ export function EventProvider({ children }: EventProviderProps) {
         }
       }
       
-      setGameState({
+      // 3. Gerar inimigo para o andar atual
+      const enemy = await GameService.generateEnemy(updatedState.player.floor);
+      if (!enemy) {
+        throw new Error('Erro ao gerar inimigo após evento especial');
+      }
+      
+      // 4. Atualizar estado do jogo
+      const finalState = {
         ...updatedState,
         mode: 'battle',
-        currentSpecialEvent: null
-      });
+        currentSpecialEvent: null,
+        currentEnemy: enemy,
+        gameMessage: `Andar ${updatedState.player.floor}: ${updatedState.currentFloor?.description || 'Área Desconhecida'}. Um ${enemy.name} apareceu!`
+      };
       
+      setGameState(finalState);
+      
+      // 5. Adicionar mensagens ao log
       addGameLogMessage(updatedState.gameMessage || 'Evento especial concluído!', 'system');
+      addGameLogMessage(`Um ${enemy.name} apareceu!`, 'system');
+      
     } catch (error) {
       console.error('[EventProvider] Erro no evento especial:', error);
       addGameLogMessage('Erro ao processar evento especial', 'system');
     }
-  }, [gameState, selectedCharacter]);
+  }, [gameState, selectedCharacter, setGameState, addGameLogMessage]);
 
   return (
     <EventContext.Provider value={{ interactWithEvent }}>

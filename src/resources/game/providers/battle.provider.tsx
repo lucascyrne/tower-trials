@@ -34,7 +34,7 @@ export function BattleProvider({ children }: BattleProviderProps) {
 
   // Função principal de ação
   const performAction = useCallback(async (action: ActionType, spellId?: string, consumableId?: string) => {
-    // Controle de debounce
+    // Controle de debounce MAIS RIGOROSO
     const now = Date.now();
     const timeSinceLastAction = now - lastActionRef.current.timestamp;
     const isSameAction = lastActionRef.current.action === action;
@@ -42,9 +42,14 @@ export function BattleProvider({ children }: BattleProviderProps) {
     console.log(`[BattleProvider] === AÇÃO SOLICITADA: ${action} ===`);
     console.log(`[BattleProvider] Debounce: última ação ${lastActionRef.current.action} há ${timeSinceLastAction}ms`);
     
-    // Validações básicas
-    if (!selectedCharacter || lastActionRef.current.processing) {
-      console.warn(`[BattleProvider] Ação bloqueada - sem personagem ou já processando`);
+    // VALIDAÇÕES MAIS RIGOROSAS para evitar loops
+    if (!selectedCharacter) {
+      console.warn(`[BattleProvider] Ação bloqueada - sem personagem selecionado`);
+      return;
+    }
+    
+    if (lastActionRef.current.processing) {
+      console.warn(`[BattleProvider] Ação bloqueada - já processando ação: ${lastActionRef.current.action}`);
       return;
     }
     
@@ -53,17 +58,19 @@ export function BattleProvider({ children }: BattleProviderProps) {
       return;
     }
     
-    if (isSameAction && timeSinceLastAction < 1000) {
-      console.warn(`[BattleProvider] Ação bloqueada - mesma ação muito rápida (${timeSinceLastAction}ms)`);
+    // Debounce mais agressivo para mesma ação
+    if (isSameAction && timeSinceLastAction < 2000) {
+      console.warn(`[BattleProvider] Ação bloqueada - mesma ação muito rápida (${timeSinceLastAction}ms < 2000ms)`);
       return;
     }
     
-    if (timeSinceLastAction < 300) {
-      console.warn(`[BattleProvider] Ação bloqueada - muito rápida (${timeSinceLastAction}ms)`);
+    // Debounce geral
+    if (timeSinceLastAction < 500) {
+      console.warn(`[BattleProvider] Ação bloqueada - muito rápida (${timeSinceLastAction}ms < 500ms)`);
       return;
     }
     
-    // Marcar como processando
+    // Marcar como processando ANTES de qualquer operação assíncrona
     lastActionRef.current = {
       timestamp: now,
       action: action,
@@ -245,8 +252,11 @@ export function BattleProvider({ children }: BattleProviderProps) {
         ...gameState,
         gameMessage: `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       });
+    } finally {
+      // CLEANUP GARANTIDO - sempre executado mesmo em caso de erro
       lastActionRef.current.processing = false;
       updateLoading('performAction', false);
+      console.log(`[BattleProvider] Cleanup executado - ação ${action} finalizada`);
     }
   }, [gameState, selectedCharacter, setGameState, updateLoading, addGameLogMessage]);
 

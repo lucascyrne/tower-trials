@@ -1,4 +1,4 @@
-import { type Floor, type FloorType, type GameState } from './game-model';
+import { type Floor, type FloorType, type GameState, type SpecialEvent } from './game-model';
 import { supabase } from '@/lib/supabase';
 import { MonsterService } from './monster.service';
 
@@ -7,16 +7,76 @@ export class FloorService {
   private static floorCache: Map<number, Floor> = new Map();
   private static floorCacheExpiry: Map<number, number> = new Map();
   private static FLOOR_CACHE_DURATION = 10000; // 10 segundos de cache
+  private static lastClearTime = 0;
+  private static MIN_CLEAR_INTERVAL = 1000; // Mínimo 1 segundo entre clears
 
   /**
-   * Limpar todos os caches
+   * Limpar todos os caches (com throttling)
    */
   static clearCache(): void {
+    const now = Date.now();
+    if (now - this.lastClearTime < this.MIN_CLEAR_INTERVAL) {
+      console.log(`[FloorService] Cache clear throttled - última limpeza há ${now - this.lastClearTime}ms`);
+      return;
+    }
+    
     console.log('[FloorService] Limpando cache de andares');
     this.floorCache.clear();
     this.floorCacheExpiry.clear();
     MonsterService.clearCache();
+    this.lastClearTime = now;
     console.log('[FloorService] Cache limpo');
+  }
+
+  /**
+   * Gerar dados básicos de andar como fallback
+   * @private
+   */
+  private static generateBasicFloorData(floorNumber: number): Floor {
+    // Determinar tipo do andar baseado na lógica padrão
+    let floorType: FloorType = 'common';
+    if (floorNumber % 10 === 0) {
+      floorType = 'boss';
+    } else if (floorNumber % 5 === 0) {
+      floorType = 'elite';
+    } else if (floorNumber % 7 === 0) {
+      floorType = 'event';
+    }
+    
+    // Checkpoints são no andar 1 e pós-boss (11, 21, 31, etc.)
+    const isCheckpoint = floorNumber === 1 || 
+                        (floorNumber > 10 && (floorNumber - 1) % 10 === 0);
+    
+    const minLevel = Math.max(1, Math.floor(floorNumber / 2));
+    
+    // Descrições temáticas baseadas no tipo
+    let description = '';
+    switch (floorType) {
+      case 'boss':
+        description = `Covil do Chefe - Andar ${floorNumber}`;
+        break;
+      case 'elite':
+        description = `Domínio de Elite - Andar ${floorNumber}`;
+        break;
+      case 'event':
+        description = `Câmara de Eventos - Andar ${floorNumber}`;
+        break;
+      default:
+        if (isCheckpoint) {
+          description = `Santuário Seguro - Andar ${floorNumber}`;
+        } else {
+          description = `Corredor Sombrio - Andar ${floorNumber}`;
+        }
+        break;
+    }
+    
+    return {
+      floorNumber,
+      type: floorType,
+      isCheckpoint,
+      minLevel,
+      description
+    };
   }
 
   /**
@@ -44,7 +104,28 @@ export class FloorService {
 
       if (error) {
         console.error(`[FloorService] Erro na RPC get_floor_data para andar ${floorNumber}:`, error);
-        return null;
+        
+        // Se a função não existir, usar fallback
+        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+          console.log(`[FloorService] Função get_floor_data não existe, usando fallback`);
+          const basicFloor = this.generateBasicFloorData(floorNumber);
+          
+          // Cache o resultado
+          this.floorCache.set(floorNumber, basicFloor);
+          this.floorCacheExpiry.set(floorNumber, now + this.FLOOR_CACHE_DURATION);
+          
+          return basicFloor;
+        }
+        
+        // Para outros erros, também usar fallback
+        console.log(`[FloorService] Erro geral na RPC, usando fallback`);
+        const basicFloor = this.generateBasicFloorData(floorNumber);
+        
+        // Cache o resultado
+        this.floorCache.set(floorNumber, basicFloor);
+        this.floorCacheExpiry.set(floorNumber, now + this.FLOOR_CACHE_DURATION);
+        
+        return basicFloor;
       }
 
       if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -132,17 +213,19 @@ export class FloorService {
         message = `Você encontrou uma fonte mágica! HP e Mana foram restaurados completamente.`;
         break;
         
-      case 'treasure_chest':
+      case 'treasure_chest': {
         const goldGain = Math.floor(Math.random() * 50) + 25;
         newGold += goldGain;
         message = `Você encontrou um baú do tesouro! Ganhou ${goldGain} de ouro.`;
         break;
+      }
         
-      case 'bonfire':
+      case 'bonfire': {
         const hpRestore = Math.floor(player.max_hp * 0.5);
         newHp = Math.min(player.max_hp, player.hp + hpRestore);
         message = `Você descansou numa fogueira acolhedora! Recuperou ${hpRestore} HP.`;
         break;
+      }
         
       default:
         message = `Você explorou o evento ${currentSpecialEvent.name}.`;
@@ -165,7 +248,7 @@ export class FloorService {
   /**
    * Verificar se há evento especial no andar
    */
-  static async checkForSpecialEvent(floorNumber: number): Promise<any | null> {
+  static async checkForSpecialEvent(floorNumber: number): Promise<SpecialEvent | null> {
     try {
       console.log(`[FloorService] Verificando eventos especiais para andar ${floorNumber}...`);
       
@@ -174,7 +257,18 @@ export class FloorService {
           p_floor: floorNumber
         });
 
-      if (!eventError && eventData) {
+      if (eventError) {
+        // Se a função não existir, retornar null (sem eventos especiais)
+        if (eventError.message?.includes('function') && eventError.message?.includes('does not exist')) {
+          console.log(`[FloorService] Função get_special_event_for_floor não existe - sem eventos especiais`);
+          return null;
+        }
+        
+        console.warn(`[FloorService] Erro ao buscar evento especial:`, eventError);
+        return null;
+      }
+
+      if (eventData) {
         console.log(`[FloorService] Evento especial encontrado: ${eventData.name}`);
         return eventData;
       }

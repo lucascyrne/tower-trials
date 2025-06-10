@@ -33,6 +33,7 @@ export function useGame() {
     createCharacter: character.createCharacter,
     selectCharacter: character.selectCharacter,
     loadCharacterForHub: character.loadCharacterForHub,
+    initializeBattle: character.initializeBattle,
     updatePlayerStats: character.updatePlayerStats,
     reloadCharacters: character.reloadCharacters,
     

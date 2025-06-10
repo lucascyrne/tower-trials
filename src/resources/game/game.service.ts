@@ -289,8 +289,9 @@ export class GameService {
     console.log(`[GameService] Avançando do andar ${player.floor} para ${nextFloor}`);
 
     try {
-      console.log(`[GameService] === LIMPANDO CACHES ANTES DE AVANÇAR ===`);
-      this.clearAllCaches();
+      // REMOVIDO: Limpeza excessiva de cache que pode causar loops
+      // console.log(`[GameService] === LIMPANDO CACHES ANTES DE AVANÇAR ===`);
+      // this.clearAllCaches(); // REMOVIDO para evitar invalidações desnecessárias
 
       console.log(`[GameService] === ATUALIZANDO ANDAR NO BANCO ===`);
       console.log(`[GameService] Personagem: ${player.id}`);

@@ -404,9 +404,26 @@ export class BattleService {
         break;
 
       case 'interact_event':
-        // Interação com eventos especiais (delegado para outro serviço)
-        message = 'Interação com evento processada em outro local.';
-        skipTurn = false;
+        // CORRIGIDO: Processar evento especial de verdade
+        try {
+          console.log('[BattleService] Processando interação com evento especial');
+          const { GameService } = await import('../game.service');
+          const updatedState = await GameService.processSpecialEventInteraction(newState);
+          
+          // CRÍTICO: Atualizar o estado com o resultado do evento
+          Object.assign(newState, updatedState);
+          
+          message = updatedState.gameMessage || 'Evento especial processado com sucesso!';
+          
+          console.log(`[BattleService] Evento especial processado - novo modo: ${updatedState.mode}`);
+          
+          // Se o evento foi processado com sucesso, não pular turno para continuar o fluxo
+          skipTurn = false;
+        } catch (error) {
+          console.error('[BattleService] Erro ao processar evento especial:', error);
+          message = 'Erro ao processar evento especial';
+          skipTurn = true;
+        }
         break;
 
       default:

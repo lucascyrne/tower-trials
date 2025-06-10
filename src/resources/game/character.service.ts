@@ -41,7 +41,7 @@ export class CharacterService {
   // OTIMIZADO: Throttling para invalidação de cache
   private static cacheInvalidationQueue: Set<string> = new Set();
   private static cacheInvalidationTimer: NodeJS.Timeout | null = null;
-  private static CACHE_INVALIDATION_DELAY = 100; // 100ms de delay para agrupar invalidações
+  private static CACHE_INVALIDATION_DELAY = 500; // AUMENTADO: 500ms de delay para agrupar invalidações
 
   /**
    * Buscar informações de progressão do usuário
