@@ -741,7 +741,7 @@ export default function GameBattle() {
         userId={user?.id}
         onReturnToCharacterSelect={handleReturnToCharacterSelect}
         onViewCemetery={() => {
-          navigate({ to: '/game/cemetery', search: { character: player.id } });
+          navigate({ to: '/game/play/hub/cemetery', search: { character: player.id } });
         }}
       />
 

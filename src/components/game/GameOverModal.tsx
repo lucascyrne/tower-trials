@@ -97,7 +97,7 @@ export function GameOverModal({
     if (onViewCemetery) {
       onViewCemetery();
     } else {
-      navigate({ to: '/game/cemetery', search: { character: player.id } });
+      navigate({ to: '/game/play/hub/cemetery', search: { character: player.id } });
     }
   };
 

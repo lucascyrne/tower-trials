@@ -65,7 +65,11 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
       console.log(`[QuickPlay] Checkpoint configurado com sucesso. Redirecionando para batalha...`);
       
       // CORRIGIDO: Redirecionar para a página de batalha com o ID do personagem
-      navigate({ to: '/game/play/battle/$character', params: { character: player.id } });
+      navigate({ 
+        to: '/game/play/hub/battle/$character', 
+        params: { character: player.id },
+        search: { character: player.id }
+      });
     } catch (error) {
       console.error('Erro no início rápido:', error);
     } finally {

@@ -207,7 +207,7 @@ export default function GameOver() {
             variant="outline"
             onClick={() => {
               // Navegar para o cemitério primeiro
-              navigate({ to: '/game/cemetery', search: { character: player.id } });
+              navigate({ to: '/game/play/hub/cemetery', search: { character: player.id } });
             }}
             className={`border-blue-500/30 text-blue-400 hover:bg-blue-500/10 ${
               isMobileLandscape ? 'flex-1 text-xs h-8' : 'w-full'

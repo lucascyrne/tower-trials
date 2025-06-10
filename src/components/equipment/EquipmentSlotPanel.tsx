@@ -29,7 +29,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     const timer = setTimeout(() => {
       setIsLongPress(true);
       // Navegar para a página de seleção de equipamento
-      navigate({ to: '/game/play/equipment/select', search: { character: characterId, slot: slotType as 'main_hand' | 'off_hand' | 'armor' | 'accessory' } });
+      navigate({ to: '/game/play/hub/equipment/select', search: { character: characterId, slot: slotType as 'main_hand' | 'off_hand' | 'armor' | 'accessory' } });
       onSlotLongPress(slotType);
     }, 600); // Reduzido para 600ms para melhor responsividade
     setPressTimer(timer);
