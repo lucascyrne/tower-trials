@@ -224,6 +224,15 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* FORÇA CURSOR POINTER UNIVERSALMENTE - RULE MAIS ESPECÍFICA */
+  html * {
+    &:is(button, a, [role='button'], [onclick], [data-clickable], .cursor-pointer):not(
+        :disabled
+      ):not([disabled]):not([aria-disabled='true']) {
+      cursor: pointer !important;
+    }
+  }
   body {
     @apply bg-background text-foreground antialiased transition-colors duration-300;
     font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -235,6 +244,113 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Cursor pointer para elementos interativos - Regras universais */
+  button,
+  [role='button'],
+  [type='button'],
+  [type='submit'],
+  [type='reset'],
+  a,
+  a[href],
+  label[for],
+  select,
+  summary,
+  [tabindex]:not([tabindex='-1']),
+  .cursor-pointer,
+  /* Elementos clicáveis comuns */
+  [onclick],
+  [data-clickable],
+  .clickable {
+    cursor: pointer !important;
+  }
+
+  /* Regras específicas para componentes Radix UI/shadcn que usam cursor-default */
+  [data-radix-collection-item]:not([data-disabled]):not([aria-disabled='true']),
+  [role='menuitem']:not([data-disabled]):not([aria-disabled='true']),
+  [role='option']:not([data-disabled]):not([aria-disabled='true']),
+  [role='tab']:not([data-disabled]):not([aria-disabled='true']),
+  [role='button']:not([data-disabled]):not([aria-disabled='true']),
+  [data-state]:not([data-disabled]):not([aria-disabled='true']),
+  /* Triggers específicos dos componentes shadcn */
+  [data-state='closed']:not([data-disabled]):not([aria-disabled='true']),
+  [data-state='open']:not([data-disabled]):not([aria-disabled='true']),
+  /* Items de dropdown, select, tabs etc com cursor-default */
+  .cursor-default[role='menuitem']:not([data-disabled]):not([aria-disabled='true']),
+  .cursor-default[role='option']:not([data-disabled]):not([aria-disabled='true']),
+  .cursor-default[role='tab']:not([data-disabled]):not([aria-disabled='true']),
+  .cursor-default[data-radix-collection-item]:not([data-disabled]):not([aria-disabled='true']),
+  /* Componentes específicos do shadcn */
+  .cursor-default[data-state]:not([data-disabled]):not([aria-disabled='true']),
+  /* Forçar cursor em elementos específicos da aplicação */
+  .cursor-default.group:not([data-disabled]):not([aria-disabled='true']),
+  .cursor-default[data-testid]:not([data-disabled]):not([aria-disabled='true']),
+  /* Sobrescrever cursor-default para elementos clicáveis */
+  .cursor-default:is(button, a, [role='button'], [onclick]):not([disabled]):not([aria-disabled='true']) {
+    cursor: pointer !important;
+  }
+
+  /* Regras específicas para classes de componentes da aplicação */
+  .group.cursor-pointer,
+  .group:has(button),
+  .group[onclick],
+  .card-enhanced,
+  .recipe-card,
+  .quick-action-button,
+  .battle-card,
+  /* Cards e containers clicáveis */
+  [class*='cursor-pointer'],
+  [class*='hover:']:not([disabled]):not([aria-disabled='true']),
+  /* Elementos que têm hover devem ter cursor pointer */
+  [class*='hover:bg-']:not([disabled]):not([aria-disabled='true']),
+  [class*='hover:border-']:not([disabled]):not([aria-disabled='true']),
+  [class*='hover:text-']:not([disabled]):not([aria-disabled='true']),
+  [class*='hover:scale-']:not([disabled]):not([aria-disabled='true']) {
+    cursor: pointer !important;
+  }
+
+  /* Cursor não permitido para elementos desabilitados */
+  button:disabled,
+  [role='button']:disabled,
+  [type='button']:disabled,
+  [type='submit']:disabled,
+  [type='reset']:disabled,
+  select:disabled,
+  .cursor-not-allowed,
+  [disabled],
+  [data-disabled],
+  [aria-disabled='true'] {
+    cursor: not-allowed !important;
+  }
+
+  /* Cursor padrão para inputs de texto */
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  input[type='search'],
+  input[type='tel'],
+  input[type='url'],
+  textarea {
+    cursor: text !important;
+  }
+
+  /* Regra final de captura para qualquer elemento que possa ter sido perdido */
+  * {
+    &:not([disabled]):not([aria-disabled='true']):not(input):not(textarea) {
+      &:is(button, a, [role='button'], [onclick], [data-clickable]) {
+        cursor: pointer !important;
+      }
+
+      &.cursor-pointer,
+      &[class*='hover:']:not([class*='cursor-']),
+      &.group:has(button),
+      &.card-enhanced,
+      &.quick-action-button {
+        cursor: pointer !important;
+      }
+    }
   }
 }
 
@@ -822,4 +938,95 @@
     width: 0.75rem;
     height: 0.75rem;
   }
+}
+
+/* ===== CURSOR POINTER FORÇADO - MÁXIMA PRIORIDADE ===== */
+/* Essas regras estão fora do @layer base para máxima especificidade */
+
+button:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+a:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+[role='button']:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+[onclick]:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+.cursor-pointer:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+/* Específico para elementos que têm hover */
+[class*='hover:']:not(:disabled):not([disabled]):not([aria-disabled='true']):not(input):not(
+    textarea
+  ) {
+  cursor: pointer !important;
+}
+
+/* Específico para grupos que contêm botões */
+.group:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+/* Para sobrescrever qualquer cursor-default do shadcn */
+.cursor-default:is(button, a, [role='button'], [onclick]):not(:disabled):not([disabled]):not(
+    [aria-disabled='true']
+  ) {
+  cursor: pointer !important;
+}
+
+/* Força em elementos com data attributes */
+[data-state]:not(:disabled):not([disabled]):not([aria-disabled='true']):not(input):not(textarea) {
+  cursor: pointer !important;
+}
+
+/* Força em elements com aria roles */
+[role='menuitem']:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+[role='option']:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+[role='tab']:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+/* Força em cards e containers clicáveis */
+.card-enhanced:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+.quick-action-button:not(:disabled):not([disabled]):not([aria-disabled='true']) {
+  cursor: pointer !important;
+}
+
+/* ===== CURSOR NOT-ALLOWED PARA ELEMENTOS DESABILITADOS ===== */
+button:disabled,
+button[disabled],
+button[aria-disabled='true'],
+[role='button']:disabled,
+[role='button'][disabled],
+[role='button'][aria-disabled='true'] {
+  cursor: not-allowed !important;
+}
+
+/* ===== CURSOR TEXT PARA INPUTS ===== */
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='search'],
+input[type='tel'],
+input[type='url'],
+textarea {
+  cursor: text !important;
 }
