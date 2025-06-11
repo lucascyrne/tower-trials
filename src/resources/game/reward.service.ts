@@ -1,5 +1,5 @@
 import { type GameState, type GamePlayer, type BattleRewards } from './game-model';
-import { CharacterService } from './character.service';
+import { CharacterService } from './character/character.service';
 import { ConsumableService } from './consumable.service';
 import { FloorService } from './floor.service';
 

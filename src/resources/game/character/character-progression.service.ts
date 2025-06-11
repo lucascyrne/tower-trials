@@ -1,5 +1,10 @@
-import { type Character } from '../models/character.model';
-import { type SkillType, type SkillXpResult } from '../models/character.model';
+import {
+  type Character,
+  type SkillType,
+  type SkillXpResult,
+  type CharacterProgressionInfo,
+  type CharacterLimitInfo,
+} from '../models/character.model';
 import { supabase } from '@/lib/supabase';
 import { CharacterCacheService } from './character-cache.service';
 
@@ -7,20 +12,6 @@ interface ServiceResponse<T> {
   data: T | null;
   error: string | null;
   success: boolean;
-}
-
-interface CharacterProgressionInfo {
-  total_characters: number;
-  total_levels: number;
-  highest_level: number;
-  highest_floor: number;
-  total_gold: number;
-}
-
-interface CharacterLimitInfo {
-  can_create: boolean;
-  available_slots: number;
-  next_slot_required_level: number;
 }
 
 export class CharacterProgressionService {
@@ -95,7 +86,16 @@ export class CharacterProgressionService {
     characterId: string,
     xpAmount: number,
     source: string = 'combat'
-  ): Promise<ServiceResponse<{ leveled_up: boolean; slots_unlocked: boolean }>> {
+  ): Promise<
+    ServiceResponse<{
+      leveled_up: boolean;
+      new_level: number;
+      new_xp: number;
+      new_xp_next_level: number;
+      slots_unlocked: boolean;
+      new_available_slots: number;
+    }>
+  > {
     try {
       // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
@@ -114,7 +114,14 @@ export class CharacterProgressionService {
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       // Se houve level up ou slots desbloqueados, invalidar cache do usuário
-      const result = data as { leveled_up: boolean; slots_unlocked: boolean };
+      const result = data as {
+        leveled_up: boolean;
+        new_level: number;
+        new_xp: number;
+        new_xp_next_level: number;
+        slots_unlocked: boolean;
+        new_available_slots: number;
+      };
       if (result.leveled_up || result.slots_unlocked) {
         const character = await this.getCharacterById(characterId);
         if (character.success && character.data) {

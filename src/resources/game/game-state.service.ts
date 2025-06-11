@@ -1,11 +1,12 @@
 import { type GameState, type GamePlayer, type Enemy, type FloorType } from './game-model';
 import { type Monster } from './models/monster.model';
 import { supabase } from '@/lib/supabase';
-import { CharacterService } from './character.service';
+import { CharacterService } from './character/character.service';
 import { SpellService } from './spell.service';
 import { ConsumableService } from './consumable.service';
 import { FloorService } from './floor.service';
 import { MonsterService } from './monster.service';
+import { CacheService } from './cache.service';
 import type { CharacterConsumable } from './models/consumable.model';
 
 // Interface para progresso do jogo salvo no banco
@@ -223,8 +224,7 @@ export class GameStateService {
 
     try {
       // Limpar todos os caches antes de começar
-      FloorService.clearCache();
-      MonsterService.clearCache();
+      CacheService.clearAllGameCaches();
 
       // Atualizar andar no banco de dados
       console.log(`[GameStateService] === ATUALIZANDO ANDAR NO BANCO ===`);

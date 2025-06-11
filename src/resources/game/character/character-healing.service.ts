@@ -69,18 +69,14 @@ export class CharacterHealingService {
 
       // OTIMIZADO: Atualizar cache ao invés de invalidar
       if (cachedCharacter && (integerHp !== undefined || integerMana !== undefined)) {
-        const updates: Partial<typeof cachedCharacter> = {};
-        if (integerHp !== undefined) updates.hp = integerHp;
-        if (integerMana !== undefined) updates.mana = integerMana;
+        const updatedCharacter = { ...cachedCharacter };
+        if (integerHp !== undefined) updatedCharacter.hp = integerHp;
+        if (integerMana !== undefined) updatedCharacter.mana = integerMana;
 
-        const updated = CharacterCacheService.updateCachedCharacterStats(characterId, updates);
-        if (!updated) {
-          // Se não conseguiu atualizar o cache, invalidar apenas stats
-          CharacterCacheService.invalidateCharacterStatsOnly(characterId);
-        }
+        CharacterCacheService.setCachedCharacter(characterId, updatedCharacter);
       } else {
-        // Se não há cache, usar invalidação específica para stats
-        CharacterCacheService.invalidateCharacterStatsOnly(characterId);
+        // Se não há cache, invalidar para forçar reload
+        CharacterCacheService.invalidateCharacterCache(characterId);
       }
 
       return { success: true, error: null, data: null };

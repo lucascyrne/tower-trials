@@ -1,7 +1,7 @@
 import { SkillType } from './models/character.model';
 import { type Equipment, isDualWielding, hasShield, getMainWeapon } from './models/equipment.model';
 import { type EquipmentSlots } from './models/equipment.model';
-import { CharacterService } from './character.service';
+import { CharacterService } from './character/character.service';
 
 export interface SkillXpGain {
   skill: SkillType;

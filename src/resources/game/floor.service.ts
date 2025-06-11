@@ -35,15 +35,14 @@ export class FloorService {
    * @private
    */
   private static generateBasicFloorData(floorNumber: number): Floor {
-    // Determinar tipo do andar baseado na lógica padrão
+    // SIMPLIFICADO: Focar majoritariamente em monstros, reduzir eventos especiais
     let floorType: FloorType = 'common';
     if (floorNumber % 10 === 0) {
       floorType = 'boss';
     } else if (floorNumber % 5 === 0) {
       floorType = 'elite';
-    } else if (floorNumber % 7 === 0) {
-      floorType = 'event';
     }
+    // REMOVIDO: Geração automática de andares de evento para garantir mais monstros
 
     // Checkpoints são no andar 1 e pós-boss (11, 21, 31, etc.)
     const isCheckpoint = floorNumber === 1 || (floorNumber > 10 && (floorNumber - 1) % 10 === 0);
@@ -58,9 +57,6 @@ export class FloorService {
         break;
       case 'elite':
         description = `Domínio de Elite - Andar ${floorNumber}`;
-        break;
-      case 'event':
-        description = `Câmara de Eventos - Andar ${floorNumber}`;
         break;
       default:
         if (isCheckpoint) {
@@ -211,6 +207,7 @@ export class FloorService {
     const { currentSpecialEvent, player } = gameState;
 
     if (!currentSpecialEvent) {
+      console.warn('[FloorService] Tentativa de processar evento especial inexistente');
       return gameState;
     }
 
@@ -246,18 +243,101 @@ export class FloorService {
         message = `Você explorou o evento ${currentSpecialEvent.name}.`;
     }
 
-    return {
-      ...gameState,
-      player: {
-        ...player,
-        hp: newHp,
-        mana: newMana,
-        gold: newGold,
-      },
-      gameMessage: message,
-      currentSpecialEvent: null,
-      mode: 'battle',
-    };
+    // CRÍTICO: Após processar evento especial, SEMPRE gerar inimigo para continuar
+    console.log(`[FloorService] === GERANDO INIMIGO APÓS EVENTO ESPECIAL ===`);
+
+    try {
+      const { GameService } = await import('./game.service');
+      const currentFloorNumber = player.floor;
+
+      // FORÇA geração de inimigo para o andar atual
+      console.log(`[FloorService] Forçando geração de inimigo para andar ${currentFloorNumber}...`);
+      const nextEnemy = await GameService.generateEnemy(currentFloorNumber);
+
+      if (!nextEnemy) {
+        console.error(
+          `[FloorService] FALHA CRÍTICA: Não foi possível gerar inimigo após evento especial no andar ${currentFloorNumber}`
+        );
+        throw new Error(`Não foi possível gerar inimigo para continuar a aventura`);
+      }
+
+      console.log(
+        `[FloorService] ✅ SUCESSO: Inimigo gerado após evento: ${nextEnemy.name} (HP: ${nextEnemy.hp}/${nextEnemy.maxHp})`
+      );
+
+      // MODIFICADO: Atualizar HP/Mana no banco se houve mudanças significativas
+      if (newHp !== player.hp || newMana !== player.mana) {
+        console.log(`[FloorService] Atualizando HP/Mana no banco: ${newHp}/${newMana}`);
+
+        try {
+          const { CharacterService } = await import('./character/character.service');
+          await CharacterService.updateCharacterHpMana(player.id, newHp, newMana);
+        } catch (error) {
+          console.error('[FloorService] Erro ao atualizar HP/Mana após evento:', error);
+          // Não interromper o fluxo por causa disso
+        }
+      }
+
+      // MODIFICADO: Atualizar gold no banco se houve ganho
+      if (newGold !== player.gold) {
+        console.log(`[FloorService] Atualizando gold no banco: ${newGold}`);
+
+        try {
+          const { CharacterService } = await import('./character/character.service');
+          await CharacterService.grantSecureGold(player.id, newGold - player.gold, 'event');
+        } catch (error) {
+          console.error('[FloorService] Erro ao atualizar gold após evento:', error);
+          // Usar o valor local mesmo se falhar o banco
+        }
+      }
+
+      const finalGameState = {
+        ...gameState,
+        player: {
+          ...player,
+          hp: newHp,
+          mana: newMana,
+          gold: newGold,
+          isPlayerTurn: true,
+          isDefending: false,
+        },
+        currentEnemy: nextEnemy,
+        gameMessage: `${message} Um ${nextEnemy.name} apareceu para enfrentá-lo!`,
+        currentSpecialEvent: null,
+        mode: 'battle' as const,
+        isPlayerTurn: true,
+      };
+
+      console.log(
+        `[FloorService] ✅ ESTADO FINAL APÓS EVENTO: Modo=${finalGameState.mode}, Inimigo=${finalGameState.currentEnemy?.name}, HP=${finalGameState.player.hp}`
+      );
+
+      return finalGameState;
+    } catch (error) {
+      console.error('[FloorService] ❌ ERRO CRÍTICO ao gerar inimigo após evento especial:', error);
+
+      // Fallback: retornar ao estado de batalha sem inimigo (mas isso deve ser tratado pela verificação de estado inconsistente)
+      console.log(
+        '[FloorService] Retornando estado de fallback - verificação de estado inconsistente deve capturar isto'
+      );
+
+      return {
+        ...gameState,
+        player: {
+          ...player,
+          hp: newHp,
+          mana: newMana,
+          gold: newGold,
+          isPlayerTurn: true,
+          isDefending: false,
+        },
+        gameMessage: `${message} Preparando próximo desafio...`,
+        currentSpecialEvent: null,
+        currentEnemy: null,
+        mode: 'battle' as const,
+        isPlayerTurn: true,
+      };
+    }
   }
 
   /**

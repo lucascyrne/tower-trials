@@ -9,7 +9,7 @@ import {
   useRef,
 } from 'react';
 import { type Character } from '../models/character.model';
-import { CharacterService } from '../character.service';
+import { CharacterService } from '../character/character.service';
 import { FloorService } from '../floor.service';
 import { GameService } from '../game.service';
 import { useAuth } from '../../auth/auth-hook';

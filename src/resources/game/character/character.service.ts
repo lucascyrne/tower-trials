@@ -10,6 +10,7 @@ import { CharacterCheckpointService } from './character-checkpoint.service';
 import { CharacterHealingService } from './character-healing.service';
 import { CharacterProgressionService } from './character-progression.service';
 import { CharacterStatsService } from './character-stats.service';
+import { CharacterAttributesService } from './character-attributes.service';
 import { NameValidationService } from '../name-validation.service';
 
 interface ServiceResponse<T> {
@@ -565,4 +566,6 @@ export class CharacterService {
   static updateGold = CharacterProgressionService.updateGold;
   static calculateDerivedStats = CharacterStatsService.calculateDerivedStats;
   static analyzeBuildDiversity = CharacterStatsService.analyzeBuildDiversity;
+  static distributeAttributePoints = CharacterAttributesService.distributeAttributePoints;
+  static recalculateCharacterStats = CharacterAttributesService.recalculateCharacterStats;
 }

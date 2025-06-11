@@ -91,9 +91,9 @@ export interface CharacterProgressionInfo {
 
 export interface CharacterLimitInfo {
   can_create: boolean;
-  current_count: number;
+  current_count?: number;
   available_slots: number;
-  total_level: number;
+  total_level?: number;
   next_slot_required_level: number;
 }
 

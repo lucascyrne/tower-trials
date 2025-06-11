@@ -49,9 +49,6 @@ export class MonsterService {
 
       console.log(`[MonsterService] === INÍCIO BUSCA MONSTRO ANDAR ${floor} ===`);
 
-      // REMOVIDO: Limpeza excessiva de cache que causava loops
-      // this.clearCache(); // REMOVIDO para evitar invalidações desnecessárias
-
       // Criar promessa para requisição e armazenar no mapa
       const requestPromise = this.fetchMonsterFromServer(floor);
       this.pendingRequests.set(floor, requestPromise);
@@ -61,14 +58,36 @@ export class MonsterService {
         this.pendingRequests.delete(floor);
       });
 
-      return requestPromise;
+      const result = await requestPromise;
+
+      // CRÍTICO: Se falhar, sempre usar fallback para garantir que há monstro
+      if (!result.success || !result.data) {
+        console.warn(`[MonsterService] Falha na busca, usando fallback para andar ${floor}`);
+        const fallbackMonster = this.generateBasicMonster(floor);
+
+        // Cache o resultado do fallback
+        this.monsterCache.set(floor, fallbackMonster);
+        this.cacheExpiry.set(floor, now + 30000);
+
+        return { data: fallbackMonster, error: null, success: true };
+      }
+
+      return result;
     } catch (error) {
       console.error(`[MonsterService] EXCEÇÃO ao obter monstro para andar ${floor}:`, error);
-      return {
-        data: null,
-        error: error instanceof Error ? error.message : 'Erro ao buscar monstro',
-        success: false,
-      };
+
+      // CRÍTICO: Sempre retornar fallback em caso de exceção
+      console.log(
+        `[MonsterService] Gerando monstro de fallback para andar ${floor} devido à exceção`
+      );
+      const fallbackMonster = this.generateBasicMonster(floor);
+
+      // Cache o resultado do fallback
+      const now = Date.now();
+      this.monsterCache.set(floor, fallbackMonster);
+      this.cacheExpiry.set(floor, now + 30000);
+
+      return { data: fallbackMonster, error: null, success: true };
     }
   }
 
@@ -146,60 +165,31 @@ export class MonsterService {
       if (error) {
         console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error);
 
-        // Tratar erro específico de incompatibilidade de tipos (42804)
-        if (
-          error.code === '42804' ||
-          error.message?.includes('does not match function result type')
-        ) {
-          console.log(
-            `[MonsterService] Erro de tipo detectado, tentando buscar diretamente da tabela...`
-          );
+        // CRÍTICO: Sempre usar fallback em caso de erro da API
+        console.log(`[MonsterService] Usando fallback devido a erro na API`);
+        const fallbackMonster = this.generateBasicMonster(floor);
 
-          // Fallback: buscar diretamente da tabela monsters
-          try {
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('monsters')
-              .select('*')
-              .lte('min_floor', floor)
-              .order('min_floor', { ascending: false })
-              .limit(1);
+        // Cache o resultado do fallback
+        const now = Date.now();
+        this.monsterCache.set(floor, fallbackMonster);
+        this.cacheExpiry.set(floor, now + 30000);
 
-            if (fallbackError) {
-              throw fallbackError;
-            }
-
-            if (fallbackData && fallbackData.length > 0) {
-              console.log(`[MonsterService] Fallback bem-sucedido, usando monstro da tabela`);
-              data = fallbackData[0];
-              error = null;
-            } else {
-              console.warn(
-                `[MonsterService] Nenhum monstro encontrado na tabela, gerando monstro básico`
-              );
-              const basicMonster = this.generateBasicMonster(floor);
-              return { data: basicMonster, error: null, success: true };
-            }
-          } catch (fallbackError) {
-            console.error(`[MonsterService] Fallback da tabela também falhou:`, fallbackError);
-            console.log(`[MonsterService] Gerando monstro básico como último recurso`);
-            const basicMonster = this.generateBasicMonster(floor);
-            return { data: basicMonster, error: null, success: true };
-          }
-        } else {
-          // Para outros tipos de erro, gerar monstro básico
-          console.log(`[MonsterService] Erro geral na RPC, gerando monstro básico`);
-          const basicMonster = this.generateBasicMonster(floor);
-          return { data: basicMonster, error: null, success: true };
-        }
+        return { data: fallbackMonster, error: null, success: true };
       }
 
       if (!data || (Array.isArray(data) && data.length === 0)) {
         console.error(`[MonsterService] Nenhum monstro retornado para andar ${floor}`);
-        return {
-          data: null,
-          error: 'Nenhum monstro encontrado para este andar',
-          success: false,
-        };
+
+        // CRÍTICO: Usar fallback se não há dados
+        console.log(`[MonsterService] Gerando monstro de fallback - nenhum dado retornado`);
+        const fallbackMonster = this.generateBasicMonster(floor);
+
+        // Cache o resultado do fallback
+        const now = Date.now();
+        this.monsterCache.set(floor, fallbackMonster);
+        this.cacheExpiry.set(floor, now + 30000);
+
+        return { data: fallbackMonster, error: null, success: true };
       }
 
       // Garantir que temos um objeto único

@@ -9,12 +9,13 @@ import {
 import { supabase } from '@/lib/supabase';
 import { type SkillXpGain } from './skill-xp.service';
 import { MonsterService } from './monster.service';
-import { CharacterService } from './character.service';
+import { CharacterService } from './character/character.service';
 
 // Importar serviços especializados
-import { BattleService } from './services/battle.service';
+import { BattleService } from './battle.service';
 import { FloorService } from './floor.service';
 import { GameStateService } from './game-state.service';
+import { CacheService } from './cache.service';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -55,10 +56,8 @@ export class GameService {
    * Limpar todos os caches
    */
   static clearAllCaches(): void {
-    console.log('[GameService] Limpando todos os caches');
-    FloorService.clearCache();
-    MonsterService.clearCache();
-    console.log('[GameService] Todos os caches foram limpos');
+    console.log('[GameService] Delegando limpeza de cache para CacheService');
+    CacheService.clearAllGameCaches();
   }
 
   /**
@@ -70,9 +69,13 @@ export class GameService {
 
       const { data: monsterData, error, success } = await MonsterService.getMonsterForFloor(floor);
 
+      // CRÍTICO: MonsterService agora sempre retorna sucesso com fallback se necessário
       if (!success || error || !monsterData) {
-        console.error(`[GameService] Erro ao buscar monstro para andar ${floor}:`, error);
-        throw new Error(`Nenhum monstro encontrado para o andar ${floor}: ${error}`);
+        console.error(
+          `[GameService] Erro inesperado - MonsterService falhou para andar ${floor}:`,
+          error
+        );
+        return null;
       }
 
       if (!monsterData.name || !monsterData.hp || !monsterData.atk || !monsterData.def) {
@@ -80,7 +83,13 @@ export class GameService {
           `[GameService] Dados de monstro incompletos para andar ${floor}:`,
           monsterData
         );
-        throw new Error(`Dados de monstro incompletos para o andar ${floor}`);
+        console.log(`[GameService] Tentando corrigir dados incompletos...`);
+
+        // Corrigir dados faltantes em tempo real
+        monsterData.name = monsterData.name || `Monstro Andar ${floor}`;
+        monsterData.hp = monsterData.hp || 50 + floor * 10;
+        monsterData.atk = monsterData.atk || 10 + floor * 2;
+        monsterData.def = monsterData.def || 5 + floor * 1;
       }
 
       const enemy: Enemy = {
@@ -95,8 +104,8 @@ export class GameService {
         image: monsterData.image || '👾',
         behavior: monsterData.behavior || 'balanced',
         mana: monsterData.mana || 0,
-        reward_xp: monsterData.reward_xp,
-        reward_gold: monsterData.reward_gold,
+        reward_xp: monsterData.reward_xp || Math.floor(5 + floor * 2),
+        reward_gold: monsterData.reward_gold || Math.floor(3 + floor * 1),
         possible_drops: monsterData.possible_drops || [],
         active_effects: {
           buffs: [],
@@ -105,39 +114,37 @@ export class GameService {
           hots: [],
           attribute_modifications: [],
         },
-        tier: monsterData.tier,
-        base_tier: monsterData.base_tier,
-        cycle_position: monsterData.cycle_position,
-        is_boss: monsterData.is_boss,
-        strength: monsterData.strength,
-        dexterity: monsterData.dexterity,
-        intelligence: monsterData.intelligence,
-        wisdom: monsterData.wisdom,
-        vitality: monsterData.vitality,
-        luck: monsterData.luck,
-        critical_chance: monsterData.critical_chance,
-        critical_damage: monsterData.critical_damage,
-        critical_resistance: monsterData.critical_resistance,
-        physical_resistance: monsterData.physical_resistance,
-        magical_resistance: monsterData.magical_resistance,
-        debuff_resistance: monsterData.debuff_resistance,
-        physical_vulnerability: monsterData.physical_vulnerability,
-        magical_vulnerability: monsterData.magical_vulnerability,
-        primary_trait: monsterData.primary_trait,
-        secondary_trait: monsterData.secondary_trait,
+        tier: monsterData.tier || 1,
+        base_tier: monsterData.base_tier || 1,
+        cycle_position: monsterData.cycle_position || ((floor - 1) % 20) + 1,
+        is_boss: monsterData.is_boss || false,
+        strength: monsterData.strength || 10,
+        dexterity: monsterData.dexterity || 10,
+        intelligence: monsterData.intelligence || 10,
+        wisdom: monsterData.wisdom || 10,
+        vitality: monsterData.vitality || 10,
+        luck: monsterData.luck || 10,
+        critical_chance: monsterData.critical_chance || 0.05,
+        critical_damage: monsterData.critical_damage || 1.5,
+        critical_resistance: monsterData.critical_resistance || 0.1,
+        physical_resistance: monsterData.physical_resistance || 0.0,
+        magical_resistance: monsterData.magical_resistance || 0.0,
+        debuff_resistance: monsterData.debuff_resistance || 0.0,
+        physical_vulnerability: monsterData.physical_vulnerability || 1.0,
+        magical_vulnerability: monsterData.magical_vulnerability || 1.0,
+        primary_trait: monsterData.primary_trait || 'common',
+        secondary_trait: monsterData.secondary_trait || 'basic',
         special_abilities: monsterData.special_abilities || [],
       };
 
+      console.log(`[GameService] ✅ MONSTRO GERADO COM SUCESSO: ${enemy.name} (Andar ${floor})`);
       console.log(
-        `[GameService] Monstro real gerado: ${enemy.name} (Tier ${enemy.tier || 1}, Pos ${enemy.cycle_position || 'N/A'})`
-      );
-      console.log(
-        `[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, Boss: ${enemy.is_boss ? 'SIM' : 'NÃO'}`
+        `[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, XP: ${enemy.reward_xp}, Gold: ${enemy.reward_gold}`
       );
 
       return enemy;
     } catch (error) {
-      console.error(`[GameService] Erro ao gerar inimigo para andar ${floor}:`, error);
+      console.error(`[GameService] Erro CRÍTICO ao gerar inimigo para andar ${floor}:`, error);
       return null;
     }
   }
@@ -301,10 +308,6 @@ export class GameService {
     console.log(`[GameService] Avançando do andar ${player.floor} para ${nextFloor}`);
 
     try {
-      // REMOVIDO: Limpeza excessiva de cache que pode causar loops
-      // console.log(`[GameService] === LIMPANDO CACHES ANTES DE AVANÇAR ===`);
-      // this.clearAllCaches(); // REMOVIDO para evitar invalidações desnecessárias
-
       console.log(`[GameService] === ATUALIZANDO ANDAR NO BANCO ===`);
       console.log(`[GameService] Personagem: ${player.id}`);
       console.log(`[GameService] Andar atual: ${player.floor} -> Próximo andar: ${nextFloor}`);
@@ -341,8 +344,32 @@ export class GameService {
         `[GameService] Inimigo gerado: ${nextEnemy.name} (HP: ${nextEnemy.hp}/${nextEnemy.maxHp})`
       );
 
-      // Verificar evento especial usando FloorService
-      const specialEvent = await FloorService.checkForSpecialEvent(nextFloor);
+      // NOVA LÓGICA: Drasticamente reduzida a chance de eventos especiais
+      let specialEvent = null;
+
+      // CRÍTICO: Reduzir drasticamente eventos especiais para focar em monstros
+      // Apenas 1% de chance de evento especial em andares comuns (não boss/elite)
+      const isBossFloor = nextFloor % 10 === 0;
+      const isEliteFloor = nextFloor % 5 === 0 && !isBossFloor;
+      const canHaveSpecialEvent = !isBossFloor && !isEliteFloor;
+
+      if (canHaveSpecialEvent && Math.random() < 0.01) {
+        // Apenas 1% de chance
+        specialEvent = await FloorService.checkForSpecialEvent(nextFloor);
+
+        if (specialEvent) {
+          console.log(
+            `[GameService] ✨ Evento especial raro ativado no andar ${nextFloor}: ${specialEvent.name} (1% chance)`
+          );
+          console.log(
+            `[GameService] ⚠️ AVISO: Inimigo ${nextEnemy.name} foi gerado mas será usado após evento especial`
+          );
+        }
+      } else {
+        console.log(
+          `[GameService] Andar ${nextFloor}: Evento especial ${!canHaveSpecialEvent ? 'bloqueado' : 'não sorteado'} - FOCO EM MONSTROS`
+        );
+      }
 
       const newGameState: GameState = {
         ...gameState,
@@ -362,7 +389,10 @@ export class GameService {
           ? `Evento especial encontrado: ${specialEvent.name}!`
           : `Andar ${nextFloor}: ${nextFloorData.description}. Um ${nextEnemy.name} apareceu!`,
         isPlayerTurn: true,
+
+        // CRÍTICO: Limpar completamente battleRewards para evitar loops
         battleRewards: null,
+
         selectedSpell: null,
         characterDeleted: false,
         fleeSuccessful: false,
@@ -374,6 +404,7 @@ export class GameService {
       console.log(`[GameService] - Andar: ${newGameState.currentFloor?.description}`);
       console.log(`[GameService] - Inimigo: ${newGameState.currentEnemy?.name || 'N/A'}`);
       console.log(`[GameService] - Evento: ${newGameState.currentSpecialEvent?.name || 'N/A'}`);
+      console.log(`[GameService] - BattleRewards limpo: ${newGameState.battleRewards === null}`);
 
       return newGameState;
     } catch (error) {
@@ -412,7 +443,10 @@ export class GameService {
           currentSpecialEvent: null,
           gameMessage: `Andar ${nextFloor}: ${fallbackFloor.description}. Um ${fallbackEnemy.name} apareceu!`,
           isPlayerTurn: true,
+
+          // CRÍTICO: Limpar battleRewards no fallback também
           battleRewards: null,
+
           mode: 'battle',
           selectedSpell: null,
         };

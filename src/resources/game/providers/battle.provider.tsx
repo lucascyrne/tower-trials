@@ -1,7 +1,7 @@
 import { type ReactNode, createContext, useContext, useCallback, useRef } from 'react';
 import { type ActionType } from '../game-model';
 import { GameService } from '../game.service';
-import { CharacterService } from '../character.service';
+import { CharacterService } from '../character/character.service';
 import { useGameState } from './game-state.provider';
 import { useGameLog } from './log.provider';
 import { useCharacter } from './character.provider';
@@ -154,6 +154,22 @@ export function BattleProvider({ children }: BattleProviderProps) {
           const defeatedState = await GameService.processEnemyDefeat(newState);
           setGameState(defeatedState);
           addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'system');
+          clearLoadingState();
+          return;
+        }
+
+        // NOVO: Verificar se precisa avançar automaticamente após continue
+        if (action === 'continue' && newState.battleRewards === null && newState.currentEnemy) {
+          console.log('[BattleProvider] === CONTINUE PROCESSADO - ESTADO ATUALIZADO ===');
+          addGameLogMessage(message, 'system');
+          clearLoadingState();
+          return;
+        }
+
+        // NOVO: Verificar se interaction_event foi processado
+        if (action === 'interact_event' && newState.mode === 'battle' && newState.currentEnemy) {
+          console.log('[BattleProvider] === EVENTO ESPECIAL PROCESSADO - VOLTANDO À BATALHA ===');
+          addGameLogMessage(message, 'system');
           clearLoadingState();
           return;
         }

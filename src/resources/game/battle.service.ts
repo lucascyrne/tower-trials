@@ -1,10 +1,10 @@
-import { type Enemy, type GameState, type GamePlayer } from '../game-model';
-import { SkillXpService, type SkillXpGain } from '../skill-xp.service';
-import { SpellService } from '../spell.service';
-import { EquipmentService } from '../equipment.service';
-import { CemeteryService } from '../cemetery.service';
-import { type EquipmentSlots } from '../models/equipment.model';
-import { type ActionType } from '../game-model';
+import { type Enemy, type GameState, type GamePlayer } from './game-model';
+import { SkillXpService, type SkillXpGain } from './skill-xp.service';
+import { SpellService } from './spell.service';
+import { EquipmentService } from './equipment.service';
+import { CemeteryService } from './cemetery.service';
+import { type EquipmentSlots } from './models/equipment.model';
+import { type ActionType } from './game-model';
 
 export class BattleService {
   /**
@@ -377,7 +377,7 @@ export class BattleService {
       case 'consumable':
         if (consumableId) {
           try {
-            const { ConsumableService } = await import('../consumable.service');
+            const { ConsumableService } = await import('./consumable.service');
             const useResult = await ConsumableService.consumeItem(
               newState.player.id,
               consumableId,
@@ -420,7 +420,7 @@ export class BattleService {
         // Avançar para o próximo andar
         try {
           console.log('[BattleService] Processando ação de continuar para próximo andar');
-          const { GameService } = await import('../game.service');
+          const { GameService } = await import('./game.service');
           const updatedState = await GameService.advanceToNextFloor(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do avanço
@@ -442,7 +442,7 @@ export class BattleService {
         // Processar evento especial
         try {
           console.log('[BattleService] Processando interação com evento especial');
-          const { GameService } = await import('../game.service');
+          const { GameService } = await import('./game.service');
           const updatedState = await GameService.processSpecialEventInteraction(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do evento

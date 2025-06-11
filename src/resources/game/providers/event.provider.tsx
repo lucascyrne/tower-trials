@@ -1,6 +1,6 @@
 import { type ReactNode, createContext, useContext, useCallback } from 'react';
 import { GameService } from '../game.service';
-import { CharacterService } from '../character.service';
+import { CharacterService } from '../character/character.service';
 import { useGameState } from './game-state.provider';
 import { useGameLog } from './log.provider';
 import { useCharacter } from './character.provider';
