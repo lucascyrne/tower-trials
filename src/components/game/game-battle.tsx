@@ -14,7 +14,7 @@ import { useAuth } from '@/resources/auth/auth-hook';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { QuickActionPanel } from './QuickActionPanel';
 import { FleeOverlay } from './FleeOverlay';
 
@@ -49,6 +49,7 @@ export default function GameBattle() {
   const [fleeSuccess, setFleeSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
   const [victoryRewards, setVictoryRewards] = useState<BattleRewards>({
     xp: 0,
     gold: 0,
@@ -57,12 +58,16 @@ export default function GameBattle() {
     newLevel: 0,
   });
 
-  // Sistema para prevenir ações duplicadas - OTIMIZADO
+  // Sistema para prevenir ações duplicadas e controlar inicialização
   const actionProcessingRef = useRef(false);
   const lastActionTimeRef = useRef(0);
   const battleInitializedRef = useRef(false);
   const mountedRef = useRef(false);
   const currentCharacterRef = useRef<string | null>(null);
+  const initializationAttempts = useRef(0);
+  const initializationTimeout = useRef<NodeJS.Timeout | null>(null);
+  const MAX_INITIALIZATION_ATTEMPTS = 3;
+  const INITIALIZATION_TIMEOUT = 15000; // 15 segundos
 
   // OTIMIZADO: Sistema simplificado para controle de processamento
   const processedRewardsRef = useRef<Set<string>>(new Set());
@@ -92,52 +97,155 @@ export default function GameBattle() {
     player.max_mana,
   ]);
 
-  // Controle de montagem - SIMPLIFICADO
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      battleInitializedRef.current = false;
-      currentCharacterRef.current = null;
-    };
+  // NOVO: Função para limpar timers e reiniciar estado
+  const cleanupInitialization = useCallback(() => {
+    if (initializationTimeout.current) {
+      clearTimeout(initializationTimeout.current);
+      initializationTimeout.current = null;
+    }
+    battleInitializedRef.current = false;
+    currentCharacterRef.current = null;
+    initializationAttempts.current = 0;
+    setInitializationError(null);
   }, []);
 
-  // OTIMIZADO: Inicialização de batalha mais eficiente
+  // Controle de montagem - MELHORADO
   useEffect(() => {
-    if (!mountedRef.current || !user?.id || !characterId) return;
+    mountedRef.current = true;
+    console.log('[GameBattle] Componente montado');
+
+    return () => {
+      console.log('[GameBattle] Componente desmontado - limpando recursos');
+      mountedRef.current = false;
+      cleanupInitialization();
+    };
+  }, [cleanupInitialization]);
+
+  // CORRIGIDO: Inicialização de batalha mais robusta com timeout e recuperação
+  useEffect(() => {
+    // Validações básicas
+    if (!mountedRef.current || !user?.id || !characterId) {
+      console.log('[GameBattle] Condições básicas não atendidas:', {
+        mounted: mountedRef.current,
+        userId: !!user?.id,
+        characterId: !!characterId,
+      });
+      return;
+    }
 
     // Evitar múltiplas inicializações para o mesmo personagem
-    if (battleInitializedRef.current && currentCharacterRef.current === characterId) return;
+    if (battleInitializedRef.current && currentCharacterRef.current === characterId) {
+      console.log('[GameBattle] Batalha já inicializada para este personagem');
+      return;
+    }
 
-    // CORREÇÃO: Apenas evitar inicialização se está carregando progresso (não ações)
-    if (loading.loadProgress) return;
+    // Evitar inicialização se está carregando progresso
+    if (loading.loadProgress) {
+      console.log('[GameBattle] Aguardando carregamento de progresso...');
+      return;
+    }
+
+    // Verificar limite de tentativas
+    if (initializationAttempts.current >= MAX_INITIALIZATION_ATTEMPTS) {
+      console.error('[GameBattle] Máximo de tentativas de inicialização atingido');
+      setInitializationError('Erro ao carregar batalha. Verifique sua conexão e tente novamente.');
+      toast.error('Falha ao inicializar batalha', {
+        description: 'Retorne ao hub e tente novamente',
+        duration: 5000,
+        action: {
+          label: 'Voltar ao Hub',
+          onClick: () => navigate({ to: '/game/play' }),
+        },
+      });
+      return;
+    }
 
     const initializeBattleForCharacter = async () => {
       try {
-        console.log(`[GameBattle] Inicializando batalha para personagem ${characterId}`);
+        console.log(
+          `[GameBattle] Inicializando batalha para personagem ${characterId} (tentativa ${initializationAttempts.current + 1}/${MAX_INITIALIZATION_ATTEMPTS})`
+        );
 
+        initializationAttempts.current += 1;
         battleInitializedRef.current = true;
         currentCharacterRef.current = characterId;
+        setInitializationError(null);
 
+        // Configurar timeout de segurança
+        initializationTimeout.current = setTimeout(() => {
+          if (mountedRef.current && battleInitializedRef.current) {
+            console.error('[GameBattle] Timeout de inicialização atingido');
+            setInitializationError('Tempo limite de carregamento atingido');
+            battleInitializedRef.current = false;
+
+            if (initializationAttempts.current < MAX_INITIALIZATION_ATTEMPTS) {
+              // Tentar novamente após um delay
+              setTimeout(() => {
+                if (mountedRef.current) {
+                  console.log('[GameBattle] Tentando reinicialização após timeout...');
+                  battleInitializedRef.current = false;
+                }
+              }, 2000);
+            }
+          }
+        }, INITIALIZATION_TIMEOUT);
+
+        // Buscar dados do personagem
         const characterResponse = await CharacterService.getCharacter(characterId);
         if (!characterResponse.success || !characterResponse.data) {
           throw new Error(characterResponse.error || 'Personagem não encontrado');
         }
 
+        // Inicializar batalha
         await initializeBattle(characterResponse.data, characterId);
-        setIsLoading(false);
 
+        // Sucesso - limpar timeout e definir como carregado
+        if (initializationTimeout.current) {
+          clearTimeout(initializationTimeout.current);
+          initializationTimeout.current = null;
+        }
+
+        setIsLoading(false);
+        setInitializationError(null);
         console.log(`[GameBattle] Batalha inicializada com sucesso`);
       } catch (error) {
         console.error('[GameBattle] Erro ao inicializar batalha:', error);
+
+        // Limpar timeout em caso de erro
+        if (initializationTimeout.current) {
+          clearTimeout(initializationTimeout.current);
+          initializationTimeout.current = null;
+        }
+
         battleInitializedRef.current = false;
         currentCharacterRef.current = null;
-        toast.error('Erro ao inicializar batalha', {
-          description: error instanceof Error ? error.message : 'Erro desconhecido',
-        });
+
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        setInitializationError(errorMessage);
+
+        // Se ainda há tentativas disponíveis, não mostrar toast de erro ainda
+        if (initializationAttempts.current < MAX_INITIALIZATION_ATTEMPTS) {
+          console.log('[GameBattle] Tentando reinicialização em 3 segundos...');
+          setTimeout(() => {
+            if (mountedRef.current) {
+              battleInitializedRef.current = false;
+            }
+          }, 3000);
+        } else {
+          // Máximo de tentativas atingido
+          toast.error('Erro ao inicializar batalha', {
+            description: errorMessage,
+            duration: 5000,
+            action: {
+              label: 'Voltar ao Hub',
+              onClick: () => navigate({ to: '/game/play' }),
+            },
+          });
+        }
       }
     };
 
+    // Delay pequeno para evitar inicializações muito rápidas
     const initTimer = setTimeout(() => {
       if (mountedRef.current && !battleInitializedRef.current) {
         initializeBattleForCharacter();
@@ -145,7 +253,14 @@ export default function GameBattle() {
     }, 100);
 
     return () => clearTimeout(initTimer);
-  }, [user?.id, characterId, initializeBattle, loading.loadProgress]);
+  }, [
+    user?.id,
+    characterId,
+    initializeBattle,
+    loading.loadProgress,
+    navigate,
+    cleanupInitialization,
+  ]);
 
   // OTIMIZADO: Processamento de recompensas mais eficiente
   useEffect(() => {
@@ -156,6 +271,12 @@ export default function GameBattle() {
 
     if (processedRewardsRef.current.has(battleKey)) {
       console.log(`[GameBattle] Recompensa já processada: ${battleKey}`);
+      return;
+    }
+
+    // CRÍTICO: Verificar se realmente há recompensas válidas
+    if (!gameState.battleRewards.xp && !gameState.battleRewards.gold) {
+      console.log(`[GameBattle] Recompensas inválidas ou vazias - ignorando`);
       return;
     }
 
@@ -186,7 +307,8 @@ export default function GameBattle() {
     // Limpar cache de recompensas antigas após delay
     setTimeout(() => {
       if (processedRewardsRef.current.size > 10) {
-        processedRewardsRef.current.clear();
+        const oldestKeys = Array.from(processedRewardsRef.current).slice(0, 5);
+        oldestKeys.forEach(key => processedRewardsRef.current.delete(key));
       }
     }, 5000);
   }, [
@@ -217,6 +339,77 @@ export default function GameBattle() {
     player.name,
     addGameLogMessage,
     showDeathModal,
+  ]);
+
+  // MELHORADO: Verificação para estados inconsistentes de batalha com recuperação mais robusta
+  useEffect(() => {
+    // Só verificar se a batalha foi inicializada com sucesso
+    if (!battleInitializedRef.current || isLoading || initializationError) return;
+
+    // Se estamos em modo de batalha mas não há inimigo e não há recompensas e não há evento
+    const isInconsistentState =
+      gameState.mode === 'battle' &&
+      !currentEnemy &&
+      !gameState.battleRewards &&
+      !gameState.currentSpecialEvent;
+
+    if (isInconsistentState) {
+      console.warn(
+        '[GameBattle] ⚠️ ESTADO INCONSISTENTE DETECTADO: modo battle sem inimigo, sem recompensas, sem evento'
+      );
+
+      // Aguardar um pouco antes de tentar recuperação para dar tempo do estado se estabilizar
+      const recoveryTimer = setTimeout(async () => {
+        if (!mountedRef.current) return;
+
+        // Verificar novamente se o estado ainda está inconsistente
+        const stillInconsistent =
+          gameState.mode === 'battle' &&
+          !currentEnemy &&
+          !gameState.battleRewards &&
+          !gameState.currentSpecialEvent;
+
+        if (stillInconsistent) {
+          console.log('[GameBattle] 🔄 Tentando recuperação de estado inconsistente...');
+
+          try {
+            // Opção 1: Tentar regenerar inimigo para o andar atual
+            const { GameService } = await import('@/resources/game/game.service');
+            const newEnemy = await GameService.generateEnemy(player.floor);
+
+            if (newEnemy) {
+              console.log(`[GameBattle] ✅ Inimigo regenerado: ${newEnemy.name}`);
+              // O estado será atualizado automaticamente pelo provider
+              return;
+            }
+          } catch (error) {
+            console.error('[GameBattle] ❌ Erro ao regenerar inimigo:', error);
+          }
+
+          // Opção 2: Se a regeneração falhou, forçar reinicialização
+          console.log('[GameBattle] 🔄 Forçando reinicialização completa...');
+          battleInitializedRef.current = false;
+          initializationAttempts.current = 0;
+          setIsLoading(true);
+          setInitializationError(null);
+
+          toast.warning('Recuperando estado da batalha...', {
+            description: 'Recarregando dados do jogo',
+            duration: 3000,
+          });
+        }
+      }, 3000); // 3 segundos de delay para dar tempo do estado se estabilizar
+
+      return () => clearTimeout(recoveryTimer);
+    }
+  }, [
+    gameState.mode,
+    currentEnemy,
+    gameState.battleRewards,
+    gameState.currentSpecialEvent,
+    player.floor,
+    isLoading,
+    initializationError,
   ]);
 
   // OTIMIZADO: Sistema de detecção de fuga mais eficiente
@@ -397,14 +590,65 @@ export default function GameBattle() {
   const isFugaState =
     gameState.mode === 'fled' || gameState.fleeSuccessful === true || showFleeOverlay;
 
-  // CORREÇÃO CRÍTICA: Tela de loading APENAS para inicialização real
-  if (!isFugaState && isLoading && !battleInitializedRef.current) {
+  // NOVO: Tela de erro de inicialização
+  if (initializationError && initializationAttempts.current >= MAX_INITIALIZATION_ATTEMPTS) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-        <div className="text-center">
+        <div className="text-center max-w-md">
+          <div className="text-destructive text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-4">Erro ao Carregar Batalha</h2>
+          <p className="text-muted-foreground mb-6">{initializationError}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded"
+            >
+              Tentar Novamente
+            </button>
+            <button
+              onClick={() => navigate({ to: '/game/play' })}
+              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2 rounded"
+            >
+              Voltar ao Hub
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MELHORADO: Tela de loading com mais informações e timeout visual
+  if (isLoading || !battleInitializedRef.current) {
+    const loadingProgress = Math.min(
+      ((Date.now() -
+        (initializationTimeout.current ? Date.now() - INITIALIZATION_TIMEOUT : Date.now())) /
+        INITIALIZATION_TIMEOUT) *
+        100,
+      90
+    );
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+        <div className="text-center max-w-md">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
           <h2 className="text-2xl font-bold mb-2">Inicializando Batalha...</h2>
-          <p className="text-muted-foreground">Preparando sua aventura...</p>
+          <p className="text-muted-foreground mb-4">
+            {initializationAttempts.current > 1
+              ? `Tentativa ${initializationAttempts.current}/${MAX_INITIALIZATION_ATTEMPTS}`
+              : 'Preparando sua aventura...'}
+          </p>
+          {initializationError && initializationAttempts.current < MAX_INITIALIZATION_ATTEMPTS && (
+            <p className="text-sm text-muted-foreground text-yellow-600 mb-2">
+              Tentando reconectar...
+            </p>
+          )}
+          <div className="w-full bg-secondary rounded-full h-2 mb-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${loadingProgress}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-muted-foreground">Carregando dados do personagem e andar...</p>
         </div>
       </div>
     );
@@ -414,18 +658,17 @@ export default function GameBattle() {
     return <SpecialEventPanel />;
   }
 
-  // CORREÇÃO: Verificação muito mais restritiva para loading
+  // SIMPLIFICADO: Verificação de dados básicos
   const hasBasicData = currentFloor && player.id;
-
-  const shouldShowLoadingScreen =
-    !isFugaState && !hasBasicData && !gameState.battleRewards && !showFleeOverlay;
+  const shouldShowLoadingScreen = !isFugaState && !hasBasicData && !gameState.battleRewards;
 
   if (shouldShowLoadingScreen) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Carregando dados...</h2>
-          <p className="text-muted-foreground">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-4"></div>
+          <h2 className="text-xl font-bold mb-2">Carregando dados...</h2>
+          <p className="text-muted-foreground text-sm">
             {!currentFloor && 'Carregando dados do andar...'}
             {!player.id && 'Carregando personagem...'}
           </p>

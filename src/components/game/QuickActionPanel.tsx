@@ -142,7 +142,7 @@ export function QuickActionPanel({
             size="sm"
             onClick={() => handleAction('attack')}
             disabled={isActionDisabled}
-            className="quick-action-button w-12 h-12 p-0 bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-red-400 transition-all duration-150"
+            className="quick-action-button w-12 h-12 p-0 bg-red-500/20 hover:bg-red-500/30 border-red-500/50 text-red-400 transition-all duration-150 cursor-pointer"
             title="Atacar (A)"
           >
             <Sword className="w-4 h-4" />
@@ -159,7 +159,7 @@ export function QuickActionPanel({
             size="sm"
             onClick={() => handleAction('defend')}
             disabled={isActionDisabled || player.defenseCooldown > 0}
-            className={`quick-action-button w-12 h-12 p-0 bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/50 text-blue-400 transition-all duration-150 relative ${
+            className={`quick-action-button w-12 h-12 p-0 bg-blue-500/20 hover:bg-blue-500/30 border-blue-500/50 text-blue-400 transition-all duration-150 relative cursor-pointer ${
               player.defenseCooldown > 0 ? 'opacity-50' : ''
             }`}
             title={`Defender (S)${player.defenseCooldown > 0 ? ` - Cooldown: ${player.defenseCooldown}` : ''}`}
@@ -183,7 +183,7 @@ export function QuickActionPanel({
             size="sm"
             onClick={() => handleAction('flee')}
             disabled={isActionDisabled}
-            className="quick-action-button w-12 h-12 p-0 bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-yellow-400 transition-all duration-150"
+            className="quick-action-button w-12 h-12 p-0 bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50 text-yellow-400 transition-all duration-150 cursor-pointer"
             title="Fugir (D)"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -208,7 +208,7 @@ export function QuickActionPanel({
                 size="sm"
                 onClick={() => handleAction('spell', spell.id)}
                 disabled={isActionDisabled || !canCast}
-                className={`quick-action-button w-12 h-12 p-0 ${getSpellColor(spell)} relative transition-all duration-150 ${
+                className={`quick-action-button w-12 h-12 p-0 ${getSpellColor(spell)} relative transition-all duration-150 cursor-pointer ${
                   !canCast ? 'opacity-50' : ''
                 }`}
                 title={`${spell.name} (${1 + index}) - ${spell.mana_cost} Mana${
@@ -255,7 +255,7 @@ export function QuickActionPanel({
               size="sm"
               onClick={() => handlePotionUse(slot)}
               disabled={isActionDisabled || player.potionUsedThisTurn}
-              className={`quick-action-button w-12 h-12 p-0 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400 relative transition-all duration-150 ${
+              className={`quick-action-button w-12 h-12 p-0 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400 relative transition-all duration-150 cursor-pointer ${
                 player.potionUsedThisTurn ? 'opacity-50' : ''
               }`}
               title={`${slot.consumable.name} (${['Q', 'W', 'E'][index]}) - Cura ${slot.consumable.effect_value} HP${

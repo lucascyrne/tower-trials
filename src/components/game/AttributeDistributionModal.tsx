@@ -23,7 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { type GamePlayer } from '@/resources/game/game-model';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { toast } from 'sonner';
 import { useMobileLandscape } from '@/hooks/use-media-query';
 

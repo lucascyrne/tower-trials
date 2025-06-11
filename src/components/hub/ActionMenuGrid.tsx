@@ -53,11 +53,11 @@ function ActionCard({
 }: ActionCardProps) {
   return (
     <Card
-      className={`group relative overflow-hidden border-slate-700 bg-slate-900/80 hover:bg-slate-800/80 transition-all duration-300 hover:border-slate-600 ${isPrimary ? 'ring-2 ring-red-600/30' : ''}`}
+      className={`group relative overflow-hidden border-slate-700 bg-slate-900/80 hover:bg-slate-800/80 transition-all duration-300 hover:border-slate-600 cursor-pointer ${isPrimary ? 'ring-2 ring-red-600/30' : ''}`}
     >
       <Button
         variant="ghost"
-        className="w-full h-full p-3 flex flex-col items-center justify-center space-y-2 hover:bg-transparent min-h-[120px]"
+        className="w-full h-full p-3 flex flex-col items-center justify-center space-y-2 hover:bg-transparent min-h-[120px] cursor-pointer"
         onClick={onClick}
       >
         <div className="relative">

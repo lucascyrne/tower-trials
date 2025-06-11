@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { type Character } from '@/resources/game/models/character.model';
 import { toast } from 'sonner';
 import { Map, Play, Crown, Check } from 'lucide-react';

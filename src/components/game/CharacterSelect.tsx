@@ -5,7 +5,7 @@ import {
   type CharacterProgressionInfo,
 } from '@/resources/game/models/character.model';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { NameValidationService } from '@/resources/game/name-validation.service';
 import {
   Dialog,

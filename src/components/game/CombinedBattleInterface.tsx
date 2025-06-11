@@ -691,7 +691,7 @@ export function CombinedBattleInterface({
                   onClick={handleContinueAdventure}
                   disabled={loading.performAction || isPlayerDead || continuingAdventure}
                   size="lg"
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105 w-full md:w-auto"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all duration-200 transform hover:scale-105 w-full md:w-auto cursor-pointer"
                 >
                   {loading.performAction || continuingAdventure ? (
                     <>
@@ -727,7 +727,7 @@ export function CombinedBattleInterface({
                     disabled={isDisabled || shouldShowNextFloorButton || isPlayerDead}
                     variant="ghost"
                     size="lg"
-                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200 ${
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-red-500/30 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/50 shadow-lg shadow-red-500/10 transition-all duration-200 cursor-pointer ${
                       isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
                     }`}
                   >
@@ -752,7 +752,7 @@ export function CombinedBattleInterface({
                     }
                     variant="ghost"
                     size="lg"
-                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/50 shadow-lg shadow-blue-500/10 transition-all duration-200 ${
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-blue-500/30 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/50 shadow-lg shadow-blue-500/10 transition-all duration-200 cursor-pointer ${
                       isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
                     }`}
                   >
@@ -773,7 +773,7 @@ export function CombinedBattleInterface({
                     disabled={isFleeDisabled}
                     variant="ghost"
                     size="lg"
-                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200 ${
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200 cursor-pointer ${
                       isPlayerDead
                         ? 'opacity-30 cursor-not-allowed'
                         : loading.performAction
@@ -867,7 +867,7 @@ export function CombinedBattleInterface({
                               isPlayerDead
                             }
                             variant="ghost"
-                            className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-2 relative border-2 transition-all duration-200 ${
+                            className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-2 relative border-2 transition-all duration-200 cursor-pointer ${
                               isEmpty
                                 ? 'border-dashed border-muted-foreground/20 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/30'
                                 : isOutOfStock
@@ -1006,7 +1006,7 @@ export function CombinedBattleInterface({
                           }
                           variant="ghost"
                           size="lg"
-                          className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 ${
+                          className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 relative border-2 transition-all duration-200 cursor-pointer ${
                             canCast
                               ? 'border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10 hover:border-violet-500/50 shadow-lg shadow-violet-500/10'
                               : 'border-muted-foreground/10 bg-muted/5 opacity-50 cursor-not-allowed'

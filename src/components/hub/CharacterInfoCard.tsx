@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
 import { type GamePlayer } from '@/resources/game/game-model';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { useNavigate } from '@tanstack/react-router';
 
 interface CharacterInfoCardProps {

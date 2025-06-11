@@ -68,7 +68,7 @@ export function Header({ userName }: HeaderProps) {
     <header className="flex w-full flex-col bg-gradient-to-b from-background/90 to-background/70 border-b border-border">
       {/* Barra superior com usuário e botão do menu */}
       <div className="flex w-full items-center justify-between px-4 py-3">
-        <button onClick={() => handleNavigation('/game')} className="group">
+        <button onClick={() => handleNavigation('/game')} className="group cursor-pointer">
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 group-hover:from-purple-500 group-hover:to-pink-700 transition-colors">
             Tower Trials
           </h1>
@@ -136,7 +136,7 @@ export function Header({ userName }: HeaderProps) {
                     <button
                       key={item.href}
                       onClick={() => handleNavigation(item.href)}
-                      className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent text-left ${
+                      className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent text-left cursor-pointer ${
                         isActive ? 'bg-accent text-primary' : 'text-muted-foreground'
                       }`}
                     >
@@ -148,7 +148,7 @@ export function Header({ userName }: HeaderProps) {
 
                 <button
                   onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent text-muted-foreground text-left"
+                  className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent text-muted-foreground text-left cursor-pointer"
                 >
                   {resolvedTheme === 'dark' ? (
                     <>
@@ -179,7 +179,7 @@ export function Header({ userName }: HeaderProps) {
               <button
                 key={item.href}
                 onClick={() => handleNavigation(item.href)}
-                className={`flex items-center gap-2 rounded-md px-4 py-3 transition-colors hover:bg-accent ${
+                className={`flex items-center gap-2 rounded-md px-4 py-3 transition-colors hover:bg-accent cursor-pointer ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
