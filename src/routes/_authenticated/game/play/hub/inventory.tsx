@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useGame } from '@/resources/game/game-hook';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { toast } from 'sonner';
 import { InventoryPanel } from '@/components/inventory/InventoryPanel';
 import { ArrowLeft, RefreshCw } from 'lucide-react';

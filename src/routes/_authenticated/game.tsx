@@ -75,13 +75,17 @@ function GameMenuPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Button onClick={handlePlayClick} className="w-full py-6 text-lg" size="lg">
+            <Button
+              onClick={handlePlayClick}
+              className="w-full py-6 text-lg cursor-pointer"
+              size="lg"
+            >
               {user ? 'Jogar' : 'Entrar para Jogar'}
             </Button>
 
             <Button
               onClick={handleRankingClick}
-              className="w-full py-6 text-lg"
+              className="w-full py-6 text-lg cursor-pointer"
               variant="outline"
               size="lg"
             >
@@ -91,7 +95,7 @@ function GameMenuPage() {
             {user && (
               <Button
                 onClick={handleCemeteryClick}
-                className="w-full py-4 text-base border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300"
+                className="w-full py-4 text-base border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 cursor-pointer"
                 variant="ghost"
                 size="lg"
               >
@@ -105,7 +109,7 @@ function GameMenuPage() {
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 cursor-pointer"
               onClick={() => setShowInfo(true)}
             >
               <Info className="h-4 w-4" />
@@ -121,7 +125,7 @@ function GameMenuPage() {
               </div>
             ) : (
               <Link to="/auth" search={{ auth: 'true' }}>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="cursor-pointer">
                   Entrar / Criar Conta
                 </Button>
               </Link>

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { Character, CharacterProgressionInfo } from '@/resources/game/models/character.model';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import { NameValidationService } from '@/resources/game/name-validation.service';
 import {
   Dialog,
@@ -304,6 +304,7 @@ function GamePlaySelectionPage() {
         key={slot.slotNumber}
         className={`cursor-pointer hover:bg-accent/50 ${!isAlive ? 'border-red-500/50 bg-red-500/5' : ''}`}
         onClick={() => isAlive && handleSelectCharacter(character)}
+        style={{ cursor: isAlive ? 'pointer' : 'not-allowed' }}
       >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -467,10 +468,14 @@ function GamePlaySelectionPage() {
           </Alert>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowPermadeathDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowPermadeathDialog(false)}
+              className="cursor-pointer"
+            >
               Cancelar
             </Button>
-            <Button onClick={handleConfirmCharacterSelect}>
+            <Button onClick={handleConfirmCharacterSelect} className="cursor-pointer">
               <CheckCircle className="h-4 w-4 mr-2" />
               Confirmar e Jogar
             </Button>

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useGame } from '@/resources/game/game-hook';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import type { Character } from '@/resources/game/models/character.model';
 import { toast } from 'sonner';
 import { MapModal } from '@/components/hub/MapModal';

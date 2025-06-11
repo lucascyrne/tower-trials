@@ -23,7 +23,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { SpellService, type AvailableSpell, type SpellStats } from '@/resources/game/spell.service';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import type { Character } from '@/resources/game/models/character.model';
 import type { SpellEffectType } from '@/resources/game/models/spell.model';
 import { toast } from 'sonner';

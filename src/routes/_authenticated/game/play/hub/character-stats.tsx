@@ -21,7 +21,7 @@ import {
   RotateCcw,
   Save,
 } from 'lucide-react';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/resources/game/character/character.service';
 import {
   type CharacterStats,
   SkillType,
