@@ -1,4 +1,5 @@
 import { type Consumable } from '@/resources/game/models/consumable.model';
+import { AssetManager } from './asset-utils';
 
 /**
  * Formatar o efeito de um consumível para exibição
@@ -21,6 +22,7 @@ export function formatConsumableEffect(consumable: Consumable): string {
       return `+${consumable.effect_value}`;
 
     case 'buff':
+    case 'elixir':
       if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
         return `+${consumable.effect_value} Ataque por 3 turnos`;
       }
@@ -58,9 +60,19 @@ export function formatPotionSlotEffect(effectValue: number, description: string)
 }
 
 /**
- * Obter ícone do consumível baseado no tipo e descrição
+ * Obter path da imagem do consumível usando o AssetManager
+ * @param consumable Consumível
+ * @returns Path para a imagem do consumível
+ */
+export function getConsumableImagePath(consumable: Consumable): string {
+  return AssetManager.getConsumableIcon(consumable);
+}
+
+/**
+ * Obter ícone emoji do consumível (para casos onde só emoji é necessário)
  * @param consumable Consumível
  * @returns String do emoji/ícone
+ * @deprecated Use getConsumableImagePath() para assets reais
  */
 export function getConsumableIcon(consumable: Consumable): string {
   switch (consumable.type) {
@@ -74,6 +86,7 @@ export function getConsumableIcon(consumable: Consumable): string {
       return '🧪';
 
     case 'buff':
+    case 'elixir':
       if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
         return '⚔️';
       }
@@ -87,5 +100,33 @@ export function getConsumableIcon(consumable: Consumable): string {
 
     default:
       return '📦';
+  }
+}
+
+/**
+ * Obter classe CSS para cor do tipo de consumível
+ * @param consumable Consumível
+ * @returns String com classes CSS
+ */
+export function getConsumableTypeColor(consumable: Consumable): string {
+  switch (consumable.type) {
+    case 'potion':
+      if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
+        return 'text-red-400';
+      }
+      if (consumable.description.includes('Mana')) {
+        return 'text-blue-400';
+      }
+      return 'text-purple-400';
+
+    case 'buff':
+    case 'elixir':
+      return 'text-amber-400';
+
+    case 'antidote':
+      return 'text-green-400';
+
+    default:
+      return 'text-slate-400';
   }
 }

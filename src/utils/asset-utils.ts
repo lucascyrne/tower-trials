@@ -39,14 +39,42 @@ export type RarityColor = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 // Configurações base dos assets
 const ASSET_BASE_PATH = '/src/assets';
 
+// Mapeamento de consumíveis para assets baseado em nome/tipo
+const CONSUMABLE_ASSET_MAP: Record<string, string> = {
+  // Poções de vida (por nome)
+  'poção de vida pequena': 'small_health_potion.png',
+  'pequena poção de vida': 'small_health_potion.png',
+  'small health potion': 'small_health_potion.png',
+  'poção de hp pequena': 'small_health_potion.png',
+
+  // Poções de mana (por nome)
+  'poção de mana pequena': 'small_mana_potion.png',
+  'pequena poção de mana': 'small_mana_potion.png',
+  'small mana potion': 'small_mana_potion.png',
+  'poção de mp pequena': 'small_mana_potion.png',
+
+  // Fallbacks por tipo e valor de efeito
+  potion_hp_small: 'small_health_potion.png',
+  potion_mana_small: 'small_mana_potion.png',
+};
+
+// Cache para imagens pré-carregadas de animações
+interface PreloadedImage {
+  element: HTMLImageElement;
+  loaded: boolean;
+  path: string;
+}
+
 /**
  * Classe principal para gerenciamento de assets
  */
 export class AssetManager {
   private static iconCache = new Map<string, string>();
+  private static preloadedAnimations = new Map<string, Map<number, PreloadedImage>>();
+  private static loadingPromises = new Map<string, Promise<void>>();
 
   /**
-   * Obter ícone de consumível baseado no tipo e descrição
+   * Obter ícone de consumível baseado no tipo, nome e valor do efeito
    */
   static getConsumableIcon(consumable: Consumable): string {
     const cacheKey = `consumable-${consumable.id}`;
@@ -57,42 +85,201 @@ export class AssetManager {
 
     let iconPath: string;
 
-    if (consumable.type === 'potion') {
-      if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
-        if (consumable.effect_value <= 30) {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-small.png`;
-        } else if (consumable.effect_value <= 60) {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-medium.png`;
-        } else {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-large.png`;
-        }
-      } else if (consumable.description.includes('Mana')) {
-        if (consumable.effect_value <= 15) {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/mana-potion-small.png`;
-        } else if (consumable.effect_value <= 30) {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/mana-potion-medium.png`;
-        } else {
-          iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/mana-potion-large.png`;
-        }
-      } else {
-        iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-small.png`;
-      }
-    } else if (consumable.type === 'buff') {
-      if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
-        iconPath = `${ASSET_BASE_PATH}/icons/consumables/elixirs/strength-elixir.png`;
-      } else if (consumable.description.includes('Defesa')) {
-        iconPath = `${ASSET_BASE_PATH}/icons/consumables/elixirs/defense-elixir.png`;
-      } else {
-        iconPath = `${ASSET_BASE_PATH}/icons/consumables/elixirs/strength-elixir.png`;
-      }
-    } else if (consumable.type === 'antidote') {
-      iconPath = `${ASSET_BASE_PATH}/icons/consumables/antidotes/antidote.png`;
+    // Primeiro, tentar mapear por nome exato (normalizado)
+    const normalizedName = consumable.name.toLowerCase().trim();
+    if (CONSUMABLE_ASSET_MAP[normalizedName]) {
+      iconPath = `${ASSET_BASE_PATH}/icons/consumables/${CONSUMABLE_ASSET_MAP[normalizedName]}`;
     } else {
-      iconPath = `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-small.png`;
+      // Fallback para lógica baseada em tipo e descrição
+      iconPath = this.getConsumableIconByType(consumable);
     }
 
     this.iconCache.set(cacheKey, iconPath);
     return iconPath;
+  }
+
+  /**
+   * Obter ícone de consumível baseado em tipo e descrição (fallback)
+   */
+  private static getConsumableIconByType(consumable: Consumable): string {
+    const basePath = `${ASSET_BASE_PATH}/icons/consumables`;
+
+    if (consumable.type === 'potion') {
+      if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
+        // Mapear por valor do efeito
+        if (consumable.effect_value <= 30) {
+          return `${basePath}/small_health_potion.png`;
+        } else if (consumable.effect_value <= 60) {
+          return `${basePath}/health-potion-medium.png`;
+        } else {
+          return `${basePath}/health-potion-large.png`;
+        }
+      } else if (consumable.description.includes('Mana')) {
+        // Mapear por valor do efeito
+        if (consumable.effect_value <= 15) {
+          return `${basePath}/small_mana_potion.png`;
+        } else if (consumable.effect_value <= 30) {
+          return `${basePath}/mana-potion-medium.png`;
+        } else {
+          return `${basePath}/mana-potion-large.png`;
+        }
+      } else {
+        return `${basePath}/small_health_potion.png`;
+      }
+    } else if (consumable.type === 'buff' || consumable.type === 'elixir') {
+      if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
+        return `${basePath}/strength-elixir.png`;
+      } else if (consumable.description.includes('Defesa')) {
+        return `${basePath}/defense-elixir.png`;
+      } else {
+        return `${basePath}/strength-elixir.png`;
+      }
+    } else if (consumable.type === 'antidote') {
+      return `${basePath}/antidote.png`;
+    } else {
+      return `${basePath}/small_health_potion.png`;
+    }
+  }
+
+  /**
+   * Adicionar mapeamento personalizado de consumível
+   */
+  static addConsumableMapping(nameOrKey: string, filename: string): void {
+    CONSUMABLE_ASSET_MAP[nameOrKey.toLowerCase().trim()] = filename;
+  }
+
+  /**
+   * Pré-carregar uma animação completa de personagem
+   */
+  static async preloadCharacterAnimation(
+    character: string,
+    animation: string,
+    frameCount: number = 3
+  ): Promise<void> {
+    const animationKey = `${character}-${animation}`;
+
+    // Se já está sendo carregado, aguardar
+    if (this.loadingPromises.has(animationKey)) {
+      await this.loadingPromises.get(animationKey);
+      return;
+    }
+
+    // Se já foi carregado, retornar
+    if (this.preloadedAnimations.has(animationKey)) {
+      return;
+    }
+
+    // Criar promise de carregamento
+    const loadPromise = this.loadAnimationFrames(character, animation, frameCount);
+    this.loadingPromises.set(animationKey, loadPromise);
+
+    try {
+      await loadPromise;
+    } finally {
+      this.loadingPromises.delete(animationKey);
+    }
+  }
+
+  /**
+   * Carregar todos os frames de uma animação
+   */
+  private static async loadAnimationFrames(
+    character: string,
+    animation: string,
+    frameCount: number
+  ): Promise<void> {
+    const animationKey = `${character}-${animation}`;
+    const frameMap = new Map<number, PreloadedImage>();
+
+    const loadPromises = [];
+
+    for (let frame = 1; frame <= frameCount; frame++) {
+      const frameStr = frame.toString().padStart(2, '0');
+      const imagePath = `${ASSET_BASE_PATH}/characters/${character}/${animation}/${character}-${animation}-${frameStr}.png`;
+
+      const preloadedImage: PreloadedImage = {
+        element: new Image(),
+        loaded: false,
+        path: imagePath,
+      };
+
+      frameMap.set(frame, preloadedImage);
+
+      // Criar promise para carregamento desta imagem
+      const loadPromise = new Promise<void>(resolve => {
+        preloadedImage.element.onload = () => {
+          preloadedImage.loaded = true;
+          resolve();
+        };
+
+        preloadedImage.element.onerror = () => {
+          console.warn(
+            `[AssetManager] Falha ao carregar frame ${frame} da animação ${animationKey}`
+          );
+          // Não rejeitar para permitir que outras imagens carreguem
+          resolve();
+        };
+
+        // Definir src por último para iniciar carregamento
+        preloadedImage.element.src = imagePath;
+      });
+
+      loadPromises.push(loadPromise);
+    }
+
+    // Aguardar todas as imagens carregarem
+    await Promise.all(loadPromises);
+
+    // Armazenar no cache
+    this.preloadedAnimations.set(animationKey, frameMap);
+
+    console.log(
+      `✅ [AssetManager] Animação ${animationKey} pré-carregada com ${frameCount} frames`
+    );
+  }
+
+  /**
+   * Obter frame de animação de personagem (otimizado)
+   */
+  static getCharacterAnimationFrame(
+    character: string,
+    animation: string,
+    frameNumber: number
+  ): string {
+    const frameStr = frameNumber.toString().padStart(2, '0');
+    const iconPath = `${ASSET_BASE_PATH}/characters/${character}/${animation}/${character}-${animation}-${frameStr}.png`;
+
+    const cacheKey = `character-${character}-${animation}-${frameNumber}`;
+    this.iconCache.set(cacheKey, iconPath);
+
+    return iconPath;
+  }
+
+  /**
+   * Obter elemento de imagem pré-carregado (para animações fluidas)
+   */
+  static getPreloadedAnimationFrame(
+    character: string,
+    animation: string,
+    frameNumber: number
+  ): HTMLImageElement | null {
+    const animationKey = `${character}-${animation}`;
+    const frameMap = this.preloadedAnimations.get(animationKey);
+
+    if (!frameMap) {
+      return null;
+    }
+
+    const preloadedImage = frameMap.get(frameNumber);
+    return preloadedImage?.loaded ? preloadedImage.element : null;
+  }
+
+  /**
+   * Verificar se uma animação está pré-carregada
+   */
+  static isAnimationPreloaded(character: string, animation: string): boolean {
+    const animationKey = `${character}-${animation}`;
+    return this.preloadedAnimations.has(animationKey);
   }
 
   /**
@@ -256,31 +443,12 @@ export class AssetManager {
   }
 
   /**
-   * Obter frame de animação de personagem
-   */
-  static getCharacterAnimationFrame(
-    character: string,
-    animation: string,
-    frameNumber: number
-  ): string {
-    const cacheKey = `character-${character}-${animation}-${frameNumber}`;
-
-    if (this.iconCache.has(cacheKey)) {
-      return this.iconCache.get(cacheKey)!;
-    }
-
-    const frameStr = frameNumber.toString().padStart(2, '0');
-    const iconPath = `${ASSET_BASE_PATH}/characters/${character}/${animation}/${character}-${animation}-${frameStr}.png`;
-
-    this.iconCache.set(cacheKey, iconPath);
-    return iconPath;
-  }
-
-  /**
    * Limpar cache de assets
    */
   static clearCache(): void {
     this.iconCache.clear();
+    this.preloadedAnimations.clear();
+    this.loadingPromises.clear();
   }
 
   /**
@@ -288,9 +456,9 @@ export class AssetManager {
    */
   static async preloadCriticalAssets(): Promise<void> {
     const criticalAssets = [
-      // Poções básicas
-      `${ASSET_BASE_PATH}/icons/consumables/potions/health-potion-small.png`,
-      `${ASSET_BASE_PATH}/icons/consumables/potions/mana-potion-small.png`,
+      // Poções básicas (usando as novas imagens)
+      `${ASSET_BASE_PATH}/icons/consumables/small_health_potion.png`,
+      `${ASSET_BASE_PATH}/icons/consumables/small_mana_potion.png`,
 
       // Equipamentos básicos
       `${ASSET_BASE_PATH}/icons/equipment/weapons/swords/wooden-sword.png`,
@@ -310,9 +478,15 @@ export class AssetManager {
       });
     });
 
+    // Pré-carregar animações críticas
+    const animationPromises = [
+      this.preloadCharacterAnimation('thief', 'idle', 3),
+      // Adicionar mais animações conforme necessário
+    ];
+
     try {
-      await Promise.all(loadPromises);
-      console.log('✅ Critical assets preloaded successfully');
+      await Promise.all([...loadPromises, ...animationPromises]);
+      console.log('✅ Critical assets and animations preloaded successfully');
     } catch (error) {
       console.warn('⚠️ Some critical assets failed to load:', error);
     }
