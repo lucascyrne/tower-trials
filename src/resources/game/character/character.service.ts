@@ -166,21 +166,23 @@ export class CharacterService {
         last_activity: undefined,
       };
 
-      // Buscar dados adicionais que não estão na função get_character_full_stats
+      // Buscar dados básicos adicionais diretamente da tabela
       const { data: basicData, error: basicError } = await supabase
-        .rpc('get_character', {
-          p_character_id: character.id,
-        })
-        .single();
+        .from('characters')
+        .select('user_id, floor, created_at, updated_at, last_activity')
+        .eq('id', character.id)
+        .maybeSingle();
 
       if (!basicError && basicData) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const basicCharacterData = basicData as any;
-        character.user_id = basicCharacterData.user_id;
-        character.floor = basicCharacterData.floor;
-        character.created_at = basicCharacterData.created_at;
-        character.updated_at = basicCharacterData.updated_at;
-        character.last_activity = basicCharacterData.last_activity;
+        character.user_id = basicData.user_id;
+        character.floor = basicData.floor;
+        character.created_at = basicData.created_at;
+        character.updated_at = basicData.updated_at;
+        character.last_activity = basicData.last_activity;
+      } else if (basicError) {
+        console.warn(
+          `[CharacterService] Aviso ao buscar dados básicos do personagem: ${basicError.message}`
+        );
       }
 
       console.log(
@@ -439,7 +441,7 @@ export class CharacterService {
         .from('characters')
         .select('*')
         .eq('id', characterId)
-        .single();
+        .maybeSingle();
 
       if (charError) throw charError;
 

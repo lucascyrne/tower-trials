@@ -6,7 +6,7 @@ import { useGame } from '@/resources/game/game-hook';
 import { CharacterService } from '@/resources/game/character/character.service';
 import { toast } from 'sonner';
 import { InventoryPanel } from '@/components/inventory/InventoryPanel';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { Character } from '@/resources/game/models/character.model';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/inventory')({
@@ -23,7 +23,6 @@ function InventoryPage() {
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [characterLoaded, setCharacterLoaded] = useState(false);
 
   const loadSelectedCharacter = async (showLoadingSpinner = true, skipCacheCheck = false) => {
@@ -44,8 +43,6 @@ function InventoryPage() {
 
     if (showLoadingSpinner) {
       setLoading(true);
-    } else {
-      setRefreshing(true);
     }
 
     setError(null);
@@ -72,7 +69,6 @@ function InventoryPage() {
       });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -82,10 +78,6 @@ function InventoryPage() {
 
   const handleInventoryChange = () => {
     // Atualizar dados sem recarregar a página completa
-    loadSelectedCharacter(false, true); // true para skipCacheCheck
-  };
-
-  const handleRefresh = () => {
     loadSelectedCharacter(false, true); // true para skipCacheCheck
   };
 
@@ -128,7 +120,6 @@ function InventoryPage() {
                   onClick={() => loadSelectedCharacter()}
                   className="flex-1 bg-amber-600 hover:bg-amber-700"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
                   Tentar Novamente
                 </Button>
                 <Button
@@ -151,36 +142,25 @@ function InventoryPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-black">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={handleReturnToHub}
-              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+              className="border-slate-600 text-slate-300 hover:bg-slate-700 w-fit"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Hub
             </Button>
 
-            <div>
-              <h1 className="text-3xl font-bold text-slate-100">Inventário</h1>
-              <p className="text-slate-400">
+            <div className="mt-2 sm:mt-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-100">Inventário</h1>
+              <p className="text-sm sm:text-base text-slate-400">
                 {selectedChar.name} • Nível {selectedChar.level}
               </p>
             </div>
           </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="border-slate-600 text-slate-300 hover:bg-slate-700"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Atualizando...' : 'Atualizar'}
-          </Button>
         </div>
 
         <InventoryPanel character={selectedChar} onInventoryChange={handleInventoryChange} />

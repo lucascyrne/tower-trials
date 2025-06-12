@@ -198,22 +198,23 @@ function EquipmentPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate({ to: '/game/play/hub', search: { character: characterId } })}
+              className="w-fit"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-100 flex items-center gap-2">
-                <Shield className="h-8 w-8 text-amber-400" />
+            <div className="mt-2 sm:mt-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 flex items-center gap-2">
+                <Shield className="h-6 sm:h-8 w-6 sm:w-8 text-amber-400" />
                 Equipamentos
               </h1>
-              <p className="text-slate-400">
+              <p className="text-sm sm:text-base text-slate-400">
                 {character.name} - Nível {character.level}
               </p>
             </div>

@@ -448,21 +448,21 @@ function EquipmentSelectPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() =>
                 navigate({ to: '/game/play/hub/equipment', search: { character: characterId } })
               }
-              className="self-start"
+              className="w-fit"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <div>
+            <div className="mt-2 sm:mt-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 flex items-center gap-2">
-                <Sword className="h-6 w-6 sm:h-8 sm:w-8 text-amber-400" />
+                <Sword className="h-6 sm:h-8 w-6 sm:w-8 text-amber-400" />
                 <span className="hidden sm:inline">Selecionar Equipamento</span>
                 <span className="sm:hidden">Equipamentos</span>
               </h1>

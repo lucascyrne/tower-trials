@@ -280,8 +280,9 @@ function CharacterStatsPage() {
               variant="outline"
               size="sm"
               onClick={() => navigate({ to: '/game/play/hub', search: { character: characterId } })}
+              className="w-fit"
             >
-              <ArrowLeft className="h-2 w-2 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar ao Hub
             </Button>
 

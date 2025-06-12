@@ -120,15 +120,14 @@ function ShopPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-7xl">
         {/* Header padronizado */}
-        <div className="space-y-3 sm:space-y-4 mb-6">
-          <div className="flex flex-col gap-3">
-            <Button variant="outline" size="sm" onClick={handleReturnToHub} className="self-start">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <Button variant="outline" size="sm" onClick={handleReturnToHub} className="w-fit">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Voltar ao Hub</span>
-              <span className="sm:hidden">Voltar</span>
+              Voltar ao Hub
             </Button>
 
-            <div>
+            <div className="mt-2 sm:mt-0">
               <h1 className="text-2xl sm:text-3xl font-bold">Loja</h1>
               <p className="text-sm sm:text-base text-muted-foreground">
                 {character.name} • Nível {character.level} • Andar {character.floor}

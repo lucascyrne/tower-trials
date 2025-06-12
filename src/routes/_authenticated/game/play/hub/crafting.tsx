@@ -977,22 +977,21 @@ function CraftingPage() {
   return (
     <div className="container mx-auto py-6 px-4 max-w-7xl">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() =>
               navigate({ to: '/game/play/hub', search: { character: selectedCharacter.id } })
             }
-            className="self-start"
+            className="w-fit"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Voltar ao Hub</span>
-            <span className="sm:hidden">Voltar</span>
+            Voltar ao Hub
           </Button>
 
-          <div>
+          <div className="mt-2 sm:mt-0">
             <h1 className="text-2xl sm:text-3xl font-bold">Forja de Artefatos</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
               Crie poções, elixires e forje equipamentos únicos com materiais raros

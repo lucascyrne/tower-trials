@@ -9,7 +9,6 @@ import {
   type UpdateProfileDTO,
 } from './auth-model';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from '@tanstack/react-router';
 
 const initialLoadingState: AuthLoadingState = {
   onAuthUserChanged: true,
@@ -33,7 +32,6 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const navigate = useNavigate();
   const [state, setState] = useState<AuthState>(initialState);
 
   const loadUser = useCallback(async () => {
@@ -178,7 +176,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading: false,
         loading: { ...initialLoadingState, onAuthUserChanged: false },
       });
-      navigate({ to: '/auth', search: { auth: 'logout' } });
+
+      // Navegar após o logout usando window.location para evitar problemas de contexto
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth?auth=logout';
+      }
     } catch (error: unknown) {
       console.error('Erro ao fazer logout:', error instanceof Error ? error.message : error);
       setState(prev => ({
@@ -187,7 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         loading: { ...prev.loading, signOut: false },
       }));
     }
-  }, [navigate]);
+  }, []);
 
   const updateProfile = useCallback(async (data: UpdateProfileDTO) => {
     setState(prev => ({ ...prev, loading: { ...prev.loading, updateProfile: true } }));
@@ -226,7 +228,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signOut,
       updateProfile,
     }),
-    [state]
+    [state, signInWithEmail, signUpWithEmail, signOut, updateProfile]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
