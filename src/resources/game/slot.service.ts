@@ -12,6 +12,9 @@ export interface PotionSlot {
   consumable_name: string | null;
   consumable_description: string | null;
   effect_value: number | null;
+  consumable_type: string | null;
+  available_quantity: number;
+  consumable_price: number | null;
 }
 
 export interface SpellSlot {
@@ -56,6 +59,9 @@ export class SlotService {
             consumable_name: null,
             consumable_description: null,
             effect_value: null,
+            consumable_type: null,
+            available_quantity: 0,
+            consumable_price: null,
           }
         );
       }
