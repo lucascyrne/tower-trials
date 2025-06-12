@@ -4,12 +4,13 @@ import { ConsumableService } from '@/resources/game/consumable.service';
 import { type Character } from '@/resources/game/models/character.model';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Coins, Heart, Zap, Sparkles, Star, Package } from 'lucide-react';
+import { Coins, Sparkles, Star, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { type CharacterDrop } from './types';
 import { PotionSlotManager } from './PotionSlotManager';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
+import { ConsumableImage } from '@/components/ui/consumable-image';
 
 interface InventoryPanelProps {
   character: Character;
@@ -96,18 +97,6 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     return true;
   };
 
-  const getConsumableIcon = (item: CharacterConsumable) => {
-    if (!item.consumable) return <Package className="h-6 w-6 text-slate-400" />;
-
-    if (item.consumable.type === 'potion') {
-      if (item.consumable.description.includes('HP'))
-        return <Heart className="h-6 w-6 text-red-400" />;
-      if (item.consumable.description.includes('Mana'))
-        return <Zap className="h-6 w-6 text-blue-400" />;
-    }
-    return <Sparkles className="h-6 w-6 text-purple-400" />;
-  };
-
   const getDropIcon = () => <Star className="h-6 w-6 text-amber-400" />;
 
   const getRarityColor = (rarity: string) => {
@@ -134,7 +123,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     }
 
     return (
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid grid-cols-10 gap-2">
         {validConsumables.map(item => {
           const isSelected = selectedConsumable?.id === item.id;
           const canUse = canUseConsumable(item);
@@ -152,8 +141,8 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
                 setSelectedDrop(null);
               }}
             >
-              <div className="absolute inset-0 flex items-center justify-center p-2">
-                {getConsumableIcon(item)}
+              <div className="absolute inset-0 flex items-center justify-center p-1.5">
+                <ConsumableImage consumable={item.consumable!} size="xl" />
               </div>
 
               {item.quantity > 1 && (
@@ -185,7 +174,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     }
 
     return (
-      <div className="grid grid-cols-8 gap-2">
+      <div className="grid grid-cols-10 gap-2">
         {validDrops.map(item => {
           const isSelected = selectedDrop?.id === item.id;
           const rarity = item.drop?.rarity || 'common';
@@ -203,8 +192,8 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
                 setSelectedConsumable(null);
               }}
             >
-              <div className="absolute inset-0 flex items-center justify-center p-2">
-                {getDropIcon()}
+              <div className="absolute inset-0 flex items-center justify-center p-1.5">
+                <Star className="h-7 w-7 text-amber-400" />
               </div>
 
               {item.quantity > 1 && (
@@ -229,7 +218,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
         <div className="space-y-6">
           <div className="flex items-start gap-4">
             <div className="p-4 rounded-lg border-2 border-slate-600 bg-slate-800/30">
-              {getConsumableIcon(item)}
+              <ConsumableImage consumable={consumable} size="xl" />
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-slate-100 mb-2">{consumable.name}</h2>

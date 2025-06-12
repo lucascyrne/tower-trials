@@ -9,7 +9,6 @@ import { GameOverModal } from './GameOverModal';
 import { toast } from 'sonner';
 import SpecialEventPanel from './SpecialEventPanel';
 import AttributeDistributionModal from './AttributeDistributionModal';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { useAuth } from '@/resources/auth/auth-hook';
 
 import { BattleHeader } from './BattleHeader';
@@ -17,6 +16,7 @@ import { GameLog } from './GameLog';
 import { CharacterService } from '@/resources/game/character/character.service';
 import { QuickActionPanel } from './QuickActionPanel';
 import { FleeOverlay } from './FleeOverlay';
+import { SlotService, type PotionSlot } from '@/resources/game/slot.service';
 
 interface BattleRewards {
   xp: number;
@@ -36,7 +36,6 @@ export default function GameBattle() {
     initializeBattle,
     addGameLogMessage,
     updatePlayerStats,
-    updatePlayerConsumables,
     gameLog,
   } = useGame();
   const { player, currentEnemy, currentFloor, isPlayerTurn } = gameState;
@@ -57,6 +56,44 @@ export default function GameBattle() {
     leveledUp: false,
     newLevel: 0,
   });
+
+  // NOVO: Estados para slots de poção - centralizados no componente pai
+  const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
+  const [loadingPotionSlots, setLoadingPotionSlots] = useState(true);
+  const slotsLoadedRef = useRef(false);
+
+  // NOVO: Função centralizada para carregar slots de poção
+  const loadPotionSlots = useCallback(async () => {
+    if (!player.id || slotsLoadedRef.current) {
+      return;
+    }
+
+    try {
+      console.log('[GameBattle] Carregando slots de poção para player:', player.id);
+      setLoadingPotionSlots(true);
+
+      const response = await SlotService.getCharacterPotionSlots(player.id);
+      if (response.success && response.data) {
+        console.log('[GameBattle] Slots carregados:', {
+          slotsCount: response.data.length,
+          slots: response.data.map(s => ({
+            position: s.slot_position,
+            consumableId: s.consumable_id,
+            name: s.consumable_name,
+            isEmpty: !s.consumable_id,
+          })),
+        });
+        setPotionSlots(response.data);
+        slotsLoadedRef.current = true;
+      } else {
+        console.error('[GameBattle] Erro ao carregar slots:', response.error);
+      }
+    } catch (error) {
+      console.error('[GameBattle] Erro ao carregar slots de poção:', error);
+    } finally {
+      setLoadingPotionSlots(false);
+    }
+  }, [player.id]);
 
   // Sistema para prevenir ações duplicadas e controlar inicialização
   const actionProcessingRef = useRef(false);
@@ -451,6 +488,23 @@ export default function GameBattle() {
     return () => window.removeEventListener('openAttributeModal', handleOpenAttributeModal);
   }, []);
 
+  // NOVO: Carregar slots de poção quando o player estiver pronto
+  useEffect(() => {
+    if (player.id && battleInitializedRef.current && !isLoading) {
+      console.log('[GameBattle] Player pronto, carregando slots de poção');
+      loadPotionSlots();
+    }
+  }, [player.id, loadPotionSlots, isLoading]);
+
+  // NOVO: Recarregar slots quando consumáveis mudam
+  useEffect(() => {
+    if (player.id && player.consumables && slotsLoadedRef.current) {
+      console.log('[GameBattle] Consumáveis mudaram, recarregando slots');
+      slotsLoadedRef.current = false;
+      loadPotionSlots();
+    }
+  }, [player.consumables, loadPotionSlots, player.id]);
+
   // OTIMIZADO: Função para executar ações com lógica corrigida para poções
   const handleAction = useCallback(
     async (action: ActionType, spellId?: string, consumableId?: string) => {
@@ -489,15 +543,6 @@ export default function GameBattle() {
       }
     },
     [gameState.mode, player.hp, isPlayerTurn, performAction]
-  );
-
-  // Funções de callback otimizadas
-  const handlePlayerConsumablesUpdate = useCallback(
-    (consumables: CharacterConsumable[]) => {
-      console.log(`[game-battle] Atualizando consumáveis do jogador:`, consumables.length);
-      updatePlayerConsumables(consumables);
-    },
-    [updatePlayerConsumables]
   );
 
   const handlePlayerStatsUpdate = useCallback(
@@ -713,8 +758,8 @@ export default function GameBattle() {
                 isPlayerTurn={isPlayerTurn}
                 loading={loading}
                 player={player}
-                onPlayerStatsUpdate={handlePlayerStatsUpdate}
-                onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+                potionSlots={potionSlots}
+                loadingPotionSlots={loadingPotionSlots}
               />
             </div>
           )}
@@ -727,8 +772,8 @@ export default function GameBattle() {
                 isPlayerTurn={isPlayerTurn}
                 loading={loading}
                 player={player}
-                onPlayerStatsUpdate={handlePlayerStatsUpdate}
-                onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+                potionSlots={potionSlots}
+                loadingPotionSlots={loadingPotionSlots}
               />
             </div>
           )}
@@ -777,9 +822,11 @@ export default function GameBattle() {
             loading={loading}
             player={player}
             onPlayerStatsUpdate={handlePlayerStatsUpdate}
-            onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
             currentEnemy={currentEnemy}
             battleRewards={gameState.battleRewards}
+            potionSlots={potionSlots}
+            loadingPotionSlots={loadingPotionSlots}
+            onSlotsChange={loadPotionSlots}
           />
         </div>
 

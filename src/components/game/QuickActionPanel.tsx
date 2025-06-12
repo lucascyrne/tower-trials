@@ -1,31 +1,29 @@
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { type ActionType } from '@/resources/game/game-model';
 import { type GamePlayer } from '@/resources/game/game-model';
 import { type PlayerSpell } from '@/resources/game/models/spell.model';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
-import { ConsumableService } from '@/resources/game/consumable.service';
-import { Sword, Shield, ArrowLeft, Zap, Heart, Sparkles, Flame, Snowflake } from 'lucide-react';
+import { type PotionSlot } from '@/resources/game/slot.service';
+import { ConsumableImage } from '@/components/ui/consumable-image';
+import { type ConsumableType } from '@/resources/game/models/consumable.model';
+import {
+  Sword,
+  Shield,
+  ArrowLeft,
+  Zap,
+  Heart,
+  Sparkles,
+  Flame,
+  Snowflake,
+  Plus,
+} from 'lucide-react';
 
 interface QuickActionPanelProps {
   handleAction: (action: ActionType, spellId?: string) => Promise<void>;
   isPlayerTurn: boolean;
   loading: { performAction: boolean };
   player: GamePlayer;
-  onPlayerStatsUpdate: (newHp: number, newMana: number) => void;
-  onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
-}
-
-interface PotionSlot {
-  id: string;
-  consumable_id: string;
-  consumable: {
-    id: string;
-    name: string;
-    type: string;
-    effect_value: number;
-  };
-  quantity: number;
+  potionSlots: PotionSlot[];
+  loadingPotionSlots: boolean;
 }
 
 const getSpellIcon = (spell: PlayerSpell) => {
@@ -58,76 +56,33 @@ const getSpellColor = (spell: PlayerSpell) => {
   }
 };
 
+const getPotionKeyBinding = (position: number) => {
+  switch (position) {
+    case 1:
+      return 'Q';
+    case 2:
+      return 'W';
+    case 3:
+      return 'E';
+    default:
+      return '';
+  }
+};
+
 export function QuickActionPanel({
   handleAction,
   isPlayerTurn,
   loading,
   player,
-  onPlayerStatsUpdate,
-  onPlayerConsumablesUpdate,
+  potionSlots,
+  loadingPotionSlots,
 }: QuickActionPanelProps) {
-  const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
-
   // Top 3 spells para os atalhos 1-3
   const quickSpells = player.spells?.slice(0, 3) || [];
 
-  // REMOVIDO: Captura de teclas de atalho para evitar duplo processamento
-  // O CombinedBattleInterface já possui sistema completo de captura de teclas
-  // com debounce e proteção contra ações duplicadas
-  // O QuickActionPanel serve apenas para interface visual (cliques)
-
-  // Carregar slots de poção
-  useEffect(() => {
-    const loadPotionSlots = async () => {
-      if (!player.consumables) return;
-
-      const slots: PotionSlot[] = player.consumables
-        .filter(c => c.consumable?.type === 'potion' && c.quantity > 0)
-        .slice(0, 3) // 3 slots para os atalhos Q-W-E
-        .map(c => ({
-          id: c.id,
-          consumable_id: c.consumable_id,
-          consumable: {
-            id: c.consumable!.id,
-            name: c.consumable!.name,
-            type: c.consumable!.type,
-            effect_value: c.consumable!.effect_value,
-          },
-          quantity: c.quantity,
-        }));
-
-      setPotionSlots(slots);
-    };
-
-    loadPotionSlots();
-  }, [player.consumables]);
-
-  const handlePotionUse = async (slot: PotionSlot) => {
-    if (!isPlayerTurn || loading.performAction || player.potionUsedThisTurn) return;
-
-    try {
-      const result = await ConsumableService.consumeItem(player.id, slot.consumable_id, player);
-
-      if (result.success) {
-        const healAmount = slot.consumable.effect_value;
-        const newHp = Math.min(player.max_hp, player.hp + healAmount);
-        const newMana = Math.min(player.max_mana, player.mana);
-
-        onPlayerStatsUpdate(newHp, newMana);
-
-        // Atualizar consumíveis
-        const updatedConsumables = player
-          .consumables!.map(c =>
-            c.consumable_id === slot.consumable_id ? { ...c, quantity: c.quantity - 1 } : c
-          )
-          .filter(c => c.quantity > 0);
-
-        onPlayerConsumablesUpdate(updatedConsumables);
-      }
-    } catch (error) {
-      console.error('Erro ao usar poção:', error);
-    }
-  };
+  // SIMPLIFICADO: Este componente é apenas para interface visual (cliques)
+  // Toda a lógica de atalhos de teclado fica no CombinedBattleInterface
+  // Os dados dos slots vêm via props do componente pai (game-battle.tsx)
 
   const isActionDisabled = !isPlayerTurn || loading.performAction;
 
@@ -248,36 +203,92 @@ export function QuickActionPanel({
 
       {/* Poções Rápidas */}
       <div className="flex flex-col gap-1">
-        {potionSlots.map((slot, index) => (
-          <div key={slot.id} className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePotionUse(slot)}
-              disabled={isActionDisabled || player.potionUsedThisTurn}
-              className={`quick-action-button w-12 h-12 p-0 bg-green-500/20 hover:bg-green-500/30 border-green-500/50 text-green-400 relative transition-all duration-150 cursor-pointer ${
-                player.potionUsedThisTurn ? 'opacity-50' : ''
-              }`}
-              title={`${slot.consumable.name} (${['Q', 'W', 'E'][index]}) - Cura ${slot.consumable.effect_value} HP${
-                player.potionUsedThisTurn ? ' - Já usou poção neste turno' : ''
-              }`}
-            >
-              <Heart className="w-4 h-4" />
-              <span className="absolute -bottom-1 -right-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                {slot.quantity}
-              </span>
-              {player.potionUsedThisTurn && (
-                <div className="absolute inset-0 flex items-center justify-center bg-orange-500/30 rounded-lg">
-                  <span className="text-orange-400 text-xs font-bold">✗</span>
+        {loadingPotionSlots
+          ? [1, 2, 3].map(i => (
+              <div key={i} className="w-12 h-12 bg-muted/20 rounded-lg animate-pulse" />
+            ))
+          : potionSlots.map(slot => {
+              const isEmpty = !slot.consumable_id;
+              const keyBinding = getPotionKeyBinding(slot.slot_position);
+
+              // Usar dados diretos do slot
+              const availableQuantity = slot.available_quantity;
+              const isOutOfStock = !isEmpty && availableQuantity === 0;
+
+              return (
+                <div key={`slot-${slot.slot_position}`} className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAction('consumable', slot.consumable_id || undefined)}
+                    disabled={
+                      isActionDisabled || player.potionUsedThisTurn || isEmpty || isOutOfStock
+                    }
+                    className={`quick-action-button w-12 h-12 p-2 relative transition-all duration-150 cursor-pointer ${
+                      isEmpty
+                        ? 'border-dashed border-muted-foreground/20 bg-transparent hover:bg-muted/10'
+                        : isOutOfStock
+                          ? 'border-red-500/30 bg-red-500/5 opacity-50'
+                          : player.potionUsedThisTurn
+                            ? 'border-orange-500/30 bg-orange-500/5 opacity-50'
+                            : 'border-green-500/30 bg-green-500/20 hover:bg-green-500/30 text-green-400'
+                    }`}
+                    title={
+                      isEmpty
+                        ? `Slot ${keyBinding} - Vazio`
+                        : isOutOfStock
+                          ? `${slot.consumable_name} - Sem unidades`
+                          : `${slot.consumable_name} (${keyBinding}) - ${slot.effect_value} HP${
+                              player.potionUsedThisTurn ? ' - Já usou poção neste turno' : ''
+                            }`
+                    }
+                  >
+                    {isEmpty ? (
+                      <Plus className="w-4 h-4 text-muted-foreground/40" />
+                    ) : slot.consumable_id ? (
+                      <ConsumableImage
+                        consumable={{
+                          id: slot.consumable_id,
+                          name: slot.consumable_name || 'Poção',
+                          description: slot.consumable_description || '',
+                          type: (slot.consumable_type as ConsumableType) || 'potion',
+                          effect_value: slot.effect_value || 0,
+                          price: slot.consumable_price || 0,
+                          level_requirement: 1,
+                          created_at: '',
+                          updated_at: '',
+                        }}
+                        size="lg"
+                        className="w-4 h-4"
+                        showFallback={true}
+                      />
+                    ) : null}
+
+                    {(player.potionUsedThisTurn || isOutOfStock) && !isEmpty && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-orange-500/30 rounded-lg">
+                        <span className="text-orange-400 text-xs font-bold">✗</span>
+                      </div>
+                    )}
+                  </Button>
+
+                  {/* Indicador de quantidade */}
+                  {!isEmpty && (
+                    <span
+                      className={`absolute -bottom-1 -left-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-background ${
+                        isOutOfStock ? 'bg-red-500/90' : 'bg-slate-800'
+                      }`}
+                    >
+                      {availableQuantity}
+                    </span>
+                  )}
+
+                  {/* Indicador de tecla */}
+                  <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
+                    {keyBinding}
+                  </span>
                 </div>
-              )}
-            </Button>
-            {/* Indicador de tecla */}
-            <span className="absolute -top-1 -left-1 bg-slate-800 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center border border-slate-600">
-              {['Q', 'W', 'E'][index]}
-            </span>
-          </div>
-        ))}
+              );
+            })}
       </div>
     </div>
   );

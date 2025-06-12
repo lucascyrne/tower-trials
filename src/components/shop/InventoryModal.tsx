@@ -271,12 +271,12 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         >
           <div className="flex-shrink-0">
             {item.consumable.type === 'potion' && item.consumable.description.includes('HP') ? (
-              <Heart className="h-4 w-4 text-red-400" />
+              <Heart className="h-5 w-5 text-red-400" />
             ) : item.consumable.type === 'potion' &&
               item.consumable.description.includes('Mana') ? (
-              <Zap className="h-4 w-4 text-blue-400" />
+              <Zap className="h-5 w-5 text-blue-400" />
             ) : (
-              <Sparkles className="h-4 w-4 text-purple-400" />
+              <Sparkles className="h-5 w-5 text-purple-400" />
             )}
           </div>
 
@@ -317,7 +317,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
         className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/30"
       >
         <div className="flex-shrink-0">
-          <Star className="h-4 w-4 text-purple-400" />
+          <Star className="h-5 w-5 text-purple-400" />
         </div>
 
         <div className="flex-1 min-w-0">

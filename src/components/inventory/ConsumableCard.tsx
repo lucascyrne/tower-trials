@@ -2,10 +2,11 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, Droplets, Zap, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { type Character } from '@/resources/game/models/character.model';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
+import { ConsumableImage } from '@/components/ui/consumable-image';
 
 interface ConsumableCardProps {
   item: CharacterConsumable;
@@ -53,18 +54,6 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
     return { allowed: true };
   };
 
-  const getConsumableIcon = (type: string, description: string) => {
-    if (type === 'potion') {
-      if (description.includes('HP') || description.includes('Vida')) {
-        return <Heart className="h-4 w-4 text-red-400" />;
-      } else if (description.includes('Mana')) {
-        return <Droplets className="h-4 w-4 text-blue-400" />;
-      }
-    }
-    if (type === 'buff') return <Zap className="h-4 w-4 text-purple-400" />;
-    return <Sparkles className="h-4 w-4 text-emerald-400" />;
-  };
-
   if (!item.consumable || item.quantity <= 0) {
     return null;
   }
@@ -81,7 +70,7 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
     >
       <div className="flex items-start gap-3 mb-3">
         <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
-          {getConsumableIcon(item.consumable.type, item.consumable.description)}
+          <ConsumableImage consumable={item.consumable} size="lg" />
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-semibold text-slate-100 truncate">{item.consumable.name}</h4>

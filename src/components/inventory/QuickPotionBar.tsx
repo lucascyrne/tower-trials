@@ -18,6 +18,12 @@ interface QuickPotionBarProps {
 export function QuickPotionBar({ character, consumables, onConsumableUsed }: QuickPotionBarProps) {
   const [isUsing, setIsUsing] = useState<string | null>(null);
 
+  console.log('[QuickPotionBar] Renderizando com:', {
+    characterId: character.id,
+    totalConsumables: consumables.length,
+    consumablesWithQuantity: consumables.filter(c => c.quantity > 0).length,
+  });
+
   // Filtrar poções de vida e mana
   const healthPotions = consumables.filter(
     c =>
@@ -35,30 +41,77 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
       c.quantity > 0
   );
 
-  // Pegar a melhor poção disponível (maior effect_value)
-  const bestHealthPotion = healthPotions.reduce((best, current) => {
-    if (!best.consumable || !current.consumable) return best;
-    return current.consumable.effect_value > best.consumable.effect_value ? current : best;
-  }, healthPotions[0]);
+  console.log('[QuickPotionBar] Poções filtradas:', {
+    healthPotions: healthPotions.length,
+    healthPotionNames: healthPotions.map(p => p.consumable?.name),
+    manaPotions: manaPotions.length,
+    manaPotionNames: manaPotions.map(p => p.consumable?.name),
+  });
 
-  const bestManaPotion = manaPotions.reduce((best, current) => {
-    if (!best.consumable || !current.consumable) return best;
-    return current.consumable.effect_value > best.consumable.effect_value ? current : best;
-  }, manaPotions[0]);
+  // Pegar a melhor poção disponível (maior effect_value)
+  const bestHealthPotion =
+    healthPotions.length > 0
+      ? healthPotions.reduce((best, current) => {
+          if (!best?.consumable || !current?.consumable) return current;
+          return current.consumable.effect_value > best.consumable.effect_value ? current : best;
+        })
+      : null;
+
+  const bestManaPotion =
+    manaPotions.length > 0
+      ? manaPotions.reduce((best, current) => {
+          if (!best?.consumable || !current?.consumable) return current;
+          return current.consumable.effect_value > best.consumable.effect_value ? current : best;
+        })
+      : null;
+
+  console.log('[QuickPotionBar] Melhores poções selecionadas:', {
+    bestHealthPotion: bestHealthPotion
+      ? {
+          name: bestHealthPotion.consumable?.name,
+          quantity: bestHealthPotion.quantity,
+          effectValue: bestHealthPotion.consumable?.effect_value,
+        }
+      : null,
+    bestManaPotion: bestManaPotion
+      ? {
+          name: bestManaPotion.consumable?.name,
+          quantity: bestManaPotion.quantity,
+          effectValue: bestManaPotion.consumable?.effect_value,
+        }
+      : null,
+  });
 
   const handleUsePotion = async (consumable: CharacterConsumable, type: 'health' | 'mana') => {
-    if (!consumable.consumable || isUsing) return;
+    if (!consumable?.consumable || isUsing) return;
+
+    // Garantir que os valores são números válidos
+    const currentHp = Math.floor(Number(character.hp) || 0);
+    const maxHp = Math.floor(Number(character.max_hp) || 1);
+    const currentMana = Math.floor(Number(character.mana) || 0);
+    const maxMana = Math.floor(Number(character.max_mana) || 1);
 
     // Verificar se realmente precisa da poção
-    if (type === 'health' && character.hp >= character.max_hp) {
+    if (type === 'health' && currentHp >= maxHp) {
       toast.info('HP já está no máximo!');
       return;
     }
 
-    if (type === 'mana' && character.mana >= character.max_mana) {
+    if (type === 'mana' && currentMana >= maxMana) {
       toast.info('Mana já está no máximo!');
       return;
     }
+
+    console.log('[QuickPotionBar] Tentando usar poção:', {
+      consumableId: consumable.consumable_id,
+      consumableName: consumable.consumable.name,
+      characterId: character.id,
+      currentHp: character.hp,
+      maxHp: character.max_hp,
+      currentMana: character.mana,
+      maxMana: character.max_mana,
+      type,
+    });
 
     setIsUsing(consumable.consumable_id);
 
@@ -69,16 +122,19 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
         character
       );
 
+      console.log('[QuickPotionBar] Resultado do uso:', result);
+
       if (result.success && result.data) {
         toast.success(result.data.message);
         onConsumableUsed();
       } else {
+        console.error('[QuickPotionBar] Erro no serviço:', result.error);
         toast.error('Erro ao usar poção', {
           description: result.error,
         });
       }
     } catch (error) {
-      console.error('Erro ao usar poção:', error);
+      console.error('[QuickPotionBar] Erro no catch:', error);
       toast.error('Erro ao usar poção');
     } finally {
       setIsUsing(null);
@@ -90,8 +146,29 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
     return `${consumable.consumable.name} (${formatConsumableEffect(consumable.consumable)})`;
   };
 
-  const getHealthPercent = () => (character.hp / character.max_hp) * 100;
-  const getManaPercent = () => (character.mana / character.max_mana) * 100;
+  const getHealthPercent = () => {
+    const hp = Math.floor(Number(character.hp) || 0);
+    const maxHp = Math.floor(Number(character.max_hp) || 1);
+    return (hp / maxHp) * 100;
+  };
+
+  const getManaPercent = () => {
+    const mana = Math.floor(Number(character.mana) || 0);
+    const maxMana = Math.floor(Number(character.max_mana) || 1);
+    return (mana / maxMana) * 100;
+  };
+
+  const isHealthAtMax = () => {
+    const hp = Math.floor(Number(character.hp) || 0);
+    const maxHp = Math.floor(Number(character.max_hp) || 1);
+    return hp >= maxHp;
+  };
+
+  const isManaAtMax = () => {
+    const mana = Math.floor(Number(character.mana) || 0);
+    const maxMana = Math.floor(Number(character.max_mana) || 1);
+    return mana >= maxMana;
+  };
 
   return (
     <Card className="bg-slate-900/50 border-slate-700">
@@ -107,7 +184,8 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Heart className="h-3 w-3" />
               <span>
-                HP: {character.hp}/{character.max_hp}
+                HP: {Math.floor(Number(character.hp) || 0)}/
+                {Math.floor(Number(character.max_hp) || 1)}
               </span>
             </div>
             <div className="bg-slate-800 rounded-sm h-1.5">
@@ -121,9 +199,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 variant="outline"
                 size="sm"
                 onClick={() => handleUsePotion(bestHealthPotion, 'health')}
-                disabled={
-                  isUsing === bestHealthPotion.consumable_id || character.hp >= character.max_hp
-                }
+                disabled={isUsing === bestHealthPotion.consumable_id || isHealthAtMax()}
                 className="w-full h-8 text-xs bg-red-900/20 border-red-600/30 hover:bg-red-800/30 text-red-200"
               >
                 {isUsing === bestHealthPotion.consumable_id ? (
@@ -163,7 +239,8 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <Zap className="h-3 w-3" />
               <span>
-                MP: {character.mana}/{character.max_mana}
+                MP: {Math.floor(Number(character.mana) || 0)}/
+                {Math.floor(Number(character.max_mana) || 1)}
               </span>
             </div>
             <div className="bg-slate-800 rounded-sm h-1.5">
@@ -177,9 +254,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 variant="outline"
                 size="sm"
                 onClick={() => handleUsePotion(bestManaPotion, 'mana')}
-                disabled={
-                  isUsing === bestManaPotion.consumable_id || character.mana >= character.max_mana
-                }
+                disabled={isUsing === bestManaPotion.consumable_id || isManaAtMax()}
                 className="w-full h-8 text-xs bg-blue-900/20 border-blue-600/30 hover:bg-blue-800/30 text-blue-200"
               >
                 {isUsing === bestManaPotion.consumable_id ? (

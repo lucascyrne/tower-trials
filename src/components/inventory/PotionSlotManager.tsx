@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Beaker, Plus, X, Heart, Zap, ChevronDown } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { formatPotionSlotEffect, formatConsumableEffect } from '@/utils/consumable-utils';
+import { ConsumableImage } from '@/components/ui/consumable-image';
 
 interface PotionSlotManagerProps {
   characterId: string;
@@ -161,6 +162,17 @@ export function PotionSlotManager({
   };
 
   const getPotionIcon = (slot: PotionSlot) => {
+    if (!slot.consumable_id) {
+      return <Beaker className="h-4 w-4 text-slate-500" />;
+    }
+
+    // Buscar o consumível no array para usar a imagem
+    const consumable = consumables.find(c => c.consumable_id === slot.consumable_id);
+    if (consumable?.consumable) {
+      return <ConsumableImage consumable={consumable.consumable} size="lg" />;
+    }
+
+    // Fallback para ícones baseados na descrição
     if (!slot.consumable_description) return <Beaker className="h-4 w-4 text-slate-500" />;
 
     if (
@@ -244,14 +256,7 @@ export function PotionSlotManager({
                 onClick={() => handleSetPotionSlot(slot.slot_position, consumable.consumable_id)}
               >
                 <div className="flex-shrink-0">
-                  {consumable.consumable!.description.includes('HP') ||
-                  consumable.consumable!.description.includes('Vida') ? (
-                    <Heart className="h-3 w-3 text-red-400" />
-                  ) : consumable.consumable!.description.includes('Mana') ? (
-                    <Zap className="h-3 w-3 text-blue-400" />
-                  ) : (
-                    <Beaker className="h-3 w-3 text-purple-400" />
-                  )}
+                  <ConsumableImage consumable={consumable.consumable!} size="sm" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium text-slate-200 truncate">

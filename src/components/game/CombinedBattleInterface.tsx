@@ -16,15 +16,14 @@ import {
   ShieldCheck,
   Activity,
   Plus,
-  Droplet,
-  Droplets,
   Star,
 } from 'lucide-react';
 import { type ActionType, type GamePlayer } from '@/resources/game/game-model';
 import { type PlayerSpell } from '@/resources/game/models/spell.model';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { type ConsumableType } from '@/resources/game/models/consumable.model';
 import { SlotService, type PotionSlot } from '@/resources/game/slot.service';
 import { GameContext } from '@/resources/game/game-context';
+import { ConsumableImage } from '@/components/ui/consumable-image';
 import { toast } from 'sonner';
 
 interface CombinedBattleInterfaceProps {
@@ -33,7 +32,6 @@ interface CombinedBattleInterfaceProps {
   loading: { performAction: boolean };
   player: GamePlayer;
   onPlayerStatsUpdate: (newHp: number, newMana: number) => void;
-  onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
   currentEnemy?: { hp: number; maxHp: number; name: string } | null;
   battleRewards?: {
     xp: number;
@@ -42,6 +40,9 @@ interface CombinedBattleInterfaceProps {
     leveledUp: boolean;
     newLevel?: number;
   } | null;
+  potionSlots: PotionSlot[];
+  loadingPotionSlots: boolean;
+  onSlotsChange: () => Promise<void>;
 }
 
 interface TooltipInfo {
@@ -87,13 +88,13 @@ export function CombinedBattleInterface({
   loading,
   player,
   onPlayerStatsUpdate,
-  onPlayerConsumablesUpdate,
   currentEnemy,
   battleRewards,
+  potionSlots,
+  loadingPotionSlots,
+  onSlotsChange,
 }: CombinedBattleInterfaceProps) {
   const { performAction } = useContext(GameContext);
-  const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(true);
   const [usingSlot, setUsingSlot] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
@@ -245,33 +246,6 @@ export function CombinedBattleInterface({
     currentEnemy?.hp,
   ]);
 
-  const loadPotionSlots = async () => {
-    try {
-      const response = await SlotService.getCharacterPotionSlots(player.id);
-      if (response.success && response.data) {
-        setPotionSlots(response.data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar slots de poção:', error);
-    } finally {
-      setLoadingSlots(false);
-    }
-  };
-
-  useEffect(() => {
-    if (player.id) {
-      loadPotionSlots();
-    }
-  }, [player.id]);
-
-  // CRÍTICO: Recarregar slots quando consumáveis mudam
-  useEffect(() => {
-    if (player.id && player.consumables) {
-      console.log('[CombinedBattleInterface] Consumáveis mudaram, recarregando slots');
-      loadPotionSlots();
-    }
-  }, [player.consumables]);
-
   // Função para usar poção do slot
   const handlePotionSlotUse = async (slotPosition: number) => {
     // CRÍTICO: Bloquear uso de poções se personagem está morto
@@ -292,12 +266,8 @@ export function CombinedBattleInterface({
       return;
     }
 
-    // Verificar se há quantidade disponível no inventário
-    const consumableInInventory = player.consumables?.find(
-      c => c.consumable_id === slot.consumable_id
-    );
-
-    if (!consumableInInventory || consumableInInventory.quantity <= 0) {
+    // Verificar quantidade disponível diretamente do slot
+    if (slot.available_quantity <= 0) {
       toast.error('Poção não disponível!', {
         description: 'Você não possui esta poção no inventário',
         duration: 3000,
@@ -325,34 +295,17 @@ export function CombinedBattleInterface({
         // Marcar que uma poção foi usada neste turno
         player.potionUsedThisTurn = true;
 
-        // CRÍTICO: Atualizar quantidade no inventário local imediatamente
-        if (player.consumables && consumableInInventory) {
-          const updatedConsumables = player.consumables
-            .map(c => {
-              if (c.consumable_id === slot.consumable_id) {
-                return {
-                  ...c,
-                  quantity: Math.max(0, c.quantity - 1),
-                };
-              }
-              return c;
-            })
-            .filter(c => c.quantity > 0); // Remover itens com quantidade 0
-
-          // CRÍTICO: Usar função do contexto para atualizar consumáveis
-          console.log(
-            `[CombinedBattleInterface] Atualizando consumáveis via contexto:`,
-            updatedConsumables.length
-          );
-          onPlayerConsumablesUpdate(updatedConsumables);
-        }
+        // A atualização do inventário é feita automaticamente pela função SQL
+        console.log(
+          `[CombinedBattleInterface] Poção consumida com sucesso, inventário atualizado automaticamente`
+        );
 
         // Ativar animação de uso de poção
         setUsedPotionAnimation(slotPosition);
         setTimeout(() => setUsedPotionAnimation(null), 2000);
 
         // Recarregar slots para refletir mudanças
-        await loadPotionSlots();
+        await onSlotsChange();
 
         toast.success(message, {
           description: `HP: ${new_hp} | Mana: ${new_mana}`,
@@ -470,16 +423,6 @@ export function CombinedBattleInterface({
       default:
         return '';
     }
-  };
-
-  const getPotionIcon = (slot: PotionSlot) => {
-    if (slot.consumable_id) {
-      if (slot.consumable_description?.toLowerCase().includes('mana')) {
-        return <Droplet className="h-5 w-5 text-blue-500" />;
-      }
-      return <Droplets className="h-5 w-5 text-red-500" />;
-    }
-    return null;
   };
 
   // Função para mostrar tooltip detalhado
@@ -802,7 +745,7 @@ export function CombinedBattleInterface({
                 )}
               </div>
               <div className="flex justify-center md:justify-end gap-2">
-                {loadingSlots
+                {loadingPotionSlots
                   ? [1, 2, 3].map(i => (
                       <div
                         key={i}
@@ -816,18 +759,18 @@ export function CombinedBattleInterface({
                       const isPotionDisabled = potionUsedThisTurn && !isEmpty;
                       const hasUsedAnimation = usedPotionAnimation === slot.slot_position;
 
-                      // Buscar quantidade disponível do consumível no inventário
-                      const consumableInInventory = player.consumables?.find(
-                        c => c.consumable_id === slot.consumable_id
-                      );
-                      const availableQuantity = consumableInInventory?.quantity || 0;
+                      // Usar dados diretos do slot (simplificado)
+                      const displayQuantity = hasUsedAnimation
+                        ? Math.max(0, slot.available_quantity - 1)
+                        : slot.available_quantity;
 
-                      // CRÍTICO: Se a poção foi usada neste turno, simular a redução local
-                      // para garantir feedback imediato
-                      const displayQuantity =
-                        usedPotionAnimation === slot.slot_position && availableQuantity > 0
-                          ? Math.max(0, availableQuantity - 1)
-                          : availableQuantity;
+                      console.log(`[CombinedBattleInterface] Slot ${slot.slot_position}:`, {
+                        consumableId: slot.consumable_id,
+                        consumableName: slot.consumable_name,
+                        isEmpty,
+                        availableQuantity: slot.available_quantity,
+                        displayQuantity,
+                      });
 
                       const tooltipInfo = {
                         title: slot.consumable_name || `Slot ${keyBinding}`,
@@ -886,9 +829,24 @@ export function CombinedBattleInterface({
                           >
                             {isEmpty ? (
                               <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
-                            ) : (
+                            ) : slot.consumable_id ? (
                               <div className="flex items-center justify-center">
-                                {getPotionIcon(slot)}
+                                <ConsumableImage
+                                  consumable={{
+                                    id: slot.consumable_id,
+                                    name: slot.consumable_name || 'Poção',
+                                    description: slot.consumable_description || '',
+                                    type: (slot.consumable_type as ConsumableType) || 'potion',
+                                    effect_value: slot.effect_value || 0,
+                                    price: slot.consumable_price || 0,
+                                    level_requirement: 1,
+                                    created_at: '',
+                                    updated_at: '',
+                                  }}
+                                  size="lg"
+                                  className="h-5 w-5"
+                                  showFallback={true}
+                                />
                                 {(isPotionDisabled || isOutOfStock) && (
                                   <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="w-6 h-0.5 bg-red-500 rotate-45 absolute"></div>
@@ -896,7 +854,7 @@ export function CombinedBattleInterface({
                                   </div>
                                 )}
                               </div>
-                            )}
+                            ) : null}
 
                             {isUsing && (
                               <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-xl">
