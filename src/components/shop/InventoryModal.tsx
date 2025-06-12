@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sword, Shield, Gem, Package, Sparkles, Coins, Heart, Zap, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
+import { formatConsumableEffect } from '@/utils/consumable-utils';
 
 interface InventoryModalProps {
   character: Character;
@@ -288,9 +289,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
                 x{item.quantity}
               </span>
             </div>
-            <div className="text-xs text-slate-400">
-              +{item.consumable.effect_value} {item.consumable.type}
-            </div>
+            <div className="text-xs text-slate-400">{formatConsumableEffect(item.consumable)}</div>
           </div>
         </div>
 

@@ -1,14 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
-import { SlotService, type PotionSlot } from '@/resources/game/slot.service';
 import { type Character } from '@/resources/game/models/character.model';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Coins, Heart, Zap, Sparkles, Star, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Coins, Heart, Zap, Sparkles, Star, Package, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { type CharacterDrop } from './types';
+import { PotionSlotManager } from './PotionSlotManager';
+import { formatConsumableEffect } from '@/utils/consumable-utils';
 
 interface InventoryPanelProps {
   character: Character;
@@ -18,32 +19,27 @@ interface InventoryPanelProps {
 export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInventoryChange }) => {
   const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
   const [drops, setDrops] = useState<CharacterDrop[]>([]);
-  const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedConsumable, setSelectedConsumable] = useState<CharacterConsumable | null>(null);
   const [selectedDrop, setSelectedDrop] = useState<CharacterDrop | null>(null);
   const [usingConsumable, setUsingConsumable] = useState<string | null>(null);
-  const [assigningToSlot, setAssigningToSlot] = useState<number | null>(null);
 
   const loadInventory = useCallback(async () => {
     try {
       setLoading(true);
 
-      const [consumablesResponse, dropsResponse, slotsResponse] = await Promise.all([
+      const [consumablesResponse, dropsResponse] = await Promise.all([
         ConsumableService.getCharacterConsumables(character.id),
         ConsumableService.getCharacterDrops(character.id),
-        SlotService.getCharacterPotionSlots(character.id),
       ]);
 
       setConsumables(consumablesResponse.success ? consumablesResponse.data || [] : []);
       setDrops(dropsResponse.success ? dropsResponse.data || [] : []);
-      setPotionSlots(slotsResponse.success ? slotsResponse.data || [] : []);
     } catch (error) {
       console.error('Erro ao carregar inventário:', error);
       toast.error('Erro ao carregar inventário');
       setConsumables([]);
       setDrops([]);
-      setPotionSlots([]);
     } finally {
       setLoading(false);
     }
@@ -83,53 +79,8 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     }
   };
 
-  const handleAssignToSlot = async (consumableId: string, slotPosition: number) => {
-    setAssigningToSlot(slotPosition);
-
-    try {
-      const response = await SlotService.setPotionSlot(character.id, slotPosition, consumableId);
-
-      if (response.success) {
-        await loadInventory();
-        toast.success(`Poção atribuída ao slot ${getSlotKeyBinding(slotPosition)}!`);
-      } else {
-        toast.error(response.error || 'Erro ao atribuir poção');
-      }
-    } catch (error) {
-      console.error('Erro ao atribuir poção:', error);
-      toast.error('Erro ao atribuir poção');
-    } finally {
-      setAssigningToSlot(null);
-    }
-  };
-
-  const handleClearSlot = async (slotPosition: number) => {
-    try {
-      const response = await SlotService.clearPotionSlot(character.id, slotPosition);
-
-      if (response.success) {
-        await loadInventory();
-        toast.success('Slot limpo!');
-      } else {
-        toast.error(response.error || 'Erro ao limpar slot');
-      }
-    } catch (error) {
-      console.error('Erro ao limpar slot:', error);
-      toast.error('Erro ao limpar slot');
-    }
-  };
-
-  const getSlotKeyBinding = (position: number) => {
-    switch (position) {
-      case 1:
-        return 'Q';
-      case 2:
-        return 'W';
-      case 3:
-        return 'E';
-      default:
-        return '';
-    }
+  const handleSlotsUpdate = () => {
+    loadInventory();
   };
 
   const canUseConsumable = (item: CharacterConsumable): boolean => {
@@ -168,56 +119,6 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
       legendary: 'border-amber-600 bg-amber-900/30',
     };
     return colors[rarity as keyof typeof colors] || colors.common;
-  };
-
-  const renderPotionSlots = () => {
-    return (
-      <div className="flex gap-2 mb-4">
-        {potionSlots.map(slot => {
-          const keyBinding = getSlotKeyBinding(slot.slot_position);
-          const isEmpty = !slot.consumable_id;
-
-          return (
-            <div key={slot.slot_position} className="relative">
-              <div
-                className={`w-12 h-12 border-2 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 ${
-                  isEmpty
-                    ? 'border-dashed border-slate-600 bg-slate-800/30 hover:border-slate-500'
-                    : 'border-solid border-blue-600 bg-blue-900/30 hover:brightness-110'
-                }`}
-                title={isEmpty ? `Slot ${keyBinding} vazio` : slot.consumable_name || 'Poção'}
-              >
-                {isEmpty ? (
-                  <Plus className="h-4 w-4 text-slate-500" />
-                ) : (
-                  <span className="text-lg">🧪</span>
-                )}
-              </div>
-
-              {/* Badge com tecla */}
-              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-blue-600 text-white text-xs">
-                {keyBinding}
-              </Badge>
-
-              {/* Botão de remover */}
-              {!isEmpty && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute -top-1 -left-1 h-4 w-4 p-0 rounded-full"
-                  onClick={() => handleClearSlot(slot.slot_position)}
-                >
-                  <X className="h-2 w-2" />
-                </Button>
-              )}
-            </div>
-          );
-        })}
-        <div className="flex items-center ml-2">
-          <span className="text-xs text-slate-500">Slots de Poções (Q, W, E)</span>
-        </div>
-      </div>
-    );
   };
 
   const renderConsumableGrid = () => {
@@ -323,7 +224,6 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
       const item = selectedConsumable;
       const consumable = item.consumable!;
       const canUse = canUseConsumable(item);
-      const isPotion = consumable.type === 'potion';
 
       return (
         <div className="space-y-6">
@@ -350,9 +250,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
                 <Sparkles className="h-4 w-4 text-emerald-400" />
                 <span className="text-emerald-300 font-medium">Efeito</span>
               </div>
-              <p className="text-emerald-200">
-                +{consumable.effect_value} {consumable.type}
-              </p>
+              <p className="text-emerald-200">{formatConsumableEffect(consumable)}</p>
             </div>
           )}
 
@@ -386,43 +284,6 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
                 'Não pode ser usado agora'
               )}
             </Button>
-
-            {/* Botões para atribuir aos slots (apenas para poções) */}
-            {isPotion && (
-              <div className="space-y-2">
-                <div className="text-sm font-medium text-slate-300">Atribuir ao slot:</div>
-                <div className="grid grid-cols-3 gap-2">
-                  {potionSlots.map(slot => {
-                    const keyBinding = getSlotKeyBinding(slot.slot_position);
-                    const isAssigning = assigningToSlot === slot.slot_position;
-                    const isOccupied = !!slot.consumable_id;
-
-                    return (
-                      <Button
-                        key={slot.slot_position}
-                        variant="outline"
-                        size="sm"
-                        disabled={isAssigning}
-                        onClick={() => handleAssignToSlot(item.consumable_id, slot.slot_position)}
-                        className={`${isOccupied ? 'border-blue-600 bg-blue-900/20' : 'border-slate-600'}`}
-                      >
-                        {isAssigning ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-t border-b border-current"></div>
-                        ) : (
-                          <>
-                            Slot {keyBinding}
-                            {isOccupied && <span className="ml-1 text-xs">(ocupado)</span>}
-                          </>
-                        )}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-slate-500">
-                  Poções atribuídas aos slots podem ser usadas rapidamente durante batalhas
-                </p>
-              </div>
-            )}
           </div>
         </div>
       );
@@ -527,8 +388,14 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
               Consumíveis ({consumables.filter(item => item.quantity > 0).length})
             </h3>
 
-            {/* Slots de poções integrados */}
-            {renderPotionSlots()}
+            {/* Slots de poções com PotionSlotManager */}
+            <div className="mb-6">
+              <PotionSlotManager
+                characterId={character.id}
+                consumables={consumables}
+                onSlotsUpdate={handleSlotsUpdate}
+              />
+            </div>
 
             {/* Grade de consumíveis */}
             {renderConsumableGrid()}

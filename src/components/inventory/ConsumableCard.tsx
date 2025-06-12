@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Heart, Droplets, Zap, Sparkles } from 'lucide-react';
 import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { type Character } from '@/resources/game/models/character.model';
+import { formatConsumableEffect } from '@/utils/consumable-utils';
 
 interface ConsumableCardProps {
   item: CharacterConsumable;
@@ -103,7 +104,9 @@ export const ConsumableCard: React.FC<ConsumableCardProps> = ({
       {item.consumable.effect_value > 0 && (
         <div className="flex items-center gap-1 text-xs mb-3">
           <Sparkles className="h-3 w-3 text-emerald-400" />
-          <span className="text-emerald-300">Efeito: +{item.consumable.effect_value}</span>
+          <span className="text-emerald-300">
+            Efeito: {formatConsumableEffect(item.consumable)}
+          </span>
         </div>
       )}
 

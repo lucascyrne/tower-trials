@@ -7,6 +7,7 @@ import { Heart, Zap, Loader2 } from 'lucide-react';
 import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
 import { type Character } from '@/resources/game/models/character.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
+import { formatConsumableEffect } from '@/utils/consumable-utils';
 
 interface QuickPotionBarProps {
   character: Character;
@@ -86,7 +87,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
 
   const formatPotionInfo = (consumable: CharacterConsumable) => {
     if (!consumable.consumable) return '';
-    return `${consumable.consumable.name} (+${consumable.consumable.effect_value})`;
+    return `${consumable.consumable.name} (${formatConsumableEffect(consumable.consumable)})`;
   };
 
   const getHealthPercent = () => (character.hp / character.max_hp) * 100;
@@ -152,7 +153,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 className="text-xs text-slate-400 text-center truncate"
                 title={formatPotionInfo(bestHealthPotion)}
               >
-                +{bestHealthPotion.consumable?.effect_value}
+                {formatConsumableEffect(bestHealthPotion.consumable!)}
               </div>
             )}
           </div>
@@ -208,7 +209,7 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 className="text-xs text-slate-400 text-center truncate"
                 title={formatPotionInfo(bestManaPotion)}
               >
-                +{bestManaPotion.consumable?.effect_value}
+                {formatConsumableEffect(bestManaPotion.consumable!)}
               </div>
             )}
           </div>
