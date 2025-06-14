@@ -21,13 +21,13 @@ import {
   RotateCcw,
   Save,
 } from 'lucide-react';
-import { CharacterService } from '@/resources/game/character/character.service';
+import { CharacterService } from '@/resources/game/character.service';
 import {
   type CharacterStats,
   SkillType,
   getSkillDescription,
   calculateSkillXpRequired,
-} from '@/resources/game/models/character.model';
+} from '@/resources/game/character.model';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DerivedStatsSection } from '@/components/game/derived-stats-section';
 

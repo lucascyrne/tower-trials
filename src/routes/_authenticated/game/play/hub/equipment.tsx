@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { CharacterService } from '@/resources/game/character/character.service';
+import { CharacterService } from '@/resources/game/character.service';
 import { EquipmentService } from '@/resources/game/equipment.service';
-import type { Character } from '@/resources/game/models/character.model';
+import type { Character } from '@/resources/game/character.model';
 import type {
   EquipmentSlots,
   CharacterEquipment,
   Equipment,
-} from '@/resources/game/models/equipment.model';
-import type { CharacterConsumable } from '@/resources/game/models/consumable.model';
+} from '@/resources/game/equipment.model';
+import type { CharacterConsumable } from '@/resources/game/consumable.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { PotionSlotManager } from '@/components/inventory/PotionSlotManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

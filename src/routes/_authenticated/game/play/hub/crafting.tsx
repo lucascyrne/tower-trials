@@ -18,12 +18,12 @@ import type {
   CharacterConsumable,
   CraftingRecipe,
   MonsterDrop,
-} from '@/resources/game/models/consumable.model';
+} from '@/resources/game/consumable.model';
 import type {
   CharacterEquipment,
   Equipment,
   EquipmentCraftingRecipe,
-} from '@/resources/game/models/equipment.model';
+} from '@/resources/game/equipment.model';
 import { toast } from 'sonner';
 import {
   ArrowLeft,

@@ -1,4 +1,4 @@
-import { type Consumable } from '@/resources/game/models/consumable.model';
+import { type Consumable } from '@/resources/game/consumable.model';
 import { AssetManager } from './asset-utils';
 
 /**
