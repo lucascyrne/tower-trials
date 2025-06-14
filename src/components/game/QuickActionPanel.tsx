@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { type ActionType } from '@/resources/game/game-model';
 import { type GamePlayer } from '@/resources/game/game-model';
-import { type PlayerSpell } from '@/resources/game/models/spell.model';
+import { type PlayerSpell } from '@/resources/game/spell.model';
 import { type PotionSlot } from '@/resources/game/slot.service';
 import { ConsumableImage } from '@/components/ui/consumable-image';
-import { type ConsumableType } from '@/resources/game/models/consumable.model';
+import { type ConsumableType } from '@/resources/game/consumable.model';
 import {
   Sword,
   Shield,

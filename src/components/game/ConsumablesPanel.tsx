@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGame } from '@/resources/game/game-hook';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { type CharacterConsumable } from '@/resources/game/consumable.model';
 import { toast } from 'sonner';
 
 interface ConsumableItemProps {

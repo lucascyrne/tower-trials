@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award, Heart, Brain, Sword, Sparkles, Shield, Zap, Star, Target } from 'lucide-react';
-import { type CharacterStats } from '@/resources/game/models/character.model';
+import { type CharacterStats } from '@/resources/game/character.model';
 import { StatCardWithTooltip } from './stat-card-with-tooltip';
 
 interface DerivedStatsSectionProps {

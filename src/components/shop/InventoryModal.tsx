@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
-import { type Equipment, type CharacterEquipment } from '@/resources/game/models/equipment.model';
-import {
-  type CharacterConsumable,
-  type MonsterDrop,
-} from '@/resources/game/models/consumable.model';
+import { type Equipment, type CharacterEquipment } from '@/resources/game/equipment.model';
+import { type CharacterConsumable, type MonsterDrop } from '@/resources/game/consumable.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { ConsumableService } from '@/resources/game/consumable.service';
-import { type Character } from '@/resources/game/models/character.model';
+import { type Character } from '@/resources/game/character.model';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';

@@ -3,9 +3,9 @@ import {
   type Equipment,
   type CharacterEquipment,
   type EquipmentSlots,
-} from '@/resources/game/models/equipment.model';
+} from '@/resources/game/equipment.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
-import { type Character } from '@/resources/game/models/character.model';
+import { type Character } from '@/resources/game/character.model';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Sword, Shield, Gem, Package } from 'lucide-react';

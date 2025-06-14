@@ -3,7 +3,7 @@ import {
   type Equipment,
   type EquipmentComparison as EquipmentComparisonType,
   compareEquipment,
-} from '@/resources/game/models/equipment.model';
+} from '@/resources/game/equipment.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { FaArrowUp, FaArrowDown, FaEquals, FaSpinner } from 'react-icons/fa';
 

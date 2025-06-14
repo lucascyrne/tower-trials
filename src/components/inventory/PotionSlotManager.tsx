@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SlotService, type PotionSlot } from '@/resources/game/slot.service';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { type CharacterConsumable } from '@/resources/game/consumable.model';
 import { toast } from 'sonner';
 import { Beaker, Plus, X, Heart, Zap, ChevronDown } from 'lucide-react';
 import { createPortal } from 'react-dom';

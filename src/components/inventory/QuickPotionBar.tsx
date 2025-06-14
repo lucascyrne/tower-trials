@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Heart, Zap, Loader2 } from 'lucide-react';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
-import { type Character } from '@/resources/game/models/character.model';
+import { type CharacterConsumable } from '@/resources/game/consumable.model';
+import { type Character } from '@/resources/game/character.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
 

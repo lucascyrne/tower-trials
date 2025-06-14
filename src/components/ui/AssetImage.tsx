@@ -69,7 +69,7 @@ export const AssetImage: React.FC<AssetImageProps> = ({
  * Componente específico para ícones de consumíveis
  */
 interface ConsumableIconProps {
-  consumable: import('@/resources/game/models/consumable.model').Consumable;
+  consumable: import('@/resources/game/consumable.model').Consumable;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -96,7 +96,7 @@ export const ConsumableIcon: React.FC<ConsumableIconProps> = ({
  * Componente específico para ícones de equipamentos
  */
 interface EquipmentIconProps {
-  equipment: import('@/resources/game/models/equipment.model').Equipment;
+  equipment: import('@/resources/game/equipment.model').Equipment;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }

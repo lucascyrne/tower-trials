@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { type Equipment } from '@/resources/game/models/equipment.model';
-import { type Consumable } from '@/resources/game/models/consumable.model';
+import { type Equipment } from '@/resources/game/equipment.model';
+import { type Consumable } from '@/resources/game/consumable.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
 import { ConsumableService } from '@/resources/game/consumable.service';
-import { type Character } from '@/resources/game/models/character.model';
+import { type Character } from '@/resources/game/character.model';
 import { ShopLayout } from './ShopLayout';
 import { InventoryModal } from './InventoryModal';
 import { toast } from 'sonner';

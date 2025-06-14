@@ -16,9 +16,9 @@ import {
   ShoppingCart,
   ShoppingBag,
 } from 'lucide-react';
-import { type Equipment } from '@/resources/game/models/equipment.model';
-import { type Consumable } from '@/resources/game/models/consumable.model';
-import { type Character } from '@/resources/game/models/character.model';
+import { type Equipment } from '@/resources/game/equipment.model';
+import { type Consumable } from '@/resources/game/consumable.model';
+import { type Character } from '@/resources/game/character.model';
 import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
 
 interface ShopLayoutProps {

@@ -5,7 +5,7 @@ import { Trophy, Skull, Eye, AlertTriangle } from 'lucide-react';
 import { useGame } from '@/resources/game/game-hook';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { RankingService } from '@/resources/game/ranking.service';
-import { CharacterService } from '@/resources/game/character/character.service';
+import { CharacterService } from '@/resources/game/character.service';
 import { toast } from 'sonner';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { useMediaQuery } from '@/hooks/use-media-query';

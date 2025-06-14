@@ -3,8 +3,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { User, Sword, Shield, ShirtIcon, Gem } from 'lucide-react';
-import { type Character } from '@/resources/game/models/character.model';
-import { type EquipmentSlots, type Equipment } from '@/resources/game/models/equipment.model';
+import { type Character } from '@/resources/game/character.model';
+import { type EquipmentSlots, type Equipment } from '@/resources/game/equipment.model';
 
 interface CharacterPaperDollProps {
   character: Character;

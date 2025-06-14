@@ -1,4 +1,4 @@
-import { type MonsterDrop } from '@/resources/game/models/consumable.model';
+import { type MonsterDrop } from '@/resources/game/consumable.model';
 
 export interface CharacterDrop {
   id: string;

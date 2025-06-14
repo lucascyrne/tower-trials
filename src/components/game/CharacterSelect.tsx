@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  type Character,
-  type CharacterProgressionInfo,
-} from '@/resources/game/models/character.model';
+import { type Character, type CharacterProgressionInfo } from '@/resources/game/character.model';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { CharacterService } from '@/resources/game/character/character.service';
+import { CharacterService } from '@/resources/game/character.service';
 import { NameValidationService } from '@/resources/game/name-validation.service';
 import {
   Dialog,

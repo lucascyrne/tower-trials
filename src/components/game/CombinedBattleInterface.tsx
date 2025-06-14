@@ -19,8 +19,8 @@ import {
   Star,
 } from 'lucide-react';
 import { type ActionType, type GamePlayer } from '@/resources/game/game-model';
-import { type PlayerSpell } from '@/resources/game/models/spell.model';
-import { type ConsumableType } from '@/resources/game/models/consumable.model';
+import { type PlayerSpell } from '@/resources/game/spell.model';
+import { type ConsumableType } from '@/resources/game/consumable.model';
 import { SlotService, type PotionSlot } from '@/resources/game/slot.service';
 import { GameContext } from '@/resources/game/game-context';
 import { ConsumableImage } from '@/components/ui/consumable-image';

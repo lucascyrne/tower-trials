@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
+import { type CharacterConsumable } from '@/resources/game/consumable.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
-import { type Character } from '@/resources/game/models/character.model';
+import { type Character } from '@/resources/game/character.model';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Coins, Sparkles, Star, Package } from 'lucide-react';
