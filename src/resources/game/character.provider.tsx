@@ -1,11 +1,4 @@
-import {
-  type ReactNode,
-  useState,
-  useCallback,
-  useMemo,
-  useEffect,
-  useRef,
-} from 'react';
+import { type ReactNode, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { type Character } from './character.model';
 import { CharacterService } from './character.service';
 import { useAuth } from '../auth/auth-hook';
@@ -20,6 +13,11 @@ interface CharacterProviderProps {
 }
 
 export function CharacterProvider({ children }: CharacterProviderProps) {
+  // DEBUGGING: Contador de renders
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  console.log(`[CharacterProvider] Render #${renderCount.current}`);
+
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [hasLoadedCharacters, setHasLoadedCharacters] = useState(false);
@@ -31,10 +29,27 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
   // Refs para evitar loops
   const loadingCharactersRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
 
   // NOVO: Controle de inicialização de batalha
   const initializingBattleRef = useRef(false);
   const lastBattleInitRef = useRef<string | null>(null);
+
+  // Controle para loadCharacterForHub evitar execuções duplicadas
+  const loadingForHubRef = useRef(false);
+  const lastHubCharacterRef = useRef<string | null>(null);
+
+  // Logs diretos sem useEffect para evitar re-renders
+  console.log(
+    `[CharacterProvider] Estado atual - gameState.mode: ${gameState.mode}, player: ${gameState.player.name || 'N/A'}, selectedCharacter: ${selectedCharacter?.name || 'N/A'}`
+  );
+
+  // Limpar refs quando desmontado
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Carregar personagens do usuário - APENAS UMA VEZ
   useEffect(() => {
@@ -51,12 +66,22 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
     if (!user?.id || hasLoadedCharacters || loadingCharactersRef.current) return;
 
     const loadCharacters = async () => {
+      // Dupla verificação para evitar execuções em Strict Mode
+      if (loadingCharactersRef.current || !mountedRef.current) {
+        return;
+      }
+
       try {
         console.log('[CharacterProvider] Carregando personagens pela primeira vez para:', user.id);
         loadingCharactersRef.current = true;
         updateLoading('loadProgress', true);
 
         const response = await CharacterService.getUserCharacters(user.id);
+
+        // Verificar se ainda está montado
+        if (!mountedRef.current) {
+          return;
+        }
 
         if (response.success && response.data) {
           setCharacters(response.data);
@@ -69,18 +94,22 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
           }
         } else if (response.error) {
           console.error('[CharacterProvider] Erro ao carregar personagens:', response.error);
-          toast.error('Erro', {
-            description: response.error,
-          });
+          if (mountedRef.current) {
+            toast.error('Erro', {
+              description: response.error,
+            });
+          }
         }
       } catch (error) {
         console.error(
           '[CharacterProvider] Erro ao carregar personagens:',
           error instanceof Error ? error.message : 'Erro desconhecido'
         );
-        toast.error('Erro', {
-          description: error instanceof Error ? error.message : 'Erro ao carregar personagens',
-        });
+        if (mountedRef.current) {
+          toast.error('Erro', {
+            description: error instanceof Error ? error.message : 'Erro ao carregar personagens',
+          });
+        }
       } finally {
         updateLoading('loadProgress', false);
         loadingCharactersRef.current = false;
@@ -88,7 +117,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
     };
 
     loadCharacters();
-  }, [user?.id, hasLoadedCharacters]);
+  }, [user?.id, hasLoadedCharacters, updateLoading, setGameMessage]);
 
   // Criar novo personagem
   const createCharacter = useCallback(
@@ -138,58 +167,73 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         updateLoading('startGame', false);
       }
     },
-    [user?.id]
+    [user?.id, updateLoading, addGameLogMessage]
   );
 
   // Selecionar personagem
-  const selectCharacter = useCallback(async (character: Character) => {
-    try {
-      setSelectedCharacter(character);
+  const selectCharacter = useCallback(
+    async (character: Character) => {
+      try {
+        setSelectedCharacter(character);
 
-      console.log(`[CharacterProvider] Carregando stats derivados para ${character.name}...`);
-      const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
+        console.log(`[CharacterProvider] Carregando stats derivados para ${character.name}...`);
+        const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
 
-      if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
-        throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
+        if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
+          throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
+        }
+
+        const gamePlayer = gamePlayerResponse.data;
+
+        setGameState({
+          mode: 'menu',
+          player: gamePlayer,
+          currentFloor: null,
+          currentEnemy: null,
+          currentSpecialEvent: null,
+          isPlayerTurn: true,
+          gameMessage: '',
+          highestFloor: gamePlayer.floor,
+          selectedSpell: null,
+          battleRewards: null,
+          fleeSuccessful: false,
+          characterDeleted: false,
+        });
+
+        addGameLogMessage(`${character.name} selecionado!`);
+      } catch (error) {
+        console.error(
+          '[CharacterProvider] Erro ao selecionar personagem:',
+          error instanceof Error ? error.message : 'Erro desconhecido'
+        );
+        toast.error('Erro', {
+          description: error instanceof Error ? error.message : 'Erro ao selecionar personagem',
+        });
       }
+    },
+    [setGameState, addGameLogMessage]
+  );
 
-      const gamePlayer = gamePlayerResponse.data;
-
-      setGameState({
-        mode: 'menu',
-        player: gamePlayer,
-        currentFloor: null,
-        currentEnemy: null,
-        currentSpecialEvent: null,
-        isPlayerTurn: true,
-        gameMessage: '',
-        highestFloor: gamePlayer.floor,
-        selectedSpell: null,
-        battleRewards: null,
-        fleeSuccessful: false,
-        characterDeleted: false,
-      });
-
-      addGameLogMessage(`${character.name} selecionado!`);
-    } catch (error) {
-      console.error(
-        '[CharacterProvider] Erro ao selecionar personagem:',
-        error instanceof Error ? error.message : 'Erro desconhecido'
-      );
-      toast.error('Erro', {
-        description: error instanceof Error ? error.message : 'Erro ao selecionar personagem',
-      });
-    }
-  }, []);
-
-  // Carregar personagem apenas para o hub
+  // Carregar personagem apenas para o hub - OTIMIZADO
   const loadCharacterForHub = useCallback(
     async (character: Character) => {
+      console.log(`[CharacterProvider] loadCharacterForHub chamado para: ${character.name}`);
+
+      // Evitar múltiplas execuções simultâneas apenas
+      if (loadingForHubRef.current) {
+        console.log(
+          `[CharacterProvider] Carregamento em andamento, aguardando para ${character.name}`
+        );
+        return;
+      }
+
       try {
         console.log(
           `[CharacterProvider] Carregando personagem para o hub: ${character.name} (ID: ${character.id})`
         );
-        setSelectedCharacter(character);
+
+        loadingForHubRef.current = true;
+        lastHubCharacterRef.current = character.id;
 
         // Sempre usar getCharacterForGame para garantir dados atualizados e completos
         console.log(`[CharacterProvider] Carregando stats derivados via getCharacterForGame...`);
@@ -239,7 +283,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
           currentEnemy: null,
           currentSpecialEvent: null,
           isPlayerTurn: true,
-          gameMessage: '',
+          gameMessage: `Bem-vindo ao hub, ${gamePlayer.name}!`,
           highestFloor: Math.max(1, gamePlayer.floor),
           selectedSpell: null,
           battleRewards: null,
@@ -248,11 +292,19 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         };
 
         console.log(`[CharacterProvider] Configurando novo estado do jogo:`, newGameState);
-        setGameState(newGameState);
 
-        setGameMessage(`Bem-vindo ao hub, ${gamePlayer.name}!`);
+        // BATCH de atualizações para evitar re-renders múltiplos
+        setSelectedCharacter(character);
+        setGameState(newGameState);
+        // Remover setGameMessage separado - já está no gameState
 
         console.log(`[CharacterProvider] Hub carregado com sucesso para ${gamePlayer.name}`);
+        console.log(`[CharacterProvider] Estado final:`, {
+          selectedCharacterId: character.id,
+          gameStateMode: newGameState.mode,
+          gameStatePlayerId: newGameState.player.id,
+          gameStatePlayerName: newGameState.player.name,
+        });
       } catch (error) {
         console.error(
           '[CharacterProvider] Erro ao carregar personagem para o hub:',
@@ -261,21 +313,24 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         toast.error('Erro', {
           description: error instanceof Error ? error.message : 'Erro ao carregar personagem',
         });
+        throw error; // Re-lançar erro para que o hub.tsx possa tratar
+      } finally {
+        // Resetar controle imediatamente para permitir nova execução quando necessário
+        loadingForHubRef.current = false;
       }
     },
-    [setGameState, setGameMessage]
+    [] // CORRIGIDO: sem dependências para evitar recriação constante
   );
 
   // Função para atualizar stats do jogador
   const updatePlayerStats = useCallback((hp: number, mana: number) => {
-    console.log(`[CharacterProvider] Atualizando stats do jogador: HP ${hp}, Mana ${mana}`);
+    console.log(`[CharacterProvider] updatePlayerStats chamado: HP ${hp}, Mana ${mana}`);
 
-    // Usar referência mais recente do gameState para evitar loop infinito
-    const currentState = gameState;
+    // Usar referência direta ao gameState atual - sem dependências
     setGameState({
-      ...currentState,
+      ...gameState,
       player: {
-        ...currentState.player,
+        ...gameState.player,
         hp: Math.floor(hp),
         mana: Math.floor(mana),
       },
@@ -284,6 +339,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
 
   // Função para recarregar personagens quando necessário
   const reloadCharacters = useCallback(() => {
+    console.log(`[CharacterProvider] reloadCharacters chamado`);
     setHasLoadedCharacters(false);
     loadingCharactersRef.current = false;
   }, []);
@@ -291,7 +347,25 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
   // OTIMIZADA: Inicializar batalha de forma simples
   const initializeBattle = useCallback(
     async (character: Character, battleKey: string) => {
-      if (initializingBattleRef.current) {
+      console.log(
+        `[CharacterProvider] initializeBattle chamado para: ${character.name} (key: ${battleKey})`
+      );
+
+      // NOVO: Verificar se já estamos processando esta batalha
+      if (initializingBattleRef.current && lastBattleInitRef.current === battleKey) {
+        console.log(`[CharacterProvider] Batalha já sendo inicializada para key: ${battleKey}`);
+        return;
+      }
+
+      // NOVO: Verificar se o personagem já está selecionado e carregado
+      if (
+        selectedCharacter?.id === character.id &&
+        gameState.mode === 'battle' &&
+        gameState.currentEnemy
+      ) {
+        console.log(
+          `[CharacterProvider] Batalha já inicializada para ${character.name} - reutilizando estado`
+        );
         return;
       }
 
@@ -300,7 +374,14 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
 
       try {
         updateLoading('loadProgress', true);
-        setSelectedCharacter(character);
+
+        // CORRIGIDO: Só mudar selectedCharacter se realmente necessário
+        if (selectedCharacter?.id !== character.id) {
+          console.log(`[CharacterProvider] Selecionando novo personagem: ${character.name}`);
+          setSelectedCharacter(character);
+        } else {
+          console.log(`[CharacterProvider] Personagem ${character.name} já selecionado - mantendo`);
+        }
 
         const { BattleInitializationService } = await import('./battle-initialization.service');
 
@@ -314,13 +395,27 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
           throw new Error('Estado de jogo não foi gerado');
         }
 
-        setGameState(result.gameState);
+        // CORRIGIDO: Só atualizar gameState se houve mudança significativa
+        const currentMode = gameState.mode;
+        const currentEnemyId = gameState.currentEnemy?.id;
+        const newEnemyId = result.gameState.currentEnemy?.id;
+
+        if (currentMode !== 'battle' || currentEnemyId !== newEnemyId || !gameState.currentEnemy) {
+          console.log(
+            `[CharacterProvider] Atualizando estado de batalha - modo: ${currentMode} -> battle, inimigo: ${currentEnemyId} -> ${newEnemyId}`
+          );
+          setGameState(result.gameState);
+        } else {
+          console.log(`[CharacterProvider] Estado de batalha já correto - mantendo atual`);
+        }
 
         const logMessage = result.gameState.currentSpecialEvent
           ? `Evento especial: ${result.gameState.currentSpecialEvent.name}`
           : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado!`;
 
         addGameLogMessage(logMessage, 'system');
+
+        console.log(`[CharacterProvider] Batalha inicializada com sucesso para ${character.name}`);
       } catch (error) {
         console.error('[CharacterProvider] Erro na inicialização:', error);
 
@@ -336,7 +431,7 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
         initializingBattleRef.current = false;
       }
     },
-    [setGameState, addGameLogMessage, updateLoading]
+    [selectedCharacter, gameState, setGameState, addGameLogMessage, updateLoading]
   );
 
   const contextValue = useMemo<CharacterContextType>(

@@ -444,10 +444,138 @@ export class CharacterService {
 
   /**
    * Obter personagem com stats detalhados para o jogo usando novo sistema
+   * OTIMIZADO: Evita requisições desnecessárias quando dados estão disponíveis
    */
-  static async getCharacterForGame(characterId: string): Promise<ServiceResponse<GamePlayer>> {
+  static async getCharacterForGame(
+    characterId: string,
+    forceRefresh: boolean = false
+  ): Promise<ServiceResponse<GamePlayer>> {
     try {
-      // Buscar dados básicos
+      console.log(
+        `[CharacterService] getCharacterForGame solicitado para: ${characterId}${forceRefresh ? ' (forçar atualização)' : ''}`
+      );
+
+      // OTIMIZADO: Verificar cache primeiro para evitar requisições desnecessárias
+      if (!forceRefresh) {
+        const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
+        if (cachedCharacter) {
+          console.log(
+            `[CharacterService] Reutilizando dados em cache para: ${cachedCharacter.name}`
+          );
+
+          // Verificar se o cache é recente (menos de 5 minutos)
+          const cacheAge = Date.now() - (CharacterCacheService.getCacheTimestamp(characterId) || 0);
+          const maxCacheAge = 5 * 60 * 1000; // 5 minutos
+
+          if (cacheAge < maxCacheAge) {
+            // Converter Character para GamePlayer usando dados em cache
+            const gamePlayer: GamePlayer = {
+              id: cachedCharacter.id,
+              user_id: cachedCharacter.user_id,
+              name: cachedCharacter.name,
+              level: cachedCharacter.level,
+              xp: cachedCharacter.xp,
+              xp_next_level: cachedCharacter.xp_next_level,
+              gold: cachedCharacter.gold,
+              hp: cachedCharacter.hp,
+              max_hp: cachedCharacter.max_hp,
+              mana: cachedCharacter.mana,
+              max_mana: cachedCharacter.max_mana,
+              atk: cachedCharacter.atk,
+              def: cachedCharacter.def,
+              speed: cachedCharacter.speed,
+              created_at: cachedCharacter.created_at,
+              updated_at: cachedCharacter.updated_at,
+              isPlayerTurn: true,
+              specialCooldown: 0,
+              defenseCooldown: 0,
+              isDefending: false,
+              floor: cachedCharacter.floor,
+              spells: [], // Será carregado separadamente se necessário
+              consumables: [],
+              active_effects: {
+                buffs: [],
+                debuffs: [],
+                dots: [],
+                hots: [],
+                attribute_modifications: [],
+              },
+
+              // Atributos primários
+              strength: cachedCharacter.strength || 10,
+              dexterity: cachedCharacter.dexterity || 10,
+              intelligence: cachedCharacter.intelligence || 10,
+              wisdom: cachedCharacter.wisdom || 10,
+              vitality: cachedCharacter.vitality || 10,
+              luck: cachedCharacter.luck || 10,
+              attribute_points: cachedCharacter.attribute_points || 0,
+
+              // Habilidades
+              sword_mastery: cachedCharacter.sword_mastery || 1,
+              axe_mastery: cachedCharacter.axe_mastery || 1,
+              blunt_mastery: cachedCharacter.blunt_mastery || 1,
+              defense_mastery: cachedCharacter.defense_mastery || 1,
+              magic_mastery: cachedCharacter.magic_mastery || 1,
+
+              sword_mastery_xp: cachedCharacter.sword_mastery_xp || 0,
+              axe_mastery_xp: cachedCharacter.axe_mastery_xp || 0,
+              blunt_mastery_xp: cachedCharacter.blunt_mastery_xp || 0,
+              defense_mastery_xp: cachedCharacter.defense_mastery_xp || 0,
+              magic_mastery_xp: cachedCharacter.magic_mastery_xp || 0,
+
+              // Stats derivados calculados
+              critical_chance: cachedCharacter.critical_chance || 0,
+              critical_damage: cachedCharacter.critical_damage || 0,
+              magic_damage_bonus: 0,
+              magic_attack: 0,
+              double_attack_chance: 0,
+
+              // Stats base para exibição
+              base_hp: cachedCharacter.hp,
+              base_max_hp: cachedCharacter.max_hp,
+              base_mana: cachedCharacter.mana,
+              base_max_mana: cachedCharacter.max_mana,
+              base_atk: cachedCharacter.atk,
+              base_def: cachedCharacter.def,
+              base_speed: cachedCharacter.speed,
+
+              // Bônus de equipamentos para exibição
+              equipment_hp_bonus: 0,
+              equipment_mana_bonus: 0,
+              equipment_atk_bonus: 0,
+              equipment_def_bonus: 0,
+              equipment_speed_bonus: 0,
+            };
+
+            // Carregar magias equipadas de forma assíncrona apenas se necessário
+            try {
+              const spellsResponse = await import('./spell.service').then(m =>
+                m.SpellService.getCharacterEquippedSpells(characterId)
+              );
+              gamePlayer.spells =
+                spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
+            } catch (spellError) {
+              console.warn('[CharacterService] Erro ao carregar magias (não crítico):', spellError);
+              gamePlayer.spells = [];
+            }
+
+            console.log(
+              `[CharacterService] GamePlayer criado a partir do cache (${Math.round(cacheAge / 1000)}s atrás) para: ${gamePlayer.name}`
+            );
+            return { success: true, error: null, data: gamePlayer };
+          } else {
+            console.log(
+              `[CharacterService] Cache expirado (${Math.round(cacheAge / 1000)}s) - buscando dados atualizados`
+            );
+          }
+        }
+      }
+
+      // FALLBACK: Buscar dados básicos apenas se não estiver em cache ou cache expirado
+      console.log(
+        `[CharacterService] Cache miss ou expirado - buscando dados do banco para: ${characterId}`
+      );
+
       const { data: charData, error: charError } = await supabase
         .from('characters')
         .select('*')
@@ -464,7 +592,7 @@ export class CharacterService {
         };
       }
 
-      // Calcular stats derivados
+      // Calcular stats derivados apenas se necessário
       const derivedStats = await CharacterStatsService.calculateDerivedStats(charData);
 
       // Carregar magias equipadas
@@ -552,6 +680,24 @@ export class CharacterService {
         equipment_speed_bonus: 0,
       };
 
+      // IMPORTANTE: Atualizar cache com os novos dados
+      const characterForCache: Character = {
+        ...charData,
+        hp: derivedStats.hp,
+        max_hp: derivedStats.max_hp,
+        mana: derivedStats.mana,
+        max_mana: derivedStats.max_mana,
+        atk: derivedStats.atk,
+        def: derivedStats.def,
+        speed: derivedStats.speed,
+        critical_chance: derivedStats.critical_chance,
+        critical_damage: derivedStats.critical_damage,
+      };
+      CharacterCacheService.setCachedCharacter(characterId, characterForCache);
+
+      console.log(
+        `[CharacterService] GamePlayer criado a partir do banco para: ${gamePlayer.name}`
+      );
       return { success: true, error: null, data: gamePlayer };
     } catch (error) {
       console.error('Erro ao buscar personagem para o jogo:', error);

@@ -184,7 +184,7 @@ export class CharacterHealingService {
       }
 
       const currentTime = new Date();
-      const { hp, mana } = this.calculateAutoHeal(character, currentTime);
+      const { hp, mana } = CharacterHealingService.calculateAutoHeal(character, currentTime);
 
       // Se não houve cura, retornar sem atualizar
       if (hp === character.hp && mana === character.mana) {
@@ -201,13 +201,17 @@ export class CharacterHealingService {
       }
 
       // Atualizar HP e Mana
-      const updateResult = await this.updateCharacterHpMana(characterId, hp, mana);
+      const updateResult = await CharacterHealingService.updateCharacterHpMana(
+        characterId,
+        hp,
+        mana
+      );
       if (!updateResult.success) {
         throw new Error(updateResult.error || 'Erro ao atualizar HP/Mana');
       }
 
       // Atualizar timestamp de atividade
-      await this.updateLastActivity(characterId);
+      await CharacterHealingService.updateLastActivity(characterId);
 
       CharacterCacheService.invalidateCharacterCache(characterId);
 

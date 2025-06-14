@@ -6,6 +6,9 @@ import { CemeteryService } from './cemetery.service';
 import { type EquipmentSlots } from './equipment.model';
 import { type ActionType } from './game-model';
 import { NumberValidator } from '../../utils/number-validator';
+import { SlotService } from './slot.service';
+import { ConsumableService } from './consumable.service';
+import { GameService } from './game.service';
 
 export class BattleService {
   /**
@@ -386,7 +389,6 @@ export class BattleService {
               const slotPosition = parseInt(consumableId.replace('slot_', ''));
               console.log(`[BattleService] Usando poção do slot ${slotPosition}`);
 
-              const { SlotService } = await import('./slot.service');
               const slotResult = await SlotService.consumePotionFromSlot(
                 newState.player.id,
                 slotPosition
@@ -422,8 +424,6 @@ export class BattleService {
               console.log(
                 `[BattleService] Usando consumível direto do inventário: ${consumableId}`
               );
-
-              const { ConsumableService } = await import('./consumable.service');
 
               // Criar uma cópia do player para ser modificada pelo service
               const playerCopy = { ...newState.player };
@@ -485,7 +485,6 @@ export class BattleService {
         // Avançar para o próximo andar
         try {
           console.log('[BattleService] Processando ação de continuar para próximo andar');
-          const { GameService } = await import('./game.service');
           const updatedState = await GameService.advanceToNextFloor(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do avanço
@@ -507,7 +506,6 @@ export class BattleService {
         // Processar evento especial
         try {
           console.log('[BattleService] Processando interação com evento especial');
-          const { GameService } = await import('./game.service');
           const updatedState = await GameService.processSpecialEventInteraction(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do evento

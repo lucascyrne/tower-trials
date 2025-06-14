@@ -1,5 +1,7 @@
 import { type Floor, type FloorType, type GameState, type SpecialEvent } from './game-model';
 import { supabase } from '@/lib/supabase';
+import { MonsterService } from './monster.service';
+import { CharacterService } from './character.service';
 
 export class FloorService {
   private static floorCache: Map<number, Floor> = new Map();
@@ -189,7 +191,6 @@ export class FloorService {
 
     // Gerar inimigo após evento
     try {
-      const { MonsterService } = await import('./monster.service');
       const enemyResult = await MonsterService.getEnemyForFloor(player.floor);
 
       if (!enemyResult.success || !enemyResult.data) {
@@ -201,7 +202,6 @@ export class FloorService {
       // Atualizar stats no banco se necessário
       if (newHp !== player.hp || newMana !== player.mana || newGold !== player.gold) {
         try {
-          const { CharacterService } = await import('./character.service');
           if (newHp !== player.hp || newMana !== player.mana) {
             await CharacterService.updateCharacterHpMana(player.id, newHp, newMana);
           }

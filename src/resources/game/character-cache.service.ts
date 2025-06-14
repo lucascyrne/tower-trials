@@ -73,6 +73,12 @@ export class CharacterCacheService {
     }
   }
 
+  // NOVO: Obter timestamp do cache para verificação de idade
+  static getCacheTimestamp(characterId: string): number | null {
+    const cached = this.characterCache.get(characterId);
+    return cached ? cached.timestamp : null;
+  }
+
   // === CACHE DE USUÁRIO ===
 
   static getCachedUserCharacters(userId: string): { characters: Character[]; isValid: boolean } {
@@ -171,6 +177,13 @@ export class CharacterCacheService {
         console.log(
           `[CharacterCacheService] Cache invalidado para ${idsToInvalidate.length} personagens`
         );
+
+        // NOVO: Detectar invalidações excessivas que podem indicar loops
+        if (idsToInvalidate.length > 5) {
+          console.warn(
+            `[CharacterCacheService] ⚠️ MUITAS INVALIDAÇÕES SIMULTÂNEAS - possível loop infinito detectado`
+          );
+        }
       }
     }, this.INVALIDATION_DELAY);
   }

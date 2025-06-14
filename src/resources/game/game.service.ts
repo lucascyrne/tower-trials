@@ -10,6 +10,9 @@ import { type SkillXpGain } from './skill-xp.service';
 import { MonsterService } from './monster.service';
 import { BattleService } from './battle.service';
 import { CacheService } from './cache.service';
+import { RewardService } from './reward.service';
+import { GameStateService } from './game-state.service';
+import { FloorService } from './floor.service';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -172,7 +175,6 @@ export class GameService {
    * Processar derrota do inimigo
    */
   static async processEnemyDefeat(gameState: GameState): Promise<GameState> {
-    const { RewardService } = await import('./reward.service');
     return RewardService.processEnemyDefeat(gameState);
   }
 
@@ -206,7 +208,6 @@ export class GameService {
    * Avançar para o próximo andar
    */
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
-    const { GameStateService } = await import('./game-state.service');
     return GameStateService.advanceToNextFloor(gameState);
   }
 
@@ -214,7 +215,6 @@ export class GameService {
    * Processar interação com evento especial
    */
   static async processSpecialEventInteraction(gameState: GameState): Promise<GameState> {
-    const { FloorService } = await import('./floor.service');
     return FloorService.processSpecialEventInteraction(gameState);
   }
 
@@ -222,7 +222,6 @@ export class GameService {
    * Carregar personagem para o jogo
    */
   static async loadPlayerForGame(characterId: string): Promise<GamePlayer> {
-    const { GameStateService } = await import('./game-state.service');
     return GameStateService.loadPlayerForGame(characterId);
   }
 

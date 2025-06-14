@@ -16,19 +16,30 @@ export class BattleInitializationService {
    */
   static async initializeBattle(
     character: Character,
-    onProgress?: (progress: { step: string; progress: number; message: string }) => void
+    onProgress?: (progress: { step: string; progress: number; message: string }) => void,
+    gamePlayerData?: any // NOVO: Dados já carregados do GamePlayer (opcional)
   ): Promise<InitializationResult> {
     try {
       console.log(`[BattleInit] Iniciando batalha para ${character.name}`);
 
       onProgress?.({ step: 'character', progress: 25, message: 'Carregando personagem...' });
 
-      // 1. Carregar dados do personagem
-      const characterResponse = await CharacterService.getCharacterForGame(character.id);
-      if (!characterResponse.success || !characterResponse.data) {
-        throw new Error(characterResponse.error || 'Falha ao carregar personagem');
+      // OTIMIZADO: Usar dados já carregados se disponíveis, senão buscar
+      let gamePlayer: any;
+
+      if (gamePlayerData && gamePlayerData.id === character.id) {
+        console.log(
+          `[BattleInit] Reutilizando dados de GamePlayer já carregados para ${character.name}`
+        );
+        gamePlayer = gamePlayerData;
+      } else {
+        console.log(`[BattleInit] Carregando dados de GamePlayer para ${character.name}`);
+        const characterResponse = await CharacterService.getCharacterForGame(character.id);
+        if (!characterResponse.success || !characterResponse.data) {
+          throw new Error(characterResponse.error || 'Falha ao carregar personagem');
+        }
+        gamePlayer = characterResponse.data;
       }
-      const gamePlayer = characterResponse.data;
 
       onProgress?.({
         step: 'floor',
@@ -36,7 +47,7 @@ export class BattleInitializationService {
         message: `Carregando andar ${gamePlayer.floor}...`,
       });
 
-      // 2. Carregar dados do andar
+      // 2. Carregar dados do andar (com cache interno do FloorService)
       const floorData = await FloorService.getFloorData(gamePlayer.floor);
       if (!floorData) {
         throw new Error(`Falha ao carregar andar ${gamePlayer.floor}`);
@@ -84,6 +95,9 @@ export class BattleInitializationService {
         characterDeleted: false,
       };
 
+      console.log(
+        `[BattleInit] Batalha inicializada com sucesso para ${character.name} - Andar ${gamePlayer.floor}`
+      );
       return { success: true, gameState };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';

@@ -16,7 +16,11 @@ function CemeteryPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <Button variant="ghost" onClick={() => navigate({ to: '/game/play' })} className="w-fit">
+            <Button
+              variant="ghost"
+              onClick={() => navigate({ to: '/game/play' })}
+              className="w-fit"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar à Seleção
             </Button>

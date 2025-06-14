@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useGame } from '@/resources/game/game-hook';
 import { CharacterService } from '@/resources/game/character.service';
 import type { Character } from '@/resources/game/character.model';
@@ -37,128 +37,138 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
   const gameContext = useGame();
   const { gameState, loadCharacterForHub } = gameContext;
   const { player } = gameState;
+
   const [isLoading, setIsLoading] = useState(true);
-  const [characterLoaded, setCharacterLoaded] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
-  const [showHealNotification, setShowHealNotification] = useState(false);
-  const [healInfo, setHealInfo] = useState<{
-    oldHp: number;
-    newHp: number;
-    character: string;
-  } | null>(null);
+  // Estados removidos - funcionalidade de cura será reativada depois se necessário
+  const showHealNotification = false;
+  const healInfo = null;
 
-  // Debug: Log do estado atual do player e contexto
-  console.log('[GameHub] Estado atual completo:', {
-    player: {
-      id: player.id,
-      name: player.name,
-      level: player.level,
-      gold: player.gold,
-      floor: player.floor,
-      hp: player.hp,
-      max_hp: player.max_hp,
-    },
-    characterId: characterId,
-    gameMode: gameState.mode,
-    hasLoadCharacterForHub: typeof loadCharacterForHub === 'function',
-    gameContextKeys: Object.keys(gameContext),
-  });
+  // Refs simples para controle
+  const mountedRef = useRef(true);
+  const loadingRef = useRef(false);
+  const lastLoadedCharacterRef = useRef<string | null>(null);
 
-  // Carregar personagem selecionado - apenas uma vez
+  // Limpar refs quando o componente for desmontado
   useEffect(() => {
-    const loadSelectedCharacter = async () => {
-      if (!characterId) {
-        console.log('[GameHub] Sem characterId, redirecionando...');
-        navigate({ to: '/game/play' });
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // SIMPLIFICADO: Lógica de carregamento mais direta
+  useEffect(() => {
+    const loadCharacter = async () => {
+      // Verificações básicas
+      if (!characterId || !mountedRef.current) {
+        console.log('[GameHub] characterId não fornecido ou componente desmontado');
+        setIsLoading(false);
         return;
       }
 
       // Evitar carregamentos duplicados
-      if (characterLoaded && player.id === characterId && player.name && player.level > 0) {
-        console.log('[GameHub] Personagem já carregado corretamente:', player.name);
+      if (loadingRef.current && lastLoadedCharacterRef.current === characterId) {
+        console.log('[GameHub] Já carregando este personagem, aguardando...');
+        return;
+      }
+
+      // Verificar se já está no hub com o personagem correto
+      if (
+        gameState.mode === 'hub' &&
+        player.id === characterId &&
+        player.name &&
+        lastLoadedCharacterRef.current === characterId
+      ) {
+        console.log('[GameHub] Personagem já carregado no hub:', player.name);
         setIsLoading(false);
         return;
       }
 
-      try {
-        console.log('[GameHub] Carregando personagem:', characterId);
-        setIsLoading(true);
+      // Iniciar carregamento
+      console.log('[GameHub] Iniciando carregamento do personagem:', characterId);
+      loadingRef.current = true;
+      lastLoadedCharacterRef.current = characterId;
+      setIsLoading(true);
 
-        // Usar o método que retorna dados completos para o jogo
+      try {
+        // Buscar dados do personagem
         const response = await CharacterService.getCharacterForGame(characterId);
 
-        if (response.success && response.data) {
-          console.log('[GameHub] Personagem carregado com sucesso:', {
-            name: response.data.name,
-            level: response.data.level,
-            gold: response.data.gold,
-            floor: response.data.floor,
-            hp: response.data.hp,
-            max_hp: response.data.max_hp,
-          });
+        if (!response.success || !response.data) {
+          throw new Error(response.error || 'Erro ao carregar personagem');
+        }
 
-          // Verificar se houve cura significativa comparando com cache anterior
-          const cachedPlayer = sessionStorage.getItem(`player_${characterId}`);
-          if (cachedPlayer) {
-            try {
-              const previousPlayer = JSON.parse(cachedPlayer);
-              const healAmount = response.data.hp - previousPlayer.hp;
-              const healPercent = (healAmount / response.data.max_hp) * 100;
+        const characterData = response.data;
+        console.log('[GameHub] Dados do personagem obtidos:', characterData.name);
 
-              // Se foi curado significativamente (mais de 5% do HP máximo)
-              if (healAmount > 0 && healPercent >= 5) {
-                setHealInfo({
-                  oldHp: previousPlayer.hp,
-                  newHp: response.data.hp,
-                  character: response.data.name,
-                });
-                setShowHealNotification(true);
+        // Carregar para o hub
+        console.log('[GameHub] Chamando loadCharacterForHub...');
+        await loadCharacterForHub(characterData as Character);
+        console.log('[GameHub] loadCharacterForHub concluído com sucesso');
 
-                // Esconder notificação após 5 segundos
-                setTimeout(() => {
-                  setShowHealNotification(false);
-                }, 5000);
-              }
-            } catch (cacheError) {
-              console.warn('[GameHub] Erro ao processar cache:', cacheError);
-            }
-          }
-
-          // Salvar estado atual para comparação futura
-          sessionStorage.setItem(`player_${characterId}`, JSON.stringify(response.data));
-
-          // Carregar para o hub usando os dados completos
-          await loadCharacterForHub(response.data as Character);
-          setCharacterLoaded(true);
-
-          console.log(
-            '[GameHub] loadCharacterForHub executado, estado após carregamento:',
-            gameState.player
-          );
-        } else {
-          console.error('[GameHub] Erro na resposta do serviço:', response.error);
-          toast.error('Erro ao carregar personagem', {
-            description: response.error,
-          });
-          navigate({ to: '/game/play' });
+        if (mountedRef.current) {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('[GameHub] Erro ao carregar personagem:', error);
-        toast.error('Erro ao carregar personagem');
-        navigate({ to: '/game/play' });
+        if (mountedRef.current) {
+          toast.error('Erro ao carregar personagem', {
+            description: error instanceof Error ? error.message : 'Erro desconhecido',
+          });
+          navigate({ to: '/game/play' });
+        }
       } finally {
-        setIsLoading(false);
+        loadingRef.current = false;
+        console.log('[GameHub] Carregamento finalizado');
       }
     };
 
-    loadSelectedCharacter();
-  }, [characterId]); // Simplificar dependências para evitar loops
+    loadCharacter();
+  }, [characterId, gameState.mode, player.id, player.name, loadCharacterForHub]);
+
+  // EFFECT para detectar quando o estado do hub for atualizado
+  useEffect(() => {
+    if (gameState.mode === 'hub' && player.id === characterId && player.name && isLoading) {
+      console.log('[GameHub] Hub atualizado, finalizando loading');
+      setIsLoading(false);
+    }
+  }, [gameState.mode, player.id, player.name, characterId, isLoading]);
 
   // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-950">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-500"></div>
+      </div>
+    );
+  }
+
+  // CORRIGIDO: Validação de estado mais robusta
+  // Verificar se temos dados suficientes para renderizar o hub
+  const hasValidPlayerData = player && player.id && player.name;
+  const isCorrectCharacter = player.id === characterId;
+  const isInHubMode = gameState.mode === 'hub';
+
+  if (!hasValidPlayerData || !isCorrectCharacter || !isInHubMode) {
+    // Se chegamos aqui, algo deu errado no carregamento
+    console.warn('[GameHub] Estado inválido:', {
+      hasValidPlayerData,
+      isCorrectCharacter,
+      isInHubMode,
+      playerId: player?.id,
+      characterId,
+      gameMode: gameState.mode,
+      playerName: player?.name,
+    });
+
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <div className="text-center text-white">
+          <p>Erro ao carregar dados do personagem</p>
+          <Button onClick={() => navigate({ to: '/game/play' })} className="mt-4">
+            Voltar
+          </Button>
+        </div>
       </div>
     );
   }
@@ -234,7 +244,7 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
           player={player}
           showHealNotification={showHealNotification}
           healInfo={healInfo}
-          onDismissHealNotification={() => setShowHealNotification(false)}
+          onDismissHealNotification={() => {}}
         />
 
         {/* Layout principal mais compacto */}
