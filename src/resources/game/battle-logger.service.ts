@@ -23,7 +23,7 @@ export class BattleLoggerService {
     const battleId = `battle_${playerId}_${floorNumber}_${Date.now()}`;
     this.currentBattleId = battleId;
 
-    this.log('info', 'BattleLogger', `=== NOVA BATALHA INICIADA ===`, {
+    this.log('info', 'BattleLogger', '=== NOVA BATALHA INICIADA ===', {
       battleId,
       playerId,
       floorNumber,
@@ -82,20 +82,14 @@ export class BattleLoggerService {
     const prefix = this.currentBattleId ? `[${this.currentBattleId}]` : '';
     const logMessage = `${prefix}[${service}] ${message}`;
 
-    switch (level) {
-      case 'debug':
-        console.debug(logMessage, data);
-        break;
-      case 'info':
-        console.log(logMessage, data);
-        break;
-      case 'warn':
-        console.warn(logMessage, data);
-        break;
-      case 'error':
-        console.error(logMessage, data);
-        break;
-    }
+    const logFunctions = {
+      debug: console.debug,
+      info: console.log,
+      warn: console.warn,
+      error: console.error,
+    };
+
+    logFunctions[level](logMessage, data);
   }
 
   /**

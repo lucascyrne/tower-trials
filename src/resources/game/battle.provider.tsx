@@ -1,16 +1,16 @@
-import { type ReactNode, createContext, useContext, useCallback, useRef } from 'react';
-import { type ActionType } from '../game-model';
-import { GameService } from '../game.service';
-import { CharacterService } from '../character/character.service';
-import { useGameState } from './game-state.provider';
+import { type ReactNode, createContext, useCallback, useRef } from 'react';
+import { type ActionType } from './game-model';
+import { GameService } from './game.service';
+import { CharacterService } from './character.service';
 import { useGameLog } from './log.provider';
-import { useCharacter } from './character.provider';
+import { useCharacter } from './character-hook';
+import { useGameState } from './game-state-hook';
 
-interface BattleContextType {
+export interface BattleContextType {
   performAction: (action: ActionType, spellId?: string, consumableId?: string) => void;
 }
 
-const BattleContext = createContext<BattleContextType | null>(null);
+export const BattleContext = createContext<BattleContextType | null>(null);
 
 interface BattleProviderProps {
   children: ReactNode;
@@ -277,15 +277,4 @@ export function BattleProvider({ children }: BattleProviderProps) {
   );
 
   return <BattleContext.Provider value={{ performAction }}>{children}</BattleContext.Provider>;
-}
-
-// Hook personalizado para usar o contexto
-export function useBattle() {
-  const context = useContext(BattleContext);
-
-  if (!context) {
-    throw new Error('useBattle deve ser usado dentro de um BattleProvider');
-  }
-
-  return context;
 }

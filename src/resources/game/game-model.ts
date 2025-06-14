@@ -1,8 +1,8 @@
-import { type MonsterBehavior } from './models/monster.model';
-import { type PlayerSpell, type ActiveEffects } from './models/spell.model';
-import { type MonsterDropChance } from './models/monster.model';
-import { type CharacterConsumable } from './models/consumable.model';
-import { type BattleSession, type TurnControl } from './models/game-battle.model';
+import { type MonsterBehavior } from './monster.model';
+import { type PlayerSpell, type ActiveEffects } from './spell.model';
+import { type MonsterDropChance } from './monster.model';
+import { type CharacterConsumable } from './consumable.model';
+import { type BattleSession, type TurnControl } from './game-battle.model';
 
 export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event' | 'fled';
 export type ActionType =

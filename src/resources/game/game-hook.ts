@@ -1,8 +1,8 @@
-import { useGameState } from './providers/game-state.provider';
-import { useGameLog } from './providers/log.provider';
-import { useCharacter } from './providers/character.provider';
-import { useBattle } from './providers/battle.provider';
-import { useEvent } from './providers/event.provider';
+import { useGameState } from './game-state-hook';
+import { useGameLog } from './log.provider';
+import { useCharacter } from './character-hook';
+import { useBattle } from './battle-hook';
+import { useEvent } from './event-hook';
 
 export function useGame() {
   const gameState = useGameState();
@@ -115,9 +115,7 @@ export function useGame() {
     saveProgress: async () => {
       // TODO: Implement save progress if needed
     },
-    updatePlayerConsumables: (
-      consumables: import('./models/consumable.model').CharacterConsumable[]
-    ) => {
+    updatePlayerConsumables: (consumables: import('./consumable.model').CharacterConsumable[]) => {
       gameState.setGameState({
         ...gameState.gameState,
         player: {
@@ -129,8 +127,8 @@ export function useGame() {
   };
 }
 
-export { useGameState } from './providers/game-state.provider';
-export { useGameLog } from './providers/log.provider';
-export { useCharacter } from './providers/character.provider';
-export { useBattle } from './providers/battle.provider';
-export { useEvent } from './providers/event.provider';
+export { useGameState } from './game-state-hook';
+export { useGameLog } from './log.provider';
+export { useCharacter } from './character-hook';
+export { useBattle } from './battle-hook';
+export { useEvent } from './event-hook';

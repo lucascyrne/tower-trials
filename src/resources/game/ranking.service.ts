@@ -75,26 +75,17 @@ export class RankingService {
     try {
       const offset = (page - 1) * limit;
       console.log(
-        `[RankingService] Buscando ranking global - modo: ${mode}, filtro: ${statusFilter}, nome: ${nameFilter}, página: ${page}, limite: ${limit}`
+        `[RankingService] Ranking global - modo: ${mode}, filtro: ${statusFilter}, página: ${page}`
       );
 
-      let functionName: string;
+      const functionMap = {
+        floor: 'get_dynamic_ranking_by_highest_floor',
+        level: 'get_dynamic_ranking_by_level',
+        gold: 'get_dynamic_ranking_by_gold',
+      };
 
-      switch (mode) {
-        case 'floor':
-          functionName = 'get_dynamic_ranking_by_highest_floor';
-          break;
-        case 'level':
-          functionName = 'get_dynamic_ranking_by_level';
-          break;
-        case 'gold':
-          functionName = 'get_dynamic_ranking_by_gold';
-          break;
-        default:
-          functionName = 'get_dynamic_ranking_by_floor';
-      }
-
-      console.log(`[RankingService] Chamando função: ${functionName}`);
+      const functionName = functionMap[mode];
+      console.log(`[RankingService] Função: ${functionName}`);
 
       const { data, error } = await supabase.rpc(functionName, {
         p_limit: limit,
@@ -104,13 +95,11 @@ export class RankingService {
       });
 
       if (error) {
-        console.error(`[RankingService] Erro na função ${functionName}:`, error);
+        console.error(`[RankingService] Erro:`, error);
         throw error;
       }
 
-      console.log(`[RankingService] Dados recebidos:`, data?.length || 0, 'entradas');
-      console.log(`[RankingService] Primeiras 3 entradas:`, data?.slice(0, 3));
-
+      console.log(`[RankingService] ${data?.length || 0} entradas recebidas`);
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Erro ao buscar ranking global:', error);
@@ -139,12 +128,11 @@ export class RankingService {
       });
 
       if (error) {
-        console.error(`[RankingService] Erro ao contar entradas:`, error);
+        console.error(`[RankingService] Erro ao contar:`, error);
         throw error;
       }
 
-      console.log(`[RankingService] Total de entradas: ${data}`);
-
+      console.log(`[RankingService] Total: ${data}`);
       return { data: data || 0, error: null };
     } catch (error) {
       console.error('Erro ao contar entradas do ranking:', error);
@@ -163,7 +151,7 @@ export class RankingService {
     limit: number = 10
   ): Promise<ServiceResponse<RankingEntry[]>> {
     try {
-      console.log(`[RankingService] Buscando histórico do usuário: ${userId}, limite: ${limit}`);
+      console.log(`[RankingService] Histórico do usuário: ${userId}, limite: ${limit}`);
 
       const { data, error } = await supabase.rpc('get_dynamic_user_ranking_history', {
         p_user_id: userId,
@@ -171,12 +159,11 @@ export class RankingService {
       });
 
       if (error) {
-        console.error(`[RankingService] Erro no histórico do usuário:`, error);
+        console.error(`[RankingService] Erro no histórico:`, error);
         throw error;
       }
 
-      console.log(`[RankingService] Histórico do usuário recebido:`, data?.length || 0, 'entradas');
-
+      console.log(`[RankingService] ${data?.length || 0} entradas do histórico`);
       return { data: data || [], error: null };
     } catch (error) {
       console.error('Erro ao buscar ranking do usuário:', error);
@@ -200,16 +187,14 @@ export class RankingService {
     }>
   > {
     try {
-      console.log(`[RankingService] Buscando estatísticas do usuário: ${userId}`);
+      console.log(`[RankingService] Estatísticas do usuário: ${userId}`);
 
       const { data, error } = await supabase
-        .rpc('get_dynamic_user_stats', {
-          p_user_id: userId,
-        })
+        .rpc('get_dynamic_user_stats', { p_user_id: userId })
         .single();
 
       if (error) {
-        console.error(`[RankingService] Erro nas estatísticas do usuário:`, error);
+        console.error(`[RankingService] Erro nas estatísticas:`, error);
         throw error;
       }
 
@@ -222,8 +207,7 @@ export class RankingService {
         aliveCharacters: statsData?.alive_characters || 0,
       };
 
-      console.log(`[RankingService] Estatísticas do usuário recebidas:`, stats);
-
+      console.log(`[RankingService] Estatísticas:`, stats);
       return { data: stats, error: null };
     } catch (error) {
       console.error('Erro ao buscar estatísticas do usuário:', error);

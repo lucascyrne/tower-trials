@@ -5,10 +5,10 @@ import {
   type CraftingRecipe,
   type MonsterDrop,
   type CraftingIngredient,
-} from './models/consumable.model';
+} from './consumable.model';
 import { type GamePlayer } from './game-model';
-import { type MonsterDropChance } from './models/monster.model';
-import { type Character } from './models/character.model';
+import { type MonsterDropChance } from './monster.model';
+import { type Character } from './character.model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -181,19 +181,29 @@ export class ConsumableService {
         case 'potion':
           // Poção de HP
           if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
-            const oldHp = character.hp;
-            const newHp = Math.min(character.max_hp, character.hp + consumable.effect_value);
+            const oldHp = Math.floor(Number(character.hp) || 0);
+            const maxHp = Math.floor(Number(character.max_hp) || 1);
+            const effectValue = Math.floor(Number(consumable.effect_value) || 0);
+
+            const newHp = Math.min(maxHp, oldHp + effectValue);
             const actualHealing = newHp - oldHp;
 
             character.hp = newHp;
             statsToUpdate.hp = newHp;
             message =
               actualHealing > 0 ? `Recuperou ${actualHealing} HP!` : 'HP já estava no máximo!';
+
+            console.log(
+              `[ConsumableService] HP: ${oldHp} + ${effectValue} = ${newHp} (max: ${maxHp})`
+            );
           }
           // Poção de Mana
           else if (consumable.description.includes('Mana')) {
-            const oldMana = character.mana;
-            const newMana = Math.min(character.max_mana, character.mana + consumable.effect_value);
+            const oldMana = Math.floor(Number(character.mana) || 0);
+            const maxMana = Math.floor(Number(character.max_mana) || 1);
+            const effectValue = Math.floor(Number(consumable.effect_value) || 0);
+
+            const newMana = Math.min(maxMana, oldMana + effectValue);
             const actualRecovery = newMana - oldMana;
 
             character.mana = newMana;
@@ -202,6 +212,10 @@ export class ConsumableService {
               actualRecovery > 0
                 ? `Recuperou ${actualRecovery} Mana!`
                 : 'Mana já estava no máximo!';
+
+            console.log(
+              `[ConsumableService] Mana: ${oldMana} + ${effectValue} = ${newMana} (max: ${maxMana})`
+            );
           }
           break;
 

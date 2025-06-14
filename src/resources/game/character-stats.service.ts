@@ -1,5 +1,5 @@
-import { type Character } from '../models/character.model';
-import { EquipmentService } from '../equipment.service';
+import { type Character } from './character.model';
+import { EquipmentService } from './equipment.service';
 
 interface DerivedStats {
   hp: number;
@@ -28,27 +28,57 @@ interface BuildAnalysis {
 }
 
 export class CharacterStatsService {
-  /**
-   * Calcular stats derivados usando a nova função que inclui habilidades
-   */
+  private static calculateEquipmentBonusLocal(equipmentSlots: any): {
+    hp: number;
+    mana: number;
+    atk: number;
+    def: number;
+    speed: number;
+    critical_chance: number;
+    critical_damage: number;
+    magic_damage: number;
+    double_attack_chance: number;
+  } {
+    const bonus = {
+      hp: 0,
+      mana: 0,
+      atk: 0,
+      def: 0,
+      speed: 0,
+      critical_chance: 0,
+      critical_damage: 0,
+      magic_damage: 0,
+      double_attack_chance: 0,
+    };
+
+    if (!equipmentSlots) return bonus;
+
+    const slots = [
+      equipmentSlots.main_hand,
+      equipmentSlots.off_hand,
+      equipmentSlots.armor,
+      equipmentSlots.accessory,
+    ];
+
+    slots.forEach(equipment => {
+      if (equipment) {
+        bonus.hp += equipment.hp_bonus || 0;
+        bonus.mana += equipment.mana_bonus || 0;
+        bonus.atk += equipment.atk_bonus || 0;
+        bonus.def += equipment.def_bonus || 0;
+        bonus.speed += equipment.speed_bonus || 0;
+        bonus.critical_chance += equipment.critical_chance_bonus || 0;
+        bonus.critical_damage += equipment.critical_damage_bonus || 0;
+        bonus.magic_damage += equipment.magic_damage_bonus || 0;
+        bonus.double_attack_chance += equipment.double_attack_chance_bonus || 0;
+      }
+    });
+
+    return bonus;
+  }
+
   static async calculateDerivedStats(character: Character): Promise<DerivedStats> {
     try {
-      console.log('[CharacterStatsService] Calculando stats derivados para:', {
-        id: character.id,
-        level: character.level,
-        strength: character.strength,
-        dexterity: character.dexterity,
-        intelligence: character.intelligence,
-        wisdom: character.wisdom,
-        vitality: character.vitality,
-        luck: character.luck,
-        sword_mastery: character.sword_mastery,
-        axe_mastery: character.axe_mastery,
-        blunt_mastery: character.blunt_mastery,
-        defense_mastery: character.defense_mastery,
-        magic_mastery: character.magic_mastery,
-      });
-
       return await this.calculateDerivedStatsFallback(character);
     } catch (error) {
       console.error('[CharacterStatsService] Erro no cálculo de stats derivados:', error);
@@ -56,9 +86,6 @@ export class CharacterStatsService {
     }
   }
 
-  /**
-   * Cálculo de fallback com sistema anti-mono-build balanceado
-   */
   private static async calculateDerivedStatsFallback(character: Character): Promise<DerivedStats> {
     const level = character.level;
     const str = character.strength || 10;
@@ -68,10 +95,7 @@ export class CharacterStatsService {
     const vit = character.vitality || 10;
     const luck = character.luck || 10;
 
-    // =====================================
-    // SISTEMA ANTI-MONO-BUILD
-    // =====================================
-
+    // Sistema anti-mono-build
     const totalAttributes = str + dex + int + wis + vit + luck;
 
     // Calcular diversidade de atributos (0-1, onde 1 = perfeitamente balanceado)
@@ -103,15 +127,15 @@ export class CharacterStatsService {
       monoPenalty = 0.7; // Penalidade de 30%
     }
 
-    console.log(
-      `[CharacterStatsService] Build analysis - Diversidade: ${(attributeDiversity * 100).toFixed(1)}%, Mono-penalty: ${monoPenalty}`
-    );
+    // CORRIGIDO: Log apenas em debug mode
+    const isDebugMode = typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+    if (isDebugMode) {
+      console.log(
+        `[CharacterStatsService] Build - Diversidade: ${(attributeDiversity * 100).toFixed(1)}%, Mono-penalty: ${monoPenalty}`
+      );
+    }
 
-    // =====================================
-    // ESCALAMENTO LOGARÍTMICO COM SINERGIAS
-    // =====================================
-
-    // Escalamento com diminishing returns mais agressivos
+    // Escalamento com diminishing returns
     const strScaling = Math.pow(str, 1.2) * diversityBonus * monoPenalty;
     const dexScaling = Math.pow(dex, 1.15) * diversityBonus * monoPenalty;
     const intScaling = Math.pow(int, 1.25) * diversityBonus * monoPenalty;
@@ -131,20 +155,14 @@ export class CharacterStatsService {
     const defMasteryBonus = Math.pow(defenseMastery, 1.2) * diversityBonus;
     const magicMasteryBonus = Math.pow(magicMastery, 1.15) * diversityBonus;
 
-    // =====================================
-    // BASES REBALANCEADAS
-    // =====================================
-
+    // Bases
     const baseHp = 50 + level * 2;
     const baseMana = 20 + level * 1;
     const baseAtk = 2 + level;
     const baseDef = 1 + level;
     const baseSpeed = 3 + level;
 
-    // =====================================
-    // BÔNUS DE EQUIPAMENTOS COM DUAL WIELDING
-    // =====================================
-
+    // Bônus de equipamentos
     let equipmentBonus = {
       hp: 0,
       mana: 0,
@@ -158,89 +176,72 @@ export class CharacterStatsService {
     };
 
     try {
-      // Buscar equipamentos do personagem
       const equipmentSlots = await EquipmentService.getEquippedItems(character.id);
 
       if (equipmentSlots) {
-        // Usar a nova função que considera dual wielding
-        const { calculateEquipmentBonus } = await import('../equipment.service');
-        equipmentBonus = calculateEquipmentBonus(equipmentSlots);
+        // Calcular bônus localmente para evitar importação dinâmica
+        equipmentBonus = this.calculateEquipmentBonusLocal(equipmentSlots);
 
-        console.log(`[CharacterStatsService] Bônus de equipamentos calculado:`, {
-          atk: equipmentBonus.atk,
-          def: equipmentBonus.def,
-          speed: equipmentBonus.speed,
-          critical_chance: equipmentBonus.critical_chance,
-          magic_damage: equipmentBonus.magic_damage,
-        });
+        // CORRIGIDO: Log apenas em debug mode
+        const isDebugMode =
+          typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+        if (isDebugMode) {
+          console.log(`[CharacterStatsService] Bônus de equipamentos:`, {
+            atk: equipmentBonus.atk,
+            def: equipmentBonus.def,
+            speed: equipmentBonus.speed,
+            critical_chance: equipmentBonus.critical_chance,
+            magic_damage: equipmentBonus.magic_damage,
+          });
+        }
       }
     } catch (error) {
       console.error('[CharacterStatsService] Erro ao calcular bônus de equipamentos:', error);
     }
 
-    // =====================================
-    // CÁLCULO DE STATS COM SINERGIAS
-    // =====================================
-
-    // HP: Vitalidade + bônus de level + equipamentos
+    // Cálculo de stats
     const hp = Math.floor(baseHp + vitScaling * 3.5 + equipmentBonus.hp);
     const max_hp = hp;
 
-    // Mana: Inteligência/Sabedoria + bônus de level + equipamentos
     const mana = Math.floor(baseMana + (intScaling + wisScaling) * 1.5 + equipmentBonus.mana);
     const max_mana = mana;
 
-    // Ataque: Força + maestria de arma + equipamentos
     const atk = Math.floor(baseAtk + strScaling * 2.2 + weaponMasteryBonus + equipmentBonus.atk);
 
-    // Magic Attack separado (baseado em INT + maestria mágica)
     const magic_attack = Math.floor(
       intScaling * 1.8 + magicMasteryBonus + equipmentBonus.magic_damage
     );
 
-    // Defesa: Destreza + maestria defensiva + equipamentos
     const def = Math.floor(baseDef + dexScaling * 1.5 + defMasteryBonus + equipmentBonus.def);
 
-    // Velocidade: Destreza + equipamentos
     const speed = Math.floor(baseSpeed + dexScaling * 1.8 + equipmentBonus.speed);
 
-    // =====================================
-    // STATS DERIVADOS AVANÇADOS
-    // =====================================
-
-    // Chance crítica: Destreza + Sorte + maestria + equipamentos
+    // Stats derivados avançados
     const critical_chance = Math.min(
       95,
       Math.floor(
         5 + // Base 5%
-          dexScaling * 0.3 + // Destreza contribui
-          luckScaling * 0.5 + // Sorte contribui mais
-          weaponMasteryBonus * 0.2 + // Maestria de arma
+          dexScaling * 0.3 +
+          luckScaling * 0.5 +
+          weaponMasteryBonus * 0.2 +
           equipmentBonus.critical_chance
       )
     );
 
-    // Dano crítico: Força + maestria + equipamentos
     const critical_damage = Math.floor(
       150 + // Base 150%
-        strScaling * 0.8 + // Força contribui
-        weaponMasteryBonus * 1.2 + // Maestria contribui mais
+        strScaling * 0.8 +
+        weaponMasteryBonus * 1.2 +
         equipmentBonus.critical_damage
     );
 
-    // Bônus de dano mágico: Inteligência + maestria mágica + equipamentos
     const magic_damage_bonus = Math.floor(
       intScaling * 1.2 + magicMasteryBonus * 1.5 + equipmentBonus.magic_damage
     );
 
-    // Chance de ataque duplo (dual wielding)
     const double_attack_chance = Math.min(
       25,
-      Math.floor(
-        dexScaling * 0.2 + // Destreza base
-          luckScaling * 0.3 + // Sorte contribui
-          equipmentBonus.double_attack_chance
-      )
+      Math.floor(dexScaling * 0.2 + luckScaling * 0.3 + equipmentBonus.double_attack_chance)
     );
 
     const stats = {
@@ -258,12 +259,17 @@ export class CharacterStatsService {
       double_attack_chance,
     };
 
-    console.log('[CharacterStatsService] Stats derivados calculados:', {
-      level,
-      diversityBonus: (diversityBonus * 100 - 100).toFixed(1) + '%',
-      monoPenalty: (monoPenalty * 100).toFixed(1) + '%',
-      final_stats: stats,
-    });
+    // CORRIGIDO: Log apenas em debug mode
+    const isDebugModeEnd =
+      typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+    if (isDebugModeEnd) {
+      console.log('[CharacterStatsService] Stats derivados calculados:', {
+        level,
+        diversityBonus: (diversityBonus * 100 - 100).toFixed(1) + '%',
+        monoPenalty: (monoPenalty * 100).toFixed(1) + '%',
+        final_stats: stats,
+      });
+    }
 
     return stats;
   }

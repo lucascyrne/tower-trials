@@ -3,8 +3,9 @@ import { SkillXpService, type SkillXpGain } from './skill-xp.service';
 import { SpellService } from './spell.service';
 import { EquipmentService } from './equipment.service';
 import { CemeteryService } from './cemetery.service';
-import { type EquipmentSlots } from './models/equipment.model';
+import { type EquipmentSlots } from './equipment.model';
 import { type ActionType } from './game-model';
+import { NumberValidator } from '../../utils/number-validator';
 
 export class BattleService {
   /**
@@ -377,28 +378,92 @@ export class BattleService {
       case 'consumable':
         if (consumableId) {
           try {
-            const { ConsumableService } = await import('./consumable.service');
-            const useResult = await ConsumableService.consumeItem(
-              newState.player.id,
-              consumableId,
-              newState.player
-            );
+            console.log(`[BattleService] Processando consumível: ${consumableId}`);
 
-            if (useResult.success && useResult.data) {
-              message = useResult.data.message;
+            // NOVO: Verificar se é um slot (formato: "slot_X") ou consumível direto
+            if (consumableId.startsWith('slot_')) {
+              // Usar poção do slot
+              const slotPosition = parseInt(consumableId.replace('slot_', ''));
+              console.log(`[BattleService] Usando poção do slot ${slotPosition}`);
 
-              gameLogMessages.push({
-                message: useResult.data.message,
-                type: 'player_action',
-              });
+              const { SlotService } = await import('./slot.service');
+              const slotResult = await SlotService.consumePotionFromSlot(
+                newState.player.id,
+                slotPosition
+              );
 
-              skipTurn = false;
+              if (slotResult.success && slotResult.data) {
+                // CRÍTICO: Atualizar o estado do jogador com os novos valores
+                newState.player = {
+                  ...newState.player,
+                  hp: Math.floor(Number(slotResult.data.new_hp) || newState.player.hp),
+                  mana: Math.floor(Number(slotResult.data.new_mana) || newState.player.mana),
+                };
 
-              console.log(`[BattleService] Poção usada com sucesso - turno NÃO consumido`);
+                message = slotResult.data.message;
+
+                gameLogMessages.push({
+                  message: slotResult.data.message,
+                  type: 'player_action',
+                });
+
+                skipTurn = false;
+
+                console.log(
+                  `[BattleService] Poção do slot usada com sucesso - HP: ${newState.player.hp}, Mana: ${newState.player.mana}`
+                );
+              } else {
+                message = slotResult.error || 'Erro ao usar poção do slot.';
+                skipTurn = true;
+                console.error(`[BattleService] Erro ao usar poção do slot:`, slotResult.error);
+              }
             } else {
-              message = useResult.error || 'Erro ao usar item consumível.';
-              skipTurn = true;
+              // Usar consumível direto do inventário
+              console.log(
+                `[BattleService] Usando consumível direto do inventário: ${consumableId}`
+              );
+
+              const { ConsumableService } = await import('./consumable.service');
+
+              // Criar uma cópia do player para ser modificada pelo service
+              const playerCopy = { ...newState.player };
+
+              const useResult = await ConsumableService.consumeItem(
+                newState.player.id,
+                consumableId,
+                playerCopy
+              );
+
+              if (useResult.success && useResult.data) {
+                // CRÍTICO: Atualizar o estado do jogador com os valores modificados
+                newState.player = {
+                  ...newState.player,
+                  hp: Math.floor(Number(playerCopy.hp) || newState.player.hp),
+                  mana: Math.floor(Number(playerCopy.mana) || newState.player.mana),
+                  // Garantir que outros valores numéricos sejam válidos
+                  atk: Math.floor(Number(playerCopy.atk) || newState.player.atk),
+                  def: Math.floor(Number(playerCopy.def) || newState.player.def),
+                };
+
+                message = useResult.data.message;
+
+                gameLogMessages.push({
+                  message: useResult.data.message,
+                  type: 'player_action',
+                });
+
+                skipTurn = false;
+
+                console.log(
+                  `[BattleService] Consumível direto usado com sucesso - HP: ${newState.player.hp}, Mana: ${newState.player.mana}`
+                );
+              } else {
+                message = useResult.error || 'Erro ao usar item consumível.';
+                skipTurn = true;
+              }
             }
+
+            console.log(`[BattleService] Turno NÃO consumido para ação de consumível`);
           } catch (error) {
             console.error('[BattleService] Erro ao usar consumível:', error);
             message = 'Erro ao usar item consumível.';
@@ -477,7 +542,22 @@ export class BattleService {
       newState.player.potionUsedThisTurn = false;
     }
 
+    // CRÍTICO: Validar todos os valores numéricos do jogador antes de retornar
+    newState.player = NumberValidator.validatePlayerStats(
+      newState.player as unknown as Record<string, unknown>
+    ) as unknown as typeof newState.player;
+
+    // CRÍTICO: Validar valores do inimigo se existir
+    if (newState.currentEnemy) {
+      newState.currentEnemy = NumberValidator.validateEnemyStats(
+        newState.currentEnemy as unknown as Record<string, unknown>
+      ) as unknown as typeof newState.currentEnemy;
+    }
+
     console.log(`[BattleService] Ação processada: ${action}, mensagem: ${message}`);
+    console.log(
+      `[BattleService] Player HP: ${newState.player.hp}/${newState.player.max_hp}, Mana: ${newState.player.mana}/${newState.player.max_mana}`
+    );
     console.log(`[BattleService] skipTurn FINAL: ${skipTurn} (poções nunca consomem turno)`);
     console.log(`[BattleService] Skill XP gains:`, skillXpGains.length);
 

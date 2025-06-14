@@ -23,10 +23,9 @@ export class CharacterCheckpointService {
   ): Promise<ServiceResponse<null>> {
     try {
       console.log(
-        `[CharacterCheckpointService] Atualizando andar seguramente - ID: ${characterId}, Andar: ${newFloor}`
+        `[CharacterCheckpointService] Atualizando andar - ID: ${characterId}, Andar: ${newFloor}`
       );
 
-      // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
 
       const { error } = await supabaseAdmin.rpc('secure_advance_floor', {
@@ -42,10 +41,8 @@ export class CharacterCheckpointService {
         throw error;
       }
 
-      // OTIMIZADO: Invalidar cache usando sistema com throttling
       CharacterCacheService.invalidateCharacterCache(characterId);
-
-      console.log(`[CharacterCheckpointService] Andar atualizado com segurança para ${newFloor}`);
+      console.log(`[CharacterCheckpointService] Andar atualizado para ${newFloor}`);
 
       return { data: null, error: null, success: true };
     } catch (error) {
@@ -64,12 +61,10 @@ export class CharacterCheckpointService {
    */
   static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<Checkpoint[]>> {
     try {
-      console.log(
-        `[CharacterCheckpointService] Obtendo checkpoints para personagem ${characterId}`
-      );
+      console.log(`[CharacterCheckpointService] Obtendo checkpoints para ${characterId}`);
 
       try {
-        // Tentar usar a nova função RPC específica para personagens
+        // Tentar usar a nova função RPC específica
         const { data, error } = await supabase.rpc('get_character_unlocked_checkpoints', {
           p_character_id: characterId,
         });
@@ -80,14 +75,10 @@ export class CharacterCheckpointService {
             description: row.description,
           }));
 
-          console.log(`[CharacterCheckpointService] Checkpoints obtidos via RPC:`, checkpoints);
+          console.log(`[CharacterCheckpointService] Checkpoints obtidos:`, checkpoints);
           return { data: checkpoints, error: null, success: true };
         } else if (error) {
-          console.warn(
-            `[CharacterCheckpointService] Erro na RPC get_character_unlocked_checkpoints:`,
-            error
-          );
-          // Continuar para fallback
+          console.warn(`[CharacterCheckpointService] Erro na RPC:`, error);
         }
       } catch (rpcError) {
         console.warn(
@@ -96,13 +87,11 @@ export class CharacterCheckpointService {
         );
       }
 
-      // Fallback: obter o personagem e calcular checkpoints manualmente
-      console.log(`[CharacterCheckpointService] Usando fallback para calcular checkpoints`);
+      // Fallback: calcular checkpoints manualmente
+      console.log(`[CharacterCheckpointService] Usando fallback`);
 
-      // Buscar personagem do cache primeiro
       let character = CharacterCacheService.getCachedCharacter(characterId);
 
-      // Se não está em cache, buscar do banco
       if (!character) {
         const { data: charData, error } = await supabase
           .from('characters')
@@ -118,7 +107,7 @@ export class CharacterCheckpointService {
         return { data: null, error: 'Personagem não encontrado', success: false };
       }
 
-      // Usar highest_floor se disponível, senão usar floor atual
+      // Usar highest_floor se disponível
       const highestFloor = Math.max(
         character.floor,
         ('highest_floor' in character
@@ -127,38 +116,32 @@ export class CharacterCheckpointService {
       );
 
       console.log(
-        `[CharacterCheckpointService] Andar atual: ${character.floor}, Highest floor: ${highestFloor}`
+        `[CharacterCheckpointService] Andar atual: ${character.floor}, Highest: ${highestFloor}`
       );
 
-      // Gerar checkpoints manualmente com nova lógica
+      // Gerar checkpoints
       const checkpoints: Checkpoint[] = [];
 
       // Sempre incluir o andar 1
       checkpoints.push({ floor: 1, description: 'Andar 1 - Início da Torre' });
 
-      // Adicionar checkpoints pós-boss: 11, 21, 31, 41, 51, etc.
-      // Só incluir se o jogador passou do boss correspondente
+      // Checkpoints pós-boss: 11, 21, 31, 41, 51, etc.
       for (let i = 1; i <= 100; i++) {
-        // Até 100 bosses (andar 1000)
         const bossFloor = i * 10;
         const checkpointFloor = bossFloor + 1;
 
-        // Se o jogador passou do boss (está no andar do checkpoint ou além)
         if (highestFloor >= checkpointFloor) {
           checkpoints.push({
             floor: checkpointFloor,
             description: `Andar ${checkpointFloor} - Checkpoint Pós-Boss`,
           });
-          console.log(
-            `[CharacterCheckpointService] Checkpoint ${checkpointFloor} desbloqueado (passou do boss ${bossFloor})`
-          );
+          console.log(`[CharacterCheckpointService] Checkpoint ${checkpointFloor} desbloqueado`);
         } else {
-          // Se não passou deste boss, não há mais checkpoints
           break;
         }
       }
 
-      console.log(`[CharacterCheckpointService] Checkpoints finais calculados:`, checkpoints);
+      console.log(`[CharacterCheckpointService] Checkpoints calculados:`, checkpoints);
       return { data: checkpoints, error: null, success: true };
     } catch (error) {
       console.error('Erro ao obter checkpoints:', error instanceof Error ? error.message : error);
@@ -178,7 +161,7 @@ export class CharacterCheckpointService {
     checkpointFloor: number
   ): Promise<ServiceResponse<null>> {
     try {
-      // Verificar se o checkpoint é válido (andar 1 ou andares pós-boss: 11, 21, 31, etc.)
+      // Verificar se o checkpoint é válido
       const isValidCheckpoint =
         checkpointFloor === 1 || (checkpointFloor > 10 && (checkpointFloor - 1) % 10 === 0);
 
@@ -197,16 +180,15 @@ export class CharacterCheckpointService {
         return { data: null, error: 'Checkpoint não desbloqueado', success: false };
       }
 
-      // Atualizar o andar do personagem usando a função segura
+      // Atualizar o andar do personagem
       const updateResponse = await this.updateCharacterFloor(characterId, checkpointFloor);
       if (!updateResponse.success) {
         return updateResponse;
       }
 
-      // Buscar personagem para obter HP/Mana máximos
+      // Curar personagem ao máximo
       const character = CharacterCacheService.getCachedCharacter(characterId);
       if (character) {
-        // Curar personagem ao máximo
         await CharacterHealingService.updateCharacterHpMana(
           characterId,
           character.max_hp,
@@ -233,16 +215,15 @@ export class CharacterCheckpointService {
    */
   static async resetCharacterProgress(characterId: string): Promise<ServiceResponse<null>> {
     try {
-      // Usar a função segura para resetar para andar 1
+      // Resetar para andar 1
       const result = await this.updateCharacterFloor(characterId, 1);
       if (!result.success) {
         return result;
       }
 
-      // Buscar personagem para obter HP/Mana máximos
+      // Curar personagem ao máximo
       const character = CharacterCacheService.getCachedCharacter(characterId);
       if (character) {
-        // Curar personagem ao máximo
         await CharacterHealingService.updateCharacterHpMana(
           characterId,
           character.max_hp,
@@ -250,16 +231,9 @@ export class CharacterCheckpointService {
         );
       }
 
-      return {
-        data: null,
-        error: null,
-        success: true,
-      };
+      return { data: null, error: null, success: true };
     } catch (error) {
-      console.error(
-        'Erro ao resetar progresso do personagem:',
-        error instanceof Error ? error.message : error
-      );
+      console.error('Erro ao resetar progresso:', error instanceof Error ? error.message : error);
       return {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao resetar progresso',

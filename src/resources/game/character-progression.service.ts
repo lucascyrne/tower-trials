@@ -4,7 +4,7 @@ import {
   type SkillXpResult,
   type CharacterProgressionInfo,
   type CharacterLimitInfo,
-} from '../models/character.model';
+} from './character.model';
 import { supabase } from '@/lib/supabase';
 import { CharacterCacheService } from './character-cache.service';
 
@@ -97,7 +97,6 @@ export class CharacterProgressionService {
     }>
   > {
     try {
-      // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
 
       const { data, error } = await supabaseAdmin
@@ -110,7 +109,6 @@ export class CharacterProgressionService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem específico
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       // Se houve level up ou slots desbloqueados, invalidar cache do usuário
@@ -153,7 +151,6 @@ export class CharacterProgressionService {
     source: string = 'combat'
   ): Promise<ServiceResponse<number>> {
     try {
-      // Importar o cliente admin apenas quando necessário
       const { supabaseAdmin } = await import('@/lib/supabase');
 
       const { data, error } = await supabaseAdmin
@@ -166,7 +163,6 @@ export class CharacterProgressionService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem específico
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       return {
@@ -238,7 +234,6 @@ export class CharacterProgressionService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       return { data: null, error: null, success: true };

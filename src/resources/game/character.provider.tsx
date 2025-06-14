@@ -1,35 +1,19 @@
 import {
   type ReactNode,
-  createContext,
-  useContext,
   useState,
   useCallback,
   useMemo,
   useEffect,
   useRef,
 } from 'react';
-import { type Character } from '../models/character.model';
-import { CharacterService } from '../character/character.service';
-import { FloorService } from '../floor.service';
-import { GameService } from '../game.service';
-import { useAuth } from '../../auth/auth-hook';
-import { useGameState } from './game-state.provider';
+import { type Character } from './character.model';
+import { CharacterService } from './character.service';
+import { useAuth } from '../auth/auth-hook';
+import { useGameState } from './game-state-hook';
 import { useGameLog } from './log.provider';
 import { toast } from 'sonner';
-import { SpecialEventService } from '../special-event.service';
 
-interface CharacterContextType {
-  characters: Character[];
-  selectedCharacter: Character | null;
-  createCharacter: (name: string) => Promise<void>;
-  selectCharacter: (character: Character) => Promise<void>;
-  loadCharacterForHub: (character: Character) => Promise<void>;
-  initializeBattle: (character: Character, battleKey: string) => Promise<void>;
-  updatePlayerStats: (hp: number, mana: number) => void;
-  reloadCharacters: () => void;
-}
-
-const CharacterContext = createContext<CharacterContextType | null>(null);
+import { CharacterContext, type CharacterContextType } from './character-context';
 
 interface CharacterProviderProps {
   children: ReactNode;
@@ -215,7 +199,27 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
           throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
         }
 
-        const gamePlayer = gamePlayerResponse.data;
+        let gamePlayer = gamePlayerResponse.data;
+
+        // Aplicar cura automática apenas no hub (não na batalha)
+        try {
+          console.log(`[CharacterProvider] Aplicando cura automática para ${gamePlayer.name}`);
+          const healResult = await CharacterService.applyAutoHeal(character.id);
+
+          if (healResult.success && healResult.data && healResult.data.healed) {
+            console.log(
+              `[CharacterProvider] ${gamePlayer.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`
+            );
+            // Atualizar com dados curados
+            gamePlayer = {
+              ...gamePlayer,
+              hp: healResult.data.newHp,
+              mana: healResult.data.character.mana,
+            };
+          }
+        } catch (healError) {
+          console.warn('[CharacterProvider] Erro na cura automática (não crítico):', healError);
+        }
 
         console.log(`[CharacterProvider] Dados do gamePlayer:`, {
           name: gamePlayer.name,
@@ -263,23 +267,20 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
   );
 
   // Função para atualizar stats do jogador
-  const updatePlayerStats = useCallback(
-    (hp: number, mana: number) => {
-      console.log(`[CharacterProvider] Atualizando stats do jogador: HP ${hp}, Mana ${mana}`);
+  const updatePlayerStats = useCallback((hp: number, mana: number) => {
+    console.log(`[CharacterProvider] Atualizando stats do jogador: HP ${hp}, Mana ${mana}`);
 
-      // Usar referência mais recente do gameState para evitar loop infinito
-      const currentState = gameState;
-      setGameState({
-        ...currentState,
-        player: {
-          ...currentState.player,
-          hp: Math.floor(hp),
-          mana: Math.floor(mana),
-        },
-      });
-    },
-    [setGameState]
-  );
+    // Usar referência mais recente do gameState para evitar loop infinito
+    const currentState = gameState;
+    setGameState({
+      ...currentState,
+      player: {
+        ...currentState.player,
+        hp: Math.floor(hp),
+        mana: Math.floor(mana),
+      },
+    });
+  }, []);
 
   // Função para recarregar personagens quando necessário
   const reloadCharacters = useCallback(() => {
@@ -287,124 +288,47 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
     loadingCharactersRef.current = false;
   }, []);
 
-  // NOVA FUNÇÃO: Inicializar batalha com andar e inimigo (COM CONTROLE DE LOOP)
+  // OTIMIZADA: Inicializar batalha de forma simples
   const initializeBattle = useCallback(
     async (character: Character, battleKey: string) => {
       if (initializingBattleRef.current) {
-        console.warn(
-          `[CharacterProvider] Inicialização de batalha já em progresso - ignorando nova tentativa`
-        );
         return;
       }
 
-      if (lastBattleInitRef.current === battleKey) {
-        console.warn(
-          `[CharacterProvider] Batalha já foi inicializada para ${battleKey} - ignorando`
-        );
-        return;
-      }
-
-      // Marcar como em progresso ANTES de qualquer operação assíncrona
       initializingBattleRef.current = true;
       lastBattleInitRef.current = battleKey;
 
       try {
-        console.log(
-          `[CharacterProvider] === INICIALIZANDO BATALHA PARA ${character.name} (${battleKey}) ===`
-        );
         updateLoading('loadProgress', true);
-
         setSelectedCharacter(character);
 
-        // 1. Carregar dados completos do personagem
-        console.log(`[CharacterProvider] Carregando dados do personagem...`);
-        const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
+        const { BattleInitializationService } = await import('./battle-initialization.service');
 
-        if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
-          throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
+        const result = await BattleInitializationService.initializeBattle(character);
+
+        if (!result.success) {
+          throw new Error(result.error || 'Falha na inicialização');
         }
 
-        const gamePlayer = gamePlayerResponse.data;
-        const currentFloor = gamePlayer.floor;
-
-        console.log(`[CharacterProvider] Personagem carregado - Andar atual: ${currentFloor}`);
-
-        // 2. Carregar dados do andar atual
-        console.log(`[CharacterProvider] Carregando dados do andar ${currentFloor}...`);
-        const floorData = await FloorService.getFloorData(currentFloor);
-
-        if (!floorData) {
-          throw new Error(`Erro ao carregar dados do andar ${currentFloor}`);
+        if (!result.gameState) {
+          throw new Error('Estado de jogo não foi gerado');
         }
 
-        console.log(`[CharacterProvider] Dados do andar carregados: ${floorData.description}`);
+        setGameState(result.gameState);
 
-        // 3. Verificar se é andar de evento e se deve gerar evento especial
-        let specialEvent = null;
-        if (floorData.type === 'event' && SpecialEventService.shouldGenerateSpecialEvent('event')) {
-          specialEvent = await FloorService.checkForSpecialEvent(currentFloor);
-        }
-
-        // 4. Gerar inimigo se não houver evento especial
-        let enemy = null;
-        if (!specialEvent) {
-          console.log(`[CharacterProvider] Gerando inimigo para andar ${currentFloor}...`);
-          enemy = await GameService.generateEnemy(currentFloor);
-
-          if (!enemy) {
-            throw new Error(`Erro ao gerar inimigo para o andar ${currentFloor}`);
-          }
-
-          console.log(
-            `[CharacterProvider] Inimigo gerado: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`
-          );
-        }
-
-        // 5. Criar estado do jogo para batalha
-        const battleGameState = {
-          mode: (specialEvent ? 'special_event' : 'battle') as 'special_event' | 'battle',
-          player: gamePlayer,
-          currentFloor: floorData,
-          currentEnemy: enemy,
-          currentSpecialEvent: specialEvent,
-          isPlayerTurn: true,
-          gameMessage: specialEvent
-            ? `Evento especial encontrado: ${specialEvent.name}!`
-            : `Andar ${currentFloor}: ${floorData.description}. Um ${enemy!.name} apareceu!`,
-          highestFloor: Math.max(1, gamePlayer.floor),
-          selectedSpell: null,
-          battleRewards: null,
-          fleeSuccessful: false,
-          characterDeleted: false,
-        };
-
-        console.log(`[CharacterProvider] Configurando estado de batalha:`, {
-          mode: battleGameState.mode,
-          floor: floorData.description,
-          enemy: enemy?.name || 'N/A',
-          event: specialEvent?.name || 'N/A',
-        });
-
-        setGameState(battleGameState);
-
-        // 6. Adicionar mensagem ao log
-        const logMessage = specialEvent
-          ? `Evento especial encontrado no andar ${currentFloor}: ${specialEvent.name}`
-          : `Andar ${currentFloor} - ${enemy!.name} apareceu!`;
+        const logMessage = result.gameState.currentSpecialEvent
+          ? `Evento especial: ${result.gameState.currentSpecialEvent.name}`
+          : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado!`;
 
         addGameLogMessage(logMessage, 'system');
-
-        console.log(`[CharacterProvider] === BATALHA INICIALIZADA COM SUCESSO ===`);
       } catch (error) {
-        console.error(
-          '[CharacterProvider] Erro ao inicializar batalha:',
-          error instanceof Error ? error.message : 'Erro desconhecido'
-        );
-        toast.error('Erro ao iniciar batalha', {
+        console.error('[CharacterProvider] Erro na inicialização:', error);
+
+        toast.error('Falha ao inicializar batalha', {
           description: error instanceof Error ? error.message : 'Erro ao inicializar batalha',
+          duration: 5000,
         });
 
-        // Reset em caso de erro para permitir nova tentativa
         lastBattleInitRef.current = null;
         throw error;
       } finally {
@@ -426,19 +350,17 @@ export function CharacterProvider({ children }: CharacterProviderProps) {
       updatePlayerStats,
       reloadCharacters,
     }),
-    [characters, selectedCharacter]
+    [
+      characters,
+      selectedCharacter,
+      createCharacter,
+      selectCharacter,
+      loadCharacterForHub,
+      initializeBattle,
+      updatePlayerStats,
+      reloadCharacters,
+    ]
   );
 
   return <CharacterContext.Provider value={contextValue}>{children}</CharacterContext.Provider>;
-}
-
-// Hook personalizado para usar o contexto
-export function useCharacter() {
-  const context = useContext(CharacterContext);
-
-  if (!context) {
-    throw new Error('useCharacter deve ser usado dentro de um CharacterProvider');
-  }
-
-  return context;
 }

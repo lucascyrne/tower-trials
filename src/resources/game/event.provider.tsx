@@ -1,16 +1,12 @@
-import { type ReactNode, createContext, useContext, useCallback } from 'react';
-import { GameService } from '../game.service';
-import { CharacterService } from '../character/character.service';
-import { useGameState } from './game-state.provider';
+import { type ReactNode, useCallback } from 'react';
+import { GameService } from './game.service';
+import { CharacterService } from './character.service';
+import { useGameState } from './game-state-hook';
 import { useGameLog } from './log.provider';
-import { useCharacter } from './character.provider';
-import type { GameState } from '../game-model';
+import { useCharacter } from './character-hook';
+import type { GameState } from './game-model';
 
-interface EventContextType {
-  interactWithEvent: () => Promise<void>;
-}
-
-const EventContext = createContext<EventContextType | null>(null);
+import { EventContext } from './event-context';
 
 interface EventProviderProps {
   children: ReactNode;
@@ -76,15 +72,4 @@ export function EventProvider({ children }: EventProviderProps) {
   }, [gameState, selectedCharacter, setGameState, addGameLogMessage]);
 
   return <EventContext.Provider value={{ interactWithEvent }}>{children}</EventContext.Provider>;
-}
-
-// Hook personalizado para usar o contexto
-export function useEvent() {
-  const context = useContext(EventContext);
-
-  if (!context) {
-    throw new Error('useEvent deve ser usado dentro de um EventProvider');
-  }
-
-  return context;
 }

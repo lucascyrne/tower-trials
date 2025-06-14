@@ -1,4 +1,4 @@
-import { type AttributeDistribution, type AttributeDistributionResult } from '../models/character.model';
+import { type AttributeDistribution, type AttributeDistributionResult } from './character.model';
 import { supabase } from '@/lib/supabase';
 import { CharacterCacheService } from './character-cache.service';
 

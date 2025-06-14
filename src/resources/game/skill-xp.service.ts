@@ -1,7 +1,7 @@
-import { SkillType } from './models/character.model';
-import { type Equipment, isDualWielding, hasShield, getMainWeapon } from './models/equipment.model';
-import { type EquipmentSlots } from './models/equipment.model';
-import { CharacterService } from './character/character.service';
+import { SkillType } from './character.model';
+import { type Equipment, isDualWielding, hasShield, getMainWeapon } from './equipment.model';
+import { type EquipmentSlots } from './equipment.model';
+import { CharacterService } from './character.service';
 
 export interface SkillXpGain {
   skill: SkillType;
@@ -20,14 +20,10 @@ export class SkillXpService {
   ): SkillXpGain[] {
     const skillGains: SkillXpGain[] = [];
 
-    if (!equipmentSlots) {
-      return skillGains;
-    }
+    if (!equipmentSlots) return skillGains;
 
     const mainWeapon = getMainWeapon(equipmentSlots);
     const isDual = isDualWielding(equipmentSlots);
-
-    // XP base baseado no dano causado (1 XP por 10 de dano, mínimo 1)
     const baseXp = Math.max(1, Math.floor(baseDamage / 10));
 
     if (mainWeapon) {
@@ -35,9 +31,8 @@ export class SkillXpService {
       if (weaponSkill) {
         let xp = baseXp;
 
-        // Bônus para dual-wielding
         if (isDual) {
-          xp = Math.floor(xp * 1.25); // 25% mais XP
+          xp = Math.floor(xp * 1.25); // 25% bônus para dual-wield
           skillGains.push({
             skill: weaponSkill,
             xp,
@@ -55,7 +50,7 @@ export class SkillXpService {
       }
     }
 
-    // Se está em dual-wield, dar XP também para a arma secundária
+    // XP para arma secundária em dual-wield
     if (isDual && equipmentSlots.off_hand) {
       const offWeaponSkill = this.getWeaponSkill(equipmentSlots.off_hand);
       if (offWeaponSkill) {
@@ -79,39 +74,32 @@ export class SkillXpService {
     equipmentSlots: EquipmentSlots | null,
     damageBlocked: number = 0
   ): SkillXpGain[] {
-    const skillGains: SkillXpGain[] = [];
-
-    // XP base mínimo garantido para defesa (2-10 XP por uso da ação defender)
     let baseXp = Math.max(2, Math.floor(damageBlocked / 5));
+    let reason = 'Ação de defesa';
 
-    // Se não houve dano bloqueado, dar pelo menos 3 XP pela tentativa de defesa
+    // XP mínimo se não houve dano bloqueado
     if (damageBlocked <= 0) {
       baseXp = 3;
     }
 
-    let reason = 'Ação de defesa';
-
-    // Bônus significativo se tiver escudo equipado
+    // Bônus para escudo
     if (equipmentSlots && hasShield(equipmentSlots)) {
-      baseXp = Math.floor(baseXp * 2.5); // 150% mais XP com escudo
-      reason = `Defesa com escudo equipado`;
+      baseXp = Math.floor(baseXp * 2.5); // 150% bônus com escudo
+      reason = 'Defesa com escudo equipado';
     }
 
-    // Garantir que o XP seja sempre um número válido e positivo
     const finalXp = Math.max(1, Math.floor(baseXp));
 
-    skillGains.push({
-      skill: SkillType.DEFENSE_MASTERY,
-      xp: finalXp,
-      reason,
-      isOffHand: false,
-    });
+    console.log(`[SkillXpService] XP de defesa: ${finalXp} (dano bloqueado: ${damageBlocked})`);
 
-    console.log(
-      `[SkillXpService] XP de defesa calculado: ${finalXp} (dano bloqueado: ${damageBlocked})`
-    );
-
-    return skillGains;
+    return [
+      {
+        skill: SkillType.DEFENSE_MASTERY,
+        xp: finalXp,
+        reason,
+        isOffHand: false,
+      },
+    ];
   }
 
   /**
@@ -120,8 +108,8 @@ export class SkillXpService {
   static calculateMagicSkillXp(
     spellManaCost: number,
     spellDamage: number = 0,
-    actualSpellValue: number = 0, // Valor real da magia (dano ou cura escalado)
-    equipmentSlots: EquipmentSlots | null = null // NOVO: Para verificar varinhas
+    actualSpellValue: number = 0,
+    equipmentSlots: EquipmentSlots | null = null
   ): SkillXpGain[] {
     const skillGains: SkillXpGain[] = [];
 
@@ -129,14 +117,13 @@ export class SkillXpService {
     const manaXp = Math.floor(spellManaCost / 2);
     let valueXp = 0;
 
-    // Se temos o valor real escalado, usar ele para melhor XP
     if (actualSpellValue > 0) {
-      valueXp = Math.floor(actualSpellValue / 8); // 1 XP para cada 8 pontos de efeito real
+      valueXp = Math.floor(actualSpellValue / 8);
     } else if (spellDamage > 0) {
-      valueXp = Math.floor(spellDamage / 8); // Fallback para dano base
+      valueXp = Math.floor(spellDamage / 8);
     }
 
-    const totalXp = Math.max(2, manaXp + valueXp); // Mínimo 2 XP por uso de magia
+    const totalXp = Math.max(2, manaXp + valueXp);
 
     skillGains.push({
       skill: SkillType.MAGIC_MASTERY,
@@ -145,9 +132,9 @@ export class SkillXpService {
       isOffHand: false,
     });
 
-    // NOVO: Bônus de XP se estiver usando varinha/staff na off-hand
+    // Bônus para varinha/staff na off-hand
     if (equipmentSlots?.off_hand?.weapon_subtype === 'staff') {
-      const bonusXp = Math.max(1, Math.floor(totalXp * 0.2)); // 20% de bônus
+      const bonusXp = Math.max(1, Math.floor(totalXp * 0.2)); // 20% bônus
       skillGains.push({
         skill: SkillType.MAGIC_MASTERY,
         xp: bonusXp,
@@ -165,58 +152,29 @@ export class SkillXpService {
   private static getWeaponSkill(weapon: Equipment): SkillType | null {
     const weaponName = weapon.name.toLowerCase();
 
-    // Verificar por palavras-chave no nome da arma
-    if (
-      weaponName.includes('espada') ||
-      weaponName.includes('sword') ||
-      weaponName.includes('rapier') ||
-      weaponName.includes('lâmina')
-    ) {
-      return SkillType.SWORD_MASTERY;
+    const skillMap = [
+      {
+        keywords: ['espada', 'sword', 'rapier', 'lâmina', 'adaga', 'dagger', 'punhal', 'fang'],
+        skill: SkillType.SWORD_MASTERY,
+      },
+      { keywords: ['machado', 'axe', 'machadinha'], skill: SkillType.AXE_MASTERY },
+      {
+        keywords: ['martelo', 'mace', 'clava', 'maça', 'porrete', 'hammer'],
+        skill: SkillType.BLUNT_MASTERY,
+      },
+      {
+        keywords: ['cajado', 'staff', 'varinha', 'orbe', 'bastão', 'cetro'],
+        skill: SkillType.MAGIC_MASTERY,
+      },
+    ];
+
+    for (const { keywords, skill } of skillMap) {
+      if (keywords.some(keyword => weaponName.includes(keyword))) {
+        return skill;
+      }
     }
 
-    if (
-      weaponName.includes('machado') ||
-      weaponName.includes('axe') ||
-      weaponName.includes('machadinha')
-    ) {
-      return SkillType.AXE_MASTERY;
-    }
-
-    if (
-      weaponName.includes('martelo') ||
-      weaponName.includes('mace') ||
-      weaponName.includes('clava') ||
-      weaponName.includes('maça') ||
-      weaponName.includes('porrete') ||
-      weaponName.includes('hammer')
-    ) {
-      return SkillType.BLUNT_MASTERY;
-    }
-
-    // Armas mágicas (cajados, varinhas, orbes)
-    if (
-      weaponName.includes('cajado') ||
-      weaponName.includes('staff') ||
-      weaponName.includes('varinha') ||
-      weaponName.includes('orbe') ||
-      weaponName.includes('bastão') ||
-      weaponName.includes('cetro')
-    ) {
-      return SkillType.MAGIC_MASTERY;
-    }
-
-    // Adagas e punhais - usar maestria em espadas por enquanto
-    if (
-      weaponName.includes('adaga') ||
-      weaponName.includes('dagger') ||
-      weaponName.includes('punhal') ||
-      weaponName.includes('fang')
-    ) {
-      return SkillType.SWORD_MASTERY;
-    }
-
-    // Default para espada se não conseguir determinar
+    // Default para espada
     return SkillType.SWORD_MASTERY;
   }
 
@@ -234,9 +192,7 @@ export class SkillXpService {
       return { messages, skillLevelUps };
     }
 
-    console.log(
-      `[SkillXpService] Aplicando ${skillGains.length} ganhos de XP de habilidade para ${characterId}`
-    );
+    console.log(`[SkillXpService] Aplicando ${skillGains.length} ganhos de XP para ${characterId}`);
 
     for (const gain of skillGains) {
       try {
@@ -274,27 +230,21 @@ export class SkillXpService {
    * Obter nome de exibição da habilidade
    */
   static getSkillDisplayName(skill: SkillType): string {
-    switch (skill) {
-      case SkillType.SWORD_MASTERY:
-        return 'Maestria em Espadas';
-      case SkillType.AXE_MASTERY:
-        return 'Maestria em Machados';
-      case SkillType.BLUNT_MASTERY:
-        return 'Maestria em Armas de Concussão';
-      case SkillType.DEFENSE_MASTERY:
-        return 'Maestria em Defesa';
-      case SkillType.MAGIC_MASTERY:
-        return 'Maestria em Magia';
-      default:
-        return skill;
-    }
+    const skillNames = {
+      [SkillType.SWORD_MASTERY]: 'Maestria em Espadas',
+      [SkillType.AXE_MASTERY]: 'Maestria em Machados',
+      [SkillType.BLUNT_MASTERY]: 'Maestria em Armas de Concussão',
+      [SkillType.DEFENSE_MASTERY]: 'Maestria em Defesa',
+      [SkillType.MAGIC_MASTERY]: 'Maestria em Magia',
+    };
+    return skillNames[skill] || skill;
   }
 
   /**
    * Calcular bônus de dano baseado no nível de habilidade
    */
   static calculateSkillDamageBonus(skillLevel: number): number {
-    // Cada nível de habilidade adiciona 2% de dano (max 100% no nível 50)
+    // Cada nível adiciona 2% de dano (max 100% no nível 50)
     return Math.min(100, skillLevel * 2);
   }
 
@@ -302,7 +252,7 @@ export class SkillXpService {
    * Calcular bônus de defesa baseado no nível de maestria defensiva
    */
   static calculateSkillDefenseBonus(defenseLevel: number): number {
-    // Cada nível de defesa adiciona 1% de redução de dano (max 50% no nível 50)
+    // Cada nível adiciona 1% de redução de dano (max 50% no nível 50)
     return Math.min(50, defenseLevel * 1);
   }
 

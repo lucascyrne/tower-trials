@@ -15,36 +15,27 @@ export class SpecialEventService {
    */
   static async getSpecialEventForFloor(floor: number): Promise<ServiceResponse<SpecialEvent>> {
     try {
-      console.log(`[SpecialEventService] Buscando evento especial para o andar ${floor}`);
+      console.log(`[SpecialEventService] Buscando evento para andar ${floor}`);
 
       const { data, error } = await supabase
-        .rpc('get_special_event_for_floor', {
-          p_floor: floor,
-        })
+        .rpc('get_special_event_for_floor', { p_floor: floor })
         .single();
 
       if (error) {
-        console.error(
-          `[SpecialEventService] Erro ao buscar evento para andar ${floor}:`,
-          error.message
-        );
+        console.error(`[SpecialEventService] Erro:`, error.message);
         throw error;
       }
 
       if (!data) {
-        console.error(`[SpecialEventService] Nenhum evento retornado para andar ${floor}`);
         throw new Error('Nenhum evento encontrado para este andar');
       }
 
       const event = data as SpecialEvent;
-      console.log(`[SpecialEventService] Evento obtido para andar ${floor}: ${event.name}`);
+      console.log(`[SpecialEventService] Evento obtido: ${event.name}`);
 
       return { data: event, error: null, success: true };
     } catch (error) {
-      console.error(
-        `[SpecialEventService] Falha ao buscar evento para andar ${floor}:`,
-        error instanceof Error ? error.message : error
-      );
+      console.error(`[SpecialEventService] Falha:`, error instanceof Error ? error.message : error);
       return {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao buscar evento especial',
@@ -64,9 +55,7 @@ export class SpecialEventService {
     eventId: string
   ): Promise<ServiceResponse<SpecialEventResult>> {
     try {
-      console.log(
-        `[SpecialEventService] Processando evento ${eventId} para personagem ${characterId}`
-      );
+      console.log(`[SpecialEventService] Processando evento ${eventId} para ${characterId}`);
 
       const { data, error } = await supabase
         .rpc('process_special_event', {
@@ -76,7 +65,7 @@ export class SpecialEventService {
         .single();
 
       if (error) {
-        console.error(`[SpecialEventService] Erro ao processar evento:`, error.message);
+        console.error(`[SpecialEventService] Erro ao processar:`, error.message);
         throw error;
       }
 
@@ -85,14 +74,11 @@ export class SpecialEventService {
       }
 
       const result = data as SpecialEventResult;
-      console.log(`[SpecialEventService] Evento processado com sucesso:`, result);
+      console.log(`[SpecialEventService] Evento processado:`, result);
 
       return { data: result, error: null, success: true };
     } catch (error) {
-      console.error(
-        `[SpecialEventService] Falha ao processar evento:`,
-        error instanceof Error ? error.message : error
-      );
+      console.error(`[SpecialEventService] Falha:`, error instanceof Error ? error.message : error);
       return {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao processar evento especial',
@@ -108,12 +94,7 @@ export class SpecialEventService {
    */
   static shouldGenerateSpecialEvent(floorType: string): boolean {
     // Pisos "event" têm 70% de chance de gerar evento especial
-    if (floorType === 'event') {
-      return Math.random() < 0.7;
-    }
-
-    // Outros tipos de piso sempre geram monstros
-    return false;
+    return floorType === 'event' && Math.random() < 0.7;
   }
 
   /**
@@ -122,16 +103,12 @@ export class SpecialEventService {
    * @returns Ícone emoji
    */
   static getEventIcon(eventType: string): string {
-    switch (eventType) {
-      case 'bonfire':
-        return '🔥';
-      case 'treasure_chest':
-        return '📦';
-      case 'magic_fountain':
-        return '⛲';
-      default:
-        return '✨';
-    }
+    const icons = {
+      bonfire: '🔥',
+      treasure_chest: '📦',
+      magic_fountain: '⛲',
+    };
+    return icons[eventType as keyof typeof icons] || '✨';
   }
 
   /**
@@ -140,15 +117,11 @@ export class SpecialEventService {
    * @returns Classe CSS de cor
    */
   static getEventColor(eventType: string): string {
-    switch (eventType) {
-      case 'bonfire':
-        return 'text-orange-500';
-      case 'treasure_chest':
-        return 'text-yellow-500';
-      case 'magic_fountain':
-        return 'text-blue-500';
-      default:
-        return 'text-purple-500';
-    }
+    const colors = {
+      bonfire: 'text-orange-500',
+      treasure_chest: 'text-yellow-500',
+      magic_fountain: 'text-blue-500',
+    };
+    return colors[eventType as keyof typeof colors] || 'text-purple-500';
   }
 }

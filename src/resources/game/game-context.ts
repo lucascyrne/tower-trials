@@ -1,9 +1,9 @@
 import { createContext } from 'react';
 import { type ActionType, type GameState, type GamePlayer } from './game-model';
-import { GAME_CONSTANTS } from './models/character.model';
-import { type ActiveEffects } from './models/spell.model';
-import { type Character } from './models/character.model';
-import { type CharacterConsumable } from './models/consumable.model';
+import { GAME_CONSTANTS } from './character.model';
+import { type ActiveEffects } from './spell.model';
+import { type Character } from './character.model';
+import { type CharacterConsumable } from './consumable.model';
 
 const initialActiveEffects: ActiveEffects = {
   buffs: [],

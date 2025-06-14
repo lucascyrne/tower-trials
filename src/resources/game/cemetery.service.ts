@@ -4,7 +4,7 @@ import {
   type CemeteryStats,
   type CemeteryResponse,
   type CemeterySearchParams,
-} from './models/cemetery.model';
+} from './cemetery.model';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -38,17 +38,15 @@ export class CemeteryService {
         throw error;
       }
 
-      console.log(
-        `[CemeteryService] Personagem ${characterId} morto com sucesso, ID no cemitério: ${data}`
-      );
+      console.log(`[CemeteryService] Personagem morto, ID no cemitério: ${data}`);
 
       return {
         success: true,
-        data: data as string, // ID do registro no cemitério
+        data: data as string,
         error: null,
       };
     } catch (error) {
-      console.error('[CemeteryService] Erro crítico ao matar personagem:', error);
+      console.error('[CemeteryService] Erro crítico:', error);
       return {
         success: false,
         data: null,
@@ -66,7 +64,6 @@ export class CemeteryService {
   ): Promise<ServiceResponse<CemeteryResponse>> {
     try {
       const { page = 1, limit = 10 } = params;
-
       const offset = (page - 1) * limit;
 
       // Buscar personagens mortos
@@ -154,7 +151,7 @@ export class CemeteryService {
         error: null,
       };
     } catch (error) {
-      console.error('[CemeteryService] Erro ao buscar estatísticas do cemitério:', error);
+      console.error('[CemeteryService] Erro ao buscar estatísticas:', error);
       return {
         success: false,
         data: null,
@@ -211,15 +208,12 @@ export class CemeteryService {
    * Formata a causa da morte em texto mais amigável
    */
   static formatDeathCause(cause: string, killedBy?: string): string {
-    switch (cause) {
-      case 'Battle defeat':
-        return killedBy ? `Morto por ${killedBy}` : 'Morto em batalha';
-      case 'Player quit':
-        return 'Abandonou a jornada';
-      case 'System error':
-        return 'Erro do sistema';
-      default:
-        return cause;
-    }
+    const causeMap = {
+      'Battle defeat': killedBy ? `Morto por ${killedBy}` : 'Morto em batalha',
+      'Player quit': 'Abandonou a jornada',
+      'System error': 'Erro do sistema',
+    };
+
+    return causeMap[cause as keyof typeof causeMap] || cause;
   }
 }

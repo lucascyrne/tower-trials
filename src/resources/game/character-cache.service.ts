@@ -1,4 +1,10 @@
-import { type Character } from '../models/character.model';
+import { type Character } from './character.model';
+
+interface ServiceResponse<T> {
+  data: T | null;
+  error: string | null;
+  success: boolean;
+}
 
 interface CachedCharacter {
   character: Character;
@@ -15,22 +21,20 @@ interface CachedUserCharacters {
 export class CharacterCacheService {
   private static characterCache: Map<string, CachedCharacter> = new Map();
   private static userCharactersCache: Map<string, CachedUserCharacters> = new Map();
-  private static pendingRequests: Map<string, Promise<any>> = new Map();
-  private static pendingUserRequests: Map<string, Promise<any>> = new Map();
+  private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
+  private static pendingUserRequests: Map<string, Promise<ServiceResponse<Character[]>>> =
+    new Map();
 
-  // Configurações de cache
   private static readonly CACHE_DURATION = 30000; // 30 segundos
-  private static readonly USER_CACHE_DURATION = 15000; // 15 segundos para listas de usuário
+  private static readonly USER_CACHE_DURATION = 15000; // 15 segundos
   private static readonly MAX_CACHE_SIZE = 100;
 
-  // Sistema de invalidação throttled
   private static invalidationQueue: Set<string> = new Set();
   private static invalidationTimer: NodeJS.Timeout | null = null;
   private static readonly INVALIDATION_DELAY = 500;
 
-  /**
-   * Verificar se um personagem está em cache e é válido
-   */
+  // === CACHE DE PERSONAGEM INDIVIDUAL ===
+
   static getCachedCharacter(characterId: string): Character | null {
     const cached = this.characterCache.get(characterId);
     if (!cached) return null;
@@ -43,15 +47,15 @@ export class CharacterCacheService {
       return null;
     }
 
-    console.log(`[CharacterCacheService] Cache hit para personagem ${characterId}`);
+    // CORRIGIDO: Log de cache apenas em debug mode
+    const isDebugMode = typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+    if (isDebugMode) {
+      console.log(`[CharacterCacheService] Cache hit para personagem ${characterId}`);
+    }
     return cached.character;
   }
 
-  /**
-   * Armazenar personagem no cache
-   */
   static setCachedCharacter(characterId: string, character: Character): void {
-    // Limpar cache se estiver muito grande
     if (this.characterCache.size >= this.MAX_CACHE_SIZE) {
       this.cleanOldEntries();
     }
@@ -62,12 +66,15 @@ export class CharacterCacheService {
       isValid: true,
     });
 
-    console.log(`[CharacterCacheService] Personagem ${characterId} adicionado ao cache`);
+    // CORRIGIDO: Log apenas em debug mode
+    const isDebugMode = typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+    if (isDebugMode) {
+      console.log(`[CharacterCacheService] Personagem ${characterId} adicionado ao cache`);
+    }
   }
 
-  /**
-   * Verificar se personagens do usuário estão em cache e são válidos
-   */
+  // === CACHE DE USUÁRIO ===
+
   static getCachedUserCharacters(userId: string): { characters: Character[]; isValid: boolean } {
     const cached = this.userCharactersCache.get(userId);
     if (!cached) {
@@ -82,15 +89,16 @@ export class CharacterCacheService {
       return { characters: [], isValid: false };
     }
 
-    console.log(
-      `[CharacterCacheService] Cache hit para usuário ${userId} (${cached.characters.length} personagens)`
-    );
+    // CORRIGIDO: Log apenas em debug mode
+    const isDebugMode = typeof window !== 'undefined' && localStorage.getItem('debug') === 'true';
+    if (isDebugMode) {
+      console.log(
+        `[CharacterCacheService] Cache hit para usuário ${userId} (${cached.characters.length} personagens)`
+      );
+    }
     return { characters: cached.characters, isValid: true };
   }
 
-  /**
-   * Armazenar personagens do usuário no cache
-   */
   static setCachedUserCharacters(userId: string, characters: Character[]): void {
     this.userCharactersCache.set(userId, {
       characters,
@@ -98,67 +106,55 @@ export class CharacterCacheService {
       isValid: true,
     });
 
-    // Também atualizar cache individual dos personagens
+    // Atualizar cache individual dos personagens
     characters.forEach(character => {
       this.setCachedCharacter(character.id, character);
     });
 
     console.log(
-      `[CharacterCacheService] Personagens do usuário ${userId} adicionados ao cache (${characters.length} personagens)`
+      `[CharacterCacheService] ${characters.length} personagens do usuário ${userId} em cache`
     );
   }
 
-  /**
-   * Verificar se existe uma requisição pendente
-   */
-  static getPendingRequest(characterId: string): Promise<any> | null {
+  // === REQUISIÇÕES PENDENTES ===
+
+  static getPendingRequest(characterId: string): Promise<ServiceResponse<Character>> | null {
     return this.pendingRequests.get(characterId) || null;
   }
 
-  /**
-   * Armazenar uma requisição pendente
-   */
-  static setPendingRequest(characterId: string, promise: Promise<any>): void {
+  static setPendingRequest(
+    characterId: string,
+    promise: Promise<ServiceResponse<Character>>
+  ): void {
     this.pendingRequests.set(characterId, promise);
-
-    // Limpar requisição pendente quando completar
     promise.finally(() => {
       this.pendingRequests.delete(characterId);
     });
   }
 
-  /**
-   * Verificar se existe uma requisição de usuário pendente
-   */
-  static getPendingUserRequest(userId: string): Promise<any> | null {
+  static getPendingUserRequest(userId: string): Promise<ServiceResponse<Character[]>> | null {
     return this.pendingUserRequests.get(userId) || null;
   }
 
-  /**
-   * Armazenar uma requisição de usuário pendente
-   */
-  static setPendingUserRequest(userId: string, promise: Promise<any>): void {
+  static setPendingUserRequest(
+    userId: string,
+    promise: Promise<ServiceResponse<Character[]>>
+  ): void {
     this.pendingUserRequests.set(userId, promise);
-
-    // Limpar requisição pendente quando completar
     promise.finally(() => {
       this.pendingUserRequests.delete(userId);
     });
   }
 
-  /**
-   * Invalidar cache de um personagem específico com throttling
-   */
+  // === INVALIDAÇÃO ===
+
   static invalidateCharacterCache(characterId: string): void {
-    // Adicionar à fila de invalidação
     this.invalidationQueue.add(characterId);
 
-    // Se já há um timer rodando, cancelar
     if (this.invalidationTimer) {
       clearTimeout(this.invalidationTimer);
     }
 
-    // Processar a fila após o delay
     this.invalidationTimer = setTimeout(() => {
       const idsToInvalidate = Array.from(this.invalidationQueue);
       this.invalidationQueue.clear();
@@ -168,28 +164,24 @@ export class CharacterCacheService {
         const cached = this.characterCache.get(id);
         if (cached) {
           cached.isValid = false;
-          // Não deletar imediatamente - marcar como inválido para permitir fallback
         }
       });
 
       if (idsToInvalidate.length > 0) {
         console.log(
-          `[CharacterCacheService] Cache invalidado para ${idsToInvalidate.length} personagens: ${idsToInvalidate.join(', ')}`
+          `[CharacterCacheService] Cache invalidado para ${idsToInvalidate.length} personagens`
         );
       }
     }, this.INVALIDATION_DELAY);
   }
 
-  /**
-   * Invalidar cache de um usuário específico
-   */
   static invalidateUserCache(userId: string): void {
     const cached = this.userCharactersCache.get(userId);
     if (cached) {
       cached.isValid = false;
     }
 
-    // Encontrar todos os personagens deste usuário e invalidar
+    // Invalidar personagens deste usuário
     const userCharacterIds: string[] = [];
     this.characterCache.forEach((cachedChar, id) => {
       if (cachedChar.character.user_id === userId) {
@@ -197,7 +189,6 @@ export class CharacterCacheService {
       }
     });
 
-    // Usar o sistema de throttling para invalidar todos os personagens do usuário
     userCharacterIds.forEach(id => this.invalidateCharacterCache(id));
 
     console.log(
@@ -205,9 +196,8 @@ export class CharacterCacheService {
     );
   }
 
-  /**
-   * Limpar entradas antigas do cache
-   */
+  // === LIMPEZA E MANUTENÇÃO ===
+
   private static cleanOldEntries(): void {
     const now = Date.now();
     let removedCount = 0;
@@ -228,13 +218,10 @@ export class CharacterCacheService {
     }
 
     if (removedCount > 0) {
-      console.log(`[CharacterCacheService] Limpeza de cache: ${removedCount} entradas removidas`);
+      console.log(`[CharacterCacheService] ${removedCount} entradas removidas`);
     }
   }
 
-  /**
-   * Forçar limpeza completa do cache
-   */
   static clearAllCache(): void {
     this.characterCache.clear();
     this.userCharactersCache.clear();
@@ -251,9 +238,8 @@ export class CharacterCacheService {
     console.log('[CharacterCacheService] Todo o cache foi limpo');
   }
 
-  /**
-   * Obter estatísticas do cache para debug
-   */
+  // === UTILITÁRIOS ===
+
   static getCacheStats(): {
     charactersCount: number;
     userCachesCount: number;
@@ -270,20 +256,15 @@ export class CharacterCacheService {
     };
   }
 
-  /**
-   * Pré-carregar personagem no cache (útil para inicialização de batalha)
-   */
   static async preloadCharacter(
     characterId: string,
     fetchFunction: () => Promise<Character>
   ): Promise<Character | null> {
-    // Verificar se já está em cache
     const cached = this.getCachedCharacter(characterId);
     if (cached) {
       return cached;
     }
 
-    // Verificar se há requisição pendente
     const pending = this.getPendingRequest(characterId);
     if (pending) {
       try {
@@ -295,7 +276,6 @@ export class CharacterCacheService {
       }
     }
 
-    // Criar nova requisição
     try {
       const character = await fetchFunction();
       this.setCachedCharacter(characterId, character);
@@ -306,9 +286,6 @@ export class CharacterCacheService {
     }
   }
 
-  /**
-   * Verificar integridade do cache
-   */
   static validateCacheIntegrity(): {
     isValid: boolean;
     issues: string[];

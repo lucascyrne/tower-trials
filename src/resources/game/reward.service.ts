@@ -1,5 +1,5 @@
 import { type GameState, type GamePlayer, type BattleRewards } from './game-model';
-import { CharacterService } from './character/character.service';
+import { CharacterService } from './character.service';
 import { ConsumableService } from './consumable.service';
 import { FloorService } from './floor.service';
 
@@ -14,69 +14,48 @@ export class RewardService {
       const { player, currentEnemy, currentFloor } = gameState;
 
       if (!currentEnemy || !currentFloor) {
-        console.warn('[RewardService] Estado inválido para processar derrota do inimigo');
+        console.warn('[RewardService] Estado inválido para processar derrota');
         return gameState;
       }
 
       // Evitar processamento duplicado
       if (gameState.battleRewards) {
-        console.warn(
-          '[RewardService] Tentativa de processar derrota de inimigo que já possui recompensas - ignorando'
-        );
+        console.warn('[RewardService] Tentativa de reprocessamento - ignorando');
         return gameState;
       }
 
-      // Calcular recompensas base
+      // Calcular recompensas
       const baseXP = currentEnemy.reward_xp || 10;
       const baseGold = currentEnemy.reward_gold || 5;
-
-      // Aplicar multiplicadores baseados no tipo de andar
       const { xp, gold } = FloorService.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
 
-      console.log(`[RewardService] Recompensas calculadas - XP: ${xp}, Gold: ${gold}`);
+      console.log(`[RewardService] Recompensas - XP: ${xp}, Gold: ${gold}`);
 
-      // Persistir XP no banco de dados
-      console.log(`[RewardService] === PERSISTINDO XP NO BANCO ===`);
+      // Persistir XP
       const xpResult = await CharacterService.grantSecureXP(player.id, xp, 'combat');
       if (!xpResult.success) {
-        console.error('[RewardService] Erro ao conceder XP:', xpResult.error);
         throw new Error(`Falha ao conceder XP: ${xpResult.error}`);
       }
-
       const xpData = xpResult.data!;
-      console.log(
-        `[RewardService] XP persistido - Level: ${xpData.new_level}, XP: ${xpData.new_xp}, Level Up: ${xpData.leveled_up}`
-      );
 
-      // Persistir Gold no banco de dados
-      console.log(`[RewardService] === PERSISTINDO GOLD NO BANCO ===`);
+      // Persistir Gold
       const goldResult = await CharacterService.grantSecureGold(player.id, gold, 'combat');
       if (!goldResult.success) {
-        console.error('[RewardService] Erro ao conceder gold:', goldResult.error);
         throw new Error(`Falha ao conceder gold: ${goldResult.error}`);
       }
-
       const newGoldTotal = goldResult.data!;
-      console.log(`[RewardService] Gold persistido - Total: ${newGoldTotal}`);
 
-      // Processar drops do monstro
-      console.log(`[RewardService] === PROCESSANDO DROPS ===`);
-
+      // Processar drops
       let drops: { name: string; quantity: number }[] = [];
-      let dropsObtidos: { drop_id: string; quantity: number }[] = [];
 
       if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
-        console.log(
-          `[RewardService] Monstro ${currentEnemy.name} tem ${currentEnemy.possible_drops.length} possible_drops`
-        );
-
-        dropsObtidos = ConsumableService.processMonsterDrops(
+        const dropsObtidos = ConsumableService.processMonsterDrops(
           currentEnemy.level,
           currentEnemy.possible_drops,
           currentFloor.type === 'boss' ? 1.5 : 1.0
         );
 
-        console.log(`[RewardService] Drops obtidos: ${dropsObtidos.length} itens`);
+        console.log(`[RewardService] ${dropsObtidos.length} drops obtidos`);
 
         if (dropsObtidos.length > 0) {
           const dropIds = dropsObtidos.map(d => d.drop_id);
@@ -91,10 +70,16 @@ export class RewardService {
               };
             });
 
-            console.log(
-              `[RewardService] Drops identificados:`,
-              drops.map(d => `${d.quantity}x ${d.name}`).join(', ')
+            // Persistir drops
+            const addDropsResult = await ConsumableService.addDropsToInventory(
+              player.id,
+              dropsObtidos
             );
+            if (!addDropsResult.success) {
+              throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
+            }
+
+            console.log(`[RewardService] ${addDropsResult.data} drops persistidos`);
           } else {
             console.error(
               `[RewardService] Erro ao buscar informações dos drops:`,
@@ -105,26 +90,10 @@ export class RewardService {
               quantity: d.quantity,
             }));
           }
-
-          // Persistir drops no inventário
-          console.log(`[RewardService] === PERSISTINDO DROPS NO BANCO ===`);
-          const addDropsResult = await ConsumableService.addDropsToInventory(
-            player.id,
-            dropsObtidos
-          );
-
-          if (!addDropsResult.success) {
-            console.error(`[RewardService] Erro ao persistir drops:`, addDropsResult.error);
-            throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
-          }
-
-          console.log(
-            `[RewardService] ${addDropsResult.data} drops persistidos com sucesso no inventário`
-          );
         }
       }
 
-      // Criar objeto de recompensas
+      // Criar recompensas
       const battleRewards: BattleRewards = {
         xp,
         gold,
@@ -133,7 +102,7 @@ export class RewardService {
         newLevel: xpData.leveled_up ? xpData.new_level : undefined,
       };
 
-      // Atualizar estado do jogador
+      // Atualizar jogador
       const updatedPlayer: GamePlayer = {
         ...player,
         xp: xpData.new_xp,
@@ -141,13 +110,13 @@ export class RewardService {
         gold: newGoldTotal,
       };
 
-      console.log(`[RewardService] === DERROTA PROCESSADA COM PERSISTÊNCIA ===`);
-      console.log(
-        `[RewardService] - Level: ${updatedPlayer.level} (Level Up: ${xpData.leveled_up})`
-      );
-      console.log(`[RewardService] - XP: ${updatedPlayer.xp}/${xpData.new_xp_next_level}`);
-      console.log(`[RewardService] - Gold: ${updatedPlayer.gold}`);
-      console.log(`[RewardService] - Drops: ${drops.length} itens`);
+      console.log(`[RewardService] Derrota processada:`, {
+        level: updatedPlayer.level,
+        levelUp: xpData.leveled_up,
+        xp: updatedPlayer.xp,
+        gold: updatedPlayer.gold,
+        drops: drops.length,
+      });
 
       return {
         ...gameState,
@@ -157,12 +126,12 @@ export class RewardService {
         gameMessage: `Inimigo derrotado! +${xp} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`,
       };
     } catch (error) {
-      console.error('[RewardService] Erro ao processar derrota do inimigo:', error);
+      console.error('[RewardService] Erro ao processar derrota:', error);
 
       return {
         ...gameState,
         isPlayerTurn: true,
-        gameMessage: `Erro ao processar derrota do inimigo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        gameMessage: `Erro ao processar derrota: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
       };
     }
   }

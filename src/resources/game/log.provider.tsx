@@ -1,5 +1,5 @@
 import { type ReactNode, createContext, useContext, useState, useCallback, useMemo } from 'react';
-import type { GameLogEntry, GameLogType } from '../game-model';
+import type { GameLogEntry, GameLogType } from './game-model';
 
 interface LogContextType {
   gameMessage: string;

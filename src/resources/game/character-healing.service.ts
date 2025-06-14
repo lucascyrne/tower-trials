@@ -1,4 +1,4 @@
-import { type Character } from '../models/character.model';
+import { type Character } from './character.model';
 import { supabase } from '@/lib/supabase';
 import { CharacterCacheService } from './character-cache.service';
 
@@ -29,11 +29,11 @@ export class CharacterHealingService {
         return { success: false, error: 'ID do personagem é obrigatório', data: null };
       }
 
-      // CRÍTICO: Garantir que os valores sejam sempre inteiros
+      // Garantir que os valores sejam sempre inteiros
       const integerHp = hp !== undefined ? Math.floor(Number(hp)) : undefined;
       const integerMana = mana !== undefined ? Math.floor(Number(mana)) : undefined;
 
-      // Validar valores se fornecidos
+      // Validar valores
       if (integerHp !== undefined && (integerHp < 0 || integerHp > 9999)) {
         return { success: false, error: 'Valor de HP inválido', data: null };
       }
@@ -42,16 +42,14 @@ export class CharacterHealingService {
         return { success: false, error: 'Valor de Mana inválido', data: null };
       }
 
-      // OTIMIZADO: Verificar se realmente houve mudança antes de atualizar
+      // Verificar se realmente houve mudança
       const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
       if (cachedCharacter) {
         const hpChanged = integerHp !== undefined && integerHp !== cachedCharacter.hp;
         const manaChanged = integerMana !== undefined && integerMana !== cachedCharacter.mana;
 
         if (!hpChanged && !manaChanged) {
-          console.log(
-            `[CharacterHealingService] Stats inalterados para ${cachedCharacter.name} - skip update`
-          );
+          console.log(`[CharacterHealingService] Stats inalterados para ${cachedCharacter.name}`);
           return { success: true, error: null, data: null };
         }
       }
@@ -67,7 +65,7 @@ export class CharacterHealingService {
         return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
       }
 
-      // OTIMIZADO: Atualizar cache ao invés de invalidar
+      // Atualizar cache ao invés de invalidar
       if (cachedCharacter && (integerHp !== undefined || integerMana !== undefined)) {
         const updatedCharacter = { ...cachedCharacter };
         if (integerHp !== undefined) updatedCharacter.hp = integerHp;
@@ -75,13 +73,12 @@ export class CharacterHealingService {
 
         CharacterCacheService.setCachedCharacter(characterId, updatedCharacter);
       } else {
-        // Se não há cache, invalidar para forçar reload
         CharacterCacheService.invalidateCharacterCache(characterId);
       }
 
       return { success: true, error: null, data: null };
     } catch (error) {
-      console.error('Erro ao atualizar HP/Mana do personagem:', error);
+      console.error('Erro ao atualizar HP/Mana:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido ao atualizar HP/Mana',
@@ -95,12 +92,10 @@ export class CharacterHealingService {
    * Cura total em 2 horas (de 0.1% a 100% da vida e mana)
    */
   static calculateAutoHeal(character: Character, currentTime: Date): { hp: number; mana: number } {
-    // Se não há last_activity, não curar
     if (!character.last_activity) {
       return { hp: character.hp, mana: character.mana };
     }
 
-    // Se HP e Mana já estão no máximo, não curar
     if (character.hp >= character.max_hp && character.mana >= character.max_mana) {
       return { hp: character.hp, mana: character.mana };
     }
@@ -109,31 +104,25 @@ export class CharacterHealingService {
     const timeDiffMs = currentTime.getTime() - lastActivity.getTime();
     const timeDiffSeconds = Math.floor(timeDiffMs / 1000);
 
-    // Se passou menos de 1 segundo, não curar
     if (timeDiffSeconds < 1) {
       return { hp: character.hp, mana: character.mana };
     }
 
-    // Configurações de cura - REDUZIDO para 2 horas
-    const HEAL_DURATION_HOURS = 2;
-    const HEAL_DURATION_SECONDS = HEAL_DURATION_HOURS * 3600; // 7200 segundos
-    const MIN_PERCENT = 0.1; // Começa a curar a partir de 0.1%
-    const MAX_PERCENT = 100; // Cura até 100%
+    // Cura total em 2 horas
+    const HEAL_DURATION_SECONDS = 2 * 3600; // 7200 segundos
+    const MIN_PERCENT = 0.1;
+    const MAX_PERCENT = 100;
 
     // Calcular HP curado
     let newHp = character.hp;
     if (character.hp < character.max_hp) {
-      // Se HP está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
       const adjustedCurrentHp = Math.max(
         character.hp,
         Math.ceil(character.max_hp * (MIN_PERCENT / 100))
       );
       const adjustedCurrentHpPercent = (adjustedCurrentHp / character.max_hp) * 100;
 
-      // Taxa de cura HP: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
       const healRatePerSecond = (MAX_PERCENT - MIN_PERCENT) / HEAL_DURATION_SECONDS;
-
-      // Calcular HP curado baseado no tempo decorrido
       const healPercentage = Math.min(
         healRatePerSecond * timeDiffSeconds,
         MAX_PERCENT - adjustedCurrentHpPercent
@@ -143,20 +132,16 @@ export class CharacterHealingService {
       newHp = Math.min(character.max_hp, adjustedCurrentHp + healAmount);
     }
 
-    // Calcular Mana curada (mesma lógica que HP)
+    // Calcular Mana curada
     let newMana = character.mana;
     if (character.mana < character.max_mana) {
-      // Se Mana está abaixo de 0.1%, ajustar para 0.1% antes de calcular cura
       const adjustedCurrentMana = Math.max(
         character.mana,
         Math.ceil(character.max_mana * (MIN_PERCENT / 100))
       );
       const adjustedCurrentManaPercent = (adjustedCurrentMana / character.max_mana) * 100;
 
-      // Taxa de cura Mana: (100% - 0.1%) / 2 horas = 99.9% / 7200s ≈ 0.01387% por segundo
       const healRatePerSecond = (MAX_PERCENT - MIN_PERCENT) / HEAL_DURATION_SECONDS;
-
-      // Calcular Mana curada baseada no tempo decorrido
       const healPercentage = Math.min(
         healRatePerSecond * timeDiffSeconds,
         MAX_PERCENT - adjustedCurrentManaPercent
@@ -181,10 +166,8 @@ export class CharacterHealingService {
    */
   static async applyAutoHeal(characterId: string): Promise<ServiceResponse<HealResult>> {
     try {
-      // Buscar personagem do cache primeiro
       let character = CharacterCacheService.getCachedCharacter(characterId);
 
-      // Se não está em cache, buscar do banco
       if (!character) {
         const { data: charData, error } = await supabase
           .from('characters')
@@ -217,7 +200,7 @@ export class CharacterHealingService {
         };
       }
 
-      // Atualizar HP e Mana no banco usando função segura
+      // Atualizar HP e Mana
       const updateResult = await this.updateCharacterHpMana(characterId, hp, mana);
       if (!updateResult.success) {
         throw new Error(updateResult.error || 'Erro ao atualizar HP/Mana');
@@ -226,7 +209,6 @@ export class CharacterHealingService {
       // Atualizar timestamp de atividade
       await this.updateLastActivity(characterId);
 
-      // Invalidar cache do personagem
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       const updatedCharacter = {
@@ -270,7 +252,6 @@ export class CharacterHealingService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem
       CharacterCacheService.invalidateCharacterCache(characterId);
 
       return { data: null, error: null, success: true };
