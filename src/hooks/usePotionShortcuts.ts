@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { type CharacterConsumable } from '@/resources/game/models/consumable.model';
-import { type Character } from '@/resources/game/models/character.model';
+import { type CharacterConsumable } from '@/resources/game/consumable.model';
+import { type Character } from '@/resources/game/character.model';
 import { ConsumableService } from '@/resources/game/consumable.service';
 import { toast } from 'sonner';
 
