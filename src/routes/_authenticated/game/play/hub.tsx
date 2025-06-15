@@ -14,7 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 export const Route = createFileRoute('/_authenticated/game/play/hub')({
   component: GameHubLayoutPage,
   validateSearch: search => ({
-    character: (search.character as string) || '',
+    character: search.character as string,
   }),
 });
 
@@ -32,37 +32,125 @@ function GameHubLayoutPage() {
   return <Outlet />;
 }
 
+// Componente de loading melhorado
+function LoadingScreen({ message = 'Carregando personagem...' }: { message?: string }) {
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '...') return '';
+        return prev + '.';
+      });
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+      <div className="text-center text-white space-y-4">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+        <p className="text-lg font-medium">
+          {message}
+          <span className="inline-block w-8 text-left">{dots}</span>
+        </p>
+        <div className="w-64 bg-slate-800 rounded-full h-2 mx-auto">
+          <div
+            className="bg-blue-500 h-2 rounded-full animate-pulse"
+            style={{ width: '60%' }}
+          ></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GameHubMainPage({ characterId }: { characterId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const gameContext = useGame();
   const { gameState, loadCharacterForHub } = gameContext;
   const { player } = gameState;
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadingState, setLoadingState] = useState<'initial' | 'loading' | 'loaded' | 'error'>(
+    'initial'
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+
   // Estados removidos - funcionalidade de cura será reativada depois se necessário
   const showHealNotification = false;
   const healInfo = null;
 
-  // Refs simples para controle
+  // Refs para controle
   const mountedRef = useRef(true);
   const loadingRef = useRef(false);
   const lastLoadedCharacterRef = useRef<string | null>(null);
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Limpar refs quando o componente for desmontado
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
     };
   }, []);
 
-  // SIMPLIFICADO: Lógica de carregamento mais direta
+  // Lógica de carregamento melhorada
   useEffect(() => {
     const loadCharacter = async () => {
-      // Verificações básicas
-      if (!characterId || !mountedRef.current) {
-        console.log('[GameHub] characterId não fornecido ou componente desmontado');
-        setIsLoading(false);
+      // Debug logging para identificar o problema
+      console.log('[GameHub] Debug Info:', {
+        characterId: characterId,
+        characterIdLength: characterId?.length,
+        characterIdType: typeof characterId,
+        pathname: location.pathname,
+        search: location.search,
+        player: player?.id,
+        gameMode: gameState.mode,
+      });
+
+      // Verificar se temos um personagem válido no contexto
+      if (player?.id && player?.name && gameState.mode === 'hub') {
+        console.log('[GameHub] Personagem já disponível no contexto:', player.name);
+
+        // Se o characterId da URL é diferente do player atual, usar o da URL
+        if (characterId && characterId !== player.id) {
+          console.log('[GameHub] Character ID da URL difere do contexto, recarregando...');
+        } else {
+          // Se não temos characterId na URL mas temos player válido, definir como loaded
+          if (!characterId) {
+            console.log('[GameHub] Usando personagem do contexto');
+            setLoadingState('loaded');
+            return;
+          }
+          // Se o characterId coincide com o player atual, já está carregado
+          if (characterId === player.id) {
+            console.log('[GameHub] Personagem já carregado corretamente');
+            setLoadingState('loaded');
+            return;
+          }
+        }
+      }
+
+      // Verificações básicas mais específicas
+      if (!characterId || characterId.trim() === '' || !mountedRef.current) {
+        console.warn('[GameHub] characterId inválido:', {
+          characterId,
+          isEmpty: !characterId,
+          isEmptyString: characterId === '',
+          isMounted: mountedRef.current,
+        });
+
+        // Se não temos characterId, tentar redirecionar para seleção
+        if (mountedRef.current && (!characterId || characterId.trim() === '')) {
+          console.log('[GameHub] Redirecionando para seleção de personagem');
+          navigate({ to: '/game/play' });
+          return;
+        }
         return;
       }
 
@@ -77,10 +165,11 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         gameState.mode === 'hub' &&
         player.id === characterId &&
         player.name &&
-        lastLoadedCharacterRef.current === characterId
+        lastLoadedCharacterRef.current === characterId &&
+        loadingState !== 'loaded'
       ) {
         console.log('[GameHub] Personagem já carregado no hub:', player.name);
-        setIsLoading(false);
+        setLoadingState('loaded');
         return;
       }
 
@@ -88,7 +177,18 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
       console.log('[GameHub] Iniciando carregamento do personagem:', characterId);
       loadingRef.current = true;
       lastLoadedCharacterRef.current = characterId;
-      setIsLoading(true);
+      setLoadingState('loading');
+      setErrorMessage(null);
+
+      // Timeout para detectar erro real (não apenas carregamento lento)
+      errorTimeoutRef.current = setTimeout(() => {
+        if (loadingRef.current && mountedRef.current) {
+          console.warn('[GameHub] Timeout no carregamento - possível erro');
+          setLoadingState('error');
+          setErrorMessage('Timeout ao carregar personagem. Tente novamente.');
+          loadingRef.current = false;
+        }
+      }, 10000); // 10 segundos timeout
 
       try {
         // Buscar dados do personagem
@@ -107,18 +207,27 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         console.log('[GameHub] loadCharacterForHub concluído com sucesso');
 
         if (mountedRef.current) {
-          setIsLoading(false);
+          setLoadingState('loaded');
+          if (errorTimeoutRef.current) {
+            clearTimeout(errorTimeoutRef.current);
+            errorTimeoutRef.current = null;
+          }
         }
       } catch (error) {
         console.error('[GameHub] Erro ao carregar personagem:', error);
         if (mountedRef.current) {
+          setLoadingState('error');
+          setErrorMessage(error instanceof Error ? error.message : 'Erro desconhecido');
           toast.error('Erro ao carregar personagem', {
             description: error instanceof Error ? error.message : 'Erro desconhecido',
           });
-          navigate({ to: '/game/play' });
         }
       } finally {
         loadingRef.current = false;
+        if (errorTimeoutRef.current) {
+          clearTimeout(errorTimeoutRef.current);
+          errorTimeoutRef.current = null;
+        }
         console.log('[GameHub] Carregamento finalizado');
       }
     };
@@ -126,52 +235,72 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
     loadCharacter();
   }, [characterId, gameState.mode, player.id, player.name, loadCharacterForHub]);
 
-  // EFFECT para detectar quando o estado do hub for atualizado
+  // Effect para detectar quando o estado do hub for atualizado
   useEffect(() => {
-    if (gameState.mode === 'hub' && player.id === characterId && player.name && isLoading) {
+    if (
+      gameState.mode === 'hub' &&
+      player.id === characterId &&
+      player.name &&
+      (loadingState === 'loading' || loadingState === 'initial')
+    ) {
       console.log('[GameHub] Hub atualizado, finalizando loading');
-      setIsLoading(false);
+      setLoadingState('loaded');
     }
-  }, [gameState.mode, player.id, player.name, characterId, isLoading]);
+  }, [gameState.mode, player.id, player.name, characterId, loadingState]);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-500"></div>
-      </div>
-    );
+  // Estados de loading
+  if (loadingState === 'initial' || loadingState === 'loading') {
+    return <LoadingScreen message="Carregando personagem..." />;
   }
 
-  // CORRIGIDO: Validação de estado mais robusta
-  // Verificar se temos dados suficientes para renderizar o hub
-  const hasValidPlayerData = player && player.id && player.name;
-  const isCorrectCharacter = player.id === characterId;
-  const isInHubMode = gameState.mode === 'hub';
-
-  if (!hasValidPlayerData || !isCorrectCharacter || !isInHubMode) {
-    // Se chegamos aqui, algo deu errado no carregamento
-    console.warn('[GameHub] Estado inválido:', {
-      hasValidPlayerData,
-      isCorrectCharacter,
-      isInHubMode,
-      playerId: player?.id,
-      characterId,
-      gameMode: gameState.mode,
-      playerName: player?.name,
-    });
-
+  // Estado de erro real
+  if (loadingState === 'error') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <div className="text-center text-white">
-          <p>Erro ao carregar dados do personagem</p>
-          <Button onClick={() => navigate({ to: '/game/play' })} className="mt-4">
-            Voltar
-          </Button>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+        <div className="text-center text-white space-y-4 max-w-md mx-auto p-6">
+          <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-red-400">Erro no Carregamento</h2>
+          <p className="text-slate-300">{errorMessage || 'Erro ao carregar dados do personagem'}</p>
+          <div className="space-y-2">
+            <Button
+              onClick={() => {
+                setLoadingState('initial');
+                setErrorMessage(null);
+              }}
+              className="w-full"
+            >
+              Tentar Novamente
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate({ to: '/game/play' })}
+              className="w-full"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar à Seleção
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
+
+  // Se chegamos até aqui com loadingState 'loaded', significa que o carregamento foi bem-sucedido
+  // Não precisamos fazer verificações adicionais que podem criar loops
 
   // Função para iniciar sempre do andar 1
   const handleStartFromBeginning = async () => {
