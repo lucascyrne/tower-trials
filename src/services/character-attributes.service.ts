@@ -34,8 +34,20 @@ export class CharacterAttributesService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem
+      // ✅ CORREÇÃO: Invalidação mais robusta do cache
       CharacterCacheService.invalidateCharacterCache(characterId);
+
+      // Forçar limpeza do cache de usuários que possam ter este personagem
+      const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
+      if (cachedCharacter) {
+        CharacterCacheService.invalidateUserCache(cachedCharacter.user_id);
+      }
+
+      console.log('[CharacterAttributesService] Pontos distribuídos e cache invalidado:', {
+        characterId,
+        distribution,
+        success: !!data,
+      });
 
       return {
         data: data as AttributeDistributionResult,

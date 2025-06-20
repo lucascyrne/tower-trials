@@ -90,8 +90,25 @@ export class CharacterHealingService {
   /**
    * Calcular cura automática baseada em tempo
    * Cura total em 2 horas (de 0.1% a 100% da vida e mana)
+   * ✅ CORREÇÃO: Adicionado parâmetro para forçar cura completa no hub
    */
-  static calculateAutoHeal(character: Character, currentTime: Date): { hp: number; mana: number } {
+  static calculateAutoHeal(
+    character: Character,
+    currentTime: Date,
+    forceFullHeal: boolean = false
+  ): { hp: number; mana: number } {
+    // ✅ CORREÇÃO CRÍTICA: Forçar cura completa no hub (independente de tempo)
+    if (forceFullHeal) {
+      const needsHealing = character.hp < character.max_hp || character.mana < character.max_mana;
+      console.log(
+        `[AutoHeal] 🏥 FORÇANDO cura completa para ${character.name}: HP ${character.hp}/${character.max_hp} -> ${character.max_hp}/${character.max_hp}, Mana ${character.mana}/${character.max_mana} -> ${character.max_mana}/${character.max_mana} ${needsHealing ? '(CURA NECESSÁRIA)' : '(JÁ CHEIO)'}`
+      );
+      return {
+        hp: character.max_hp,
+        mana: character.max_mana,
+      };
+    }
+
     if (!character.last_activity) {
       return { hp: character.hp, mana: character.mana };
     }
@@ -163,8 +180,12 @@ export class CharacterHealingService {
 
   /**
    * Aplicar cura automática em um personagem
+   * ✅ CORREÇÃO: Adicionado parâmetro para forçar cura completa no hub
    */
-  static async applyAutoHeal(characterId: string): Promise<ServiceResponse<HealResult>> {
+  static async applyAutoHeal(
+    characterId: string,
+    forceFullHeal: boolean = false
+  ): Promise<ServiceResponse<HealResult>> {
     try {
       let character = CharacterCacheService.getCachedCharacter(characterId);
 
@@ -184,7 +205,11 @@ export class CharacterHealingService {
       }
 
       const currentTime = new Date();
-      const { hp, mana } = CharacterHealingService.calculateAutoHeal(character, currentTime);
+      const { hp, mana } = CharacterHealingService.calculateAutoHeal(
+        character,
+        currentTime,
+        forceFullHeal
+      );
 
       // Se não houve cura, retornar sem atualizar
       if (hp === character.hp && mana === character.mana) {
@@ -243,6 +268,14 @@ export class CharacterHealingService {
         success: false,
       };
     }
+  }
+
+  /**
+   * ✅ NOVO: Forçar cura completa para o hub (sempre 100% HP/Mana)
+   */
+  static async forceFullHealForHub(characterId: string): Promise<ServiceResponse<HealResult>> {
+    console.log(`[CharacterHealingService] Forçando cura completa para o hub: ${characterId}`);
+    return await this.applyAutoHeal(characterId, true);
   }
 
   /**

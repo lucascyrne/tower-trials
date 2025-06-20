@@ -17,9 +17,15 @@ export class FloorService {
   }
 
   /**
-   * Obter dados do andar
+   * ✅ CORRIGIDO: Obter dados do andar com suporte até andar 1000
    */
   static async getFloorData(floorNumber: number): Promise<Floor | null> {
+    // ✅ VALIDAÇÃO: Limitar andares de 1 a 1000
+    if (floorNumber < 1 || floorNumber > 1000) {
+      console.warn(`[FloorService] Andar ${floorNumber} fora dos limites (1-1000)`);
+      return null;
+    }
+
     // Verificar cache
     const now = Date.now();
     const cached = this.floorCache.get(floorNumber);
@@ -70,30 +76,60 @@ export class FloorService {
 
   /**
    * Gerar dados básicos de andar
+   * ✅ CORRIGIDO: Lógica consistente com sistema de checkpoints do banco
    */
   private static generateBasicFloorData(floorNumber: number): Floor {
     let floorType: FloorType = 'common';
-    if (floorNumber % 10 === 0) {
-      floorType = 'boss';
-    } else if (floorNumber % 5 === 0) {
-      floorType = 'elite';
+
+    // ✅ NOVA LÓGICA PADRONIZADA:
+    // - Andar 5: Primeiro Desafio (boss especial)
+    // - Andares 10, 20, 30, 40...: Bosses principais (a cada 10)
+    // - Andares 15, 25, 35...: Elites (a cada 5, exceto boss floors)
+    // - Andares com múltiplo de 7: Eventos especiais
+    if (floorNumber === 5) {
+      floorType = 'boss'; // Primeiro desafio
+    } else if (floorNumber % 10 === 0) {
+      floorType = 'boss'; // Bosses principais
+    } else if (floorNumber % 5 === 0 && floorNumber > 5) {
+      floorType = 'elite'; // Elites (exceto andar 5 que é boss)
+    } else if (floorNumber % 7 === 0) {
+      floorType = 'event'; // Eventos especiais
     }
 
-    const isCheckpoint = floorNumber === 1 || (floorNumber > 10 && (floorNumber - 1) % 10 === 0);
-    const minLevel = Math.max(1, Math.floor(floorNumber / 2));
+    // ✅ CHECKPOINTS PADRONIZADOS:
+    // - Andar 1: Início da Torre
+    // - Andar 5: Primeiro Desafio
+    // - Andares 11, 21, 31, 41...: Pós-boss (após andares 10, 20, 30, 40...)
+    const isCheckpoint =
+      floorNumber === 1 || floorNumber === 5 || (floorNumber > 10 && (floorNumber - 1) % 10 === 0);
 
+    // Nível mínimo mais suave para progressão sustentável
+    const minLevel = Math.max(1, Math.floor(floorNumber / 3));
+
+    // ✅ DESCRIÇÕES PADRONIZADAS
     let description = '';
     switch (floorType) {
       case 'boss':
-        description = `Covil do Chefe - Andar ${floorNumber}`;
+        if (floorNumber === 5) {
+          description = `Primeiro Desafio - Andar ${floorNumber}`;
+        } else {
+          description = `Covil do Chefe - Andar ${floorNumber}`;
+        }
         break;
       case 'elite':
         description = `Domínio de Elite - Andar ${floorNumber}`;
         break;
+      case 'event':
+        description = `Câmara de Eventos - Andar ${floorNumber}`;
+        break;
       default:
-        description = isCheckpoint
-          ? `Santuário Seguro - Andar ${floorNumber}`
-          : `Corredor Sombrio - Andar ${floorNumber}`;
+        if (floorNumber === 1) {
+          description = 'Entrada da Torre';
+        } else if (isCheckpoint) {
+          description = `Santuário Seguro - Andar ${floorNumber}`;
+        } else {
+          description = `Corredor Sombrio - Andar ${floorNumber}`;
+        }
         break;
     }
 

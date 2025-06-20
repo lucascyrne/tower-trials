@@ -222,9 +222,13 @@ export class GameService {
 
   /**
    * Carregar personagem para o jogo
+   * ✅ CORREÇÃO CRÍTICA: Passar parâmetro de force refresh para garantir dados atualizados
    */
-  static async loadPlayerForGame(characterId: string): Promise<GamePlayer> {
-    return GameStateService.loadPlayerForGame(characterId);
+  static async loadPlayerForGame(
+    characterId: string,
+    forceRefresh: boolean = false
+  ): Promise<GamePlayer> {
+    return GameStateService.loadPlayerForGame(characterId, forceRefresh);
   }
 
   // Métodos delegados para BattleService

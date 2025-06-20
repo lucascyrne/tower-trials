@@ -53,7 +53,7 @@ export class CemeteryService {
         'system'
       );
 
-      const { data, error } = await supabase.rpc('kill_character', {
+      const { data, error } = await supabase.rpc('process_character_death', {
         p_character_id: targetCharacterId,
         p_death_cause: deathCause,
         p_killed_by_monster: killedByMonster || null,
@@ -64,7 +64,7 @@ export class CemeteryService {
         throw error;
       }
 
-      console.log(`[CemeteryService] Personagem morto, ID no cemitério: ${data}`);
+      console.log(`[CemeteryService] Personagem morto, resultado:`, data);
 
       // CRÍTICO: Limpar estado das stores após morte
       if (characterStore.selectedCharacter?.id === targetCharacterId) {
@@ -84,9 +84,13 @@ export class CemeteryService {
         }, 3000);
       }
 
+      // A função process_character_death retorna um array com informações
+      const deathInfo = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      const rankingEntryId = deathInfo?.ranking_entry_id || 'unknown';
+
       return {
         success: true,
-        data: data as string,
+        data: rankingEntryId,
         error: null,
       };
     } catch (error) {

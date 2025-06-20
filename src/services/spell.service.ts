@@ -477,6 +477,7 @@ export class SpellService {
     const effects = {
       damage: () => {
         const damage = this.calculateScaledSpellDamage(spell.effect_value, caster);
+        // ✅ CORREÇÃO: Modificar HP de forma segura (o caller deve aplicar a mudança)
         target.hp = Math.max(0, target.hp - damage);
         return `${spell.name} causou ${damage} de dano mágico!`;
       },
@@ -484,6 +485,7 @@ export class SpellService {
         const healing = this.calculateScaledSpellHealing(spell.effect_value, caster);
         const maxHp = 'max_hp' in target ? target.max_hp : target.maxHp;
         const oldHp = target.hp;
+        // ✅ CORREÇÃO: Modificar HP de forma segura (o caller deve aplicar a mudança)
         target.hp = Math.min(maxHp, target.hp + healing);
         const actualHeal = target.hp - oldHp;
         return `${spell.name} restaurou ${actualHeal} HP!`;
@@ -518,22 +520,42 @@ export class SpellService {
       source_spell: spell.name,
     };
 
+    // ✅ CORREÇÃO: Criar cópia do active_effects para evitar mutação read-only
+    const activeEffects = {
+      buffs: [...target.active_effects.buffs],
+      debuffs: [...target.active_effects.debuffs],
+      dots: [...target.active_effects.dots],
+      hots: [...target.active_effects.hots],
+      attribute_modifications: target.active_effects.attribute_modifications
+        ? [...target.active_effects.attribute_modifications]
+        : [],
+    };
+
     if (type === 'buff') {
-      target.active_effects.buffs.push(effect);
+      activeEffects.buffs.push(effect);
       const modifications = this.getAttributeModificationsForSpell(spell);
-      if (modifications.length > 0 && target.active_effects.attribute_modifications) {
-        target.active_effects.attribute_modifications.push(...modifications);
+      if (modifications.length > 0) {
+        activeEffects.attribute_modifications.push(...modifications);
         const modMessages = modifications
           .map(
             mod =>
               `+${mod.value}${mod.type === 'percentage' ? '%' : ''} ${this.translateAttributeName(mod.attribute)}`
           )
           .join(', ');
+
+        // ✅ CORREÇÃO: Reatribuir o objeto completo
+        target.active_effects = activeEffects;
         return `${spell.name} aumentou: ${modMessages}!`;
       }
+
+      // ✅ CORREÇÃO: Reatribuir o objeto completo
+      target.active_effects = activeEffects;
       return `${spell.name} aplicou um efeito benéfico (+${value})!`;
     } else {
-      target.active_effects.debuffs.push(effect);
+      activeEffects.debuffs.push(effect);
+
+      // ✅ CORREÇÃO: Reatribuir o objeto completo
+      target.active_effects = activeEffects;
       return `${spell.name} aplicou um efeito prejudicial (-${value})!`;
     }
   }
@@ -557,11 +579,28 @@ export class SpellService {
       source_spell: spell.name,
     };
 
+    // ✅ CORREÇÃO: Criar cópia do active_effects para evitar mutação read-only
+    const activeEffects = {
+      buffs: [...target.active_effects.buffs],
+      debuffs: [...target.active_effects.debuffs],
+      dots: [...target.active_effects.dots],
+      hots: [...target.active_effects.hots],
+      attribute_modifications: target.active_effects.attribute_modifications
+        ? [...target.active_effects.attribute_modifications]
+        : [],
+    };
+
     if (type === 'dot') {
-      target.active_effects.dots.push(effect);
+      activeEffects.dots.push(effect);
+
+      // ✅ CORREÇÃO: Reatribuir o objeto completo
+      target.active_effects = activeEffects;
       return `${spell.name} aplicou dano contínuo (${value} por ${spell.duration} turnos)!`;
     } else {
-      target.active_effects.hots.push(effect);
+      activeEffects.hots.push(effect);
+
+      // ✅ CORREÇÃO: Reatribuir o objeto completo
+      target.active_effects = activeEffects;
       return `${spell.name} aplicou cura contínua (${value} por ${spell.duration} turnos)!`;
     }
   }
@@ -576,8 +615,19 @@ export class SpellService {
 
     if (!('active_effects' in target) || !target.active_effects) return messages;
 
+    // ✅ CORREÇÃO CRÍTICA: Criar cópia completa do active_effects para evitar mutação read-only
+    const activeEffects = {
+      buffs: [...target.active_effects.buffs],
+      debuffs: [...target.active_effects.debuffs],
+      dots: [...target.active_effects.dots],
+      hots: [...target.active_effects.hots],
+      attribute_modifications: target.active_effects.attribute_modifications
+        ? [...target.active_effects.attribute_modifications]
+        : [],
+    };
+
     // Processar DoTs
-    target.active_effects.dots = target.active_effects.dots.filter(effect => {
+    activeEffects.dots = activeEffects.dots.filter(effect => {
       target.hp = Math.max(0, target.hp - effect.value);
       effect.duration--;
       messages.push(`${effect.source_spell} causou ${effect.value} de dano contínuo.`);
@@ -585,7 +635,7 @@ export class SpellService {
     });
 
     // Processar HoTs
-    target.active_effects.hots = target.active_effects.hots.filter(effect => {
+    activeEffects.hots = activeEffects.hots.filter(effect => {
       const maxHp = 'max_hp' in target ? target.max_hp : target.maxHp;
       const oldHp = target.hp;
       target.hp = Math.min(maxHp, target.hp + effect.value);
@@ -600,19 +650,21 @@ export class SpellService {
     });
 
     // Processar modificações de atributos
-    if (target.active_effects.attribute_modifications) {
-      target.active_effects.attribute_modifications =
-        target.active_effects.attribute_modifications.filter(mod => {
-          mod.duration--;
-          if (mod.duration <= 0) {
-            messages.push(
-              `O efeito de ${mod.source_spell} em ${this.translateAttributeName(mod.attribute)} expirou.`
-            );
-            return false;
-          }
-          return true;
-        });
+    if (activeEffects.attribute_modifications) {
+      activeEffects.attribute_modifications = activeEffects.attribute_modifications.filter(mod => {
+        mod.duration--;
+        if (mod.duration <= 0) {
+          messages.push(
+            `O efeito de ${mod.source_spell} em ${this.translateAttributeName(mod.attribute)} expirou.`
+          );
+          return false;
+        }
+        return true;
+      });
     }
+
+    // ✅ CORREÇÃO: Reatribuir o objeto completo ao invés de propriedades individuais
+    target.active_effects = activeEffects;
 
     return messages;
   }
@@ -623,12 +675,19 @@ export class SpellService {
    * @returns Estado atualizado
    */
   static updateSpellCooldowns(gameState: GameState): GameState {
-    gameState.player.spells.forEach((spell: PlayerSpell) => {
-      if (spell.current_cooldown > 0) {
-        spell.current_cooldown--;
-      }
-    });
-    return gameState;
+    // ✅ CORREÇÃO: Criar cópia do gameState para evitar mutação read-only
+    const updatedGameState = {
+      ...gameState,
+      player: {
+        ...gameState.player,
+        spells: gameState.player.spells.map(spell => ({
+          ...spell,
+          current_cooldown: spell.current_cooldown > 0 ? spell.current_cooldown - 1 : 0,
+        })),
+      },
+    };
+
+    return updatedGameState;
   }
 
   // Utilitário para obter ícone da magia baseado no tipo

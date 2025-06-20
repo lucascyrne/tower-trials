@@ -205,7 +205,13 @@ export class BattleService {
     console.log(`[BattleService] Processando ação do jogador: ${action}`);
     BattleLoggerService.logPlayerAction(action, { spellId, consumableId });
 
-    const newState = { ...currentState };
+    // ✅ CORREÇÃO: Criar cópia profunda para evitar mutação de objetos read-only
+    const newState = {
+      ...currentState,
+      player: { ...currentState.player }, // Cópia do player
+      currentEnemy: currentState.currentEnemy ? { ...currentState.currentEnemy } : null, // Cópia do enemy
+    };
+
     const gameLogMessages: {
       message: string;
       type: 'player_action' | 'damage' | 'system' | 'skill_xp';
@@ -353,7 +359,11 @@ export class BattleService {
           const spell = newState.player.spells.find(s => s.id === spellId);
           if (spell && newState.player.mana >= spell.mana_cost && spell.current_cooldown === 0) {
             newState.player.mana = Math.max(0, newState.player.mana - spell.mana_cost);
-            spell.current_cooldown = spell.cooldown;
+
+            // ✅ CORREÇÃO: Deep copy para evitar erro "Cannot assign to read only property"
+            newState.player.spells = newState.player.spells.map(s =>
+              s.id === spellId ? { ...s, current_cooldown: s.cooldown } : { ...s }
+            );
 
             let spellResult = '';
             let actualSpellValue = 0;
@@ -629,7 +639,10 @@ export class BattleService {
 
       // Adicionar mensagens ao log
       gameLogMessages.forEach(logMsg => {
-        logStore.addGameLogMessage(logMsg.message, logMsg.type as 'player_action' | 'damage' | 'system' | 'skill_xp');
+        logStore.addGameLogMessage(
+          logMsg.message,
+          logMsg.type as 'player_action' | 'damage' | 'system' | 'skill_xp'
+        );
       });
 
       // Aplicar skill XP se houver personagem selecionado
@@ -722,14 +735,17 @@ export class BattleService {
         enemy.name
       );
 
+      // ✅ CORREÇÃO: Criar nova cópia do player em vez de modificar diretamente
+      const deadPlayer = {
+        ...player,
+        hp: 0,
+        isDefending: false,
+      };
+
       if (deathResult.success) {
         return {
           ...gameState,
-          player: {
-            ...player,
-            hp: 0,
-            isDefending: false,
-          },
+          player: deadPlayer,
           mode: 'gameover',
           isPlayerTurn: true,
           gameMessage: `${deathMessage} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
@@ -738,11 +754,7 @@ export class BattleService {
       } else {
         return {
           ...gameState,
-          player: {
-            ...player,
-            hp: 0,
-            isDefending: false,
-          },
+          player: deadPlayer,
           mode: 'gameover',
           isPlayerTurn: true,
           gameMessage: `${deathMessage} Você foi derrotado!`,
@@ -809,6 +821,7 @@ export class BattleService {
         );
       }
 
+      // ✅ CORREÇÃO: Criar nova cópia do player em vez de modificar diretamente
       return {
         ...gameState,
         player: {
@@ -836,8 +849,9 @@ export class BattleService {
       return { newState: { ...gameState, isPlayerTurn: true } };
     }
 
-    const enemy = gameState.currentEnemy;
-    const player = gameState.player;
+    // ✅ CORREÇÃO: Criar cópias dos objetos para evitar mutação read-only
+    const enemy = { ...gameState.currentEnemy };
+    const player = { ...gameState.player };
     const skillXpGains: SkillXpGain[] = [];
 
     console.log(`[BattleService] === PROCESSANDO AÇÃO DO INIMIGO ===`);

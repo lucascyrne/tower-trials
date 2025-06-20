@@ -164,93 +164,53 @@ export class CharacterService {
         setTimeout(() => reject(new Error('Timeout ao buscar personagem')), 8000);
       });
 
+      // Tentar buscar com a função RPC primeiro (incluindo personagens mortos)
       const rpcPromise = supabase
-        .rpc('get_character_full_stats', {
+        .rpc('get_character_full_stats_any_status', {
           p_character_id: characterId,
         })
         .single();
 
-      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+      try {
+        const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
 
-      if (error) {
-        console.error(`[CharacterService] Erro RPC:`, error);
-        throw error;
+        if (error) {
+          console.warn(`[CharacterService] Erro RPC (tentando fallback):`, error);
+          // Se a função RPC falhar, usar fallback com consulta direta
+          return await this.fetchCharacterFromServerFallback(characterId);
+        }
+
+        if (!data) {
+          console.warn(
+            `[CharacterService] Nenhum dado retornado pela RPC para ${characterId}, tentando fallback`
+          );
+          return await this.fetchCharacterFromServerFallback(characterId);
+        }
+
+        // Converter dados da função RPC para o formato Character
+        if (!data || typeof data !== 'object' || !('character_id' in data)) {
+          console.warn(
+            `[CharacterService] Dados RPC inválidos para ${characterId}, usando fallback`
+          );
+          return await this.fetchCharacterFromServerFallback(characterId);
+        }
+        const character = await this.convertRPCDataToCharacter(
+          data as CharacterFullStatsRPC,
+          characterId
+        );
+        console.log(
+          `[CharacterService] Personagem carregado via RPC: ${character.name} (andar: ${character.floor})`
+        );
+        CharacterCacheService.setCachedCharacter(characterId, character);
+
+        return { data: character, error: null, success: true };
+      } catch (rpcError) {
+        console.warn(`[CharacterService] Falha na RPC, usando fallback:`, rpcError);
+        return await this.fetchCharacterFromServerFallback(characterId);
       }
-
-      if (!data) {
-        console.warn(`[CharacterService] Nenhum dado retornado para ${characterId}`);
-        return { data: null, error: 'Personagem não encontrado', success: false };
-      }
-
-      // Converter dados da função RPC para o formato Character
-      const fullStatsData = data as CharacterFullStatsRPC;
-      const character: Character = {
-        id: fullStatsData.character_id,
-        user_id: '',
-        name: fullStatsData.name,
-        level: fullStatsData.level,
-        xp: fullStatsData.xp,
-        xp_next_level: fullStatsData.xp_next_level,
-        gold: fullStatsData.gold,
-        hp: fullStatsData.hp,
-        max_hp: fullStatsData.max_hp,
-        mana: fullStatsData.mana,
-        max_mana: fullStatsData.max_mana,
-        atk: fullStatsData.atk,
-        def: fullStatsData.def,
-        speed: fullStatsData.speed,
-        floor: 1,
-        strength: fullStatsData.strength,
-        dexterity: fullStatsData.dexterity,
-        intelligence: fullStatsData.intelligence,
-        wisdom: fullStatsData.wisdom,
-        vitality: fullStatsData.vitality,
-        luck: fullStatsData.luck,
-        attribute_points: fullStatsData.attribute_points || 0,
-        critical_chance: fullStatsData.critical_chance,
-        critical_damage: fullStatsData.critical_damage,
-        sword_mastery: fullStatsData.sword_mastery,
-        axe_mastery: fullStatsData.axe_mastery,
-        blunt_mastery: fullStatsData.blunt_mastery,
-        defense_mastery: fullStatsData.defense_mastery,
-        magic_mastery: fullStatsData.magic_mastery,
-        sword_mastery_xp: fullStatsData.sword_mastery_xp,
-        axe_mastery_xp: fullStatsData.axe_mastery_xp,
-        blunt_mastery_xp: fullStatsData.blunt_mastery_xp,
-        defense_mastery_xp: fullStatsData.defense_mastery_xp,
-        magic_mastery_xp: fullStatsData.magic_mastery_xp,
-        is_alive: true,
-        created_at: '',
-        updated_at: '',
-        last_activity: undefined,
-      };
-
-      // Buscar dados básicos adicionais
-      const { data: basicData, error: basicError } = await supabase
-        .from('characters')
-        .select('user_id, floor, created_at, updated_at, last_activity')
-        .eq('id', character.id)
-        .maybeSingle();
-
-      if (!basicError && basicData) {
-        character.user_id = basicData.user_id;
-        character.floor = basicData.floor;
-        character.created_at = basicData.created_at;
-        character.updated_at = basicData.updated_at;
-        character.last_activity = basicData.last_activity;
-      } else if (basicError) {
-        console.warn(`[CharacterService] Aviso ao buscar dados básicos: ${basicError.message}`);
-      }
-
-      console.log(
-        `[CharacterService] Personagem carregado: ${character.name} (andar: ${character.floor})`
-      );
-      CharacterCacheService.setCachedCharacter(characterId, character);
-
-      return { data: character, error: null, success: true };
     } catch (error) {
       console.error(
-        'Erro ao buscar personagem do servidor:',
+        'Erro geral ao buscar personagem do servidor:',
         error instanceof Error ? error.message : error
       );
       return {
@@ -259,6 +219,171 @@ export class CharacterService {
         success: false,
       };
     }
+  }
+
+  /**
+   * Fallback para buscar personagem com consulta direta quando RPC falha
+   * @private
+   */
+  private static async fetchCharacterFromServerFallback(
+    characterId: string
+  ): Promise<ServiceResponse<Character>> {
+    try {
+      console.log(`[CharacterService] Usando fallback para buscar personagem ${characterId}`);
+
+      // Buscar dados básicos da tabela characters
+      const { data: charData, error: charError } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', characterId)
+        .maybeSingle();
+
+      if (charError) {
+        console.error(`[CharacterService] Erro no fallback:`, charError);
+        throw charError;
+      }
+
+      if (!charData) {
+        console.warn(`[CharacterService] Personagem não encontrado no fallback: ${characterId}`);
+        return { data: null, error: 'Personagem não encontrado', success: false };
+      }
+
+      // Calcular stats derivados se necessário
+      const derivedStats = await CharacterStatsService.calculateDerivedStats(charData);
+
+      const character: Character = {
+        id: charData.id,
+        user_id: charData.user_id,
+        name: charData.name,
+        level: charData.level,
+        xp: charData.xp,
+        xp_next_level: charData.xp_next_level,
+        gold: charData.gold,
+        hp: derivedStats.hp,
+        max_hp: derivedStats.max_hp,
+        mana: derivedStats.mana,
+        max_mana: derivedStats.max_mana,
+        atk: derivedStats.atk,
+        def: derivedStats.def,
+        speed: derivedStats.speed,
+        floor: charData.floor,
+        strength: charData.strength || 10,
+        dexterity: charData.dexterity || 10,
+        intelligence: charData.intelligence || 10,
+        wisdom: charData.wisdom || 10,
+        vitality: charData.vitality || 10,
+        luck: charData.luck || 10,
+        attribute_points: charData.attribute_points || 0,
+        critical_chance: derivedStats.critical_chance,
+        critical_damage: derivedStats.critical_damage,
+        sword_mastery: charData.sword_mastery || 1,
+        axe_mastery: charData.axe_mastery || 1,
+        blunt_mastery: charData.blunt_mastery || 1,
+        defense_mastery: charData.defense_mastery || 1,
+        magic_mastery: charData.magic_mastery || 1,
+        sword_mastery_xp: charData.sword_mastery_xp || 0,
+        axe_mastery_xp: charData.axe_mastery_xp || 0,
+        blunt_mastery_xp: charData.blunt_mastery_xp || 0,
+        defense_mastery_xp: charData.defense_mastery_xp || 0,
+        magic_mastery_xp: charData.magic_mastery_xp || 0,
+        is_alive: true,
+        created_at: charData.created_at,
+        updated_at: charData.updated_at,
+        last_activity: charData.last_activity,
+      };
+
+      console.log(
+        `[CharacterService] Personagem carregado via fallback: ${character.name} (andar: ${character.floor})`
+      );
+      CharacterCacheService.setCachedCharacter(characterId, character);
+
+      return { data: character, error: null, success: true };
+    } catch (error) {
+      console.error(
+        'Erro no fallback ao buscar personagem:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * Converter dados da RPC para formato Character
+   * @private
+   */
+  private static async convertRPCDataToCharacter(
+    data: CharacterFullStatsRPC,
+    characterId: string
+  ): Promise<Character> {
+    // Converter dados da função RPC para o formato Character
+    const character: Character = {
+      id: data.character_id,
+      user_id: '',
+      name: data.name,
+      level: data.level,
+      xp: data.xp,
+      xp_next_level: data.xp_next_level,
+      gold: data.gold,
+      hp: data.hp,
+      max_hp: data.max_hp,
+      mana: data.mana,
+      max_mana: data.max_mana,
+      atk: data.atk,
+      def: data.def,
+      speed: data.speed,
+      floor: 1,
+      strength: data.strength,
+      dexterity: data.dexterity,
+      intelligence: data.intelligence,
+      wisdom: data.wisdom,
+      vitality: data.vitality,
+      luck: data.luck,
+      attribute_points: data.attribute_points || 0,
+      critical_chance: data.critical_chance,
+      critical_damage: data.critical_damage,
+      sword_mastery: data.sword_mastery,
+      axe_mastery: data.axe_mastery,
+      blunt_mastery: data.blunt_mastery,
+      defense_mastery: data.defense_mastery,
+      magic_mastery: data.magic_mastery,
+      sword_mastery_xp: data.sword_mastery_xp,
+      axe_mastery_xp: data.axe_mastery_xp,
+      blunt_mastery_xp: data.blunt_mastery_xp,
+      defense_mastery_xp: data.defense_mastery_xp,
+      magic_mastery_xp: data.magic_mastery_xp,
+      is_alive: true,
+      created_at: '',
+      updated_at: '',
+      last_activity: undefined,
+    };
+
+    // Buscar dados básicos adicionais
+    const { data: basicData, error: basicError } = await supabase
+      .from('characters')
+      .select('user_id, floor, created_at, updated_at, last_activity')
+      .eq('id', character.id)
+      .maybeSingle();
+
+    if (!basicError && basicData) {
+      character.user_id = basicData.user_id;
+      character.floor = basicData.floor;
+      character.created_at = basicData.created_at;
+      character.updated_at = basicData.updated_at;
+      character.last_activity = basicData.last_activity;
+    } else if (basicError) {
+      console.warn(`[CharacterService] Aviso ao buscar dados básicos: ${basicError.message}`);
+    }
+
+    console.log(
+      `[CharacterService] Personagem carregado: ${character.name} (andar: ${character.floor})`
+    );
+    CharacterCacheService.setCachedCharacter(characterId, character);
+
+    return character;
   }
 
   /**
@@ -505,10 +630,12 @@ export class CharacterService {
 
   /**
    * OTIMIZADO: Obter personagem com stats detalhados para o jogo com integração Zustand
+   * ✅ CORREÇÃO: Garantir auto-heal consistente para fonte única de verdade do HP
    */
   static async getCharacterForGame(
     characterId: string,
-    forceRefresh: boolean = false
+    forceRefresh: boolean = false,
+    applyAutoHeal: boolean = true
   ): Promise<ServiceResponse<GamePlayer>> {
     try {
       console.log(
@@ -858,13 +985,50 @@ export class CharacterService {
         equipment_speed_bonus: 0,
       };
 
-      // IMPORTANTE: Atualizar caches com os novos dados
+      // ✅ CORREÇÃO CRÍTICA: Aplicar auto-heal se solicitado para garantir HP consistente
+      if (applyAutoHeal) {
+        try {
+          console.log(
+            `[CharacterService] 🩺 Aplicando auto-heal para ${gamePlayer.name} (HP atual: ${gamePlayer.hp}/${gamePlayer.max_hp})`
+          );
+          // ✅ CORREÇÃO: Forçar cura completa quando carregando para o hub
+          const healResult = await CharacterHealingService.applyAutoHeal(characterId, true);
+
+          if (healResult.success && healResult.data) {
+            if (healResult.data.healed) {
+              console.log(
+                `[CharacterService] ✅ Auto-heal APLICADO: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP (curou ${healResult.data.newHp - healResult.data.oldHp} HP)`
+              );
+
+              // Atualizar o gamePlayer com os valores curados
+              gamePlayer.hp = healResult.data.newHp;
+              gamePlayer.mana = healResult.data.character.mana;
+
+              // Invalidar cache para que próximas consultas usem dados atualizados
+              CharacterCacheService.invalidateCharacterCache(characterId);
+            } else {
+              console.log(
+                `[CharacterService] ℹ️ Auto-heal NÃO NECESSÁRIO para ${gamePlayer.name} - já com HP/Mana máximos (${healResult.data.newHp}/${gamePlayer.max_hp})`
+              );
+            }
+          } else {
+            console.warn(
+              `[CharacterService] ⚠️ Auto-heal FALHOU para ${gamePlayer.name}: ${healResult.error}`
+            );
+          }
+        } catch (healError) {
+          console.warn(`[CharacterService] Erro no auto-heal (não crítico):`, healError);
+          // Continuar mesmo se auto-heal falhar
+        }
+      }
+
+      // IMPORTANTE: Atualizar caches com os novos dados (incluindo auto-heal se aplicado)
       const characterForCache: Character = {
         ...charData,
-        hp: derivedStats.hp,
-        max_hp: derivedStats.max_hp,
-        mana: derivedStats.mana,
-        max_mana: derivedStats.max_mana,
+        hp: gamePlayer.hp, // ✅ CORREÇÃO: Usar HP após auto-heal
+        max_hp: gamePlayer.max_hp,
+        mana: gamePlayer.mana, // ✅ CORREÇÃO: Usar mana após auto-heal
+        max_mana: gamePlayer.max_mana,
         atk: derivedStats.atk,
         def: derivedStats.def,
         speed: derivedStats.speed,
@@ -878,7 +1042,7 @@ export class CharacterService {
       // Os hooks gerenciarão a sincronização do estado automaticamente
 
       console.log(
-        `[CharacterService] GamePlayer criado a partir do banco para: ${gamePlayer.name}`
+        `[CharacterService] GamePlayer criado a partir do banco para: ${gamePlayer.name} (HP final: ${gamePlayer.hp}/${gamePlayer.max_hp})`
       );
       return { success: true, error: null, data: gamePlayer };
     } catch (error) {
@@ -891,6 +1055,64 @@ export class CharacterService {
     }
   }
 
+  /**
+   * ✅ CORREÇÃO: Invalidar cache específico de um personagem para garantir dados atualizados
+   */
+  static invalidateCharacterCache(characterId: string): void {
+    CharacterCacheService.invalidateCharacterCache(characterId);
+    console.log(`[CharacterService] Cache invalidado para personagem ${characterId}`);
+  }
+
+  /**
+   * ✅ NOVO: Método utilitário para forçar cura completa no hub (debug)
+   */
+  static async debugForceFullHeal(
+    characterId: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`[CharacterService] 🔧 DEBUG: Forçando cura completa para ${characterId}`);
+
+      // Buscar personagem atual
+      const charResult = await this.getCharacter(characterId);
+      if (!charResult.success || !charResult.data) {
+        return { success: false, message: 'Personagem não encontrado' };
+      }
+
+      const character = charResult.data;
+      console.log(
+        `[CharacterService] 🔧 DEBUG: HP antes da cura: ${character.hp}/${character.max_hp}`
+      );
+
+      // Forçar cura via direct update
+      const updateResult = await CharacterHealingService.updateCharacterHpMana(
+        characterId,
+        character.max_hp,
+        character.max_mana
+      );
+
+      if (!updateResult.success) {
+        return { success: false, message: updateResult.error || 'Erro ao atualizar HP/Mana' };
+      }
+
+      // Invalidar cache
+      this.invalidateCharacterCache(characterId);
+
+      console.log(
+        `[CharacterService] 🔧 DEBUG: HP após cura forçada: ${character.max_hp}/${character.max_hp}`
+      );
+      return {
+        success: true,
+        message: `Cura forçada aplicada: ${character.hp} -> ${character.max_hp} HP, ${character.mana} -> ${character.max_mana} Mana`,
+      };
+    } catch (error) {
+      console.error('[CharacterService] 🔧 DEBUG: Erro na cura forçada:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Erro desconhecido',
+      };
+    }
+  }
+
   // Métodos delegados para os serviços especializados
   static getUnlockedCheckpoints = CharacterCheckpointService.getUnlockedCheckpoints;
   static startFromCheckpoint = CharacterCheckpointService.startFromCheckpoint;
@@ -898,6 +1120,7 @@ export class CharacterService {
   static updateCharacterFloor = CharacterCheckpointService.updateCharacterFloor;
   static updateCharacterHpMana = CharacterHealingService.updateCharacterHpMana;
   static applyAutoHeal = CharacterHealingService.applyAutoHeal;
+  static forceFullHealForHub = CharacterHealingService.forceFullHealForHub;
   static updateLastActivity = CharacterHealingService.updateLastActivity;
   static getUserCharacterProgression = CharacterProgressionService.getUserCharacterProgression;
   static checkCharacterLimit = CharacterProgressionService.checkCharacterLimit;

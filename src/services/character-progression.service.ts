@@ -80,7 +80,8 @@ export class CharacterProgressionService {
   }
 
   /**
-   * FUNÇÃO SEGURA: Conceder XP com validações anti-cheat
+   * ✅ FUNÇÃO SEGURA: Conceder XP com validações anti-cheat
+   * ATUALIZADA: Suporte para sistema de ciclos infinitos (bosses T10+ até 2000+ XP)
    */
   static async grantSecureXP(
     characterId: string,
@@ -99,6 +100,11 @@ export class CharacterProgressionService {
     try {
       const { supabaseAdmin } = await import('@/lib/supabase');
 
+      // ✅ VALIDAÇÃO: Log detalhado para sistema de ciclos
+      const sourceInfo =
+        source === 'combat' ? 'Combat' : source.charAt(0).toUpperCase() + source.slice(1);
+      console.log(`[XP Grant] 🎯 ${sourceInfo}: ${xpAmount} XP → ${characterId}`);
+
       const { data, error } = await supabaseAdmin
         .rpc('secure_grant_xp', {
           p_character_id: characterId,
@@ -107,11 +113,25 @@ export class CharacterProgressionService {
         })
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // ✅ TRATAMENTO ESPECÍFICO: Anti-cheat vs erros técnicos
+        if (error.message?.includes('suspeita detectada') || error.code === 'P0001') {
+          console.warn(`[XP Anti-cheat] 🚫 XP suspeito bloqueado:`);
+          console.warn(`  ├─ Valor: ${xpAmount} XP`);
+          console.warn(`  ├─ Fonte: ${source}`);
+          console.warn(`  └─ Motivo: ${error.message}`);
+
+          // Sugerir valores seguros para debug
+          const suggestedMax = source === 'combat' ? 'nível * 80' : 'sem limite fixo';
+          console.warn(`[XP Anti-cheat] 💡 Sugestão: Manter abaixo de ${suggestedMax}`);
+        } else {
+          console.error(`[XP Grant] ❌ Erro técnico: ${error.message}`);
+        }
+        throw error;
+      }
 
       CharacterCacheService.invalidateCharacterCache(characterId);
 
-      // Se houve level up ou slots desbloqueados, invalidar cache do usuário
       const result = data as {
         leveled_up: boolean;
         new_level: number;
@@ -120,8 +140,16 @@ export class CharacterProgressionService {
         slots_unlocked: boolean;
         new_available_slots: number;
       };
+
+      // ✅ LOG DE SUCESSO DETALHADO
+      const levelInfo = result.leveled_up
+        ? `📈 Level ${result.new_level}!`
+        : `Level ${result.new_level}`;
+      const slotInfo = result.slots_unlocked ? ` +Slots: ${result.new_available_slots}` : '';
+      console.log(`[XP Grant] ✅ ${xpAmount} XP concedido → ${levelInfo}${slotInfo}`);
+
       if (result.leveled_up || result.slots_unlocked) {
-        const character = await this.getCharacterById(characterId);
+        const character = await CharacterProgressionService.getCharacterById(characterId);
         if (character.success && character.data) {
           CharacterCacheService.invalidateUserCache(character.data.user_id);
         }
@@ -133,10 +161,18 @@ export class CharacterProgressionService {
         success: true,
       };
     } catch (error) {
-      console.error('Erro ao conceder XP:', error instanceof Error ? error.message : error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao conceder XP';
+
+      // ✅ LOG DE ERRO CONTEXTUAL
+      if (errorMessage.includes('suspeita detectada') || errorMessage.includes('P0001')) {
+        console.error(`[XP Anti-cheat] 🛡️ Bloqueio ativo: ${xpAmount} XP (${source})`);
+      } else {
+        console.error(`[XP Grant] 🔧 Falha técnica: ${errorMessage}`);
+      }
+
       return {
         data: null,
-        error: error instanceof Error ? error.message : 'Erro ao conceder XP',
+        error: errorMessage,
         success: false,
       };
     }

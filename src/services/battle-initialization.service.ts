@@ -32,13 +32,20 @@ export class BattleInitializationService {
 
       onProgress?.({ step: 'character', progress: 25, message: 'Carregando personagem...' });
 
-      // Carregar dados completos do personagem sempre do banco
-      console.log(`[BattleInit] Carregando dados de GamePlayer para ${targetCharacter.name}`);
-      const characterResponse = await CharacterService.getCharacterForGame(targetCharacter.id);
+      // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal aplicado para fonte única de verdade
+      console.log(
+        `[BattleInit] Carregando dados de GamePlayer para ${targetCharacter.name} com auto-heal`
+      );
+      const characterResponse = await CharacterService.getCharacterForGame(
+        targetCharacter.id,
+        true,
+        true
+      );
       if (!characterResponse.success || !characterResponse.data) {
         throw new Error(characterResponse.error || 'Falha ao carregar personagem');
       }
       const gamePlayer = characterResponse.data as GamePlayer;
+      console.log(`[BattleInit] Personagem carregado - HP: ${gamePlayer.hp}/${gamePlayer.max_hp}`);
 
       // Validação
       if (!gamePlayer || !gamePlayer.id) {

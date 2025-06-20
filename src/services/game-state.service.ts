@@ -9,15 +9,27 @@ import type { CharacterConsumable } from '@/models/consumable.model';
 export class GameStateService {
   /**
    * Carregar personagem com dados para o jogo
+   * ✅ CORREÇÃO CRÍTICA: Sempre aplicar auto-heal para fonte única de verdade
    */
-  static async loadPlayerForGame(characterId: string): Promise<GamePlayer> {
+  static async loadPlayerForGame(
+    characterId: string,
+    forceRefresh: boolean = false
+  ): Promise<GamePlayer> {
     try {
-      const characterResponse = await CharacterService.getCharacterForGame(characterId);
+      console.log(`[GameStateService] Carregando personagem ${characterId} com auto-heal`);
+      const characterResponse = await CharacterService.getCharacterForGame(
+        characterId,
+        forceRefresh,
+        true
+      );
       if (!characterResponse.success || !characterResponse.data) {
         throw new Error(characterResponse.error || 'Personagem não encontrado');
       }
 
       const character = characterResponse.data;
+      console.log(
+        `[GameStateService] Personagem carregado com HP: ${character.hp}/${character.max_hp}`
+      );
 
       // Carregar magias equipadas
       const spellsResponse = await SpellService.getCharacterEquippedSpells(characterId);

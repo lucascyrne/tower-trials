@@ -115,7 +115,7 @@ export class RankingService {
       const { data: result, error } = await supabase.rpc('save_ranking_entry', {
         p_user_id: scoreData.user_id,
         p_player_name: scoreData.player_name,
-        p_floor: scoreData.floor,
+        p_highest_floor: scoreData.floor,
         p_character_level: scoreData.character_level || 1,
         p_character_gold: scoreData.character_gold || 0,
         p_character_alive: scoreData.character_alive ?? true,
