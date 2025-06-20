@@ -542,6 +542,14 @@ export class SlotService {
         new_mana: Math.floor(Number(resultData.new_mana) || 0),
       };
 
+      // NOVO: Log detalhado para debug
+      console.log(`[SlotService] Processando resultado:`, {
+        originalData: resultData,
+        processedResult: result,
+        characterId,
+        slotPosition,
+      });
+
       if (isNaN(result.new_hp) || isNaN(result.new_mana)) {
         console.error('[SlotService] Valores NaN detectados:', { resultData, result });
         return {
@@ -551,17 +559,29 @@ export class SlotService {
         };
       }
 
-      // CRÍTICO: Invalidar cache após consumo
-      if (result.success) {
-        this.invalidateCache(characterId);
+      // CRÍTICO: Invalidar cache após consumo (mesmo se não sucesso para evitar inconsistências)
+      this.invalidateCache(characterId);
+
+      if (!result.success) {
+        console.warn(`[SlotService] RPC indicou falha:`, {
+          message: result.message,
+          resultData,
+          characterId,
+          slotPosition,
+        });
       }
 
-      console.log(`[SlotService] Poção consumida:`, result);
+      console.log(`[SlotService] Resultado final da poção:`, {
+        success: result.success,
+        message: result.message,
+        hp: result.new_hp,
+        mana: result.new_mana,
+      });
 
       return {
         success: result.success,
         error: result.success ? null : result.message,
-        data: result,
+        data: result.success ? result : null,
       };
     } catch (error) {
       console.error('[SlotService] Erro crítico ao consumir poção:', error);
