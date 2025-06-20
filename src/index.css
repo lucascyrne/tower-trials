@@ -1030,3 +1030,126 @@ input[type='url'],
 textarea {
   cursor: text !important;
 }
+
+/* ===== EQUIPMENT COMPARISON MAGICAL EFFECTS ===== */
+@keyframes stat-improvement-glow {
+  0%,
+  100% {
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  }
+}
+
+@keyframes stat-reduction-pulse {
+  0%,
+  100% {
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.15);
+  }
+}
+
+@keyframes magical-shimmer-equipment {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+    opacity: 0;
+  }
+}
+
+/* Efeitos para bordas mágicas nos stats */
+.magical-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.magical-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+  animation: magical-shimmer-equipment 3s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* Animações específicas para comparação de equipamentos */
+.stat-improvement {
+  animation: stat-improvement-glow 2s ease-in-out infinite;
+}
+
+.stat-reduction {
+  animation: stat-reduction-pulse 2s ease-in-out infinite;
+}
+
+/* Hover effects para comparison cards */
+.equipment-comparison-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 0 20px rgba(var(--primary), 0.1);
+}
+
+/* Glowing text effects for stat values */
+.stat-value-improved {
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.stat-value-reduced {
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+/* ===== CRAFTING PAGE SCROLL FIXES ===== */
+/* Garantir scroll adequado nos painéis de receitas */
+.recipe-details-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.recipe-ingredients-section {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Scroll personalizado para listas de ingredientes */
+.ingredients-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--border)) transparent;
+}
+
+.ingredients-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ingredients-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.ingredients-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--border));
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.ingredients-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--border), 0.8);
+}
