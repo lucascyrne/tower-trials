@@ -35,11 +35,14 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
     }
   };
 
-  // Calcular informações do ciclo se o floorNumber estiver disponível
+  // ✅ CORRIGIDO: Calcular informações usando lógica padronizada
   const floorNumber = currentFloor.floorNumber || 1;
   const currentTier = Math.ceil(floorNumber / 20);
   const cyclePosition = ((floorNumber - 1) % 20) + 1;
-  const isBossFloor = [5, 10, 15, 20].includes(cyclePosition);
+
+  // ✅ NOVA LÓGICA CONSISTENTE: Boss floors são 5, 10, 20, 30, 40...
+  const isBossFloor = floorNumber === 5 || floorNumber % 10 === 0;
+  const isEliteFloor = floorNumber % 5 === 0 && floorNumber > 5 && !isBossFloor;
   const isHighTier = currentTier > 1;
 
   return (
@@ -69,6 +72,14 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
             <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
               <Target className="h-3 w-3 mr-1" />
               BOSS
+            </Badge>
+          )}
+
+          {/* Badge de Elite Floor */}
+          {isEliteFloor && (
+            <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+              <Star className="h-3 w-3 mr-1" />
+              ELITE
             </Badge>
           )}
 

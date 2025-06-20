@@ -8,6 +8,12 @@ interface DerivedStatsSectionProps {
 }
 
 export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps) {
+  // ✅ CORREÇÃO: Log para debug de re-renderizações
+  console.log('[DerivedStatsSection] Re-renderizando com stats:', {
+    strength: characterStats.strength,
+    hp: characterStats.max_hp,
+    timestamp: Date.now(),
+  });
   // =====================================
   // SISTEMA ANTI-MONO-BUILD (EXATO DO CharacterService)
   // =====================================

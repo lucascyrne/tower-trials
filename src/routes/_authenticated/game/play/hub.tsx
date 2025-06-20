@@ -179,8 +179,8 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
       }, 15000); // 15 segundos timeout
 
       try {
-        // Buscar dados do personagem
-        const response = await CharacterService.getCharacterForGame(characterId);
+        // ✅ CORREÇÃO CRÍTICA: Buscar dados do personagem com auto-heal aplicado
+        const response = await CharacterService.getCharacterForGame(characterId, false, true);
 
         if (!response.success || !response.data) {
           throw new Error(response.error || 'Erro ao carregar personagem');

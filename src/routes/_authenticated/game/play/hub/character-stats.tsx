@@ -71,46 +71,98 @@ function CharacterStatsPage() {
     luck: 0,
   });
 
-  const loadCharacterStats = useCallback(async () => {
-    if (!characterId || characterId.trim() === '') {
-      console.warn(
-        '[CharacterStatsPage] Character ID não fornecido, redirecionando para seleção de personagem'
-      );
-      navigate({ to: '/game/play' });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await CharacterService.getCharacterStats(characterId);
-      if (response.success && response.data) {
-        console.log('[CharacterStatsPage] Stats recebidos:', {
-          hp: {
-            value: response.data.max_hp,
-            base: response.data.base_max_hp,
-            bonus: response.data.equipment_hp_bonus,
-          },
-          atk: {
-            value: response.data.atk,
-            base: response.data.base_atk,
-            bonus: response.data.equipment_atk_bonus,
-          },
-        });
-        setCharacterStats(response.data);
-      } else {
-        toast.error('Erro ao carregar stats do personagem', {
-          description: response.error,
-        });
-        navigate({ to: '/game/play/hub', search: { character: characterId } });
+  const loadCharacterStats = useCallback(
+    async (forceRefresh: boolean = false) => {
+      if (!characterId || characterId.trim() === '') {
+        console.warn(
+          '[CharacterStatsPage] Character ID não fornecido, redirecionando para seleção de personagem'
+        );
+        navigate({ to: '/game/play' });
+        return;
       }
-    } catch (error) {
-      console.error('Erro ao carregar stats:', error);
-      toast.error('Erro ao carregar stats do personagem');
-      navigate({ to: '/game/play/hub', search: { character: characterId } });
-    } finally {
-      setLoading(false);
-    }
-  }, [characterId, navigate]);
+
+      try {
+        setLoading(true);
+        // ✅ CORREÇÃO CRÍTICA: Forçar busca de dados atualizados com auto-heal aplicado
+        const response = await CharacterService.getCharacterForGame(
+          characterId,
+          forceRefresh,
+          true
+        );
+
+        if (response.success && response.data) {
+          // Converter GamePlayer para CharacterStats
+          const gamePlayer = response.data;
+          const characterStats: CharacterStats = {
+            level: gamePlayer.level,
+            xp: gamePlayer.xp,
+            xp_next_level: gamePlayer.xp_next_level,
+            gold: gamePlayer.gold,
+            hp: gamePlayer.hp,
+            max_hp: gamePlayer.max_hp,
+            mana: gamePlayer.mana,
+            max_mana: gamePlayer.max_mana,
+            atk: gamePlayer.atk,
+            magic_attack: gamePlayer.magic_attack,
+            def: gamePlayer.def,
+            speed: gamePlayer.speed,
+            strength: gamePlayer.strength || 10,
+            dexterity: gamePlayer.dexterity || 10,
+            intelligence: gamePlayer.intelligence || 10,
+            wisdom: gamePlayer.wisdom || 10,
+            vitality: gamePlayer.vitality || 10,
+            luck: gamePlayer.luck || 10,
+            attribute_points: gamePlayer.attribute_points || 0,
+            critical_chance: gamePlayer.critical_chance || 0,
+            critical_damage: gamePlayer.critical_damage || 130,
+            magic_damage_bonus: gamePlayer.magic_damage_bonus || 0,
+            sword_mastery: gamePlayer.sword_mastery || 1,
+            axe_mastery: gamePlayer.axe_mastery || 1,
+            blunt_mastery: gamePlayer.blunt_mastery || 1,
+            defense_mastery: gamePlayer.defense_mastery || 1,
+            magic_mastery: gamePlayer.magic_mastery || 1,
+            sword_mastery_xp: gamePlayer.sword_mastery_xp || 0,
+            axe_mastery_xp: gamePlayer.axe_mastery_xp || 0,
+            blunt_mastery_xp: gamePlayer.blunt_mastery_xp || 0,
+            defense_mastery_xp: gamePlayer.defense_mastery_xp || 0,
+            magic_mastery_xp: gamePlayer.magic_mastery_xp || 0,
+            base_hp: gamePlayer.base_hp,
+            base_max_hp: gamePlayer.base_max_hp,
+            base_mana: gamePlayer.base_mana,
+            base_max_mana: gamePlayer.base_max_mana,
+            base_atk: gamePlayer.base_atk,
+            base_def: gamePlayer.base_def,
+            base_speed: gamePlayer.base_speed,
+            equipment_hp_bonus: gamePlayer.equipment_hp_bonus,
+            equipment_mana_bonus: gamePlayer.equipment_mana_bonus,
+            equipment_atk_bonus: gamePlayer.equipment_atk_bonus,
+            equipment_def_bonus: gamePlayer.equipment_def_bonus,
+            equipment_speed_bonus: gamePlayer.equipment_speed_bonus,
+          };
+
+          console.log('[CharacterStatsPage] Stats atualizados:', {
+            strength: characterStats.strength,
+            attribute_points: characterStats.attribute_points,
+            hp: characterStats.max_hp,
+            forceRefresh,
+          });
+          setCharacterStats(characterStats);
+        } else {
+          toast.error('Erro ao carregar stats do personagem', {
+            description: response.error,
+          });
+          navigate({ to: '/game/play/hub', search: { character: characterId } });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar stats:', error);
+        toast.error('Erro ao carregar stats do personagem');
+        navigate({ to: '/game/play/hub', search: { character: characterId } });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [characterId, navigate]
+  );
 
   useEffect(() => {
     if (characterId) {
@@ -163,7 +215,8 @@ function CharacterStatsPage() {
       if (response.success) {
         toast.success('Pontos distribuídos com sucesso!');
         handleReset();
-        await loadCharacterStats();
+        setCharacterStats(null);
+        await loadCharacterStats(true); // Forçar refresh dos dados
       } else {
         toast.error('Erro ao distribuir pontos', {
           description: response.error,
@@ -175,6 +228,51 @@ function CharacterStatsPage() {
     } finally {
       setIsDistributing(false);
     }
+  };
+
+  const calculatePreviewImprovements = () => {
+    if (!characterStats) return {};
+
+    const currentStr = characterStats.strength;
+    const currentDex = characterStats.dexterity;
+    const currentInt = characterStats.intelligence;
+    const currentVit = characterStats.vitality;
+    const currentLuck = characterStats.luck;
+
+    const newStr = currentStr + distribution.strength;
+    const newDex = currentDex + distribution.dexterity;
+    const newInt = currentInt + distribution.intelligence;
+    const newVit = currentVit + distribution.vitality;
+    const newLuck = currentLuck + distribution.luck;
+
+    const currentVitScaling = Math.pow(currentVit, 1.3);
+    const newVitScaling = Math.pow(newVit, 1.3);
+    const hpIncrease = Math.floor((newVitScaling - currentVitScaling) * 2.5);
+
+    const currentIntScaling = Math.pow(currentInt, 1.25);
+    const newIntScaling = Math.pow(newInt, 1.25);
+    const manaIncrease = Math.floor((newIntScaling - currentIntScaling) * 1.5);
+
+    const currentStrScaling = Math.pow(currentStr, 1.2);
+    const newStrScaling = Math.pow(newStr, 1.2);
+    const atkIncrease = Math.floor((newStrScaling - currentStrScaling) * 1.2);
+
+    const currentDexScaling = Math.pow(currentDex, 1.15);
+    const newDexScaling = Math.pow(newDex, 1.15);
+    const speedIncrease = Math.floor((newDexScaling - currentDexScaling) * 1.0);
+
+    const currentCritChance =
+      currentDexScaling * 0.25 + currentLuck * 0.35 + currentStrScaling * 0.1;
+    const newCritChance = newDexScaling * 0.25 + newLuck * 0.35 + newStrScaling * 0.1;
+    const critChanceIncrease = Math.min(75, newCritChance) - Math.min(75, currentCritChance);
+
+    return {
+      hp: hpIncrease,
+      mana: manaIncrease,
+      atk: atkIncrease,
+      speed: speedIncrease,
+      critChance: critChanceIncrease,
+    };
   };
 
   // Configuração dos atributos
@@ -393,35 +491,53 @@ function CharacterStatsPage() {
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
                       <div className="text-sm font-medium mb-2 flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
-                        Preview dos Melhoramentos
+                        Preview dos Melhoramentos (Sistema Real)
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        {distribution.vitality > 0 && (
-                          <div className="flex justify-between">
-                            <span>HP:</span>
-                            <span className="text-green-400">+{distribution.vitality * 8}</span>
-                          </div>
-                        )}
-                        {distribution.intelligence > 0 && (
-                          <div className="flex justify-between">
-                            <span>Mana:</span>
-                            <span className="text-blue-400">+{distribution.intelligence * 5}</span>
-                          </div>
-                        )}
-                        {distribution.strength > 0 && (
-                          <div className="flex justify-between">
-                            <span>Ataque:</span>
-                            <span className="text-red-400">+{distribution.strength * 2}</span>
-                          </div>
-                        )}
-                        {distribution.dexterity > 0 && (
-                          <div className="flex justify-between">
-                            <span>Velocidade:</span>
-                            <span className="text-green-400">
-                              +{Math.floor(distribution.dexterity * 1.5)}
-                            </span>
-                          </div>
-                        )}
+                        {(() => {
+                          const improvements = calculatePreviewImprovements();
+                          return (
+                            <>
+                              {(improvements.hp || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span>HP:</span>
+                                  <span className="text-green-400">+{improvements.hp || 0}</span>
+                                </div>
+                              )}
+                              {(improvements.mana || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Mana:</span>
+                                  <span className="text-blue-400">+{improvements.mana || 0}</span>
+                                </div>
+                              )}
+                              {(improvements.atk || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Ataque:</span>
+                                  <span className="text-red-400">+{improvements.atk || 0}</span>
+                                </div>
+                              )}
+                              {(improvements.speed || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Velocidade:</span>
+                                  <span className="text-green-400">+{improvements.speed || 0}</span>
+                                </div>
+                              )}
+                              {(improvements.critChance || 0) > 0 && (
+                                <div className="flex justify-between">
+                                  <span>Crítico:</span>
+                                  <span className="text-yellow-400">
+                                    +{(improvements.critChance || 0).toFixed(1)}%
+                                  </span>
+                                </div>
+                              )}
+                              {Object.values(improvements).every(v => v <= 0) && (
+                                <div className="col-span-2 text-center text-muted-foreground">
+                                  Nenhum melhoramento detectado
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -451,7 +567,10 @@ function CharacterStatsPage() {
           </Card>
 
           {/* Stats Derivados */}
-          <DerivedStatsSection characterStats={characterStats} />
+          <DerivedStatsSection
+            key={`${characterStats.strength}-${characterStats.dexterity}-${characterStats.intelligence}-${characterStats.wisdom}-${characterStats.vitality}-${characterStats.luck}-${characterStats.attribute_points}`}
+            characterStats={characterStats}
+          />
 
           {/* Habilidades */}
           <Card className="lg:col-span-2">

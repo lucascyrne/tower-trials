@@ -36,38 +36,24 @@ export function useCharacterHubOperations() {
         );
         loadingRef.current = true;
 
-        // Carregar dados completos do personagem
-        const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
+        // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal integrado (fonte única de verdade)
+        console.log(
+          `[useCharacterHubOperations] Carregando dados com auto-heal para ${character.name}`
+        );
+        const gamePlayerResponse = await CharacterService.getCharacterForGame(
+          character.id,
+          false,
+          true
+        );
 
         if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
           throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
         }
 
-        let gamePlayer = gamePlayerResponse.data;
-
-        // Aplicar cura automática no hub
-        try {
-          console.log(
-            `[useCharacterHubOperations] Aplicando cura automática para ${gamePlayer.name}`
-          );
-          const healResult = await CharacterService.applyAutoHeal(character.id);
-
-          if (healResult.success && healResult.data && healResult.data.healed) {
-            console.log(
-              `[useCharacterHubOperations] ${gamePlayer.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`
-            );
-            gamePlayer = {
-              ...gamePlayer,
-              hp: healResult.data.newHp,
-              mana: healResult.data.character.mana,
-            };
-          }
-        } catch (healError) {
-          console.warn(
-            '[useCharacterHubOperations] Erro na cura automática (não crítico):',
-            healError
-          );
-        }
+        const gamePlayer = gamePlayerResponse.data;
+        console.log(
+          `[useCharacterHubOperations] Personagem carregado no hub com HP: ${gamePlayer.hp}/${gamePlayer.max_hp}`
+        );
 
         // Atualizar seleção no contexto específico
         selectCharacter(character.id, character.name);
@@ -136,10 +122,50 @@ export function useCharacterBattleOperations() {
       lastBattleKeyRef.current = battleKey;
 
       try {
+        // ✅ CORREÇÃO CRÍTICA: Garantir dados frescos e consistentes antes da batalha
+        console.log(
+          `[useCharacterBattleOperations] Garantindo dados frescos para ${character.name}`
+        );
+
+        // Invalidar cache para forçar dados atualizados
+        const { CharacterCacheService } = await import('@/services/character-cache.service');
+        CharacterCacheService.invalidateCharacterCache(character.id);
+
+        // Carregar dados atualizados do personagem com auto-heal aplicado
+        const freshCharacterResponse = await CharacterService.getCharacterForGame(
+          character.id,
+          true,
+          true
+        );
+
+        if (!freshCharacterResponse.success || !freshCharacterResponse.data) {
+          throw new Error(
+            freshCharacterResponse.error || 'Erro ao carregar dados atualizados do personagem'
+          );
+        }
+
+        const freshGamePlayer = freshCharacterResponse.data;
+        console.log(
+          `[useCharacterBattleOperations] Dados frescos carregados: HP ${freshGamePlayer.hp}/${freshGamePlayer.max_hp}`
+        );
+
+        // Criar character object atualizado para o BattleInitializationService
+        const updatedCharacter: Character = {
+          ...character,
+          hp: freshGamePlayer.hp,
+          max_hp: freshGamePlayer.max_hp,
+          mana: freshGamePlayer.mana,
+          max_mana: freshGamePlayer.max_mana,
+          // Outros campos que podem ter sido atualizados
+          gold: freshGamePlayer.gold,
+          xp: freshGamePlayer.xp,
+          level: freshGamePlayer.level,
+        };
+
         const { BattleInitializationService } = await import(
           '@/services/battle-initialization.service'
         );
-        const result = await BattleInitializationService.initializeBattle(character);
+        const result = await BattleInitializationService.initializeBattle(updatedCharacter);
 
         if (!result.success) {
           throw new Error(result.error || 'Falha na inicialização');
@@ -148,6 +174,15 @@ export function useCharacterBattleOperations() {
         if (!result.gameState) {
           throw new Error('Estado de jogo não foi gerado');
         }
+
+        // ✅ CORREÇÃO: Garantir que o player no gameState tenha os dados atualizados
+        result.gameState.player = {
+          ...result.gameState.player,
+          hp: freshGamePlayer.hp,
+          max_hp: freshGamePlayer.max_hp,
+          mana: freshGamePlayer.mana,
+          max_mana: freshGamePlayer.max_mana,
+        };
 
         // Validar se o resultado tem inimigo quando necessário
         const hasRequiredEnemy = Boolean(result.gameState.currentEnemy);
@@ -168,11 +203,11 @@ export function useCharacterBattleOperations() {
 
         const logMessage = result.gameState.currentSpecialEvent
           ? `Evento especial: ${result.gameState.currentSpecialEvent.name}`
-          : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado!`;
+          : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado! HP: ${result.gameState.player.hp}/${result.gameState.player.max_hp}`;
 
         addGameLogMessage(logMessage, 'system');
         console.log(
-          `[useCharacterBattleOperations] Batalha inicializada com sucesso para ${character.name}`
+          `[useCharacterBattleOperations] Batalha inicializada com sucesso para ${character.name} com HP: ${result.gameState.player.hp}/${result.gameState.player.max_hp}`
         );
       } catch (error) {
         console.error('[useCharacterBattleOperations] Erro na inicialização:', error);
@@ -242,8 +277,12 @@ export function useCharacterEventOperations() {
 
         const specialEvent = eventResponse.data;
 
-        // Carregar dados do personagem atualizados
-        const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
+        // ✅ CORREÇÃO CRÍTICA: Carregar dados do personagem atualizados com auto-heal
+        const gamePlayerResponse = await CharacterService.getCharacterForGame(
+          character.id,
+          false,
+          true
+        );
 
         if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
           throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
@@ -332,7 +371,12 @@ export function useCharacterBasicOperations() {
         console.log(
           `[useCharacterBasicOperations] Carregando stats derivados para ${character.name}...`
         );
-        const gamePlayerResponse = await CharacterService.getCharacterForGame(character.id);
+        // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal aplicado
+        const gamePlayerResponse = await CharacterService.getCharacterForGame(
+          character.id,
+          false,
+          true
+        );
 
         if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
           throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');

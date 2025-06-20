@@ -166,7 +166,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="min-h-full flex flex-col">
       {/* Header do Item */}
       <div className="flex items-start gap-4 p-6 border-b shrink-0">
         <div className={cn('p-3 rounded-lg border', getRarityColor())}>{getRecipeIcon()}</div>
@@ -334,7 +334,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({
         })()}
 
       {/* Ingredientes */}
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 min-h-0 p-6">
         <div className="flex items-center gap-2 mb-4">
           <h3 className="text-lg font-semibold">
             {recipe.craftType === 'equipment'
@@ -346,7 +346,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({
           </Badge>
         </div>
 
-        <div className="space-y-3 overflow-y-auto max-h-96 pr-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <div className="space-y-3 pr-2 max-h-[300px] overflow-y-auto ingredients-scroll">
           {recipe.ingredients.map((ingredient, index) => {
             const hasEnough = ingredient.have >= ingredient.quantity;
             return (
@@ -389,7 +389,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({
       </div>
 
       {/* Botão de Ação */}
-      <div className="p-6 border-t bg-card/50 shrink-0">
+      <div className="p-6 border-t bg-card/50 mt-auto shrink-0">
         <Button
           onClick={handleCraft}
           disabled={!recipe.canCraft || isCrafting}
@@ -1192,13 +1192,15 @@ function CraftingPage() {
 
         {/* Coluna Direita - Detalhes da Receita */}
         <div className="lg:col-span-7">
-          <Card className="h-full max-h-[calc(100vh-280px)]">
-            <RecipeDetailsPanel
-              recipe={selectedRecipe}
-              onCraft={handleCraftItem}
-              isCrafting={isCrafting}
-              selectedCharacter={selectedCharacter}
-            />
+          <Card className="h-full max-h-[calc(100vh-280px)] overflow-hidden">
+            <div className="h-full overflow-y-auto">
+              <RecipeDetailsPanel
+                recipe={selectedRecipe}
+                onCraft={handleCraftItem}
+                isCrafting={isCrafting}
+                selectedCharacter={selectedCharacter}
+              />
+            </div>
           </Card>
         </div>
       </div>

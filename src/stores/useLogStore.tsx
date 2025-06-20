@@ -145,9 +145,42 @@ const initialState: LogState = {
 // Função para gerar ID único
 const generateLogId = () => `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+// ✅ CORREÇÃO: Função utilitária para garantir timestamp válido
+const ensureValidTimestamp = (timestamp: unknown): Date => {
+  if (timestamp instanceof Date && !isNaN(timestamp.getTime())) {
+    return timestamp;
+  }
+
+  if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  // Fallback para timestamp atual se inválido
+  console.warn('[LogStore] Timestamp inválido detectado, usando timestamp atual:', timestamp);
+  return new Date();
+};
+
 // Função para verificar se é o mesmo dia
 const isSameDay = (date1: Date, date2: Date) => {
   return date1.toDateString() === date2.toDateString();
+};
+
+// ✅ CORREÇÃO: Função para sanitizar logs carregados do localStorage
+const sanitizeLogEntry = (
+  log: Partial<ExtendedGameLogEntry> & { timestamp?: string | Date }
+): ExtendedGameLogEntry => {
+  // Criar um objeto completamente novo para evitar problemas de imutabilidade
+  return {
+    id: log.id || generateLogId(),
+    text: log.text || '',
+    type: log.type || 'system',
+    category: log.category || 'game',
+    metadata: log.metadata ? { ...log.metadata } : {},
+    timestamp: ensureValidTimestamp(log.timestamp),
+  };
 };
 
 export const useLogStore = create<LogStore>()(
@@ -169,13 +202,14 @@ export const useLogStore = create<LogStore>()(
             return;
           }
 
+          // ✅ CORREÇÃO: Criar log com timestamp válido e metadados copiados
           const newLog: ExtendedGameLogEntry = {
             id: generateLogId(),
             text: message,
             type,
-            timestamp: new Date(),
+            timestamp: ensureValidTimestamp(new Date()),
             category: 'game',
-            metadata,
+            metadata: metadata ? { ...metadata } : {},
           };
 
           set(
@@ -215,13 +249,14 @@ export const useLogStore = create<LogStore>()(
             return;
           }
 
+          // ✅ CORREÇÃO: Criar log com timestamp válido e metadados seguros
           const newLog: ExtendedGameLogEntry = {
             id: generateLogId(),
             text: `[${level.toUpperCase()}] ${message}`,
             type: 'system',
-            timestamp: new Date(),
+            timestamp: ensureValidTimestamp(new Date()),
             category: 'debug',
-            metadata: { level, ...metadata },
+            metadata: { level, ...(metadata ? { ...metadata } : {}) },
           };
 
           set(
@@ -313,6 +348,9 @@ export const useLogStore = create<LogStore>()(
           ];
 
           const filtered = allLogs.filter((log: ExtendedGameLogEntry) => {
+            // ✅ CORREÇÃO: Verificar timestamp sem modificar o objeto original
+            const validTimestamp = ensureValidTimestamp(log.timestamp);
+
             // Filtrar por tipo
             if (!currentFilter.types.has(log.type)) {
               return false;
@@ -320,7 +358,7 @@ export const useLogStore = create<LogStore>()(
 
             // Filtrar por período
             if (currentFilter.timeRange) {
-              const logTime = log.timestamp.getTime();
+              const logTime = validTimestamp.getTime();
               const startTime = currentFilter.timeRange.start.getTime();
               const endTime = currentFilter.timeRange.end.getTime();
 
@@ -338,10 +376,18 @@ export const useLogStore = create<LogStore>()(
             return true;
           });
 
-          // Ordenar por timestamp (mais recente primeiro)
-          filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          // ✅ CORREÇÃO: Criar cópias dos logs com timestamps válidos para evitar modificação de objetos somente leitura
+          const sanitizedFiltered = filtered.map(log => ({
+            ...log,
+            timestamp: ensureValidTimestamp(log.timestamp),
+          }));
 
-          set({ filteredLogs: filtered });
+          // ✅ CORREÇÃO: Ordenar com timestamps já validados
+          sanitizedFiltered.sort((a, b) => {
+            return b.timestamp.getTime() - a.timestamp.getTime();
+          });
+
+          set({ filteredLogs: sanitizedFiltered });
         },
 
         // ==================== BUSCA ====================
@@ -418,20 +464,14 @@ export const useLogStore = create<LogStore>()(
 
             set(
               produce((state: LogState) => {
-                // Adicionar logs importados
+                // ✅ CORREÇÃO: Sanitizar logs importados
                 for (const log of importData.logs) {
-                  if (log.category === 'game') {
-                    state.gameLogs.push({
-                      ...log,
-                      id: generateLogId(),
-                      timestamp: new Date(log.timestamp || Date.now()),
-                    });
-                  } else if (log.category === 'debug' && state.enableDebugLogs) {
-                    state.debugLogs.push({
-                      ...log,
-                      id: generateLogId(),
-                      timestamp: new Date(log.timestamp || Date.now()),
-                    });
+                  const sanitizedLog = sanitizeLogEntry(log);
+
+                  if (sanitizedLog.category === 'game') {
+                    state.gameLogs.push(sanitizedLog);
+                  } else if (sanitizedLog.category === 'debug' && state.enableDebugLogs) {
+                    state.debugLogs.push(sanitizedLog);
                   }
                 }
 
@@ -481,6 +521,42 @@ export const useLogStore = create<LogStore>()(
           autoScroll: state.autoScroll,
           logStats: state.logStats,
         }),
+        // ✅ CORREÇÃO: Sanitizar dados ao carregar do localStorage
+        onRehydrateStorage: () => state => {
+          if (state) {
+            try {
+              // Sanitizar gameLogs
+              if (state.gameLogs && Array.isArray(state.gameLogs)) {
+                state.gameLogs = state.gameLogs.map(log => sanitizeLogEntry(log));
+              } else {
+                state.gameLogs = [];
+              }
+
+              // Sanitizar debugLogs se existirem
+              if (state.debugLogs && Array.isArray(state.debugLogs)) {
+                state.debugLogs = state.debugLogs.map(log => sanitizeLogEntry(log));
+              } else {
+                state.debugLogs = [];
+              }
+
+              // Sanitizar logStats.lastLogTime
+              if (state.logStats?.lastLogTime) {
+                state.logStats.lastLogTime = ensureValidTimestamp(state.logStats.lastLogTime);
+              }
+
+              // Garantir que filteredLogs é inicializado corretamente
+              state.filteredLogs = [];
+
+              console.log('[LogStore] Dados sanitizados após carregar do localStorage');
+            } catch (error) {
+              console.error('[LogStore] Erro ao sanitizar dados do localStorage:', error);
+              // Reset para estado inicial em caso de erro
+              state.gameLogs = [];
+              state.debugLogs = [];
+              state.filteredLogs = [];
+            }
+          }
+        },
         // Versão do store para migrações futuras
         version: 1,
       }

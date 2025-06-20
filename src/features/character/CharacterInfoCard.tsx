@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import {
   User,
   Gem,
   Play,
+  TrendingUp,
+  Eye,
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
 import { type GamePlayer } from '@/models/game.model';
@@ -29,10 +31,156 @@ interface CharacterInfoCardProps {
   player: GamePlayer;
 }
 
-export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
+/**
+ * ✅ OTIMIZAÇÕES IMPLEMENTADAS NO CHARACTERINFOCARD:
+ *
+ * 1. **React.memo**: Evita re-renderizações desnecessárias quando as props não mudam
+ * 2. **useMemo para cálculos**: Progress bars, atributos e skills são memoizados
+ * 3. **StatDisplay aprimorado**: HP, Mana, ATK, DEF, SPD e Magic Attack mostram:
+ *    - Valores base vs equipados com cores adequadas
+ *    - Tooltips detalhados com breakdown dos bônus
+ *    - Modificações de efeitos mágicos ativos
+ * 4. **Layout otimizado**: Stats derivados organizados e pontos de atributo destacados
+ * 5. **Performance**: Dependências específicas nos useMemo para evitar recálculos
+ */
+
+// ✅ OTIMIZAÇÃO: Usar React.memo para evitar re-renderizações desnecessárias
+export const CharacterInfoCard = memo(function CharacterInfoCard({
+  player,
+}: CharacterInfoCardProps) {
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [isLoadingQuickPlay, setIsLoadingQuickPlay] = useState(false);
+
+  // ✅ OTIMIZAÇÃO: Memoizar cálculos de progresso para evitar re-renderizações desnecessárias
+  const progressData = useMemo(() => {
+    // Calcular progresso de XP dentro do nível atual
+    const calculateCurrentLevelXpRequirement = (level: number): number => {
+      if (level <= 1) return 0;
+      return Math.floor(100 * Math.pow(1.5, level - 2));
+    };
+
+    const currentLevelStartXp = calculateCurrentLevelXpRequirement(player.level);
+    const currentLevelEndXp = player.xp_next_level;
+    const xpInCurrentLevel = player.xp - currentLevelStartXp;
+    const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
+    const xpProgress = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
+
+    const hpProgress = (player.hp / player.max_hp) * 100;
+    const manaProgress = (player.mana / player.max_mana) * 100;
+
+    return {
+      xpInCurrentLevel,
+      xpNeededForNextLevel,
+      xpProgress,
+      hpProgress,
+      manaProgress,
+    };
+  }, [
+    player.level,
+    player.xp,
+    player.xp_next_level,
+    player.hp,
+    player.max_hp,
+    player.mana,
+    player.max_mana,
+  ]);
+
+  // ✅ OTIMIZAÇÃO: Memoizar configuração de atributos
+  const primaryAttributes = useMemo(
+    () => [
+      {
+        name: 'FOR',
+        fullName: 'Força',
+        value: player.strength || 10,
+        icon: Sword,
+        color: 'text-red-400',
+      },
+      {
+        name: 'AGI',
+        fullName: 'Agilidade',
+        value: player.dexterity || 10,
+        icon: Zap,
+        color: 'text-green-400',
+      },
+      {
+        name: 'INT',
+        fullName: 'Inteligência',
+        value: player.intelligence || 10,
+        icon: Sparkles,
+        color: 'text-blue-400',
+      },
+      {
+        name: 'SAB',
+        fullName: 'Sabedoria',
+        value: player.wisdom || 10,
+        icon: Eye,
+        color: 'text-purple-400',
+      },
+      {
+        name: 'VIT',
+        fullName: 'Vitalidade',
+        value: player.vitality || 10,
+        icon: Heart,
+        color: 'text-pink-400',
+      },
+      {
+        name: 'SOR',
+        fullName: 'Sorte',
+        value: player.luck || 10,
+        icon: Crown,
+        color: 'text-yellow-400',
+      },
+    ],
+    [
+      player.strength,
+      player.dexterity,
+      player.intelligence,
+      player.wisdom,
+      player.vitality,
+      player.luck,
+    ]
+  );
+
+  // ✅ OTIMIZAÇÃO: Memoizar habilidades de combate
+  const characterSkills = useMemo(
+    () =>
+      [
+        {
+          key: 'sword_mastery',
+          level: player.sword_mastery || 1,
+          xp: player.sword_mastery_xp || 0,
+        },
+        { key: 'axe_mastery', level: player.axe_mastery || 1, xp: player.axe_mastery_xp || 0 },
+        {
+          key: 'blunt_mastery',
+          level: player.blunt_mastery || 1,
+          xp: player.blunt_mastery_xp || 0,
+        },
+        {
+          key: 'defense_mastery',
+          level: player.defense_mastery || 1,
+          xp: player.defense_mastery_xp || 0,
+        },
+        {
+          key: 'magic_mastery',
+          level: player.magic_mastery || 1,
+          xp: player.magic_mastery_xp || 0,
+        },
+      ].filter(skill => skill.level > 1 || skill.xp > 0),
+    [
+      player.sword_mastery,
+      player.sword_mastery_xp,
+      player.axe_mastery,
+      player.axe_mastery_xp,
+      player.blunt_mastery,
+      player.blunt_mastery_xp,
+      player.defense_mastery,
+      player.defense_mastery_xp,
+      player.magic_mastery,
+      player.magic_mastery_xp,
+    ]
+  );
 
   // Função para iniciar jogo rapidamente do último checkpoint
   const handleQuickPlay = async () => {
@@ -72,7 +220,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
 
       console.log(`[QuickPlay] Checkpoint configurado com sucesso. Redirecionando para batalha...`);
 
-      // CORRIGIDO: Redirecionar para a página de batalha com o ID do personagem
+      // Redirecionar para a página de batalha com o ID do personagem
       navigate({
         to: '/game/play/hub/battle/$character',
         params: { character: player.id },
@@ -85,79 +233,18 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
     }
   };
 
-  // CORRIGIDO: Calcular progresso de XP dentro do nível atual
-  // Usamos a fórmula de XP do banco: FLOOR(100 * POW(1.5, current_level - 1))
-  const calculateCurrentLevelXpRequirement = (level: number): number => {
-    if (level <= 1) return 0;
-    return Math.floor(100 * Math.pow(1.5, level - 2)); // XP necessário para chegar ao nível atual
-  };
-
-  const currentLevelStartXp = calculateCurrentLevelXpRequirement(player.level);
-  const currentLevelEndXp = player.xp_next_level;
-  const xpInCurrentLevel = player.xp - currentLevelStartXp;
-  const xpNeededForNextLevel = currentLevelEndXp - currentLevelStartXp;
-  const xpProgress = Math.max(0, Math.min(100, (xpInCurrentLevel / xpNeededForNextLevel) * 100));
-
-  const hpProgress = (player.hp / player.max_hp) * 100;
-  const manaProgress = (player.mana / player.max_mana) * 100;
-
-  // Atributos primários com ícones
-  const primaryAttributes = [
-    {
-      name: 'FOR',
-      fullName: 'Força',
-      value: player.strength || 10,
-      icon: Sword,
-      color: 'text-red-400',
-    },
-    {
-      name: 'AGI',
-      fullName: 'Agilidade',
-      value: player.dexterity || 10,
-      icon: Zap,
-      color: 'text-green-400',
-    },
-    {
-      name: 'INT',
-      fullName: 'Inteligência',
-      value: player.intelligence || 10,
-      icon: Sparkles,
-      color: 'text-blue-400',
-    },
-    {
-      name: 'SAB',
-      fullName: 'Sabedoria',
-      value: player.wisdom || 10,
-      icon: Star,
-      color: 'text-purple-400',
-    },
-    {
-      name: 'VIT',
-      fullName: 'Vitalidade',
-      value: player.vitality || 10,
-      icon: Heart,
-      color: 'text-pink-400',
-    },
-    {
-      name: 'SOR',
-      fullName: 'Sorte',
-      value: player.luck || 10,
-      icon: Crown,
-      color: 'text-yellow-400',
-    },
-  ];
-
+  // ✅ CORREÇÃO: Funções para obter cores das barras de progresso
   const getHpColor = () => {
-    if (hpProgress >= 70) return 'bg-green-500';
-    if (hpProgress >= 40) return 'bg-yellow-500';
-    if (hpProgress >= 20) return 'bg-orange-500';
+    if (progressData.hpProgress >= 70) return 'bg-green-500';
+    if (progressData.hpProgress >= 40) return 'bg-yellow-500';
+    if (progressData.hpProgress >= 20) return 'bg-orange-500';
     return 'bg-red-500';
   };
 
   const getManaColor = () => {
-    if (manaProgress >= 70) return 'bg-blue-500';
-    if (manaProgress >= 40) return 'bg-cyan-500';
-    if (manaProgress >= 20) return 'bg-indigo-500';
+    if (progressData.manaProgress >= 70) return 'bg-blue-500';
+    if (progressData.manaProgress >= 40) return 'bg-cyan-500';
+    if (progressData.manaProgress >= 20) return 'bg-indigo-500';
     return 'bg-purple-500';
   };
 
@@ -196,19 +283,6 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
         return skill;
     }
   };
-
-  // Obter habilidades do personagem
-  const characterSkills = [
-    { key: 'sword_mastery', level: player.sword_mastery || 1, xp: player.sword_mastery_xp || 0 },
-    { key: 'axe_mastery', level: player.axe_mastery || 1, xp: player.axe_mastery_xp || 0 },
-    { key: 'blunt_mastery', level: player.blunt_mastery || 1, xp: player.blunt_mastery_xp || 0 },
-    {
-      key: 'defense_mastery',
-      level: player.defense_mastery || 1,
-      xp: player.defense_mastery_xp || 0,
-    },
-    { key: 'magic_mastery', level: player.magic_mastery || 1, xp: player.magic_mastery_xp || 0 },
-  ].filter(skill => skill.level > 1 || skill.xp > 0); // Só mostrar habilidades com progresso
 
   return (
     <Card className="w-full bg-slate-900/80 border-slate-700 shadow-xl">
@@ -285,7 +359,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Status</h3>
 
-            {/* HP */}
+            {/* ✅ CORREÇÃO: HP com StatDisplay */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
@@ -295,35 +369,55 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                     <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse" />
                   )}
                 </span>
-                <span className="text-slate-400">
-                  {player.hp}/{player.max_hp}
-                </span>
+                <div className="text-slate-400 text-right">
+                  <StatDisplay
+                    value={player.max_hp}
+                    baseValue={player.base_max_hp}
+                    equipmentBonus={player.equipment_hp_bonus}
+                    className="text-slate-400"
+                    size="sm"
+                    showTooltip={true}
+                  />
+                  <div className="text-xs">
+                    {player.hp}/{player.max_hp}
+                  </div>
+                </div>
               </div>
               <div className="relative">
-                <Progress value={hpProgress} className="h-2" />
+                <Progress value={progressData.hpProgress} className="h-2" />
                 <div
                   className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${getHpColor()}`}
-                  style={{ width: `${hpProgress}%` }}
+                  style={{ width: `${progressData.hpProgress}%` }}
                 />
               </div>
             </div>
 
-            {/* Mana */}
+            {/* ✅ CORREÇÃO: Mana com StatDisplay */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
                   <Sparkles className="h-4 w-4 text-blue-400" />
                   Mana
                 </span>
-                <span className="text-slate-400">
-                  {player.mana}/{player.max_mana}
-                </span>
+                <div className="text-slate-400 text-right">
+                  <StatDisplay
+                    value={player.max_mana}
+                    baseValue={player.base_max_mana}
+                    equipmentBonus={player.equipment_mana_bonus}
+                    className="text-slate-400"
+                    size="sm"
+                    showTooltip={true}
+                  />
+                  <div className="text-xs">
+                    {player.mana}/{player.max_mana}
+                  </div>
+                </div>
               </div>
               <div className="relative">
-                <Progress value={manaProgress} className="h-2" />
+                <Progress value={progressData.manaProgress} className="h-2" />
                 <div
                   className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${getManaColor()}`}
-                  style={{ width: `${manaProgress}%` }}
+                  style={{ width: `${progressData.manaProgress}%` }}
                 />
               </div>
             </div>
@@ -336,14 +430,15 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   XP
                 </span>
                 <span className="text-slate-400">
-                  {xpInCurrentLevel.toLocaleString()}/{xpNeededForNextLevel.toLocaleString()}
+                  {progressData.xpInCurrentLevel.toLocaleString()}/
+                  {progressData.xpNeededForNextLevel.toLocaleString()}
                 </span>
               </div>
               <div className="relative">
-                <Progress value={xpProgress} className="h-2" />
+                <Progress value={progressData.xpProgress} className="h-2" />
                 <div
                   className="absolute top-0 left-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 rounded-full transition-all duration-300"
-                  style={{ width: `${xpProgress}%` }}
+                  style={{ width: `${progressData.xpProgress}%` }}
                 />
               </div>
             </div>
@@ -368,6 +463,11 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                       value={player.atk}
                       baseValue={player.base_atk}
                       equipmentBonus={player.equipment_atk_bonus}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'atk'
+                        ) || []
+                      }
                       className="text-red-400"
                       size="sm"
                       showTooltip={true}
@@ -375,14 +475,26 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   </span>
                 </div>
 
-                {/* Magic Attack - Novo sistema */}
-                {player.magic_attack && player.magic_attack > 0 && (
+                {/* ✅ CORREÇÃO: Magic Attack com StatDisplay - Evitar renderização de 0 */}
+                {Boolean(player.magic_attack && player.magic_attack > 0) && (
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
                       <Sparkles className="h-4 w-4 text-purple-400" />
                       <span className="text-muted-foreground">M.ATK</span>
                     </div>
-                    <span className="font-bold text-purple-400">{player.magic_attack}</span>
+                    <span className="font-bold text-purple-400">
+                      <StatDisplay
+                        value={player.magic_attack || 0}
+                        modifications={
+                          player.active_effects?.attribute_modifications?.filter(
+                            mod => mod.attribute === 'magic_attack'
+                          ) || []
+                        }
+                        className="text-purple-400"
+                        size="sm"
+                        showTooltip={true}
+                      />
+                    </span>
                   </div>
                 )}
 
@@ -396,6 +508,11 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                       value={player.def}
                       baseValue={player.base_def}
                       equipmentBonus={player.equipment_def_bonus}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'def'
+                        ) || []
+                      }
                       className="text-blue-400"
                       size="sm"
                       showTooltip={true}
@@ -415,6 +532,11 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                       value={player.speed}
                       baseValue={player.base_speed}
                       equipmentBonus={player.equipment_speed_bonus}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'speed'
+                        ) || []
+                      }
                       className="text-yellow-400"
                       size="sm"
                       showTooltip={true}
@@ -431,6 +553,19 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                     {(player.critical_chance || 0).toFixed(1)}%
                   </span>
                 </div>
+
+                {/* ✅ NOVO: Dano Crítico */}
+                {Boolean(player.critical_damage && player.critical_damage > 130) && (
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1">
+                      <Target className="h-4 w-4 text-orange-400" />
+                      <span className="text-muted-foreground">C.DMG</span>
+                    </div>
+                    <span className="font-bold text-orange-400">
+                      {(player.critical_damage || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -473,37 +608,68 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
               })}
             </div>
 
-            {/* Stats derivados se disponíveis */}
-            {Boolean(player.critical_chance || player.critical_damage) && (
-              <div className="space-y-2">
-                {Boolean(player.critical_chance) && (
-                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Star className="h-4 w-4 text-orange-400" />
-                        <span className="text-sm font-medium text-slate-300">Chance Crítica</span>
-                      </div>
-                      <p className="text-sm font-bold text-orange-400">
-                        {(player.critical_chance || 0).toFixed(1)}%
-                      </p>
-                    </div>
+            {/* ✅ NOVO: Stats derivados melhorados */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                Stats Derivados
+              </h4>
+
+              {/* Chance Crítica */}
+              <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Star className="h-3 w-3 text-orange-400" />
+                    <span className="text-xs font-medium text-slate-300">Crítico</span>
                   </div>
-                )}
-                {player.critical_damage && (
-                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-red-400" />
-                        <span className="text-sm font-medium text-slate-300">Dano Crítico</span>
-                      </div>
-                      <p className="text-sm font-bold text-red-400">
-                        {(player.critical_damage || 0).toFixed(0)}%
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  <p className="text-sm font-bold text-orange-400">
+                    {(player.critical_chance || 0).toFixed(1)}%
+                  </p>
+                </div>
               </div>
-            )}
+
+              {/* Dano Crítico se significativo */}
+              {Boolean(player.critical_damage && player.critical_damage > 130) && (
+                <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Target className="h-3 w-3 text-red-400" />
+                      <span className="text-xs font-medium text-slate-300">Dano Crit</span>
+                    </div>
+                    <p className="text-sm font-bold text-red-400">
+                      {(player.critical_damage || 0).toFixed(0)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Bônus Mágico se houver */}
+              {Boolean(player.magic_damage_bonus && player.magic_damage_bonus > 0) && (
+                <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-purple-400" />
+                      <span className="text-xs font-medium text-slate-300">Bônus Mag</span>
+                    </div>
+                    <p className="text-sm font-bold text-purple-400">
+                      +{Math.round(player.magic_damage_bonus || 0)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Pontos de atributo disponíveis */}
+              {Boolean(player.attribute_points && player.attribute_points > 0) && (
+                <div className="bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-yellow-400" />
+                      <span className="text-xs font-medium text-yellow-300">Pontos</span>
+                    </div>
+                    <p className="text-sm font-bold text-yellow-400">{player.attribute_points}</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -564,4 +730,4 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
       </CardContent>
     </Card>
   );
-}
+});

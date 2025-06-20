@@ -98,23 +98,27 @@ export const MapModal: React.FC<MapModalProps> = ({
     }
   };
 
+  // ✅ CORRIGIDO: Ícones e cores baseados na nova lógica de checkpoints
   const getCheckpointIcon = (floor: number) => {
     if (floor === 1) return <Play className="h-5 w-5" />;
+    if (floor === 5) return <Crown className="h-5 w-5" />; // Primeiro desafio
     // Checkpoints pós-boss (11, 21, 31, etc.) são santuários seguros
-    if (floor > 1 && (floor - 1) % 10 === 0) return <Crown className="h-5 w-5" />;
+    if (floor > 10 && (floor - 1) % 10 === 0) return <Crown className="h-5 w-5" />;
     return <Map className="h-5 w-5" />;
   };
 
   const getCheckpointColor = (floor: number) => {
     if (floor === 1) return 'bg-green-500'; // Início - verde
+    if (floor === 5) return 'bg-purple-500'; // Primeiro desafio - roxo
     // Checkpoints pós-boss são dourados (conquistados após vitória épica)
-    if (floor > 1 && (floor - 1) % 10 === 0) return 'bg-yellow-500';
+    if (floor > 10 && (floor - 1) % 10 === 0) return 'bg-yellow-500';
     return 'bg-blue-500';
   };
 
   const getCheckpointLabel = (floor: number) => {
     if (floor === 1) return 'Início da aventura';
-    if (floor > 1 && (floor - 1) % 10 === 0) return 'Santuário Pós-Boss';
+    if (floor === 5) return 'Primeiro Desafio';
+    if (floor > 10 && (floor - 1) % 10 === 0) return 'Santuário Pós-Boss';
     return 'Checkpoint';
   };
 
