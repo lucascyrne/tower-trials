@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
-import { type CharacterConsumable } from '@/resources/game/consumable.model';
-import { type Character } from '@/resources/game/character.model';
-import { ConsumableService } from '@/resources/game/consumable.service';
+import { type CharacterConsumable } from '@/models/consumable.model';
+import { type Character } from '@/models/character.model';
+import { ConsumableService } from '@/services/consumable.service';
 import { toast } from 'sonner';
 
 interface UsePotionShortcutsProps {

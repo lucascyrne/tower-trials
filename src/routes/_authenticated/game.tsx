@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { Info, X, Skull } from 'lucide-react';
-import GameInfo from '@/components/game/game-info';
+import GameInfo from '@/features/battle/game-info';
 
 export const Route = createFileRoute('/_authenticated/game')({
   component: GameLayoutPage,

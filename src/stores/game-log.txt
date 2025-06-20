@@ -1,0 +1,41 @@
+[CharacterStore] Carregando personagens para: 01d78068-8b83-455e-96e0-838baaee36e8
+character.service.ts:64 [CharacterService] Buscando personagens para usuário: 01d78068-8b83-455e-96e0-838baaee36e8
+game-battle.tsx:229 🔄 [GameBattle] RENDER #1
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 1, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:229 🔄 [GameBattle] RENDER #2
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 2, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:305 🚀 [GameBattle] === MOUNT EFFECT === render #2
+game-battle.tsx:328 ⏰ [GameBattle] Agendando inicialização para a1f59e4c-e995-45c6-abc7-242d8dc67759...
+game-battle.tsx:483 [GameBattle] Recompensas inválidas - ignorando
+game-battle.tsx:341 💀 [GameBattle] Cleanup para a1f59e4c-e995-45c6-abc7-242d8dc67759
+game-battle.tsx:305 🚀 [GameBattle] === MOUNT EFFECT === render #2
+game-battle.tsx:328 ⏰ [GameBattle] Agendando inicialização para a1f59e4c-e995-45c6-abc7-242d8dc67759...
+game-battle.tsx:483 [GameBattle] Recompensas inválidas - ignorando
+game-battle.tsx:229 🔄 [GameBattle] RENDER #3
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 3, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:229 🔄 [GameBattle] RENDER #4
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 4, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+character-cache.service.ts:120 [CharacterCacheService] 1 personagens do usuário 01d78068-8b83-455e-96e0-838baaee36e8 em cache
+character.service.ts:87 [CharacterService] 1 personagens carregados (sem mutação direta do store)
+game-battle.tsx:229 🔄 [GameBattle] RENDER #5
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 5, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:229 🔄 [GameBattle] RENDER #6
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 6, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:331 🎯 [GameBattle] Executando inicialização para a1f59e4c-e995-45c6-abc7-242d8dc67759
+game-battle.tsx:85 [BattleInit] === INICIANDO INICIALIZAÇÃO SIMPLES ===
+character.service.ts:110 [CharacterService] Buscando personagem: a1f59e4c-e995-45c6-abc7-242d8dc67759
+character.service.ts:115 [CharacterService] Usando cache do serviço
+battle-initialization.service.ts:33 [BattleInit] Iniciando batalha para Cfgkng
+battle-initialization.service.ts:38 [BattleInit] Carregando dados de GamePlayer para Cfgkng
+character.service.ts:514 [CharacterService] getCharacterForGame solicitado para: a1f59e4c-e995-45c6-abc7-242d8dc67759
+character.service.ts:634 [CharacterService] Reutilizando dados em cache do serviço para: Cfgkng
+game-battle.tsx:229 🔄 [GameBattle] RENDER #7
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 7, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+game-battle.tsx:229 🔄 [GameBattle] RENDER #8
+game-battle.tsx:251 📊 [GameBattle] Estado atual: {renderCount: 8, characterId: 'a1f59e4c-e995-45c6-abc7-242d8dc67759', playerId: undefined, gameMode: 'menu', hasEnemy: false, …}
+spell.service.ts:739 [SpellService] Solicitando magias equipadas para: a1f59e4c-e995-45c6-abc7-242d8dc67759
+spell.service.ts:801 [SpellService] Buscando magias equipadas do servidor: a1f59e4c-e995-45c6-abc7-242d8dc67759
+spell.service.ts:848 [SpellService] 1 magias equipadas encontradas
+character.service.ts:740 [CharacterService] GamePlayer criado a partir do cache (0s atrás) para: Cfgkng
+monster.service.ts:54 [MonsterService] Buscando enemy para andar 1
+

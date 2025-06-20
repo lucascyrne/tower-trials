@@ -2,12 +2,12 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useGame } from '@/resources/game/game-hook';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/services/character.service';
 import { toast } from 'sonner';
-import { InventoryPanel } from '@/components/inventory/InventoryPanel';
 import { ArrowLeft } from 'lucide-react';
-import type { Character } from '@/resources/game/character.model';
+import type { Character } from '@/models/character.model';
+import { InventoryPanel } from '@/features/inventory/InventoryPanel';
+import { useCharacterHubOperations } from '@/hooks/useCharacterOperations';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/inventory')({
   component: InventoryPage,
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/_authenticated/game/play/hub/inventory')(
 function InventoryPage() {
   const navigate = useNavigate();
   const { character: characterId } = Route.useSearch();
-  const { loadCharacterForHub } = useGame();
+  const { loadCharacterForHub } = useCharacterHubOperations();
   const [selectedChar, setSelectedChar] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

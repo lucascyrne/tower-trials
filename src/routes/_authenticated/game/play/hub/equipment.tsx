@@ -1,22 +1,18 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { CharacterService } from '@/resources/game/character.service';
-import { EquipmentService } from '@/resources/game/equipment.service';
-import type { Character } from '@/resources/game/character.model';
-import type {
-  EquipmentSlots,
-  CharacterEquipment,
-  Equipment,
-} from '@/resources/game/equipment.model';
-import type { CharacterConsumable } from '@/resources/game/consumable.model';
-import { ConsumableService } from '@/resources/game/consumable.service';
-import { PotionSlotManager } from '@/components/inventory/PotionSlotManager';
+import { CharacterService } from '@/services/character.service';
+import { EquipmentService } from '@/services/equipment.service';
+import type { Character } from '@/models/character.model';
+import type { EquipmentSlots, CharacterEquipment, Equipment } from '@/models/equipment.model';
+import type { CharacterConsumable } from '@/models/consumable.model';
+import { ConsumableService } from '@/services/consumable.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Shield, Sword } from 'lucide-react';
 import { toast } from 'sonner';
-import { EquipmentDetailsPanel } from '@/components/equipment/EquipmentDetailsPanel';
-import { EquipmentSlotPanel } from '@/components/equipment/EquipmentSlotPanel';
+import { EquipmentDetailsPanel } from '@/features/equipment/EquipmentDetailsPanel';
+import { EquipmentSlotPanel } from '@/features/equipment/EquipmentSlotPanel';
+import { PotionSlotManager } from '@/features/consumable/PotionSlotManager';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment')({
   component: EquipmentLayout,

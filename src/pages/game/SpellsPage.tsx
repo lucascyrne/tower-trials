@@ -22,10 +22,10 @@ import {
   Star,
   TrendingUp,
 } from 'lucide-react';
-import { SpellService, type AvailableSpell, type SpellStats } from '@/resources/game/spell.service';
-import { CharacterService } from '@/resources/game/character.service';
-import type { Character } from '@/resources/game/character.model';
-import type { SpellEffectType } from '@/resources/game/spell.model';
+import { SpellService, type AvailableSpell, type SpellStats } from '@/services/spell.service';
+import { CharacterService } from '@/services/character.service';
+import type { Character } from '@/models/character.model';
+import type { SpellEffectType } from '@/models/spell.model';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 

@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { CharacterService } from '@/resources/game/character.service';
-import { EquipmentService } from '@/resources/game/equipment.service';
-import type { Character } from '@/resources/game/character.model';
-import type { Equipment, CharacterEquipment } from '@/resources/game/equipment.model';
+import { CharacterService } from '@/services/character.service';
+import { EquipmentService } from '@/services/equipment.service';
+import type { Character } from '@/models/character.model';
+import type { Equipment, CharacterEquipment } from '@/models/equipment.model';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

@@ -1,5 +1,5 @@
-import { type Consumable } from '@/resources/game/consumable.model';
-import { type Equipment } from '@/resources/game/equipment.model';
+import type { Consumable } from '@/models/consumable.model';
+import type { Equipment } from '@/models/equipment.model';
 
 // Tipos para organização de assets
 export type AssetCategory =

@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Trophy, Heart, Skull, TrendingUp, Coins } from 'lucide-react';
-import { type RankingEntry, type RankingMode } from '@/resources/game/ranking.service';
+import { type RankingEntry, type RankingMode } from '@/services/ranking.service';
 import { formatLargeNumber } from '@/utils/number-utils';
 
 interface RankingTableProps {

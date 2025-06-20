@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Consumable } from '@/resources/game/consumable.model';
+import { type Consumable } from '@/models/consumable.model';
 import { getConsumableImagePath, getConsumableIcon } from '@/utils/consumable-utils';
 
 interface ConsumableImageProps {

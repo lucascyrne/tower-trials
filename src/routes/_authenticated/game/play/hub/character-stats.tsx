@@ -21,15 +21,15 @@ import {
   RotateCcw,
   Save,
 } from 'lucide-react';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/services/character.service';
 import {
   type CharacterStats,
   SkillType,
   getSkillDescription,
   calculateSkillXpRequired,
-} from '@/resources/game/character.model';
+} from '@/models/character.model';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DerivedStatsSection } from '@/components/game/derived-stats-section';
+import { DerivedStatsSection } from '@/features/character/DerivedStatsSection';
 
 interface AttributeDistribution {
   strength: number;

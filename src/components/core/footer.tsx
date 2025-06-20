@@ -7,13 +7,11 @@ import { Button } from '../ui/button';
 // Icon imports
 import { Github, Twitter } from 'lucide-react';
 
-import { Container, Section } from './craft';
-
 export default function Footer() {
   return (
     <footer className="bg-gradient-to-t from-background/90 to-background/70 border-t border-border">
-      <Section>
-        <Container className="grid gap-12 md:grid-cols-[1.5fr_0.5fr_0.5fr]">
+      <section className="py-8 md:py-12">
+        <div className="max-w-5xl mx-auto p-6 sm:p-8 grid gap-12 md:grid-cols-[1.5fr_0.5fr_0.5fr]">
           <div className="not-prose flex flex-col gap-6">
             <Link to="/" className="group">
               <h3 className="sr-only">Tower Trials</h3>
@@ -45,8 +43,8 @@ export default function Footer() {
             {/* <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">Privacidade</Link>
             <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors">Termos</Link> */}
           </div>
-        </Container>
-        <Container className="not-prose mt-8 flex flex-col justify-between gap-6 border-t border-border pt-8 md:flex-row md:items-center md:gap-2">
+        </div>
+        <div className="max-w-5xl mx-auto p-6 sm:p-8 not-prose mt-8 flex flex-col justify-between gap-6 border-t border-border pt-8 md:flex-row md:items-center md:gap-2">
           <div className="flex gap-2">
             <Button
               variant="ghost"
@@ -66,8 +64,8 @@ export default function Footer() {
           <p className="text-muted-foreground">
             © 2024 Tower Trials. Todos os direitos reservados.
           </p>
-        </Container>
-      </Section>
+        </div>
+      </section>
     </footer>
   );
 }

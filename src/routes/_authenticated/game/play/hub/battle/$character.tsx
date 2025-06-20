@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, useRef, useMemo } from 'react';
-import GameBattle from '@/components/game/game-battle';
-import { useGame } from '@/resources/game/game-hook';
+import { useGame } from '@/hooks/useGame';
 import { toast } from 'sonner';
+import GameBattle from '@/features/battle/game-battle';
 
 function BattlePage() {
   const navigate = useNavigate();

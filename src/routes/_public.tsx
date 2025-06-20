@@ -9,8 +9,8 @@ export const Route = createFileRoute('/_public')({
 function PublicLayout() {
   return (
     <PublicOnlyFeature>
-      <main className="flex min-h-screen flex-col">
-        <div className="flex flex-1 items-center justify-center p-4">
+      <main className="flex min-h-screen w-full flex-col">
+        <div className="flex flex-1 w-full items-center justify-center p-4">
           <Outlet />
         </div>
         <Footer />

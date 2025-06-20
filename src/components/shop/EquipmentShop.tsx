@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { type Equipment } from '@/resources/game/equipment.model';
-import { type Consumable } from '@/resources/game/consumable.model';
-import { EquipmentService } from '@/resources/game/equipment.service';
-import { ConsumableService } from '@/resources/game/consumable.service';
-import { type Character } from '@/resources/game/character.model';
-import { ShopLayout } from './ShopLayout';
-import { InventoryModal } from './InventoryModal';
+import { type Equipment } from '@/models/equipment.model';
+import { type Consumable } from '@/models/consumable.model';
+import { EquipmentService } from '@/services/equipment.service';
+import { ConsumableService } from '@/services/consumable.service';
+import { type Character } from '@/models/character.model';
+import { ShopLayout } from '@/components/shop/ShopLayout';
 import { toast } from 'sonner';
+import { InventoryModal } from '@/features/inventory/InventoryModal';
 
 interface GameShopProps {
   character: Character;

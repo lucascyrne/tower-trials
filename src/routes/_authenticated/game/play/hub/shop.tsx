@@ -2,11 +2,11 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CharacterService } from '@/resources/game/character.service';
+import { CharacterService } from '@/services/character.service';
 import { toast } from 'sonner';
 import { GameShop } from '@/components/shop/EquipmentShop';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import type { Character } from '@/resources/game/character.model';
+import type { Character } from '@/models/character.model';
 
 function ShopPage() {
   const navigate = useNavigate();

@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { type RankingMode } from '@/resources/game/ranking.service';
+import { type RankingMode } from '@/services/ranking.service';
 
 export type CharacterStatusFilter = 'all' | 'alive' | 'dead';
 

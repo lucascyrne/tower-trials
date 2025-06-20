@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { Cemetery } from '@/components/game/Cemetery';
+import { Cemetery } from '@/features/cemitery/Cemetery';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/cemetery')({
   component: CemeteryPage,

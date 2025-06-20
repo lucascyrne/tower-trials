@@ -7,7 +7,7 @@ import {
   RankingService,
   type RankingEntry,
   type RankingMode,
-} from '@/resources/game/ranking.service';
+} from '@/services/ranking.service';
 import { useAuth } from '@/resources/auth/auth-hook';
 import RankingFilters, { type CharacterStatusFilter } from '@/components/ranking/ranking-filters';
 import RankingTable from '@/components/ranking/ranking-table';

@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../ui/sheet';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { useLocation, useNavigate } from '@tanstack/react-router';
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/useTheme';
 
 const getMenuItemsByRole = (role?: string, isInGamePages?: boolean) => {
   const baseItems = [

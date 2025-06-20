@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, useMemo } from 'react';
-import { useGame } from '@/resources/game/game-hook';
+import { useGame } from '@/hooks/useGame';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,18 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ConsumableService } from '@/resources/game/consumable.service';
-import { EquipmentService } from '@/resources/game/equipment.service';
-import type {
-  CharacterConsumable,
-  CraftingRecipe,
-  MonsterDrop,
-} from '@/resources/game/consumable.model';
+import { ConsumableService } from '@/services/consumable.service';
+import { EquipmentService } from '@/services/equipment.service';
+import type { CharacterConsumable, CraftingRecipe, MonsterDrop } from '@/models/consumable.model';
 import type {
   CharacterEquipment,
   Equipment,
   EquipmentCraftingRecipe,
-} from '@/resources/game/equipment.model';
+} from '@/models/equipment.model';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -43,7 +39,8 @@ import {
   Heart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
+import { EquipmentComparison } from '@/features/equipment/EquipmentComparison';
+import type { Character } from '@/models/character.model';
 
 // Tipos auxiliares para o processamento de receitas
 interface ProcessedIngredient {
@@ -568,9 +565,9 @@ function CraftingPage() {
     if (!mounted || !characterId) return;
 
     if (characters.length > 0) {
-      const character = characters.find(char => char.id === characterId);
+      const character = characters.find((char: Character) => char.id === characterId);
       if (character && (!selectedCharacter || selectedCharacter.id !== characterId)) {
-        selectCharacter(character);
+        selectCharacter(character.id, character.name);
       }
     }
   }, [mounted, characterId, characters.length]);

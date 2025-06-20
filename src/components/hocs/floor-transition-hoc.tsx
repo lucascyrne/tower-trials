@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useGame } from '@/resources/game/game-hook';
+import { useGame } from '@/hooks/useGame';
 
 interface FloorTransitionProps {
   children?: React.ReactNode;

@@ -1,11 +1,11 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/router-devtools';
 import { AuthProvider } from '@/resources/auth/auth-provider';
-import { GameProvider } from '@/resources/game/game-provider';
 import { Toaster } from 'sonner';
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/useTheme';
 import { useEffect, Suspense } from 'react';
 import '../index.css';
+import { GameStoreProvider } from '@/components/providers/GameStoreProvider';
 
 // Componente separado para inicializar o tema
 function ThemeInitializer() {
@@ -21,10 +21,10 @@ function ThemeInitializer() {
   return null;
 }
 
-// Componente de Loading para Suspense
+// Componente de Loading para Suspense - corrigido para ocupar toda a tela
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
         <p className="text-muted-foreground">Carregando página...</p>
@@ -39,16 +39,16 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <div className="font-inter">
+    <div className="font-inter min-h-screen w-full">
       <ThemeInitializer />
       <Toaster richColors position="top-right" />
       <AuthProvider>
-        <GameProvider>
+        <GameStoreProvider>
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>
           <TanStackRouterDevtools />
-        </GameProvider>
+        </GameStoreProvider>
       </AuthProvider>
     </div>
   );
