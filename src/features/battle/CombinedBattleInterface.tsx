@@ -246,6 +246,14 @@ export function CombinedBattleInterface({
       try {
         const response = await SlotService.consumePotionFromSlot(currentPlayer.id, slotPosition);
 
+        // NOVO: Log detalhado da resposta para debug
+        console.log('[CombinedBattleInterface] Resposta do SlotService:', {
+          success: response.success,
+          hasData: !!response.data,
+          error: response.error,
+          data: response.data,
+        });
+
         if (response.success && response.data) {
           const { message, new_hp, new_mana } = response.data;
 
@@ -258,13 +266,23 @@ export function CombinedBattleInterface({
           setUsedPotionAnimation(slotPosition);
           setTimeout(() => setUsedPotionAnimation(null), 2000);
 
-          await onSlotsChange();
+          // CRÍTICO: Aguardar um pouco antes de recarregar slots para garantir consistência
+          setTimeout(async () => {
+            await onSlotsChange();
+          }, 100);
 
           toast.success(message, {
             description: `HP: ${new_hp} | Mana: ${new_mana}`,
             duration: 4000,
           });
         } else {
+          console.warn('[CombinedBattleInterface] Falha ao usar poção:', {
+            success: response.success,
+            error: response.error,
+            data: response.data,
+            slotPosition,
+            playerId: currentPlayer.id,
+          });
           toast.error(response.error || 'Erro ao usar poção');
         }
       } catch {

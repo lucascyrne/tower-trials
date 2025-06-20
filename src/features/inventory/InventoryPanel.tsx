@@ -123,7 +123,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     }
 
     return (
-      <div className="grid grid-cols-10 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
         {validConsumables.map(item => {
           const isSelected = selectedConsumable?.id === item.id;
           const canUse = canUseConsumable(item);
@@ -146,7 +146,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
               </div>
 
               {item.quantity > 1 && (
-                <div className="absolute bottom-1 right-1 bg-slate-900/80 text-slate-200 text-xs px-1 rounded">
+                <div className="absolute bottom-1 right-1 bg-slate-900/80 text-slate-200 text-xs px-1 rounded min-w-[16px] text-center">
                   {item.quantity}
                 </div>
               )}
@@ -174,7 +174,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
     }
 
     return (
-      <div className="grid grid-cols-10 gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
         {validDrops.map(item => {
           const isSelected = selectedDrop?.id === item.id;
           const rarity = item.drop?.rarity || 'common';
@@ -197,7 +197,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
               </div>
 
               {item.quantity > 1 && (
-                <div className="absolute bottom-1 right-1 bg-slate-900/80 text-slate-200 text-xs px-1 rounded">
+                <div className="absolute bottom-1 right-1 bg-slate-900/80 text-slate-200 text-xs px-1 rounded min-w-[16px] text-center">
                   {item.quantity}
                 </div>
               )}
@@ -327,13 +327,13 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[70vh]">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-[70vh]">
+        <div className="xl:col-span-2 space-y-6">
           <Card className="bg-slate-800/50 border-slate-700/50">
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="animate-pulse space-y-4">
                 <div className="h-6 bg-slate-700 rounded w-32"></div>
-                <div className="grid grid-cols-8 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-3">
                   {Array.from({ length: 16 }).map((_, i) => (
                     <div key={i} className="aspect-square bg-slate-700 rounded"></div>
                   ))}
@@ -342,9 +342,9 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
             </CardContent>
           </Card>
         </div>
-        <div className="lg:col-span-1">
-          <Card className="bg-slate-800/50 border-slate-700/50 h-full">
-            <CardContent className="p-6">
+        <div className="xl:col-span-1">
+          <Card className="bg-slate-800/50 border-slate-700/50 h-full min-h-[400px]">
+            <CardContent className="p-4 sm:p-6">
               <div className="animate-pulse space-y-4">
                 <div className="h-6 bg-slate-700 rounded w-24"></div>
                 <div className="h-32 bg-slate-700 rounded"></div>
@@ -357,23 +357,25 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
       {/* Coluna esquerda - Grade de itens */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className="xl:col-span-2 space-y-6">
         {/* Header com Gold sutil */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-100">Inventário</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-100">Inventário</h2>
           <div className="flex items-center gap-2 text-amber-400 bg-slate-800/30 px-3 py-1 rounded-lg border border-slate-700/50">
             <Coins className="h-4 w-4" />
-            <span className="font-medium">{character.gold.toLocaleString()}</span>
+            <span className="font-medium text-sm sm:text-base">
+              {character.gold.toLocaleString()}
+            </span>
           </div>
         </div>
 
         {/* Consumíveis com slots integrados */}
         <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-400" />
+          <CardContent className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" />
               Consumíveis ({consumables.filter(item => item.quantity > 0).length})
             </h3>
 
@@ -393,9 +395,9 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
 
         {/* Materiais */}
         <Card className="bg-slate-800/50 border-slate-700/50">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-              <Star className="h-5 w-5 text-amber-400" />
+          <CardContent className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+              <Star className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
               Materiais ({drops.filter(item => item.quantity > 0).length})
             </h3>
             {renderDropGrid()}
@@ -404,9 +406,9 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
       </div>
 
       {/* Coluna direita - Detalhes do item */}
-      <div className="lg:col-span-1">
-        <Card className="bg-slate-800/50 border-slate-700/50 h-full">
-          <CardContent className="p-6 h-full">{renderItemDetails()}</CardContent>
+      <div className="xl:col-span-1">
+        <Card className="bg-slate-800/50 border-slate-700/50 h-full min-h-[400px]">
+          <CardContent className="p-4 sm:p-6 h-full">{renderItemDetails()}</CardContent>
         </Card>
       </div>
     </div>

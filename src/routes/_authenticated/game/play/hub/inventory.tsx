@@ -140,9 +140,9 @@ function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-black">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button
               variant="outline"
@@ -154,8 +154,10 @@ function InventoryPage() {
               Voltar ao Hub
             </Button>
 
-            <div className="mt-2 sm:mt-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-100">Inventário</h1>
+            <div className="mt-1 sm:mt-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-100">
+                Inventário
+              </h1>
               <p className="text-sm sm:text-base text-slate-400">
                 {selectedChar.name} • Nível {selectedChar.level}
               </p>

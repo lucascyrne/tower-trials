@@ -5,7 +5,6 @@ import { SlotService, type PotionSlot } from '@/services/slot.service';
 import { type CharacterConsumable } from '@/models/consumable.model';
 import { toast } from 'sonner';
 import { Beaker, Plus, X, Heart, Zap, ChevronDown } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { formatPotionSlotEffect, formatConsumableEffect } from '@/utils/consumable-utils';
 import { ConsumableImage } from '@/components/ui/consumable-image';
 
@@ -23,11 +22,8 @@ export function PotionSlotManager({
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const slotRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  // const slotRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   const loadPotionSlots = async () => {
     try {
@@ -48,58 +44,28 @@ export function PotionSlotManager({
     }
   }, [characterId]);
 
-  // Fechar dropdown ao clicar fora
+  // Fechar dropdown ao clicar fora ou fazer scroll
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
-        setDropdownPosition(null);
       }
     };
 
     const handleScroll = () => {
       setOpenDropdown(null);
-      setDropdownPosition(null);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScroll, true);
+    if (openDropdown !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      window.addEventListener('scroll', handleScroll, true);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScroll, true);
-    };
-  }, []);
-
-  // Calcular posição do dropdown quando abrir
-  useEffect(() => {
-    if (openDropdown !== null && slotRefs.current[openDropdown]) {
-      const slotElement = slotRefs.current[openDropdown];
-      if (slotElement) {
-        const rect = slotElement.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const dropdownHeight = 200; // altura estimada reduzida
-
-        let top = rect.bottom + 4;
-        let left = rect.left;
-
-        // Se o dropdown sair da tela na parte inferior, posicionar acima do slot
-        if (top + dropdownHeight > viewportHeight) {
-          top = rect.top - dropdownHeight - 4;
-        }
-
-        // Se sair da tela na lateral direita, ajustar para a esquerda
-        if (left + 240 > window.innerWidth) {
-          left = window.innerWidth - 240 - 8;
-        }
-
-        // Garantir que não saia da tela na lateral esquerda
-        if (left < 8) {
-          left = 8;
-        }
-
-        setDropdownPosition({ top, left });
-      }
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+        window.removeEventListener('scroll', handleScroll, true);
+      };
     }
   }, [openDropdown]);
 
@@ -112,7 +78,6 @@ export function PotionSlotManager({
         onSlotsUpdate?.();
         toast.success('Poção atribuída ao slot!');
         setOpenDropdown(null);
-        setDropdownPosition(null);
       } else {
         toast.error(response.error || 'Erro ao atribuir poção');
       }
@@ -140,12 +105,7 @@ export function PotionSlotManager({
   };
 
   const handleSlotClick = (slotPosition: number) => {
-    if (openDropdown === slotPosition) {
-      setOpenDropdown(null);
-      setDropdownPosition(null);
-    } else {
-      setOpenDropdown(slotPosition);
-    }
+    setOpenDropdown(openDropdown === slotPosition ? null : slotPosition);
   };
 
   const getSlotKeyBinding = (position: number) => {
@@ -233,51 +193,6 @@ export function PotionSlotManager({
     );
   }
 
-  // Componente do dropdown para renderizar via portal
-  const DropdownContent = ({ slot }: { slot: PotionSlot }) => {
-    const availablePotions = getAvailablePotions(slot.slot_position);
-
-    return (
-      <div
-        ref={dropdownRef}
-        className="fixed w-60 bg-slate-800/95 backdrop-blur-sm border border-slate-600/50 rounded-md shadow-xl max-h-48 overflow-y-auto"
-        style={{
-          top: dropdownPosition?.top || 0,
-          left: dropdownPosition?.left || 0,
-          zIndex: 9999,
-        }}
-      >
-        {availablePotions.length > 0 ? (
-          <div className="p-1">
-            {availablePotions.map(consumable => (
-              <button
-                key={`dropdown-${consumable.id}`}
-                className="w-full text-left px-2 py-1.5 rounded hover:bg-slate-700/50 transition-colors flex items-center gap-2 text-sm"
-                onClick={() => handleSetPotionSlot(slot.slot_position, consumable.consumable_id)}
-              >
-                <div className="flex-shrink-0">
-                  <ConsumableImage consumable={consumable.consumable!} size="sm" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-slate-200 truncate">
-                    {consumable.consumable!.name}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {formatConsumableEffect(consumable.consumable!)} • x{consumable.quantity}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="p-3 text-center">
-            <div className="text-slate-400 text-xs">Nenhuma poção disponível</div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -285,97 +200,125 @@ export function PotionSlotManager({
         <div className="text-xs text-slate-600">Q • W • E</div>
       </div>
 
-      <div className="flex gap-2">
-        {potionSlots.map(slot => {
-          const keyBinding = getSlotKeyBinding(slot.slot_position);
-          const isEmpty = !slot.consumable_id;
-          const isDropdownOpen = openDropdown === slot.slot_position;
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {potionSlots.map(slot => {
+            const keyBinding = getSlotKeyBinding(slot.slot_position);
+            const isEmpty = !slot.consumable_id;
+            const isDropdownOpen = openDropdown === slot.slot_position;
 
-          return (
-            <div
-              key={`potion-slot-${slot.slot_position}`}
-              className="relative"
-              ref={el => {
-                slotRefs.current[slot.slot_position] = el;
-              }}
-            >
-              {/* Slot principal */}
-              <div className="relative group">
-                <Button
-                  variant="outline"
-                  className={`w-12 h-12 p-1 border transition-all duration-200 ${
-                    isEmpty
-                      ? 'border-slate-600/50 bg-slate-800/20 hover:border-slate-500/70 hover:bg-slate-700/30'
-                      : 'border-blue-500/60 bg-blue-900/20 hover:border-blue-400/80 hover:bg-blue-800/30'
-                  } ${isDropdownOpen ? 'ring-1 ring-blue-400/50' : ''}`}
-                  onClick={() => {
-                    if (isEmpty) {
-                      handleSlotClick(slot.slot_position);
-                    }
-                  }}
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    {isEmpty ? (
-                      <div className="flex items-center">
-                        <Plus className="h-3 w-3 text-slate-500" />
-                        <ChevronDown
-                          className={`h-2 w-2 text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    ) : (
-                      getPotionIcon(slot)
-                    )}
-                  </div>
-                </Button>
-
-                {/* Badge com tecla */}
-                <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-slate-600 text-white text-xs font-medium border border-slate-700 text-[10px]">
-                  {keyBinding}
-                </Badge>
-
-                {/* Botão de remover */}
-                {!isEmpty && (
+            return (
+              <div key={`potion-slot-${slot.slot_position}`} className="relative">
+                {/* Slot principal */}
+                <div className="relative group">
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    className="absolute -top-1 -left-1 h-4 w-4 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleClearSlot(slot.slot_position);
-                    }}
+                    variant="outline"
+                    className={`w-12 h-12 p-1 border transition-all duration-200 ${
+                      isEmpty
+                        ? 'border-slate-600/50 bg-slate-800/20 hover:border-slate-500/70 hover:bg-slate-700/30'
+                        : 'border-blue-500/60 bg-blue-900/20 hover:border-blue-400/80 hover:bg-blue-800/30'
+                    } ${isDropdownOpen ? 'ring-1 ring-blue-400/50' : ''}`}
+                    onClick={() => handleSlotClick(slot.slot_position)}
                   >
-                    <X className="h-2 w-2" />
+                    <div className="flex flex-col items-center justify-center">
+                      {isEmpty ? (
+                        <div className="flex items-center">
+                          <Plus className="h-3 w-3 text-slate-500" />
+                          <ChevronDown
+                            className={`h-2 w-2 text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                      ) : (
+                        getPotionIcon(slot)
+                      )}
+                    </div>
                   </Button>
-                )}
 
-                {/* Tooltip */}
-                <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                  <div className="bg-slate-900/95 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 whitespace-nowrap">
-                    {isEmpty ? `Slot ${keyBinding}` : slot.consumable_name || 'Poção'}
-                    {!isEmpty && slot.effect_value && (
-                      <div className="text-emerald-300 text-[10px]">
-                        {getPotionEffectLabel(slot)}
-                      </div>
-                    )}
-                    {!isEmpty && getPotionQuantity(slot) > 0 && (
-                      <div className="text-blue-300 text-[10px]">x{getPotionQuantity(slot)}</div>
-                    )}
+                  {/* Badge com tecla */}
+                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center bg-slate-600 text-white text-xs font-medium border border-slate-700 text-[10px]">
+                    {keyBinding}
+                  </Badge>
+
+                  {/* Botão de remover */}
+                  {!isEmpty && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-1 -left-1 h-4 w-4 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleClearSlot(slot.slot_position);
+                      }}
+                    >
+                      <X className="h-2 w-2" />
+                    </Button>
+                  )}
+
+                  {/* Tooltip */}
+                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-none">
+                    <div className="bg-slate-900/95 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 whitespace-nowrap">
+                      {isEmpty ? `Slot ${keyBinding}` : slot.consumable_name || 'Poção'}
+                      {!isEmpty && slot.effect_value && (
+                        <div className="text-emerald-300 text-[10px]">
+                          {getPotionEffectLabel(slot)}
+                        </div>
+                      )}
+                      {!isEmpty && getPotionQuantity(slot) > 0 && (
+                        <div className="text-blue-300 text-[10px]">x{getPotionQuantity(slot)}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* Dropdown renderizado via Portal */}
-      {openDropdown !== null &&
-        dropdownPosition &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <DropdownContent slot={potionSlots.find(s => s.slot_position === openDropdown)!} />,
-          document.body
+        {/* Dropdown simplificado para mobile */}
+        {openDropdown !== null && (
+          <div ref={dropdownRef} className="relative">
+            <div className="bg-slate-800/95 backdrop-blur-sm border border-slate-600/50 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+              {(() => {
+                const slot = potionSlots.find(s => s.slot_position === openDropdown);
+                if (!slot) return null;
+
+                const availablePotions = getAvailablePotions(slot.slot_position);
+
+                return availablePotions.length > 0 ? (
+                  <div className="p-2 space-y-1">
+                    {availablePotions.map(consumable => (
+                      <button
+                        key={`dropdown-${consumable.id}`}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-slate-700/50 transition-colors flex items-center gap-3 text-sm"
+                        onClick={() =>
+                          handleSetPotionSlot(slot.slot_position, consumable.consumable_id)
+                        }
+                      >
+                        <div className="flex-shrink-0">
+                          <ConsumableImage consumable={consumable.consumable!} size="sm" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-slate-200 truncate">
+                            {consumable.consumable!.name}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {formatConsumableEffect(consumable.consumable!)} • x
+                            {consumable.quantity}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <div className="text-slate-400 text-xs">Nenhuma poção disponível</div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         )}
+      </div>
     </div>
   );
 }
