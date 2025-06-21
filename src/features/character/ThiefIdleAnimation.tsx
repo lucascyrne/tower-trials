@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { OptimizedCharacterAnimation } from '@/components/ui/optimized-character-animation';
 
 // Import direto das imagens para garantir que o Vite as processe corretamente
 import thiefIdle01 from '@/assets/characters/thief/idle/thief-idle-01.png';
