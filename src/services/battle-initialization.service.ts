@@ -52,6 +52,21 @@ export class BattleInitializationService {
         throw new Error('Dados do personagem inválidos ou incompletos');
       }
 
+      // ✅ CORREÇÃO CRÍTICA: Garantir que floor seja sempre >= 1
+      if (gamePlayer.floor <= 0) {
+        console.warn(
+          `[BattleInit] ⚠️ Floor inválido detectado (${gamePlayer.floor}), corrigindo para 1`
+        );
+        gamePlayer.floor = 1;
+        // Atualizar no banco para corrigir dados inconsistentes
+        try {
+          await CharacterService.updateCharacterFloor(gamePlayer.id, 1);
+          console.log(`[BattleInit] ✅ Floor corrigido no banco para ${gamePlayer.name}`);
+        } catch (updateError) {
+          console.error(`[BattleInit] ❌ Erro ao corrigir floor no banco:`, updateError);
+        }
+      }
+
       onProgress?.({
         step: 'floor',
         progress: 50,
@@ -148,9 +163,12 @@ export class BattleInitializationService {
    * 🔧 NOVO: Método para gerar inimigo de fallback diretamente
    */
   private static generateFallbackEnemy(floor: number): Enemy {
-    const level = Math.max(1, Math.floor(floor / 5) + 1);
-    const tier = Math.max(1, Math.floor(floor / 20) + 1);
-    const isBoss = floor % 10 === 0;
+    // ✅ CORREÇÃO: Garantir que floor seja pelo menos 1
+    const safeFloor = Math.max(1, floor);
+
+    const level = Math.max(1, Math.floor(safeFloor / 5) + 1);
+    const tier = Math.max(1, Math.floor(safeFloor / 20) + 1);
+    const isBoss = safeFloor % 10 === 0;
 
     const monsterNames = [
       'Slime',
@@ -162,7 +180,7 @@ export class BattleInitializationService {
       'Troll',
       'Dragon',
     ];
-    const nameIndex = Math.floor(floor / 2) % monsterNames.length;
+    const nameIndex = Math.floor(safeFloor / 2) % monsterNames.length;
     const baseName = monsterNames[nameIndex];
     const name = `${isBoss ? 'Boss ' : ''}${baseName}${tier > 1 ? ` T${tier}` : ''}`;
 
@@ -179,7 +197,7 @@ export class BattleInitializationService {
     const reward_gold = Math.floor((3 + level * 1 + tier * 1) * (isBoss ? 2.5 : 1));
 
     return {
-      id: `fallback_${floor}_${Date.now()}`,
+      id: `fallback_${safeFloor}_${Date.now()}`,
       name,
       level,
       hp,
@@ -202,7 +220,7 @@ export class BattleInitializationService {
       },
       tier,
       base_tier: 1,
-      cycle_position: ((floor - 1) % 20) + 1,
+      cycle_position: ((safeFloor - 1) % 20) + 1, // ✅ CORREÇÃO: Usar safeFloor
       is_boss: isBoss,
       strength: Math.floor(10 + level * 2),
       dexterity: Math.floor(10 + level * 1),

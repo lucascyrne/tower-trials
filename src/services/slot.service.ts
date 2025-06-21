@@ -507,6 +507,15 @@ export class SlotService {
         p_slot_position: slotPosition,
       });
 
+      // ✅ CORREÇÃO: Log detalhado da resposta bruta do RPC
+      console.log(`[SlotService] 🔍 DEBUG: Resposta bruta do RPC:`, {
+        data,
+        error,
+        dataType: typeof data,
+        isArray: Array.isArray(data),
+        dataLength: Array.isArray(data) ? data.length : 'N/A',
+      });
+
       if (error) {
         console.error('[SlotService] Erro RPC ao consumir poção:', error);
         return {
@@ -526,6 +535,15 @@ export class SlotService {
       }
 
       const resultData = data[0];
+      console.log(`[SlotService] 🔍 DEBUG: Dados do primeiro elemento:`, {
+        resultData,
+        resultDataType: typeof resultData,
+        success: resultData?.success,
+        successType: typeof resultData?.success,
+        message: resultData?.message,
+        new_hp: resultData?.new_hp,
+        new_mana: resultData?.new_mana,
+      });
 
       if (!resultData) {
         return {
@@ -535,23 +553,40 @@ export class SlotService {
         };
       }
 
-      const result: PotionUseResult = {
-        success: Boolean(resultData.success),
-        message: String(resultData.message || 'Poção usada'),
-        new_hp: Math.floor(Number(resultData.new_hp) || 0),
-        new_mana: Math.floor(Number(resultData.new_mana) || 0),
-      };
+      // ✅ CORREÇÃO: Melhorar validação e conversão de tipos
+      const rawSuccess = resultData.success;
+      const rawMessage = resultData.message;
+      const rawHp = resultData.new_hp;
+      const rawMana = resultData.new_mana;
 
-      // NOVO: Log detalhado para debug
-      console.log(`[SlotService] Processando resultado:`, {
-        originalData: resultData,
-        processedResult: result,
-        characterId,
-        slotPosition,
+      // ✅ CRÍTICO: Conversão mais robusta de boolean
+      let isSuccess = false;
+      if (typeof rawSuccess === 'boolean') {
+        isSuccess = rawSuccess;
+      } else if (typeof rawSuccess === 'string') {
+        isSuccess = rawSuccess.toLowerCase() === 'true' || rawSuccess === 't';
+      } else {
+        isSuccess = Boolean(rawSuccess);
+      }
+
+      console.log(`[SlotService] 🔍 DEBUG: Conversão de success:`, {
+        rawSuccess,
+        rawSuccessType: typeof rawSuccess,
+        isSuccess,
       });
 
-      if (isNaN(result.new_hp) || isNaN(result.new_mana)) {
-        console.error('[SlotService] Valores NaN detectados:', { resultData, result });
+      // ✅ CORREÇÃO: Validação mais robusta de números
+      const newHp = Math.floor(Number(rawHp) || 0);
+      const newMana = Math.floor(Number(rawMana) || 0);
+
+      if (isNaN(newHp) || isNaN(newMana)) {
+        console.error('[SlotService] Valores NaN detectados:', {
+          rawHp,
+          rawMana,
+          newHp,
+          newMana,
+          resultData,
+        });
         return {
           success: false,
           error: 'Erro nos valores de HP/Mana retornados',
@@ -559,19 +594,38 @@ export class SlotService {
         };
       }
 
-      // CRÍTICO: Invalidar cache após consumo (mesmo se não sucesso para evitar inconsistências)
+      const result: PotionUseResult = {
+        success: isSuccess,
+        message: String(rawMessage || 'Poção usada'),
+        new_hp: newHp,
+        new_mana: newMana,
+      };
+
+      console.log(`[SlotService] 🔍 DEBUG: Resultado processado:`, {
+        result,
+        originalData: resultData,
+      });
+
+      // CRÍTICO: Invalidar cache APENAS APÓS consumo bem-sucedido ou erro
       this.invalidateCache(characterId);
 
+      // ✅ CORREÇÃO: Verificar sucesso DEPOIS da invalidação de cache
       if (!result.success) {
-        console.warn(`[SlotService] RPC indicou falha:`, {
+        console.warn(`[SlotService] ⚠️ RPC indicou falha:`, {
           message: result.message,
           resultData,
           characterId,
           slotPosition,
         });
+
+        return {
+          success: false,
+          error: result.message,
+          data: null,
+        };
       }
 
-      console.log(`[SlotService] Resultado final da poção:`, {
+      console.log(`[SlotService] ✅ Resultado final da poção:`, {
         success: result.success,
         message: result.message,
         hp: result.new_hp,
@@ -579,12 +633,16 @@ export class SlotService {
       });
 
       return {
-        success: result.success,
-        error: result.success ? null : result.message,
-        data: result.success ? result : null,
+        success: true,
+        error: null,
+        data: result,
       };
     } catch (error) {
       console.error('[SlotService] Erro crítico ao consumir poção:', error);
+
+      // ✅ CORREÇÃO: Invalidar cache mesmo em caso de erro crítico
+      this.invalidateCache(characterId);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',

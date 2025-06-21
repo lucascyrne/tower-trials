@@ -9,6 +9,7 @@ import {
 import { type GamePlayer } from '@/models/game.model';
 import { type MonsterDropChance } from '@/models/monster.model';
 import { type Character } from '@/models/character.model';
+import { isHealthPotion, isManaPotion } from '@/utils/consumable-utils';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -179,8 +180,8 @@ export class ConsumableService {
 
       switch (consumable.type) {
         case 'potion':
-          // Poção de HP
-          if (consumable.description.includes('HP') || consumable.description.includes('Vida')) {
+          // ✅ CORREÇÃO: Usar funções utilitárias para identificar tipos de poção
+          if (isHealthPotion(consumable)) {
             const oldHp = Math.floor(Number(character.hp) || 0);
             const maxHp = Math.floor(Number(character.max_hp) || 1);
             const effectValue = Math.floor(Number(consumable.effect_value) || 0);
@@ -197,8 +198,8 @@ export class ConsumableService {
               `[ConsumableService] HP: ${oldHp} + ${effectValue} = ${newHp} (max: ${maxHp})`
             );
           }
-          // Poção de Mana
-          else if (consumable.description.includes('Mana')) {
+          // ✅ CORREÇÃO: Usar função utilitária para poções de mana
+          else if (isManaPotion(consumable)) {
             const oldMana = Math.floor(Number(character.mana) || 0);
             const maxMana = Math.floor(Number(character.max_mana) || 1);
             const effectValue = Math.floor(Number(consumable.effect_value) || 0);

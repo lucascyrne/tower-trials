@@ -56,36 +56,43 @@ interface DatabaseMonsterData {
 // ===================================================================================================
 
 /**
- * ESCALAMENTO IDÊNTICO AO BANCO: scale_monster_stats_balanced_v2
- * Escalamento por tier mais agressivo: 1.5x ao invés de 1.25x
- * Progressão dentro do tier: 3% por andar ao invés de 1.5%
+ * ESCALAMENTO TUTORIAL-FRIENDLY: scale_monster_stats_tutorial_friendly
+ * Escalamento mais suave para tutorial melhor e progressão gradual
  */
-function scaleMonsterStatsBalancedV2(
+function scaleMonsterStatsTutorialFriendly(
   basestat: number,
   currentTier: number,
   floorInTier: number,
   scalingType: 'hp' | 'attack' | 'defense' | 'normal' = 'normal'
 ): number {
-  // Escalamento por tier mais agressivo: 1.5x ao invés de 1.25x
-  const tierMultiplier = Math.pow(1.5, Math.max(0, currentTier - 1));
+  let tierMultiplier: number;
+  let floorMultiplier: number;
 
-  // Progressão dentro do tier: 3% por andar ao invés de 1.5%
-  const floorMultiplier = 1.0 + floorInTier * 0.03;
+  // Escalamento mais suave para tutorial melhor
+  // Tier 1 (andares 1-20): Crescimento muito gradual
+  if (currentTier === 1) {
+    tierMultiplier = 1.0; // Sem multiplicador de tier no tutorial
+    floorMultiplier = 1.0 + floorInTier * 0.015; // Apenas 1.5% por andar
+  } else {
+    // Tiers superiores: Escalamento mais agressivo
+    tierMultiplier = Math.pow(1.3, Math.max(0, currentTier - 1)); // Reduzido de 1.5x
+    floorMultiplier = 1.0 + floorInTier * 0.025; // Reduzido de 3%
+  }
 
   let finalStat: number;
 
   // Aplicar escalamento baseado no tipo
   switch (scalingType) {
     case 'hp':
-      // HP escala mais para survivability
-      finalStat = basestat * tierMultiplier * floorMultiplier * 1.2;
+      // HP escala um pouco mais
+      finalStat = basestat * tierMultiplier * floorMultiplier * 1.1;
       break;
     case 'attack':
       // Ataque escala normalmente
       finalStat = basestat * tierMultiplier * floorMultiplier;
       break;
     case 'defense':
-      // Defesa escala um pouco menos
+      // Defesa escala menos
       finalStat = basestat * tierMultiplier * floorMultiplier * 0.9;
       break;
     default:
@@ -97,8 +104,8 @@ function scaleMonsterStatsBalancedV2(
 }
 
 /**
- * STATS BASE REPLICADOS DO BANCO (20241221000012)
- * Com aumento de 30% para tornar mais desafiador conforme solicitado
+ * STATS BASE TUTORIAL-FRIENDLY (20241221000022)
+ * Rebalanceados para alinhar com personagens ultra-baixos e criar tutorial progressivo
  */
 function getBaseStatsFromDatabase(
   floor: number,
@@ -113,52 +120,69 @@ function getBaseStatsFromDatabase(
   let baseHp: number, baseAtk: number, baseDef: number;
   let baseXp: number, baseGold: number;
 
-  // STATS BASE DO BANCO + 30% DE AUMENTO PARA DIFICULDADE
+  // TUTORIAL (Andares 1-3): Mais fracos que o personagem para ensinar mecânicas
   if (floor <= 3) {
-    baseHp = Math.floor(80 * 1.3); // Era 80, agora 104
-    baseAtk = Math.floor(15 * 1.3); // Era 15, agora 19
-    baseDef = Math.floor(5 * 1.3); // Era 5, agora 6
-    baseXp = Math.floor((15 + floor * 8) * 0.4); // REDUZIDO 60%
-    baseGold = Math.floor((8 + floor * 5) * 0.4); // REDUZIDO 60%
-  } else if (floor <= 5) {
-    baseHp = Math.floor(120 * 1.3); // Era 120, agora 156
-    baseAtk = Math.floor(28 * 1.3); // Era 28, agora 36
-    baseDef = Math.floor(16 * 1.3); // Era 16, agora 20
-    baseXp = Math.floor((20 + floor * 12) * 0.4);
-    baseGold = Math.floor((12 + floor * 8) * 0.4);
-  } else if (floor <= 10) {
-    baseHp = Math.floor(180 * 1.3); // Era 180, agora 234
-    baseAtk = Math.floor(36 * 1.3); // Era 36, agora 46
-    baseDef = Math.floor(24 * 1.3); // Era 24, agora 31
-    baseXp = Math.floor((30 + floor * 18) * 0.3); // REDUZIDO 70%
-    baseGold = Math.floor((18 + floor * 12) * 0.3);
-  } else if (floor <= 15) {
-    baseHp = Math.floor(250 * 1.3); // Era 250, agora 325
-    baseAtk = Math.floor(48 * 1.3); // Era 48, agora 62
-    baseDef = Math.floor(32 * 1.3); // Era 32, agora 41
-    baseXp = Math.floor((50 + floor * 25) * 0.3);
-    baseGold = Math.floor((25 + floor * 18) * 0.3);
-  } else if (floor <= 20) {
-    baseHp = Math.floor(320 * 1.3); // Era 320, agora 416
-    baseAtk = Math.floor(60 * 1.3); // Era 60, agora 78
-    baseDef = Math.floor(40 * 1.3); // Era 40, agora 52
-    baseXp = Math.floor((70 + floor * 35) * 0.3);
-    baseGold = Math.floor((35 + floor * 25) * 0.3);
-  } else {
-    baseHp = Math.floor(400 * 1.3); // Era 400, agora 520
-    baseAtk = Math.floor(75 * 1.3); // Era 75, agora 97
-    baseDef = Math.floor(50 * 1.3); // Era 50, agora 65
-    baseXp = Math.floor((100 + floor * 50) * 0.3);
-    baseGold = Math.floor((50 + floor * 35) * 0.3);
+    if (floor === 1) {
+      baseHp = 45;
+      baseAtk = 8;
+      baseDef = 2; // Personagem nível 1: ~80 HP, ~12 ATK, ~3 DEF
+    } else if (floor === 2) {
+      baseHp = 55;
+      baseAtk = 10;
+      baseDef = 3; // Ligeiramente mais forte
+    } else {
+      baseHp = 65;
+      baseAtk = 12;
+      baseDef = 4; // Preparação para desafio real
+    }
+    baseXp = 12 + floor * 2; // 14-18 XP
+    baseGold = 18 + floor * 4 + Math.floor(Math.random() * 8); // 22-38 Gold variável
+  }
+  // EARLY GAME (Andares 4-10): Progressão gradual mais desafiadora
+  else if (floor <= 10) {
+    const floorOffset = floor - 3;
+    baseHp = 75 + floorOffset * 10; // 75, 85, 95, 105, 115, 125, 135
+    baseAtk = 14 + floorOffset * 2; // 14, 16, 18, 20, 22, 24, 26
+    baseDef = 5 + floorOffset; // 5, 6, 7, 8, 9, 10, 11
+
+    if (floor <= 5) {
+      baseXp = 16 + floor * 3; // 19-31 XP
+      baseGold = 25 + floor * 6 + Math.floor(Math.random() * 12); // 31-67 Gold
+    } else {
+      baseXp = 20 + floor * 4; // 24-60 XP
+      baseGold = 35 + floor * 8 + Math.floor(Math.random() * 16); // 43-131 Gold
+    }
+  }
+  // MID GAME (Andares 11-20): Desafio real
+  else if (floor <= 20) {
+    baseHp = 140 + (floor - 10) * 15; // 155-290 HP
+    baseAtk = 28 + (floor - 10) * 3; // 31-58 ATK
+    baseDef = 12 + (floor - 10) * 2; // 14-32 DEF
+
+    if (floor <= 15) {
+      baseXp = 30 + floor * 6; // 36-120 XP
+      baseGold = 50 + floor * 12 + Math.floor(Math.random() * 20); // 62-230 Gold
+    } else {
+      baseXp = 50 + floor * 8; // 58-210 XP
+      baseGold = 80 + floor * 15 + Math.floor(Math.random() * 25); // 95-345 Gold
+    }
+  }
+  // LATE GAME (Andares 21+): Escalamento agressivo
+  else {
+    baseHp = 300 + (floor - 20) * 25; // 325+ HP
+    baseAtk = 60 + (floor - 20) * 5; // 65+ ATK
+    baseDef = 35 + (floor - 20) * 3; // 38+ DEF
+    baseXp = 80 + floor * 12; // 92+ XP
+    baseGold = 120 + floor * 20 + Math.floor(Math.random() * 30); // 140+ Gold
   }
 
-  // Bosses 80% mais fortes (REPLICANDO EXATAMENTE O BANCO)
+  // Bosses 50% mais fortes (REBALANCEADO DE 80% PARA 50%)
   if (isBoss) {
-    baseHp = Math.floor(baseHp * 1.8);
-    baseAtk = Math.floor(baseAtk * 1.8);
-    baseDef = Math.floor(baseDef * 1.8);
-    baseXp = Math.floor(baseXp * 2.5); // Bosses ainda dão mais XP
-    baseGold = Math.floor(baseGold * 2.0);
+    baseHp = Math.floor(baseHp * 1.5); // Reduzido de 1.8x
+    baseAtk = Math.floor(baseAtk * 1.4); // Reduzido de 1.8x
+    baseDef = Math.floor(baseDef * 1.3); // Reduzido de 1.8x
+    baseXp = Math.floor(baseXp * 2.2); // Reduzido de 2.5x
+    baseGold = Math.floor(baseGold * 1.8); // Reduzido de 2.0x
   }
 
   return { hp: baseHp, atk: baseAtk, def: baseDef, rewardXp: baseXp, rewardGold: baseGold };
@@ -243,11 +267,21 @@ function generateEnemyFromDatabaseLogic(floor: number): Enemy {
   const isNemesis = nemesisResult.isNemesis;
   const nemesisType = nemesisResult.nemesisType;
 
-  // APLICAR ESCALAMENTO IDÊNTICO AO BANCO
-  const scaledHp = scaleMonsterStatsBalancedV2(finalBaseStats.hp, tier, floorInTier, 'hp');
-  const scaledAtk = scaleMonsterStatsBalancedV2(finalBaseStats.atk, tier, floorInTier, 'attack');
-  const scaledDef = scaleMonsterStatsBalancedV2(finalBaseStats.def, tier, floorInTier, 'defense');
-  const scaledSpeed = scaleMonsterStatsBalancedV2(10 + level + tier * 2, tier, floorInTier);
+  // APLICAR ESCALAMENTO TUTORIAL-FRIENDLY
+  const scaledHp = scaleMonsterStatsTutorialFriendly(finalBaseStats.hp, tier, floorInTier, 'hp');
+  const scaledAtk = scaleMonsterStatsTutorialFriendly(
+    finalBaseStats.atk,
+    tier,
+    floorInTier,
+    'attack'
+  );
+  const scaledDef = scaleMonsterStatsTutorialFriendly(
+    finalBaseStats.def,
+    tier,
+    floorInTier,
+    'defense'
+  );
+  const scaledSpeed = scaleMonsterStatsTutorialFriendly(8 + level + tier, tier, floorInTier);
 
   // NOMES DINÂMICOS
   const monsterTypes = ['Slime', 'Goblin', 'Orc', 'Skeleton', 'Wolf', 'Spider', 'Troll', 'Dragon'];
@@ -262,32 +296,36 @@ function generateEnemyFromDatabaseLogic(floor: number): Enemy {
   if (isBoss) name = `Boss ${name}`;
   else if (isNemesis) name = `${nemesisType} ${name}`;
 
-  // ATRIBUTOS ESCALADOS IDENTICAMENTE AO BANCO
-  const attributeBase = 10 + tier * 3 + Math.floor(floorInTier / 4);
-  // const attributeMultiplier = Math.pow(1.5, tier - 1) * (1 + floorInTier * 0.03);
+  // ATRIBUTOS ESCALADOS MAIS SUAVEMENTE
+  const attributeBase = 8 + tier * 2 + Math.floor(floorInTier / 5);
 
   const strength = Math.floor(
-    scaleMonsterStatsBalancedV2(attributeBase, tier, floorInTier) * (isBoss ? 1.3 : 1)
+    scaleMonsterStatsTutorialFriendly(attributeBase, tier, floorInTier) * (isBoss ? 1.2 : 1)
   );
   const dexterity = Math.floor(
-    scaleMonsterStatsBalancedV2(attributeBase * 0.8, tier, floorInTier) * (isNemesis ? 1.3 : 1)
+    scaleMonsterStatsTutorialFriendly(attributeBase * 0.7, tier, floorInTier) *
+      (isNemesis ? 1.2 : 1)
   );
   const intelligence = Math.floor(
-    scaleMonsterStatsBalancedV2(attributeBase * 0.6, tier, floorInTier)
+    scaleMonsterStatsTutorialFriendly(attributeBase * 0.5, tier, floorInTier)
   );
-  const wisdom = Math.floor(scaleMonsterStatsBalancedV2(attributeBase * 0.7, tier, floorInTier));
+  const wisdom = Math.floor(
+    scaleMonsterStatsTutorialFriendly(attributeBase * 0.5, tier, floorInTier)
+  );
   const vitality = Math.floor(
-    scaleMonsterStatsBalancedV2(attributeBase, tier, floorInTier) * (isBoss ? 1.4 : 1.2)
+    scaleMonsterStatsTutorialFriendly(attributeBase, tier, floorInTier) * (isBoss ? 1.3 : 1.1)
   );
-  const luck = Math.floor(scaleMonsterStatsBalancedV2(attributeBase * 0.6, tier, floorInTier));
+  const luck = Math.floor(
+    scaleMonsterStatsTutorialFriendly(attributeBase * 0.4, tier, floorInTier)
+  );
 
-  // STATS DE COMBATE ESCALADOS IDENTICAMENTE AO BANCO
-  const criticalChance = Math.min(0.4, 0.05 + tier * 0.02 + floorInTier * 0.005);
-  const criticalDamage = Math.min(3.0, 1.5 + tier * 0.1 + floorInTier * 0.02);
-  const criticalResistance = Math.min(0.3, tier * 0.02 + (isBoss ? 0.1 : 0.05));
+  // STATS DE COMBATE MAIS MODERADOS
+  const criticalChance = Math.min(0.25, 0.02 + tier * 0.01 + floorInTier * 0.003);
+  const criticalDamage = Math.min(1.8, 1.1 + tier * 0.05 + floorInTier * 0.01);
+  const criticalResistance = Math.min(0.2, tier * 0.01 + (isBoss ? 0.08 : 0.03));
 
   console.log(
-    `[MonsterService] ✅ Enemy gerado com lógica do banco: ${name} (T${tier}F${floorInTier}) - HP:${scaledHp} ATK:${scaledAtk} DEF:${scaledDef} | XP:${finalBaseStats.rewardXp} Gold:${finalBaseStats.rewardGold}${isNemesis ? ` [NEMESIS: ${nemesisType}]` : ''}`
+    `[MonsterService] ✅ Enemy gerado tutorial-friendly: ${name} (T${tier}F${floorInTier}) - HP:${scaledHp} ATK:${scaledAtk} DEF:${scaledDef} | XP:${finalBaseStats.rewardXp} Gold:${finalBaseStats.rewardGold}${isNemesis ? ` [NEMESIS: ${nemesisType}]` : ''}`
   );
 
   return {

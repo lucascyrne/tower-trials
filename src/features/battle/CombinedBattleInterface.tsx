@@ -21,7 +21,7 @@ import {
 import { type ActionType, type GamePlayer } from '@/models/game.model';
 import { type PlayerSpell } from '@/models/spell.model';
 import { type ConsumableType } from '@/models/consumable.model';
-import { SlotService, type PotionSlot } from '@/services/slot.service';
+import { type PotionSlot } from '@/services/slot.service';
 import { ConsumableImage } from '@/components/ui/consumable-image';
 import { toast } from 'sonner';
 // ✅ CORREÇÃO: Removido useBattleStore - usando handleAction das props
@@ -244,9 +244,17 @@ export function CombinedBattleInterface({
       setUsingSlot(slotPosition);
 
       try {
+        console.log('[CombinedBattleInterface] Iniciando uso da poção:', {
+          slotPosition,
+          consumableId: slot.consumable_id,
+          availableQuantity: slot.available_quantity,
+          playerId: currentPlayer.id,
+        });
+
+        // ✅ CORREÇÃO: Não invalidar cache ANTES da requisição - deixar o cache funcionar
+        const { SlotService } = await import('@/services/slot.service');
         const response = await SlotService.consumePotionFromSlot(currentPlayer.id, slotPosition);
 
-        // NOVO: Log detalhado da resposta para debug
         console.log('[CombinedBattleInterface] Resposta do SlotService:', {
           success: response.success,
           hasData: !!response.data,
@@ -257,35 +265,63 @@ export function CombinedBattleInterface({
         if (response.success && response.data) {
           const { message, new_hp, new_mana } = response.data;
 
+          // ✅ CORREÇÃO: Atualizar stats do player imediatamente
           onPlayerStatsUpdate(new_hp, new_mana);
 
           if (currentPlayer) {
             currentPlayer.potionUsedThisTurn = true;
           }
 
+          // ✅ CORREÇÃO: Animação de feedback visual
           setUsedPotionAnimation(slotPosition);
           setTimeout(() => setUsedPotionAnimation(null), 2000);
 
-          // CRÍTICO: Aguardar um pouco antes de recarregar slots para garantir consistência
-          setTimeout(async () => {
-            await onSlotsChange();
-          }, 100);
+          // ✅ CRÍTICO: Recarregar slots IMEDIATAMENTE - sem delay
+          console.log('[CombinedBattleInterface] Recarregando slots imediatamente...');
+          await onSlotsChange();
 
           toast.success(message, {
             description: `HP: ${new_hp} | Mana: ${new_mana}`,
             duration: 4000,
           });
+
+          console.log('[CombinedBattleInterface] Poção usada com sucesso e slots atualizados');
         } else {
-          console.warn('[CombinedBattleInterface] Falha ao usar poção:', {
+          // ✅ CORREÇÃO: Log mais detalhado do erro
+          console.warn('[CombinedBattleInterface] ❌ Falha ao usar poção:', {
             success: response.success,
             error: response.error,
             data: response.data,
             slotPosition,
             playerId: currentPlayer.id,
+            responseObject: response,
           });
-          toast.error(response.error || 'Erro ao usar poção');
+
+          // ✅ CORREÇÃO: Mesmo em caso de erro, recarregar slots para garantir sincronização
+          console.log(
+            '[CombinedBattleInterface] Recarregando slots após erro para garantir sincronização...'
+          );
+          await onSlotsChange();
+
+          // ✅ CORREÇÃO: Mensagem de erro mais específica
+          const errorMessage = response.error || 'Erro desconhecido ao usar poção';
+          console.error('[CombinedBattleInterface] Exibindo toast de erro:', errorMessage);
+          toast.error(errorMessage, {
+            description: `Slot ${slotPosition} - Verifique os logs do console para mais detalhes`,
+            duration: 5000,
+          });
         }
-      } catch {
+      } catch (error) {
+        console.error('[CombinedBattleInterface] Erro crítico ao usar poção:', error);
+
+        // ✅ CORREÇÃO: Em caso de erro crítico, também recarregar slots
+        try {
+          console.log('[CombinedBattleInterface] Recarregando slots após erro crítico...');
+          await onSlotsChange();
+        } catch (reloadError) {
+          console.error('[CombinedBattleInterface] Erro ao recarregar slots:', reloadError);
+        }
+
         toast.error('Erro ao usar poção');
       } finally {
         setUsingSlot(null);
@@ -699,177 +735,203 @@ export function CombinedBattleInterface({
               </div>
             </div>
 
-            {/* Poções - Direita */}
+            {/* Seção de Poções - Direita */}
             <div className="flex-1 md:max-w-xs md:flex-none">
               <div className="text-xs font-medium text-muted-foreground/80 mb-2 text-center md:text-right">
                 Poções Rápidas
-                {potionUsedThisTurn && (
-                  <span className="ml-2 text-orange-400 text-xs">• Poção usada neste turno</span>
-                )}
               </div>
-              <div className="flex justify-center md:justify-end gap-2">
+              <div className="flex justify-center md:justify-end gap-1 md:gap-2">
                 {loadingPotionSlots
-                  ? [1, 2, 3].map(i => (
-                      <div
-                        key={i}
-                        className="w-12 h-12 md:w-14 md:h-14 bg-muted/20 rounded-xl animate-pulse"
-                      />
+                  ? // Loading state para slots
+                    [1, 2, 3].map(position => (
+                      <div key={position} className="relative">
+                        <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/10 animate-pulse" />
+                        <Badge
+                          variant="outline"
+                          className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30"
+                        >
+                          {getPotionKeyBinding(position)}
+                        </Badge>
+                      </div>
                     ))
-                  : potionSlots.map(slot => {
-                      const isUsing = usingSlot === slot.slot_position;
-                      const isEmpty = !slot.consumable_id;
-                      const keyBinding = getPotionKeyBinding(slot.slot_position);
-                      const isPotionDisabled = potionUsedThisTurn && !isEmpty;
-                      const hasUsedAnimation = usedPotionAnimation === slot.slot_position;
+                  : // Renderizar slots normalmente
+                    (() => {
+                      // ✅ CORREÇÃO: Garantir que sempre temos 3 slots, mesmo se alguns estão vazios
+                      const allSlots = [1, 2, 3].map(position => {
+                        const existingSlot = potionSlots.find(s => s.slot_position === position);
 
-                      // Usar dados diretos do slot (simplificado)
-                      const displayQuantity = hasUsedAnimation
-                        ? Math.max(0, slot.available_quantity - 1)
-                        : slot.available_quantity;
+                        // Se não existe slot ou não tem consumível, criar slot vazio
+                        if (!existingSlot || !existingSlot.consumable_id) {
+                          return {
+                            slot_position: position,
+                            consumable_id: null,
+                            consumable_name: null,
+                            consumable_description: null,
+                            effect_value: null,
+                            consumable_type: null,
+                            available_quantity: 0,
+                            consumable_price: null,
+                          };
+                        }
 
-                      const tooltipInfo = {
-                        title: slot.consumable_name || `Slot ${keyBinding}`,
-                        description: isEmpty
-                          ? 'Slot vazio - Configure no inventário'
-                          : displayQuantity === 0
-                            ? 'Sem unidades disponíveis'
-                            : potionUsedThisTurn
-                              ? 'Poção já usada neste turno'
-                              : slot.consumable_description || 'Poção',
-                        stats: isEmpty
-                          ? []
-                          : [
-                              { label: 'Efeito', value: `+${slot.effect_value}` },
-                              { label: 'Disponível', value: `x${displayQuantity}` },
-                              { label: 'Tecla', value: keyBinding },
-                              ...(potionUsedThisTurn
-                                ? [{ label: 'Status', value: 'Indisponível neste turno' }]
-                                : []),
-                            ],
-                      };
+                        // ✅ CRÍTICO: Se tem consumible_id mas quantidade é 0, tratar como slot vazio
+                        if (existingSlot.available_quantity <= 0) {
+                          return {
+                            slot_position: position,
+                            consumable_id: null,
+                            consumable_name: null,
+                            consumable_description: null,
+                            effect_value: null,
+                            consumable_type: null,
+                            available_quantity: 0,
+                            consumable_price: null,
+                          };
+                        }
 
-                      // Desabilitar se não há quantidade disponível
-                      const isOutOfStock = !isEmpty && displayQuantity === 0;
+                        return existingSlot;
+                      });
 
-                      return (
-                        <div key={slot.slot_position} className="relative">
-                          <Button
-                            onClick={() => handlePotionSlotUse(slot.slot_position)}
-                            disabled={
-                              isDisabled ||
-                              isEmpty ||
-                              isUsing ||
-                              shouldShowNextFloorButton ||
-                              isPotionDisabled ||
-                              isOutOfStock ||
-                              isPlayerDead
+                      return allSlots.map(slot => {
+                        const keyBinding = getPotionKeyBinding(slot.slot_position);
+                        const isEmpty = !slot.consumable_id || slot.available_quantity <= 0;
+                        const isUsing = usingSlot === slot.slot_position;
+                        const hasUsedAnimation = usedPotionAnimation === slot.slot_position;
+                        const isPotionDisabled = potionUsedThisTurn && !isEmpty;
+
+                        // ✅ CRÍTICO: Quantidade sempre 0 para slots vazios
+                        const displayQuantity = isEmpty ? 0 : Math.max(0, slot.available_quantity);
+
+                        const tooltipInfo = isEmpty
+                          ? {
+                              title: `Slot ${keyBinding}`,
+                              description: 'Slot vazio - arraste uma poção aqui',
+                              stats: [{ label: 'Tecla de atalho', value: keyBinding }],
                             }
-                            variant="ghost"
-                            className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-2 relative border-2 transition-all duration-200 cursor-pointer ${
-                              isEmpty
-                                ? 'border-dashed border-muted-foreground/20 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/30'
-                                : isOutOfStock
-                                  ? 'border-red-500/30 bg-red-500/5 opacity-50 cursor-not-allowed'
-                                  : isPotionDisabled
-                                    ? 'border-orange-500/30 bg-orange-500/5 opacity-50 cursor-not-allowed'
-                                    : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10'
-                            } ${isUsing ? 'opacity-50' : ''} ${hasUsedAnimation ? 'animate-pulse scale-110' : ''} ${
-                              isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
-                            }`}
-                            onMouseDown={e => handleMouseDown(tooltipInfo, e)}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseLeave}
-                            onTouchStart={e => handleTouchStart(tooltipInfo, e)}
-                            onTouchEnd={handleTouchEnd}
-                          >
-                            {isEmpty ? (
-                              <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
-                            ) : slot.consumable_id ? (
-                              <div className="flex items-center justify-center">
-                                <ConsumableImage
-                                  consumable={{
-                                    id: slot.consumable_id,
-                                    name: slot.consumable_name || 'Poção',
-                                    description: slot.consumable_description || '',
-                                    type: (slot.consumable_type as ConsumableType) || 'potion',
-                                    effect_value: slot.effect_value || 0,
-                                    price: slot.consumable_price || 0,
-                                    level_requirement: 1,
-                                    created_at: '',
-                                    updated_at: '',
-                                  }}
-                                  size="lg"
-                                  className="h-5 w-5"
-                                  showFallback={true}
-                                />
-                                {(isPotionDisabled || isOutOfStock) && (
-                                  <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-6 h-0.5 bg-red-500 rotate-45 absolute"></div>
-                                    <div className="w-6 h-0.5 bg-red-500 -rotate-45 absolute"></div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : null}
+                          : {
+                              title: slot.consumable_name || 'Poção',
+                              description: slot.consumable_description || '',
+                              stats: [
+                                { label: 'Efeito', value: `+${slot.effect_value}` },
+                                { label: 'Quantidade', value: `${displayQuantity}` },
+                                { label: 'Tecla', value: keyBinding },
+                                ...(isPotionDisabled
+                                  ? [{ label: 'Status', value: 'Já usada neste turno' }]
+                                  : []),
+                              ],
+                            };
 
-                            {isUsing && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-xl">
-                                <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-2 border-primary border-t-transparent" />
-                              </div>
-                            )}
+                        // ✅ CORREÇÃO: Melhor detecção de falta de estoque
+                        const isOutOfStock = !isEmpty && displayQuantity === 0;
 
-                            {hasUsedAnimation && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-green-400 font-bold text-xs animate-bounce">
-                                  ✓
+                        return (
+                          <div key={slot.slot_position} className="relative">
+                            <Button
+                              onClick={() => handlePotionSlotUse(slot.slot_position)}
+                              disabled={
+                                isDisabled ||
+                                isEmpty ||
+                                isUsing ||
+                                shouldShowNextFloorButton ||
+                                isPotionDisabled ||
+                                isOutOfStock ||
+                                isPlayerDead
+                              }
+                              variant="ghost"
+                              className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-2 relative border-2 transition-all duration-200 cursor-pointer ${
+                                isEmpty
+                                  ? 'border-dashed border-muted-foreground/20 bg-transparent hover:bg-muted/10 hover:border-muted-foreground/30'
+                                  : isOutOfStock
+                                    ? 'border-red-500/30 bg-red-500/5 opacity-50 cursor-not-allowed'
+                                    : isPotionDisabled
+                                      ? 'border-orange-500/30 bg-orange-500/5 opacity-50 cursor-not-allowed'
+                                      : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10'
+                              } ${isUsing ? 'opacity-50' : ''} ${hasUsedAnimation ? 'animate-pulse scale-110' : ''} ${
+                                isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
+                              }`}
+                              onMouseDown={e => handleMouseDown(tooltipInfo, e)}
+                              onMouseUp={handleMouseUp}
+                              onMouseLeave={handleMouseLeave}
+                              onTouchStart={e => handleTouchStart(tooltipInfo, e)}
+                              onTouchEnd={handleTouchEnd}
+                            >
+                              {isEmpty ? (
+                                <Plus className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground/40" />
+                              ) : slot.consumable_id ? (
+                                <div className="flex items-center justify-center">
+                                  <ConsumableImage
+                                    consumable={{
+                                      id: slot.consumable_id,
+                                      name: slot.consumable_name || 'Poção',
+                                      description: slot.consumable_description || '',
+                                      type: (slot.consumable_type as ConsumableType) || 'potion',
+                                      effect_value: slot.effect_value || 0,
+                                      price: slot.consumable_price || 0,
+                                      level_requirement: 1,
+                                      created_at: '',
+                                      updated_at: '',
+                                    }}
+                                    size="lg"
+                                    className="h-5 w-5"
+                                    showFallback={true}
+                                  />
+                                  {(isPotionDisabled || isOutOfStock) && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div className="w-6 h-0.5 bg-red-500 rotate-45 absolute"></div>
+                                      <div className="w-6 h-0.5 bg-red-500 -rotate-45 absolute"></div>
+                                    </div>
+                                  )}
                                 </div>
+                              ) : null}
+
+                              {isUsing && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-xl">
+                                  <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-2 border-primary border-t-transparent" />
+                                </div>
+                              )}
+
+                              {hasUsedAnimation && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="text-green-400 font-bold text-xs animate-bounce">
+                                    ✓
+                                  </div>
+                                </div>
+                              )}
+                            </Button>
+
+                            {/* ✅ CORREÇÃO: Indicador de quantidade - apenas se não for slot vazio */}
+                            {!isEmpty && displayQuantity > 0 && (
+                              <div
+                                className={`absolute -bottom-1 -left-1 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center border border-background font-semibold ${
+                                  displayQuantity < 5 ? 'bg-orange-500/90' : 'bg-emerald-500/90'
+                                }`}
+                              >
+                                {displayQuantity}
                               </div>
                             )}
-                          </Button>
 
-                          {/* Indicador de quantidade - sempre visível se não for slot vazio */}
-                          {!isEmpty && (
-                            <div
-                              className={`absolute -bottom-1 -left-1 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center border border-background font-semibold ${
-                                isOutOfStock
-                                  ? 'bg-red-500/90'
-                                  : displayQuantity < 5
-                                    ? 'bg-orange-500/90'
-                                    : 'bg-emerald-500/90'
+                            <Badge
+                              variant="outline"
+                              className={`absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center border-muted-foreground/30 ${
+                                isPotionDisabled
+                                  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                                  : isOutOfStock
+                                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                    : 'bg-background/90'
                               }`}
                             >
-                              {displayQuantity}
-                            </div>
-                          )}
+                              {keyBinding}
+                            </Badge>
 
-                          <Badge
-                            variant="outline"
-                            className={`absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center border-muted-foreground/30 ${
-                              isPotionDisabled
-                                ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                                : isOutOfStock
-                                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                  : 'bg-background/90'
-                            }`}
-                          >
-                            {keyBinding}
-                          </Badge>
-
-                          {/* Indicador de poção usada */}
-                          {isPotionDisabled && (
-                            <div className="absolute top-0 left-0 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center border border-background">
-                              ✗
-                            </div>
-                          )}
-
-                          {/* Indicador de sem estoque */}
-                          {isOutOfStock && (
-                            <div className="absolute top-0 left-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center border border-background">
-                              ⚠
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                            {/* Indicador de poção usada */}
+                            {isPotionDisabled && !isEmpty && (
+                              <div className="absolute top-0 left-0 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center border border-background">
+                                ✗
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
               </div>
             </div>
           </div>

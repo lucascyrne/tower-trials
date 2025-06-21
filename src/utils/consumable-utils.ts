@@ -130,3 +130,61 @@ export function getConsumableTypeColor(consumable: Consumable): string {
       return 'text-slate-400';
   }
 }
+
+/**
+ * Verificar se um consumível é uma poção de vida
+ * @param consumable Consumível
+ * @returns Se é uma poção de vida
+ */
+export function isHealthPotion(consumable: Consumable): boolean {
+  if (consumable.type !== 'potion') return false;
+
+  // Verificar pelo nome e descrição com padrões mais amplos
+  const nameAndDesc = `${consumable.name} ${consumable.description}`.toLowerCase();
+
+  return (
+    nameAndDesc.includes('vida') ||
+    nameAndDesc.includes('hp') ||
+    nameAndDesc.includes('health') ||
+    nameAndDesc.includes('cura') ||
+    nameAndDesc.includes('heal') ||
+    nameAndDesc.includes('restaura hp') ||
+    nameAndDesc.includes('recupera hp')
+  );
+}
+
+/**
+ * Verificar se um consumível é uma poção de mana
+ * @param consumable Consumível
+ * @returns Se é uma poção de mana
+ */
+export function isManaPotion(consumable: Consumable): boolean {
+  if (consumable.type !== 'potion') return false;
+
+  // Verificar pelo nome e descrição com padrões mais amplos
+  const nameAndDesc = `${consumable.name} ${consumable.description}`.toLowerCase();
+
+  return (
+    nameAndDesc.includes('mana') ||
+    nameAndDesc.includes('mp') ||
+    nameAndDesc.includes('magia') ||
+    nameAndDesc.includes('magic') ||
+    nameAndDesc.includes('energia') ||
+    nameAndDesc.includes('restaura mana') ||
+    nameAndDesc.includes('recupera mana')
+  );
+}
+
+/**
+ * Obter o tipo específico de uma poção
+ * @param consumable Consumível
+ * @returns Tipo específico da poção
+ */
+export function getPotionSubType(consumable: Consumable): 'health' | 'mana' | 'other' {
+  if (consumable.type !== 'potion') return 'other';
+
+  if (isHealthPotion(consumable)) return 'health';
+  if (isManaPotion(consumable)) return 'mana';
+
+  return 'other';
+}

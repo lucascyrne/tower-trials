@@ -15,7 +15,7 @@ import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
 import { CharacterService } from '@/services/character.service';
 import { FleeOverlay } from './FleeOverlay';
-import { SlotService, type PotionSlot } from '@/services/slot.service';
+import { type PotionSlot } from '@/services/slot.service';
 import { Button } from '@/components/ui/button';
 import { BattleInitializationService } from '@/services/battle-initialization.service';
 import { QuickActionPanel } from '../character/QuickActionPanel';
@@ -100,6 +100,11 @@ function useBattleInitialization(
       if (!characterResponse.success || !characterResponse.data) {
         throw new Error(characterResponse.error || 'Personagem não encontrado');
       }
+
+      // ✅ CRÍTICO: Limpar logs antes de inicializar nova batalha
+      console.log('[BattleInit] Limpando logs da batalha anterior');
+      const { LoggingUtils } = await import('@/utils/logging-utils');
+      LoggingUtils.clearAllLogs();
 
       // Inicializar batalha
       const result = await BattleInitializationService.initializeBattle(characterResponse.data);
@@ -187,53 +192,133 @@ function useBattleInitializationGuard(characterId: string | undefined) {
   };
 }
 
-// IMPROVED: Hook para slots com proteção mais robusta
+// ✅ CORREÇÃO: Hook simplificado para evitar re-renders constantes
 function usePotionSlots(playerId: string | undefined) {
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // ✅ CORREÇÃO: Usar ref para manter função estável
-  const loadPotionSlotsRef = useRef<(() => Promise<void>) | null>(null);
+  // ✅ CORREÇÃO: Usar ref para valores estáveis
+  const loadingSlotsRef = useRef(false);
+  const playerIdRef = useRef<string | undefined>(undefined);
 
-  // ✅ CORREÇÃO: Função sem dependências para quebrar ciclos
-  const loadPotionSlots = useCallback(async () => {
-    if (!playerId || loadingSlots) {
+  // ✅ CORREÇÃO: Sincronizar refs
+  loadingSlotsRef.current = loadingSlots;
+  playerIdRef.current = playerId;
+
+  // ✅ CORREÇÃO: Função estável que não causa re-renders
+  const loadPotionSlots = useCallback(async (): Promise<void> => {
+    const currentPlayerId = playerIdRef.current;
+    const currentLoading = loadingSlotsRef.current;
+
+    if (!currentPlayerId || currentLoading) {
       return;
     }
 
     try {
       setLoadingSlots(true);
-      console.log(`[PotionSlots] Carregando slots para ${playerId}`);
+      console.log(`[PotionSlots] Carregando slots para ${currentPlayerId}`);
 
-      const result = await SlotService.getCharacterPotionSlots(playerId);
+      const { SlotService } = await import('@/services/slot.service');
+      const result = await SlotService.getCharacterPotionSlots(currentPlayerId);
 
       if (result.success && result.data) {
+        console.log(
+          `[PotionSlots] ${result.data.length} slots carregados:`,
+          result.data.map(slot => ({
+            position: slot.slot_position,
+            name: slot.consumable_name,
+            quantity: slot.available_quantity,
+            isEmpty: !slot.consumable_id,
+          }))
+        );
+
         setPotionSlots(result.data);
-        console.log(`[PotionSlots] ${result.data.length} slots carregados`);
       } else {
         console.error('[PotionSlots] Erro ao carregar slots:', result.error);
-        setPotionSlots([]);
+        setPotionSlots([
+          {
+            slot_position: 1,
+            consumable_id: null,
+            consumable_name: null,
+            consumable_description: null,
+            effect_value: null,
+            consumable_type: null,
+            available_quantity: 0,
+            consumable_price: null,
+          },
+          {
+            slot_position: 2,
+            consumable_id: null,
+            consumable_name: null,
+            consumable_description: null,
+            effect_value: null,
+            consumable_type: null,
+            available_quantity: 0,
+            consumable_price: null,
+          },
+          {
+            slot_position: 3,
+            consumable_id: null,
+            consumable_name: null,
+            consumable_description: null,
+            effect_value: null,
+            consumable_type: null,
+            available_quantity: 0,
+            consumable_price: null,
+          },
+        ]);
       }
     } catch (error) {
       console.error('[PotionSlots] Erro ao carregar slots:', error);
-      setPotionSlots([]);
+      setPotionSlots([
+        {
+          slot_position: 1,
+          consumable_id: null,
+          consumable_name: null,
+          consumable_description: null,
+          effect_value: null,
+          consumable_type: null,
+          available_quantity: 0,
+          consumable_price: null,
+        },
+        {
+          slot_position: 2,
+          consumable_id: null,
+          consumable_name: null,
+          consumable_description: null,
+          effect_value: null,
+          consumable_type: null,
+          available_quantity: 0,
+          consumable_price: null,
+        },
+        {
+          slot_position: 3,
+          consumable_id: null,
+          consumable_name: null,
+          consumable_description: null,
+          effect_value: null,
+          consumable_type: null,
+          available_quantity: 0,
+          consumable_price: null,
+        },
+      ]);
     } finally {
       setLoadingSlots(false);
     }
-  }, [playerId]); // ✅ CORREÇÃO: Só playerId
+  }, []); // ✅ CORREÇÃO CRÍTICA: Sem dependências para evitar recriação
 
-  // ✅ CORREÇÃO: Atualizar ref quando a função muda
-  useEffect(() => {
-    loadPotionSlotsRef.current = loadPotionSlots;
-  }, [loadPotionSlots]);
-
-  // ✅ CORREÇÃO: reloadSlots não depende da função atual
+  // ✅ CORREÇÃO: reloadSlots com invalidação de cache
   const reloadSlots = useCallback(async () => {
-    if (playerId && loadPotionSlotsRef.current) {
-      console.log(`[PotionSlots] Forçando reload dos slots para ${playerId}`);
-      await loadPotionSlotsRef.current();
+    const currentPlayerId = playerIdRef.current;
+    if (currentPlayerId) {
+      console.log(`[PotionSlots] 🔄 FORÇANDO RELOAD dos slots para ${currentPlayerId}`);
+
+      const { SlotService } = await import('@/services/slot.service');
+      SlotService.invalidateCache(currentPlayerId);
+
+      await loadPotionSlots();
     }
-  }, [playerId]); // ✅ CORREÇÃO: Apenas playerId como dependência
+  }, [loadPotionSlots]); // ✅ CORREÇÃO: loadPotionSlots agora é estável
 
   return {
     potionSlots,
@@ -304,9 +389,26 @@ export default function GameBattle() {
   const initializeBattleRef = useRef(initializeBattle);
   initializeBattleRef.current = initializeBattle;
 
-  const { potionSlots, loadingSlots, loadPotionSlots, reloadSlots } = usePotionSlots(
-    player?.id || ''
-  );
+  const { potionSlots, loadingSlots, loadPotionSlots, reloadSlots } = usePotionSlots(player?.id);
+
+  // ✅ CORREÇÃO: Ref para controlar se componente está montado
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // ✅ CORREÇÃO: Efeito para carregar slots quando player muda
+  useEffect(() => {
+    if (player?.id) {
+      console.log('[GameBattle] Carregando slots para player:', player.id);
+      loadPotionSlots().catch(error => {
+        console.error('[GameBattle] Erro ao carregar slots:', error);
+      });
+    }
+  }, [player?.id, loadPotionSlots]);
 
   // Estados do componente - SIMPLIFICADOS
   const [showVictoryModal, setShowVictoryModal] = useState(false);
@@ -325,7 +427,6 @@ export default function GameBattle() {
   });
 
   // Ref para controle de montagem
-  const mountedRef = useRef(true);
   const initTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // CRITICAL: Inicialização única no mount COM PROTEÇÃO ADICIONAL - CORRIGIDA
@@ -384,24 +485,6 @@ export default function GameBattle() {
       // Componente deve manter-se montado
     }
   }, [mode, currentEnemy?.id]);
-
-  // CRITICAL: Carregar slots após inicialização da batalha - CORRIGIDO
-  useEffect(() => {
-    // ✅ CORREÇÃO: Usar valor estável para player ID
-    const playerId = player?.id;
-    if (playerId && !loadingSlots) {
-      const slotsTimer = setTimeout(() => {
-        if (mountedRef.current && playerId) {
-          console.log('[GameBattle] Carregando slots para:', playerId);
-          loadPotionSlots().catch(error => {
-            console.error('[GameBattle] Erro ao carregar slots (não crítico):', error);
-          });
-        }
-      }, 300);
-
-      return () => clearTimeout(slotsTimer);
-    }
-  }, [player?.id, loadingSlots, loadPotionSlots]); // ✅ CORREÇÃO: Adicionar loadPotionSlots de volta mas com uso estável
 
   // OTIMIZADO: Stats memorizados para evitar recálculos
   const battleStats = useMemo(() => {
@@ -645,17 +728,56 @@ export default function GameBattle() {
   const handleContinueAdventure = useCallback(async () => {
     setShowVictoryModal(false);
     try {
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache após vitória para garantir dados atualizados
+      const currentPlayer = useGameStateStore.getState().gameState.player;
+      if (currentPlayer?.id && battleRewards) {
+        console.log('[GameBattle] 🔄 Invalidando cache após vitória com recompensas');
+        CharacterService.invalidateCharacterCache(currentPlayer.id);
+      }
+
       await handleAction('continue');
     } catch (error) {
       console.error('[GameBattle] Erro ao avançar:', error);
       toast.error('Erro ao avançar para o próximo andar');
       setShowVictoryModal(true);
     }
-  }, [handleAction]);
+  }, [handleAction, battleRewards]);
 
-  const handleReturnToHub = useCallback(() => {
+  const handleReturnToHub = useCallback(async () => {
     const currentPlayer = useGameStateStore.getState().gameState.player;
     if (currentPlayer?.id) {
+      // ✅ CRÍTICO: Finalizar logs da batalha ao voltar ao hub
+      console.log('[GameBattle] Finalizando logs da batalha - retornando ao hub');
+      const { LoggingUtils } = await import('@/utils/logging-utils');
+      LoggingUtils.logSpecialEvent(
+        'level_checkpoint',
+        `${currentPlayer.name} retornou ao hub após vitória`,
+        {
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          floorNumber: currentPlayer.floor,
+        }
+      );
+
+      // Finalizar sessão de batalha no BattleLoggerService
+      const { BattleLoggerService } = await import('@/services/battle-logger.service');
+      BattleLoggerService.endBattle('victory', {
+        reason: 'Retorno ao hub',
+        playerName: currentPlayer.name,
+      });
+
+      // ✅ CORREÇÃO CRÍTICA: Invalidar cache para garantir dados atualizados no hub
+      console.log('[GameBattle] 🔄 Invalidando cache antes de voltar ao hub');
+      CharacterService.invalidateCharacterCache(currentPlayer.id);
+
+      // ✅ CORREÇÃO: Limpar store Zustand para forçar recarregamento no hub
+      const { useCharacterStore } = await import('@/stores/useCharacterStore');
+      const characterStore = useCharacterStore.getState();
+      if (characterStore.selectedCharacterId === currentPlayer.id) {
+        console.log('[GameBattle] 🧹 Limpando cache da store para forçar reload no hub');
+        characterStore.setSelectedCharacter(null);
+      }
+
       navigate({ to: '/game/play/hub', search: { character: currentPlayer.id } });
     }
   }, [navigate]);
@@ -675,6 +797,26 @@ export default function GameBattle() {
 
     const currentPlayer = useGameStateStore.getState().gameState.player;
     if (fleeSuccess && currentPlayer?.id) {
+      // ✅ CRÍTICO: Finalizar logs da batalha em caso de fuga bem-sucedida
+      console.log('[GameBattle] Finalizando logs da batalha - fuga bem-sucedida');
+      const { LoggingUtils } = await import('@/utils/logging-utils');
+      LoggingUtils.logSpecialEvent(
+        'flee_success',
+        `${currentPlayer.name} fugiu da batalha com sucesso`,
+        {
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          floorNumber: currentPlayer.floor,
+        }
+      );
+
+      // Finalizar sessão de batalha no BattleLoggerService
+      const { BattleLoggerService } = await import('@/services/battle-logger.service');
+      BattleLoggerService.endBattle('flee', {
+        reason: 'Fuga bem-sucedida',
+        playerName: currentPlayer.name,
+      });
+
       toast.success('Fuga bem-sucedida!', {
         description: 'Retornando ao hub...',
         duration: 2000,
@@ -689,6 +831,20 @@ export default function GameBattle() {
 
       navigate({ to: '/game/play/hub', search: { character: currentPlayer.id } });
     } else {
+      // ✅ LOG: Registrar falha na fuga
+      if (currentPlayer?.id) {
+        const { LoggingUtils } = await import('@/utils/logging-utils');
+        LoggingUtils.logSpecialEvent(
+          'flee_failure',
+          `${currentPlayer.name} falhou ao tentar fugir`,
+          {
+            playerId: currentPlayer.id,
+            playerName: currentPlayer.name,
+            floorNumber: currentPlayer.floor,
+          }
+        );
+      }
+
       toast.warning('Fuga falhou!', {
         description: 'Prepare-se para o contra-ataque...',
         duration: 3000,

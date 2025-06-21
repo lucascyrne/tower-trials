@@ -13,6 +13,7 @@ import { CharacterProgressionService } from '@/services/character-progression.se
 import { CharacterStatsService } from '@/services/character-stats.service';
 import { CharacterAttributesService } from '@/services/character-attributes.service';
 import { NameValidationService } from '@/services/name-validation.service';
+import { useGameStateStore } from '@/stores/useGameStateStore';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -370,12 +371,13 @@ export class CharacterService {
 
     if (!basicError && basicData) {
       character.user_id = basicData.user_id;
-      character.floor = basicData.floor;
+      character.floor = Math.max(1, basicData.floor || 1);
       character.created_at = basicData.created_at;
       character.updated_at = basicData.updated_at;
       character.last_activity = basicData.last_activity;
     } else if (basicError) {
       console.warn(`[CharacterService] Aviso ao buscar dados básicos: ${basicError.message}`);
+      character.floor = 1;
     }
 
     console.log(
@@ -642,17 +644,31 @@ export class CharacterService {
         `[CharacterService] getCharacterForGame solicitado para: ${characterId}${forceRefresh ? ' (forçar atualização)' : ''}`
       );
 
-      // OTIMIZADO: Verificar store Zustand primeiro se não for refresh forçado
+      // ✅ CORREÇÃO: Verificar store Zustand primeiro se não for refresh forçado
+      // Mas sempre verificar se os dados estão atualizados após batalhas
       if (!forceRefresh) {
         const store = useCharacterStore.getState();
         if (store.selectedCharacterId === characterId && store.selectedCharacter) {
-          console.log('[CharacterService] Reutilizando dados da store Zustand para GamePlayer');
+          console.log('[CharacterService] Verificando dados da store Zustand...');
 
-          // Verificar se o cache é recente (menos de 5 minutos)
+          // ✅ CORREÇÃO: Cache mais conservador para garantir dados atualizados
           const cacheAge = Date.now() - (CharacterCacheService.getCacheTimestamp(characterId) || 0);
-          const maxCacheAge = 5 * 60 * 1000; // 5 minutos
+          const maxCacheAge = 2 * 60 * 1000; // ✅ REDUZIDO: 2 minutos ao invés de 5
 
-          if (cacheAge < maxCacheAge) {
+          // ✅ CORREÇÃO CRÍTICA: Verificar se dados parecem desatualizados
+          const cachedCharacter = store.selectedCharacter;
+          const gameStatePlayer = useGameStateStore.getState().gameState.player;
+
+          // Se há um player no gameState com gold/xp diferente, forçar refresh
+          const hasNewerGameData =
+            gameStatePlayer &&
+            gameStatePlayer.id === characterId &&
+            (gameStatePlayer.gold !== cachedCharacter.gold ||
+              gameStatePlayer.xp !== cachedCharacter.xp ||
+              gameStatePlayer.hp !== cachedCharacter.hp);
+
+          if (cacheAge < maxCacheAge && !hasNewerGameData) {
+            console.log('[CharacterService] ✅ Reutilizando dados da store Zustand (cache válido)');
             const cachedCharacter = store.selectedCharacter;
 
             // Converter Character para GamePlayer usando dados da store
@@ -750,6 +766,17 @@ export class CharacterService {
               `[CharacterService] GamePlayer criado a partir da store Zustand (${Math.round(cacheAge / 1000)}s atrás) para: ${gamePlayer.name}`
             );
             return { success: true, error: null, data: gamePlayer };
+          } else {
+            // ✅ CORREÇÃO: Log detalhado sobre por que não usar cache
+            console.log('[CharacterService] 🔄 Cache da store inválido:', {
+              cacheAgeSeconds: Math.round(cacheAge / 1000),
+              maxAgeSeconds: Math.round(maxCacheAge / 1000),
+              hasNewerGameData,
+              cachedGold: cachedCharacter.gold,
+              gameStateGold: gameStatePlayer?.gold,
+              cachedHp: cachedCharacter.hp,
+              gameStateHp: gameStatePlayer?.hp,
+            });
           }
         }
       }
@@ -1129,7 +1156,6 @@ export class CharacterService {
   static addSkillXp = CharacterProgressionService.addSkillXp;
   static updateGold = CharacterProgressionService.updateGold;
   static calculateDerivedStats = CharacterStatsService.calculateDerivedStats;
-  static analyzeBuildDiversity = CharacterStatsService.analyzeBuildDiversity;
   static distributeAttributePoints = CharacterAttributesService.distributeAttributePoints;
   static recalculateCharacterStats = CharacterAttributesService.recalculateCharacterStats;
 }

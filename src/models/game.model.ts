@@ -219,6 +219,27 @@ export type GameLogType =
 export interface GameLogEntry {
   text: string;
   type: GameLogType;
+  metadata?: Record<string, unknown>;
+}
+
+export interface BattleEventDetails extends Record<string, unknown> {
+  playerId?: string;
+  playerName?: string;
+  enemyId?: string;
+  enemyName?: string;
+  damage?: number;
+  healing?: number;
+  spellId?: string;
+  spellName?: string;
+  consumableId?: string;
+  consumableName?: string;
+  skillName?: string;
+  xpGained?: number;
+  levelBefore?: number;
+  levelAfter?: number;
+  floorNumber?: number;
+  goldGained?: number;
+  dropsObtained?: Array<{ name: string; quantity: number }>;
 }
 
 export interface GameContextState {

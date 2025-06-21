@@ -20,16 +20,23 @@ export class FloorService {
    * ✅ CORRIGIDO: Obter dados do andar com suporte até andar 1000
    */
   static async getFloorData(floorNumber: number): Promise<Floor | null> {
+    // ✅ VALIDAÇÃO E CORREÇÃO: Se floor <= 0, forçar para 1
+    let safeFloorNumber = floorNumber;
+    if (floorNumber <= 0) {
+      console.warn(`[FloorService] ⚠️ Andar inválido ${floorNumber} corrigido para 1`);
+      safeFloorNumber = 1;
+    }
+
     // ✅ VALIDAÇÃO: Limitar andares de 1 a 1000
-    if (floorNumber < 1 || floorNumber > 1000) {
-      console.warn(`[FloorService] Andar ${floorNumber} fora dos limites (1-1000)`);
+    if (safeFloorNumber < 1 || safeFloorNumber > 1000) {
+      console.warn(`[FloorService] Andar ${safeFloorNumber} fora dos limites (1-1000)`);
       return null;
     }
 
     // Verificar cache
     const now = Date.now();
-    const cached = this.floorCache.get(floorNumber);
-    const expiry = this.cacheExpiry.get(floorNumber);
+    const cached = this.floorCache.get(safeFloorNumber);
+    const expiry = this.cacheExpiry.get(safeFloorNumber);
 
     if (cached && expiry && now < expiry) {
       return cached;
@@ -37,30 +44,30 @@ export class FloorService {
 
     try {
       const { data, error } = await supabase.rpc('get_floor_data', {
-        p_floor_number: floorNumber,
+        p_floor_number: safeFloorNumber,
       });
 
       if (error || !data) {
-        const fallback = this.generateBasicFloorData(floorNumber);
-        this.cacheFloor(floorNumber, fallback);
+        const fallback = this.generateBasicFloorData(safeFloorNumber);
+        this.cacheFloor(safeFloorNumber, fallback);
         return fallback;
       }
 
       const floorData = Array.isArray(data) ? data[0] : data;
       const floor: Floor = {
-        floorNumber: floorData.floor_number || floorNumber,
+        floorNumber: floorData.floor_number || safeFloorNumber,
         type: floorData.type || 'common',
         isCheckpoint: floorData.is_checkpoint || false,
         minLevel: floorData.min_level || 1,
-        description: floorData.description || `Andar ${floorNumber}`,
+        description: floorData.description || `Andar ${safeFloorNumber}`,
       };
 
-      this.cacheFloor(floorNumber, floor);
+      this.cacheFloor(safeFloorNumber, floor);
       return floor;
     } catch (error) {
-      console.error(`[FloorService] Erro ao buscar andar ${floorNumber}:`, error);
-      const fallback = this.generateBasicFloorData(floorNumber);
-      this.cacheFloor(floorNumber, fallback);
+      console.error(`[FloorService] Erro ao buscar andar ${safeFloorNumber}:`, error);
+      const fallback = this.generateBasicFloorData(safeFloorNumber);
+      this.cacheFloor(safeFloorNumber, fallback);
       return fallback;
     }
   }

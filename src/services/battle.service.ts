@@ -14,6 +14,7 @@ import { useCharacterStore } from '../stores/useCharacterStore';
 import { useBattleStore } from '../stores/useBattleStore';
 import { useLogStore } from '../stores/useLogStore';
 import { BattleLoggerService } from './battle-logger.service';
+import { LoggingUtils } from '@/utils/logging-utils';
 
 export class BattleService {
   /**
@@ -247,19 +248,21 @@ export class BattleService {
             newState.player.isDefending = false;
           }
 
-          let attackMessage = `${newState.player.name} atacou ${newState.currentEnemy.name}`;
-          if (isDoubleAttack) {
-            attackMessage += ` com ataque duplo`;
-          }
-          if (isCritical) {
-            attackMessage += ` CRITICAMENTE`;
-          }
-          attackMessage += ` causando ${totalDamage} de dano!`;
-
-          gameLogMessages.push({
-            message: attackMessage,
-            type: 'player_action',
-          });
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log padronizado de ataque
+          LoggingUtils.logPlayerAttack(
+            newState.player.name,
+            newState.currentEnemy.name,
+            totalDamage,
+            isCritical,
+            isDoubleAttack,
+            {
+              playerId: newState.player.id,
+              playerName: newState.player.name,
+              enemyName: newState.currentEnemy.name,
+              damage: totalDamage,
+              floorNumber: newState.player.floor,
+            }
+          );
 
           if (playerEquipment) {
             console.log(`[BattleService] Calculando skill XP para ataque com dano ${totalDamage}`);
@@ -277,11 +280,18 @@ export class BattleService {
                   attackSkillXp
                 );
 
+                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de ataque
                 for (const xpMessage of xpMessages) {
-                  gameLogMessages.push({
-                    message: xpMessage,
-                    type: 'skill_xp',
-                  });
+                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
+                  if (xpMatch) {
+                    const xpAmount = parseInt(xpMatch[1]);
+                    const skillName = xpMatch[2];
+                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
+                      playerId: newState.player.id,
+                      playerName: newState.player.name,
+                      floorNumber: newState.player.floor,
+                    });
+                  }
                 }
 
                 skillMessages.push(...xpMessages);
@@ -298,13 +308,23 @@ export class BattleService {
           }
 
           if (newState.currentEnemy.hp <= 0) {
-            gameLogMessages.push({
-              message: `${newState.currentEnemy.name} foi derrotado!`,
-              type: 'system',
-            });
+            LoggingUtils.logSpecialEvent(
+              'boss_encounter',
+              `${newState.currentEnemy.name} foi derrotado!`,
+              {
+                playerId: newState.player.id,
+                playerName: newState.player.name,
+                enemyName: newState.currentEnemy.name,
+                floorNumber: newState.player.floor,
+              }
+            );
             message = `Você derrotou ${newState.currentEnemy.name}!`;
           } else {
-            message = attackMessage;
+            // Mensagem baseada no tipo de ataque realizado
+            let attackType = '';
+            if (isDoubleAttack) attackType += 'duplo ';
+            if (isCritical) attackType += 'crítico ';
+            message = `Ataque ${attackType}realizado com sucesso!`;
           }
         }
         break;
@@ -314,11 +334,14 @@ export class BattleService {
           newState.player.isDefending = true;
           newState.player.defenseCooldown = 3;
 
-          const defendMessage = `${newState.player.name} assumiu postura defensiva.`;
-          gameLogMessages.push({
-            message: defendMessage,
-            type: 'player_action',
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de defesa
+          LoggingUtils.logPlayerAction('assumiu postura defensiva', newState.player.name, {
+            playerId: newState.player.id,
+            playerName: newState.player.name,
+            floorNumber: newState.player.floor,
           });
+
+          const defendMessage = `${newState.player.name} assumiu postura defensiva.`;
 
           const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
           if (playerEquipment) {
@@ -333,11 +356,18 @@ export class BattleService {
                   defenseSkillXp
                 );
 
+                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de defesa
                 for (const xpMessage of xpMessages) {
-                  gameLogMessages.push({
-                    message: xpMessage,
-                    type: 'skill_xp',
-                  });
+                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
+                  if (xpMatch) {
+                    const xpAmount = parseInt(xpMatch[1]);
+                    const skillName = xpMatch[2];
+                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
+                      playerId: newState.player.id,
+                      playerName: newState.player.name,
+                      floorNumber: newState.player.floor,
+                    });
+                  }
                 }
 
                 skillMessages.push(...xpMessages);
@@ -412,11 +442,30 @@ export class BattleService {
               spellResult = `restaurando ${healAmount} de vida`;
             }
 
+            // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia
+            const targetName =
+              spell.effect_type === 'damage' && newState.currentEnemy
+                ? newState.currentEnemy.name
+                : newState.player.name;
+
+            const effectType = spell.effect_type === 'damage' ? 'damage' : 'heal';
+
+            LoggingUtils.logSpellCast(
+              newState.player.name,
+              spell.name,
+              targetName,
+              actualSpellValue,
+              effectType,
+              {
+                playerId: newState.player.id,
+                playerName: newState.player.name,
+                spellId: spell.id,
+                spellName: spell.name,
+                floorNumber: newState.player.floor,
+              }
+            );
+
             const spellMessage = `${newState.player.name} lançou ${spell.name} ${spellResult}!`;
-            gameLogMessages.push({
-              message: spellMessage,
-              type: 'player_action',
-            });
 
             const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
             const magicSkillXp = SkillXpService.calculateMagicSkillXp(
@@ -435,11 +484,20 @@ export class BattleService {
                   magicSkillXp
                 );
 
+                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de magia
                 for (const xpMessage of xpMessages) {
-                  gameLogMessages.push({
-                    message: xpMessage,
-                    type: 'skill_xp',
-                  });
+                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
+                  if (xpMatch) {
+                    const xpAmount = parseInt(xpMatch[1]);
+                    const skillName = xpMatch[2];
+                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
+                      playerId: newState.player.id,
+                      playerName: newState.player.name,
+                      spellId: spell.id,
+                      spellName: spell.name,
+                      floorNumber: newState.player.floor,
+                    });
+                  }
                 }
 
                 skillMessages.push(...xpMessages);
@@ -485,10 +543,18 @@ export class BattleService {
 
                 message = slotResult.data.message;
 
-                gameLogMessages.push({
-                  message: slotResult.data.message,
-                  type: 'player_action',
-                });
+                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de consumível
+                LoggingUtils.logConsumableUse(
+                  newState.player.name,
+                  'Poção',
+                  slotResult.data.message.replace(`${newState.player.name} `, ''),
+                  slotPosition,
+                  {
+                    playerId: newState.player.id,
+                    playerName: newState.player.name,
+                    floorNumber: newState.player.floor,
+                  }
+                );
 
                 skipTurn = false;
 
@@ -528,10 +594,19 @@ export class BattleService {
 
                 message = useResult.data.message;
 
-                gameLogMessages.push({
-                  message: useResult.data.message,
-                  type: 'player_action',
-                });
+                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de consumível direto
+                LoggingUtils.logConsumableUse(
+                  newState.player.name,
+                  'Consumível',
+                  useResult.data.message.replace(`${newState.player.name} `, ''),
+                  undefined,
+                  {
+                    playerId: newState.player.id,
+                    playerName: newState.player.name,
+                    consumableId: consumableId,
+                    floorNumber: newState.player.floor,
+                  }
+                );
 
                 skipTurn = false;
 
@@ -799,6 +874,18 @@ export class BattleService {
     const fleeSuccess = fleeRoll < fleeChance;
 
     if (fleeSuccess) {
+      // ✅ CRÍTICO: Finalizar logs da batalha em caso de fuga bem-sucedida
+      LoggingUtils.logSpecialEvent('flee_success', `${player.name} fugiu da batalha com sucesso!`, {
+        playerId: player.id,
+        playerName: player.name,
+        floorNumber: player.floor,
+      });
+
+      BattleLoggerService.endBattle('flee', {
+        reason: 'Fuga bem-sucedida pelo sistema',
+        playerName: player.name,
+      });
+
       return {
         ...gameState,
         fleeSuccessful: true,
@@ -935,6 +1022,14 @@ export class BattleService {
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(damage * 0.15);
 
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de ataque do inimigo defendido
+          LoggingUtils.logEnemyAttack(enemy.name, player.name, actualDamage, true, false, {
+            enemyName: enemy.name,
+            playerName: player.name,
+            damage: actualDamage,
+            floorNumber: player.floor,
+          });
+
           let defenseMessage = `${enemy.name} atacou`;
           if (enemyDamageResult.isCritical) defenseMessage += ` com golpe crítico`;
           if (enemyDamageResult.isDoubleAttack)
@@ -952,6 +1047,14 @@ export class BattleService {
           }
         } else {
           actualDamage = damage;
+
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de ataque do inimigo normal
+          LoggingUtils.logEnemyAttack(enemy.name, player.name, actualDamage, false, false, {
+            enemyName: enemy.name,
+            playerName: player.name,
+            damage: actualDamage,
+            floorNumber: player.floor,
+          });
 
           let attackMessage = `${enemy.name} atacou`;
           if (enemyDamageResult.isCritical) attackMessage += ` com golpe crítico`;
@@ -1014,6 +1117,15 @@ export class BattleService {
 
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(spellDamage * 0.15);
+
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia do inimigo defendida
+          LoggingUtils.logSpellCast(enemy.name, 'Magia', player.name, actualDamage, 'damage', {
+            enemyName: enemy.name,
+            playerName: player.name,
+            damage: actualDamage,
+            floorNumber: player.floor,
+          });
+
           message = `${enemy.name} lançou uma magia, mas você reduziu o dano de ${spellDamage} para ${actualDamage} com sua defesa!`;
 
           try {
@@ -1031,6 +1143,15 @@ export class BattleService {
           }
         } else {
           actualDamage = spellDamage;
+
+          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia do inimigo normal
+          LoggingUtils.logSpellCast(enemy.name, 'Magia', player.name, actualDamage, 'damage', {
+            enemyName: enemy.name,
+            playerName: player.name,
+            damage: actualDamage,
+            floorNumber: player.floor,
+          });
+
           message = `${enemy.name} lançou uma magia e causou ${actualDamage} de dano mágico!`;
         }
 

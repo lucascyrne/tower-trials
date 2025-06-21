@@ -4,86 +4,140 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Heart, Zap, Loader2 } from 'lucide-react';
-import { type CharacterConsumable } from '@/models/consumable.model';
 import { type Character } from '@/models/character.model';
-import { ConsumableService } from '@/services/consumable.service';
-import { formatConsumableEffect } from '@/utils/consumable-utils';
+import { type PotionSlot } from '@/services/slot.service';
+import { SlotService } from '@/services/slot.service';
+import { isHealthPotion, isManaPotion } from '@/utils/consumable-utils';
 
 interface QuickPotionBarProps {
   character: Character;
-  consumables: CharacterConsumable[];
-  onConsumableUsed: () => void;
+  potionSlots: PotionSlot[];
+  onPotionUsed: () => void;
 }
 
-export function QuickPotionBar({ character, consumables, onConsumableUsed }: QuickPotionBarProps) {
-  const [isUsing, setIsUsing] = useState<string | null>(null);
+export function QuickPotionBar({ character, potionSlots, onPotionUsed }: QuickPotionBarProps) {
+  const [isUsing, setIsUsing] = useState<number | null>(null);
 
-  console.log('[QuickPotionBar] Renderizando com:', {
+  console.log('[QuickPotionBar] Renderizando com slots:', {
     characterId: character.id,
-    totalConsumables: consumables.length,
-    consumablesWithQuantity: consumables.filter(c => c.quantity > 0).length,
+    totalSlots: potionSlots.length,
+    slotsWithPotions: potionSlots.filter(s => s.consumable_id && s.available_quantity > 0).length,
+    slotsData: potionSlots.map(s => ({
+      position: s.slot_position,
+      id: s.consumable_id,
+      name: s.consumable_name,
+      type: s.consumable_type,
+      quantity: s.available_quantity,
+    })),
   });
 
-  // Filtrar poções de vida e mana
-  const healthPotions = consumables.filter(
-    c =>
-      c.consumable &&
-      c.consumable.type === 'potion' &&
-      (c.consumable.description.includes('HP') || c.consumable.description.includes('Vida')) &&
-      c.quantity > 0
+  // ✅ CORREÇÃO: Filtrar slots que têm poções disponíveis
+  const slotsWithPotions = potionSlots.filter(
+    slot => slot.consumable_id && slot.available_quantity > 0 && slot.consumable_type === 'potion'
   );
 
-  const manaPotions = consumables.filter(
-    c =>
-      c.consumable &&
-      c.consumable.type === 'potion' &&
-      c.consumable.description.includes('Mana') &&
-      c.quantity > 0
-  );
+  // ✅ CORREÇÃO: Filtrar por tipo de poção usando os dados do slot
+  const healthPotionSlots = slotsWithPotions.filter(slot => {
+    if (!slot.consumable_name || !slot.consumable_description) return false;
 
-  console.log('[QuickPotionBar] Poções filtradas:', {
-    healthPotions: healthPotions.length,
-    healthPotionNames: healthPotions.map(p => p.consumable?.name),
-    manaPotions: manaPotions.length,
-    manaPotionNames: manaPotions.map(p => p.consumable?.name),
+    // Criar objeto temporário para usar as funções utilitárias
+    const tempConsumable = {
+      id: slot.consumable_id!,
+      name: slot.consumable_name,
+      description: slot.consumable_description,
+      type: slot.consumable_type as 'potion',
+      effect_value: slot.effect_value || 0,
+      price: slot.consumable_price || 0,
+      level_requirement: 1,
+      created_at: '',
+      updated_at: '',
+    };
+
+    return isHealthPotion(tempConsumable);
   });
 
-  // Pegar a melhor poção disponível (maior effect_value)
-  const bestHealthPotion =
-    healthPotions.length > 0
-      ? healthPotions.reduce((best, current) => {
-          if (!best?.consumable || !current?.consumable) return current;
-          return current.consumable.effect_value > best.consumable.effect_value ? current : best;
+  const manaPotionSlots = slotsWithPotions.filter(slot => {
+    if (!slot.consumable_name || !slot.consumable_description) return false;
+
+    // Criar objeto temporário para usar as funções utilitárias
+    const tempConsumable = {
+      id: slot.consumable_id!,
+      name: slot.consumable_name,
+      description: slot.consumable_description,
+      type: slot.consumable_type as 'potion',
+      effect_value: slot.effect_value || 0,
+      price: slot.consumable_price || 0,
+      level_requirement: 1,
+      created_at: '',
+      updated_at: '',
+    };
+
+    return isManaPotion(tempConsumable);
+  });
+
+  console.log('[QuickPotionBar] Slots de poções filtrados:', {
+    healthPotionSlots: healthPotionSlots.length,
+    healthSlots: healthPotionSlots.map(s => ({ pos: s.slot_position, name: s.consumable_name })),
+    manaPotionSlots: manaPotionSlots.length,
+    manaSlots: manaPotionSlots.map(s => ({ pos: s.slot_position, name: s.consumable_name })),
+  });
+
+  // ✅ CORREÇÃO: Selecionar o melhor slot por tipo (menor slot position com maior effect_value)
+  const bestHealthSlot =
+    healthPotionSlots.length > 0
+      ? healthPotionSlots.reduce((best, current) => {
+          if (!current.effect_value || current.available_quantity <= 0) return best;
+          if (!best.effect_value || best.available_quantity <= 0) return current;
+
+          // Priorizar por effect_value, depois por slot position menor
+          if (current.effect_value > best.effect_value) return current;
+          if (
+            current.effect_value === best.effect_value &&
+            current.slot_position < best.slot_position
+          )
+            return current;
+          return best;
         })
       : null;
 
-  const bestManaPotion =
-    manaPotions.length > 0
-      ? manaPotions.reduce((best, current) => {
-          if (!best?.consumable || !current?.consumable) return current;
-          return current.consumable.effect_value > best.consumable.effect_value ? current : best;
+  const bestManaSlot =
+    manaPotionSlots.length > 0
+      ? manaPotionSlots.reduce((best, current) => {
+          if (!current.effect_value || current.available_quantity <= 0) return best;
+          if (!best.effect_value || best.available_quantity <= 0) return current;
+
+          // Priorizar por effect_value, depois por slot position menor
+          if (current.effect_value > best.effect_value) return current;
+          if (
+            current.effect_value === best.effect_value &&
+            current.slot_position < best.slot_position
+          )
+            return current;
+          return best;
         })
       : null;
 
-  console.log('[QuickPotionBar] Melhores poções selecionadas:', {
-    bestHealthPotion: bestHealthPotion
+  console.log('[QuickPotionBar] Melhores slots selecionados:', {
+    bestHealthSlot: bestHealthSlot
       ? {
-          name: bestHealthPotion.consumable?.name,
-          quantity: bestHealthPotion.quantity,
-          effectValue: bestHealthPotion.consumable?.effect_value,
+          position: bestHealthSlot.slot_position,
+          name: bestHealthSlot.consumable_name,
+          quantity: bestHealthSlot.available_quantity,
+          effectValue: bestHealthSlot.effect_value,
         }
       : null,
-    bestManaPotion: bestManaPotion
+    bestManaSlot: bestManaSlot
       ? {
-          name: bestManaPotion.consumable?.name,
-          quantity: bestManaPotion.quantity,
-          effectValue: bestManaPotion.consumable?.effect_value,
+          position: bestManaSlot.slot_position,
+          name: bestManaSlot.consumable_name,
+          quantity: bestManaSlot.available_quantity,
+          effectValue: bestManaSlot.effect_value,
         }
       : null,
   });
 
-  const handleUsePotion = async (consumable: CharacterConsumable, type: 'health' | 'mana') => {
-    if (!consumable?.consumable || isUsing) return;
+  const handleUseSlot = async (slot: PotionSlot) => {
+    if (!slot.consumable_id || isUsing !== null) return;
 
     // Garantir que os valores são números válidos
     const currentHp = Math.floor(Number(character.hp) || 0);
@@ -92,58 +146,76 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
     const maxMana = Math.floor(Number(character.max_mana) || 1);
 
     // Verificar se realmente precisa da poção
-    if (type === 'health' && currentHp >= maxHp) {
+    const isHealthSlot = bestHealthSlot?.slot_position === slot.slot_position;
+    const isManaSlot = bestManaSlot?.slot_position === slot.slot_position;
+
+    if (isHealthSlot && currentHp >= maxHp) {
       toast.info('HP já está no máximo!');
       return;
     }
 
-    if (type === 'mana' && currentMana >= maxMana) {
+    if (isManaSlot && currentMana >= maxMana) {
       toast.info('Mana já está no máximo!');
       return;
     }
 
-    console.log('[QuickPotionBar] Tentando usar poção:', {
-      consumableId: consumable.consumable_id,
-      consumableName: consumable.consumable.name,
+    // Verificar se tem quantidade suficiente
+    if (slot.available_quantity <= 0) {
+      toast.error('Slot vazio!', {
+        description: 'Este slot não possui poções disponíveis',
+      });
+      onPotionUsed(); // Atualizar para sincronizar
+      return;
+    }
+
+    console.log('[QuickPotionBar] Usando slot:', {
+      slotPosition: slot.slot_position,
+      consumableId: slot.consumable_id,
+      consumableName: slot.consumable_name,
       characterId: character.id,
       currentHp: character.hp,
       maxHp: character.max_hp,
       currentMana: character.mana,
       maxMana: character.max_mana,
-      type,
+      availableQuantity: slot.available_quantity,
     });
 
-    setIsUsing(consumable.consumable_id);
+    setIsUsing(slot.slot_position);
 
     try {
-      const result = await ConsumableService.consumeItem(
-        character.id,
-        consumable.consumable_id,
-        character
-      );
+      const result = await SlotService.consumePotionFromSlot(character.id, slot.slot_position);
 
-      console.log('[QuickPotionBar] Resultado do uso:', result);
+      console.log('[QuickPotionBar] Resultado do uso do slot:', result);
 
       if (result.success && result.data) {
         toast.success(result.data.message);
-        onConsumableUsed();
+
+        // ✅ CRÍTICO: Forçar atualização imediata dos slots
+        console.log('[QuickPotionBar] Forçando atualização dos slots após uso bem-sucedido');
+        onPotionUsed();
       } else {
-        console.error('[QuickPotionBar] Erro no serviço:', result.error);
+        console.error('[QuickPotionBar] Erro no serviço de slot:', result.error);
         toast.error('Erro ao usar poção', {
           description: result.error,
         });
+
+        // Atualizar mesmo em caso de erro para garantir sincronização
+        onPotionUsed();
       }
     } catch (error) {
       console.error('[QuickPotionBar] Erro no catch:', error);
       toast.error('Erro ao usar poção');
+
+      // Forçar atualização mesmo em caso de erro crítico
+      onPotionUsed();
     } finally {
       setIsUsing(null);
     }
   };
 
-  const formatPotionInfo = (consumable: CharacterConsumable) => {
-    if (!consumable.consumable) return '';
-    return `${consumable.consumable.name} (${formatConsumableEffect(consumable.consumable)})`;
+  const formatSlotInfo = (slot: PotionSlot) => {
+    if (!slot.consumable_name || !slot.effect_value) return '';
+    return `${slot.consumable_name} (+${slot.effect_value})`;
   };
 
   const getHealthPercent = () => {
@@ -194,21 +266,21 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 style={{ width: `${getHealthPercent()}%` }}
               />
             </div>
-            {bestHealthPotion ? (
+            {bestHealthSlot ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleUsePotion(bestHealthPotion, 'health')}
-                disabled={isUsing === bestHealthPotion.consumable_id || isHealthAtMax()}
+                onClick={() => handleUseSlot(bestHealthSlot)}
+                disabled={isUsing === bestHealthSlot.slot_position || isHealthAtMax()}
                 className="w-full h-8 text-xs bg-red-900/20 border-red-600/30 hover:bg-red-800/30 text-red-200"
               >
-                {isUsing === bestHealthPotion.consumable_id ? (
+                {isUsing === bestHealthSlot.slot_position ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <>
                     <Heart className="h-3 w-3 mr-1" />
                     <Badge variant="secondary" className="text-xs px-1 bg-red-700/30">
-                      {bestHealthPotion.quantity}
+                      {bestHealthSlot.available_quantity}
                     </Badge>
                   </>
                 )}
@@ -221,15 +293,15 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 className="w-full h-8 text-xs opacity-50"
               >
                 <Heart className="h-3 w-3 mr-1" />
-                Sem poções
+                Sem slots
               </Button>
             )}
-            {bestHealthPotion && (
+            {bestHealthSlot && (
               <div
                 className="text-xs text-slate-400 text-center truncate"
-                title={formatPotionInfo(bestHealthPotion)}
+                title={formatSlotInfo(bestHealthSlot)}
               >
-                {formatConsumableEffect(bestHealthPotion.consumable!)}
+                +{bestHealthSlot.effect_value} HP
               </div>
             )}
           </div>
@@ -249,21 +321,21 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 style={{ width: `${getManaPercent()}%` }}
               />
             </div>
-            {bestManaPotion ? (
+            {bestManaSlot ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleUsePotion(bestManaPotion, 'mana')}
-                disabled={isUsing === bestManaPotion.consumable_id || isManaAtMax()}
+                onClick={() => handleUseSlot(bestManaSlot)}
+                disabled={isUsing === bestManaSlot.slot_position || isManaAtMax()}
                 className="w-full h-8 text-xs bg-blue-900/20 border-blue-600/30 hover:bg-blue-800/30 text-blue-200"
               >
-                {isUsing === bestManaPotion.consumable_id ? (
+                {isUsing === bestManaSlot.slot_position ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <>
                     <Zap className="h-3 w-3 mr-1" />
                     <Badge variant="secondary" className="text-xs px-1 bg-blue-700/30">
-                      {bestManaPotion.quantity}
+                      {bestManaSlot.available_quantity}
                     </Badge>
                   </>
                 )}
@@ -276,15 +348,15 @@ export function QuickPotionBar({ character, consumables, onConsumableUsed }: Qui
                 className="w-full h-8 text-xs opacity-50"
               >
                 <Zap className="h-3 w-3 mr-1" />
-                Sem poções
+                Sem slots
               </Button>
             )}
-            {bestManaPotion && (
+            {bestManaSlot && (
               <div
                 className="text-xs text-slate-400 text-center truncate"
-                title={formatPotionInfo(bestManaPotion)}
+                title={formatSlotInfo(bestManaSlot)}
               >
-                {formatConsumableEffect(bestManaPotion.consumable!)}
+                +{bestManaSlot.effect_value} MP
               </div>
             )}
           </div>

@@ -180,7 +180,26 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
 
       try {
         // ✅ CORREÇÃO CRÍTICA: Buscar dados do personagem com auto-heal aplicado
-        const response = await CharacterService.getCharacterForGame(characterId, false, true);
+        // Detectar se precisa forçar refresh baseado no estado atual
+        const gameState = useGameStateStore.getState().gameState;
+        const gameStatePlayer = gameState.player;
+        const shouldForceRefresh =
+          !gameStatePlayer?.id || // Não há player no game state
+          gameStatePlayer.id !== characterId || // Player diferente
+          gameState.mode !== 'hub'; // Não está no modo hub
+
+        console.log(`[GameHub] Buscando dados: forceRefresh=${shouldForceRefresh}`, {
+          hasGameStatePlayer: Boolean(gameStatePlayer?.id),
+          gameStatePlayerId: gameStatePlayer?.id,
+          targetCharacterId: characterId,
+          gameMode: gameState.mode || 'undefined',
+        });
+
+        const response = await CharacterService.getCharacterForGame(
+          characterId,
+          shouldForceRefresh,
+          true
+        );
 
         if (!response.success || !response.data) {
           throw new Error(response.error || 'Erro ao carregar personagem');

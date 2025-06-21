@@ -30,6 +30,7 @@ import {
 } from '@/models/character.model';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DerivedStatsSection } from '@/features/character/DerivedStatsSection';
+import { CharacterUtils, type PreviewImprovements } from '@/utils/character-utils';
 
 interface AttributeDistribution {
   strength: number;
@@ -84,9 +85,12 @@ function CharacterStatsPage() {
       try {
         setLoading(true);
         // ✅ CORREÇÃO CRÍTICA: Forçar busca de dados atualizados com auto-heal aplicado
+        // Sempre forçar refresh nesta página para garantir dados corretos
+        const shouldForceRefresh = forceRefresh || true; // Sempre forçar na página de stats
+        console.log(`[CharacterStatsPage] Carregando stats: forceRefresh=${shouldForceRefresh}`);
         const response = await CharacterService.getCharacterForGame(
           characterId,
-          forceRefresh,
+          shouldForceRefresh,
           true
         );
 
@@ -230,50 +234,21 @@ function CharacterStatsPage() {
     }
   };
 
-  const calculatePreviewImprovements = () => {
-    if (!characterStats) return {};
+  // ✅ FONTE ÚNICA: Usar CharacterUtils para preview ao invés de cálculos próprios
+  const [previewImprovements, setPreviewImprovements] = useState<PreviewImprovements | null>(null);
 
-    const currentStr = characterStats.strength;
-    const currentDex = characterStats.dexterity;
-    const currentInt = characterStats.intelligence;
-    const currentVit = characterStats.vitality;
-    const currentLuck = characterStats.luck;
-
-    const newStr = currentStr + distribution.strength;
-    const newDex = currentDex + distribution.dexterity;
-    const newInt = currentInt + distribution.intelligence;
-    const newVit = currentVit + distribution.vitality;
-    const newLuck = currentLuck + distribution.luck;
-
-    const currentVitScaling = Math.pow(currentVit, 1.3);
-    const newVitScaling = Math.pow(newVit, 1.3);
-    const hpIncrease = Math.floor((newVitScaling - currentVitScaling) * 2.5);
-
-    const currentIntScaling = Math.pow(currentInt, 1.25);
-    const newIntScaling = Math.pow(newInt, 1.25);
-    const manaIncrease = Math.floor((newIntScaling - currentIntScaling) * 1.5);
-
-    const currentStrScaling = Math.pow(currentStr, 1.2);
-    const newStrScaling = Math.pow(newStr, 1.2);
-    const atkIncrease = Math.floor((newStrScaling - currentStrScaling) * 1.2);
-
-    const currentDexScaling = Math.pow(currentDex, 1.15);
-    const newDexScaling = Math.pow(newDex, 1.15);
-    const speedIncrease = Math.floor((newDexScaling - currentDexScaling) * 1.0);
-
-    const currentCritChance =
-      currentDexScaling * 0.25 + currentLuck * 0.35 + currentStrScaling * 0.1;
-    const newCritChance = newDexScaling * 0.25 + newLuck * 0.35 + newStrScaling * 0.1;
-    const critChanceIncrease = Math.min(75, newCritChance) - Math.min(75, currentCritChance);
-
-    return {
-      hp: hpIncrease,
-      mana: manaIncrease,
-      atk: atkIncrease,
-      speed: speedIncrease,
-      critChance: critChanceIncrease,
-    };
-  };
+  useEffect(() => {
+    if (characterStats && totalPointsToDistribute > 0) {
+      CharacterUtils.calculatePreviewImprovements(characterStats, distribution)
+        .then(setPreviewImprovements)
+        .catch(error => {
+          console.error('[CharacterStatsPage] Erro ao calcular preview:', error);
+          setPreviewImprovements(null);
+        });
+    } else {
+      setPreviewImprovements(null);
+    }
+  }, [characterStats, distribution, totalPointsToDistribute]);
 
   // Configuração dos atributos
   const attributeConfig = {
@@ -495,44 +470,63 @@ function CharacterStatsPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         {(() => {
-                          const improvements = calculatePreviewImprovements();
+                          // ✅ FONTE ÚNICA: Usar preview do CharacterUtils
+                          if (!previewImprovements) {
+                            return (
+                              <div className="col-span-2 text-center text-muted-foreground">
+                                Calculando melhoramentos...
+                              </div>
+                            );
+                          }
+
+                          const improvements = previewImprovements;
+                          const hasAnyImprovement =
+                            improvements.hp > 0 ||
+                            improvements.mana > 0 ||
+                            improvements.atk > 0 ||
+                            improvements.speed > 0 ||
+                            improvements.critChance > 0;
+
+                          if (!hasAnyImprovement) {
+                            return (
+                              <div className="col-span-2 text-center text-muted-foreground">
+                                Nenhum melhoramento detectado
+                              </div>
+                            );
+                          }
+
                           return (
                             <>
-                              {(improvements.hp || 0) > 0 && (
+                              {improvements.hp > 0 && (
                                 <div className="flex justify-between">
                                   <span>HP:</span>
-                                  <span className="text-green-400">+{improvements.hp || 0}</span>
+                                  <span className="text-green-400">+{improvements.hp}</span>
                                 </div>
                               )}
-                              {(improvements.mana || 0) > 0 && (
+                              {improvements.mana > 0 && (
                                 <div className="flex justify-between">
                                   <span>Mana:</span>
-                                  <span className="text-blue-400">+{improvements.mana || 0}</span>
+                                  <span className="text-blue-400">+{improvements.mana}</span>
                                 </div>
                               )}
-                              {(improvements.atk || 0) > 0 && (
+                              {improvements.atk > 0 && (
                                 <div className="flex justify-between">
                                   <span>Ataque:</span>
-                                  <span className="text-red-400">+{improvements.atk || 0}</span>
+                                  <span className="text-red-400">+{improvements.atk}</span>
                                 </div>
                               )}
-                              {(improvements.speed || 0) > 0 && (
+                              {improvements.speed > 0 && (
                                 <div className="flex justify-between">
                                   <span>Velocidade:</span>
-                                  <span className="text-green-400">+{improvements.speed || 0}</span>
+                                  <span className="text-green-400">+{improvements.speed}</span>
                                 </div>
                               )}
-                              {(improvements.critChance || 0) > 0 && (
+                              {improvements.critChance > 0 && (
                                 <div className="flex justify-between">
                                   <span>Crítico:</span>
                                   <span className="text-yellow-400">
-                                    +{(improvements.critChance || 0).toFixed(1)}%
+                                    +{improvements.critChance.toFixed(1)}%
                                   </span>
-                                </div>
-                              )}
-                              {Object.values(improvements).every(v => v <= 0) && (
-                                <div className="col-span-2 text-center text-muted-foreground">
-                                  Nenhum melhoramento detectado
                                 </div>
                               )}
                             </>
