@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { type Consumable } from '@/models/consumable.model';
 import { getConsumableImagePath, getConsumableIcon } from '@/utils/consumable-utils';
 
+// Import direto das imagens de consumíveis para garantir que funcionem em produção
+import smallHealthPotion from '@/assets/icons/consumables/small_health_potion.png';
+import smallManaPotion from '@/assets/icons/consumables/small_mana_potion.png';
+
 interface ConsumableImageProps {
   consumable: Consumable;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -25,7 +29,27 @@ export function ConsumableImage({
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const imagePath = getConsumableImagePath(consumable);
+  // Função para obter imagem com fallback para imports diretos
+  const getConsumableImageSrc = (consumable: Consumable): string => {
+    const normalizedName = consumable.name.toLowerCase().trim();
+
+    // Mapear nomes conhecidos para imports diretos
+    if (
+      normalizedName.includes('vida') ||
+      normalizedName.includes('hp') ||
+      normalizedName.includes('health')
+    ) {
+      return smallHealthPotion;
+    }
+    if (normalizedName.includes('mana') || normalizedName.includes('mp')) {
+      return smallManaPotion;
+    }
+
+    // Fallback para o sistema antigo
+    return getConsumableImagePath(consumable);
+  };
+
+  const imagePath = getConsumableImageSrc(consumable);
   const fallbackIcon = getConsumableIcon(consumable);
 
   const handleImageLoad = () => {

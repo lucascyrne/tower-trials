@@ -3,10 +3,56 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 import { TanStackRouterVite } from '@tanstack/router-vite-plugin';
+import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { glob } from 'glob';
+
+// Plugin para copiar assets de src/assets para public/assets
+const copyAssetsPlugin = () => ({
+  name: 'copy-assets',
+  buildStart() {
+    // Copiar assets apenas durante o build
+    if (process.env.NODE_ENV === 'production') {
+      const srcAssetsDir = path.resolve(__dirname, 'src/assets');
+      const publicAssetsDir = path.resolve(__dirname, 'public/assets');
+
+      // Criar diretório de destino se não existir
+      if (!existsSync(publicAssetsDir)) {
+        mkdirSync(publicAssetsDir, { recursive: true });
+      }
+
+      try {
+        // Encontrar todos os arquivos de assets
+        const assetFiles = glob.sync('**/*', {
+          cwd: srcAssetsDir,
+          nodir: true,
+        });
+
+        // Copiar cada arquivo mantendo a estrutura
+        assetFiles.forEach(file => {
+          const srcFile = path.join(srcAssetsDir, file);
+          const destFile = path.join(publicAssetsDir, file);
+          const destDir = path.dirname(destFile);
+
+          // Criar diretório de destino se não existir
+          if (!existsSync(destDir)) {
+            mkdirSync(destDir, { recursive: true });
+          }
+
+          // Copiar arquivo
+          copyFileSync(srcFile, destFile);
+        });
+
+        console.log(`✅ Copiados ${assetFiles.length} assets para public/assets`);
+      } catch (error) {
+        console.warn('⚠️ Erro ao copiar assets:', error);
+      }
+    }
+  },
+});
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), tailwindcss(), TanStackRouterVite()],
+  plugins: [react(), tailwindcss(), TanStackRouterVite(), copyAssetsPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

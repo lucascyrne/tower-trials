@@ -37,7 +37,18 @@ export type MonsterAssetType = 'goblin' | 'wolf' | 'skeleton' | 'orc' | 'troll' 
 export type RarityColor = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 // Configurações base dos assets
-const ASSET_BASE_PATH = '/src/assets';
+// Função para obter o caminho base correto baseado no ambiente
+const getAssetBasePath = () => {
+  // Em produção (site deployado), usar /assets
+  // Em desenvolvimento, Vite resolve imports de src/assets automaticamente
+  if (import.meta.env.PROD) {
+    return '/assets';
+  }
+  // Em desenvolvimento, usar caminho direto para src/assets
+  return '/src/assets';
+};
+
+const ASSET_BASE_PATH = getAssetBasePath();
 
 // Mapeamento de consumíveis para assets baseado em nome/tipo
 const CONSUMABLE_ASSET_MAP: Record<string, string> = {

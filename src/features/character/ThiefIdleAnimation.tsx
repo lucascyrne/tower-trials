@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { OptimizedCharacterAnimation } from '@/components/ui/optimized-character-animation';
 
+// Import direto das imagens para garantir que o Vite as processe corretamente
+import thiefIdle01 from '@/assets/characters/thief/idle/thief-idle-01.png';
+import thiefIdle02 from '@/assets/characters/thief/idle/thief-idle-02.png';
+import thiefIdle03 from '@/assets/characters/thief/idle/thief-idle-03.png';
+
 interface ThiefIdleAnimationProps {
   className?: string;
   size?: number;
@@ -9,6 +14,13 @@ interface ThiefIdleAnimationProps {
 export function ThiefIdleAnimation({ className = '', size = 64 }: ThiefIdleAnimationProps) {
   const [currentFrame, setCurrentFrame] = useState(1);
   const [isAnimating, setIsAnimating] = useState(true);
+
+  // Mapeamento dos frames para imports diretos (funciona em produção)
+  const frameImages = {
+    1: thiefIdle01,
+    2: thiefIdle02,
+    3: thiefIdle03,
+  };
 
   useEffect(() => {
     if (!isAnimating) return;
@@ -20,10 +32,7 @@ export function ThiefIdleAnimation({ className = '', size = 64 }: ThiefIdleAnima
     return () => clearInterval(interval);
   }, [isAnimating]);
 
-  const handleFrameChange = (frameNumber: number) => {
-    // Callback opcional para debug ou efeitos adicionais
-    console.debug(`[ThiefIdleAnimation] Frame changed to: ${frameNumber}`);
-  };
+  const currentImageSrc = frameImages[currentFrame as keyof typeof frameImages];
 
   return (
     <div
@@ -32,14 +41,11 @@ export function ThiefIdleAnimation({ className = '', size = 64 }: ThiefIdleAnima
       onMouseEnter={() => setIsAnimating(true)}
       onMouseLeave={() => setIsAnimating(true)} // Manter sempre animando
     >
-      <OptimizedCharacterAnimation
-        character="thief"
-        animation="idle"
-        frameNumber={currentFrame}
-        size="xl"
-        className="w-full h-full object-contain"
-        onFrameChange={handleFrameChange}
-        transitionDuration={150} // Transição suave de 150ms
+      <img
+        src={currentImageSrc}
+        alt={`Thief idle animation frame ${currentFrame}`}
+        className="w-full h-full object-contain transition-opacity duration-150"
+        style={{ imageRendering: 'pixelated' }} // Para manter qualidade pixel art
       />
     </div>
   );
