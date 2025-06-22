@@ -114,12 +114,6 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
       <div className="space-y-2">
         {slots.map(slotType => {
           const equipment = equippedItems[slotType];
-          const isDisabled =
-            slotType !== 'main_hand' &&
-            slotType !== 'off_hand' &&
-            slotType !== 'armor' &&
-            slotType !== 'ring_1' &&
-            !equipment;
 
           return (
             <Card
@@ -127,8 +121,6 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
               className={`p-3 border-2 transition-all duration-200 backdrop-blur-sm ${
                 equipment
                   ? 'bg-slate-800/60 border-primary/50 hover:border-primary/70 shadow-lg shadow-primary/10'
-                  : isDisabled
-                    ? 'bg-slate-800/20 border-dashed border-slate-600/30 opacity-60'
                     : 'bg-slate-800/30 border-dashed border-slate-600/50 hover:border-slate-500/70'
               }`}
             >
@@ -180,9 +172,7 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">
-                      {isDisabled ? 'Em breve' : 'Slot vazio'}
-                    </p>
+                    <p className="text-xs text-slate-500 italic">Slot vazio</p>
                   )}
                 </div>
               </div>

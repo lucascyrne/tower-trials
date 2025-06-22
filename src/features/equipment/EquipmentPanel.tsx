@@ -185,12 +185,6 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
 
   const renderEquipmentSlot = (slotType: EquipmentSlotType) => {
     const equipment = equippedItems?.[slotType];
-    const isDisabled =
-      slotType !== 'main_hand' &&
-      slotType !== 'off_hand' &&
-      slotType !== 'armor' &&
-      slotType !== 'ring_1' &&
-      !equipment;
 
     return (
       <Card
@@ -198,8 +192,6 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
         className={`p-4 border-2 transition-all duration-200 ${
           equipment
             ? 'bg-card/95 border-primary/50 hover:border-primary/70'
-            : isDisabled
-              ? 'bg-card/50 border-primary/20 opacity-60'
               : 'bg-card/95 border-primary/20'
         }`}
       >
@@ -245,7 +237,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
             </div>
           </div>
         ) : (
-          <p className="text-muted-foreground italic">{isDisabled ? 'Em breve' : 'Vazio'}</p>
+          <p className="text-muted-foreground italic">Vazio</p>
         )}
       </Card>
     );

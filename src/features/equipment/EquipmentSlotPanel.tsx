@@ -177,7 +177,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           {/* Tooltip sutil */}
           <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
             <div className="bg-slate-900/90 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 shadow-lg whitespace-nowrap">
-              {isEmpty ? 'Toque e segure para equipar' : 'Toque para detalhes'}
+              {isEmpty ? 'Toque e segure para equipar' : 'Toque para ver detalhes'}
             </div>
           </div>
         </div>
@@ -186,9 +186,9 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   };
 
   const renderArmorSlot = (index: number) => {
-    // Mapear índices para slots específicos
+    // Mapear índices para slots específicos de armadura
     const slotMapping: Record<number, { slotType: EquipmentSlotType; label: string }> = {
-      0: { slotType: 'armor', label: 'Peitoral' }, // Slot habilitado (compatibilidade)
+      0: { slotType: 'chest', label: 'Peitoral' },
       1: { slotType: 'helmet', label: 'Capacete' },
       2: { slotType: 'legs', label: 'Pernas' },
       3: { slotType: 'boots', label: 'Botas' },
@@ -197,31 +197,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     const slot = slotMapping[index];
     if (!slot) return null;
 
-    const isEnabled = index === 0; // Apenas o primeiro slot (armor) está habilitado
-
-    if (isEnabled) {
-      return renderEquipmentSlot(slot.slotType, slot.label);
-    }
-
-    return (
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-slate-300 block text-center">{slot.label}</label>
-        <div className="relative group">
-          <Button
-            variant="outline"
-            className="w-full h-32 p-4 border-2 border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 transition-all duration-300 opacity-60"
-            disabled
-          >
-            <div className="flex flex-col items-center justify-center gap-3 h-full">
-              <div className="p-3 rounded-lg bg-slate-700/20">
-                {getSlotIcon(slot.slotType, null)}
-              </div>
-              <div className="text-sm text-slate-500 font-medium">Em breve</div>
-            </div>
-          </Button>
-        </div>
-      </div>
-    );
+    // Todos os slots de armadura estão habilitados
+    return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   const renderAccessorySlot = (index: number) => {
@@ -236,31 +213,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     const slot = slotMapping[index];
     if (!slot) return null;
 
-    const isDisabled = index > 0; // Apenas o primeiro slot (ring_1) está habilitado
-
-    if (!isDisabled) {
-      return renderEquipmentSlot(slot.slotType, slot.label);
-    }
-
-    return (
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-slate-300 block text-center">{slot.label}</label>
-        <div className="relative group">
-          <Button
-            variant="outline"
-            className="w-full h-32 p-4 border-2 border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 transition-all duration-300 opacity-60"
-            disabled
-          >
-            <div className="flex flex-col items-center justify-center gap-3 h-full">
-              <div className="p-3 rounded-lg bg-slate-700/30">
-                {getSlotIcon(slot.slotType, null)}
-              </div>
-              <div className="text-sm text-slate-500 font-medium">Em breve</div>
-            </div>
-          </Button>
-        </div>
-      </div>
-    );
+    // Todos os slots de acessórios estão habilitados
+    return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   return (
@@ -284,7 +238,8 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         {/* Armaduras */}
         <div>
           <h3 className="text-lg font-semibold text-slate-200 mb-6">Armaduras</h3>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+            {renderEquipmentSlot('armor', 'Escudo')}
             {[0, 1, 2, 3].map(index => (
               <div key={`armor-slot-${index}`}>{renderArmorSlot(index)}</div>
             ))}
@@ -304,8 +259,11 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         {/* Instruções */}
         <div className="bg-slate-700/30 p-4 rounded-lg">
           <p className="text-sm text-slate-400 text-center">
-            Toque para ver detalhes • Toque e segure para equipar/trocar
+            Toque para ver detalhes • Toque e segure para selecionar/equipar
           </p>
+          <div className="mt-2 text-xs text-slate-500 text-center">
+            ✨ Todos os slots de equipamento estão disponíveis!
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -15,11 +15,18 @@ import {
   Filter,
   ShoppingCart,
   ShoppingBag,
+  Crown,
+  Footprints,
 } from 'lucide-react';
 import { type Equipment } from '@/models/equipment.model';
 import { type Consumable } from '@/models/consumable.model';
 import { type Character } from '@/models/character.model';
 import { EquipmentComparison } from '@/features/equipment/EquipmentComparison';
+import {
+  EquipmentFilters,
+  type EquipmentFilterType,
+  type SortType,
+} from '@/components/equipment/EquipmentFilters';
 
 interface ShopLayoutProps {
   character: Character;
@@ -31,17 +38,6 @@ interface ShopLayoutProps {
 }
 
 type ShopCategory = 'equipment' | 'consumables';
-type EquipmentFilter =
-  | 'all'
-  | 'weapon'
-  | 'armor'
-  | 'chest'
-  | 'helmet'
-  | 'legs'
-  | 'boots'
-  | 'ring'
-  | 'necklace'
-  | 'amulet';
 type ConsumableFilter = 'all' | 'potion' | 'antidote' | 'buff';
 
 export const ShopLayout: React.FC<ShopLayoutProps> = ({
@@ -54,14 +50,37 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<ShopCategory>('equipment');
   const [selectedItem, setSelectedItem] = useState<Equipment | Consumable | null>(null);
-  const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilter>('all');
+  const [equipmentFilter, setEquipmentFilter] = useState<EquipmentFilterType>('all');
+  const [equipmentSort, setEquipmentSort] = useState<SortType>('name');
   const [consumableFilter, setConsumableFilter] = useState<ConsumableFilter>('all');
 
-  // Filtrar equipamentos
-  const filteredEquipment = availableEquipment.filter(item => {
-    if (equipmentFilter === 'all') return true;
-    return item.type === equipmentFilter;
-  });
+  // Filtrar e ordenar equipamentos
+  const filteredEquipment = availableEquipment
+    .filter(item => {
+      if (equipmentFilter === 'all') return true;
+      return item.type === equipmentFilter;
+    })
+    .sort((a, b) => {
+      switch (equipmentSort) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'level':
+          return (b.level_requirement || 0) - (a.level_requirement || 0);
+        case 'rarity': {
+          const rarityOrder = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
+          return (
+            (rarityOrder[b.rarity as keyof typeof rarityOrder] || 0) -
+            (rarityOrder[a.rarity as keyof typeof rarityOrder] || 0)
+          );
+        }
+        case 'attack':
+          return b.atk_bonus - a.atk_bonus;
+        case 'defense':
+          return b.def_bonus - a.def_bonus;
+        default:
+          return 0;
+      }
+    });
 
   // Filtrar consumíveis
   const filteredConsumables = availableConsumables.filter(item => {
@@ -87,13 +106,13 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
       case 'armor':
         return <Shield className="h-4 w-4 text-blue-400" />;
       case 'chest':
-        return <Shirt className="h-4 w-4 text-emerald-400" />;
+        return <Shirt className="h-4 w-4 text-green-400" />;
       case 'helmet':
-        return <Shield className="h-4 w-4 text-yellow-400" />;
+        return <Crown className="h-4 w-4 text-yellow-400" />;
       case 'legs':
         return <Shield className="h-4 w-4 text-cyan-400" />;
       case 'boots':
-        return <Shield className="h-4 w-4 text-orange-400" />;
+        return <Footprints className="h-4 w-4 text-orange-400" />;
       case 'ring':
         return <Gem className="h-4 w-4 text-purple-400" />;
       case 'necklace':
@@ -143,12 +162,12 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                   ? `${equipment.name.substring(0, 10)}...`
                   : equipment.name}
               </h3>
-                <Badge
-                  variant="outline"
+              <Badge
+                variant="outline"
                 className={`text-xs border ${getRarityColor(equipment.rarity)} mt-1`}
-                >
-                  {equipment.rarity}
-                </Badge>
+              >
+                {equipment.rarity}
+              </Badge>
               <div className="flex items-center justify-center gap-1 mt-1">
                 <Coins className="h-3 w-3 text-amber-400" />
                 <span className="text-xs font-medium text-amber-300">{equipment.price}</span>
@@ -455,20 +474,20 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
       {/* Coluna Esquerda - Lista de Itens */}
       <div className="lg:col-span-1 space-y-4">
         {/* Header com Gold e Inventário */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-900/50 to-amber-800/50 border border-amber-700/50 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <div className="flex items-center gap-2 bg-amber-900/20 border border-amber-700/30 px-3 py-1.5 rounded-lg">
             <Coins className="h-4 w-4 text-amber-400" />
-            <span className="font-semibold text-amber-300">{character.gold}</span>
+            <span className="font-medium text-amber-300">{character.gold}</span>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={onOpenInventory}
-            className="border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-100"
+            className="border-slate-700 bg-slate-800/30 hover:bg-slate-700/50"
           >
             <Package className="h-4 w-4 mr-2" />
             Inventário
@@ -476,7 +495,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         </div>
 
         {/* Filtros de Categoria */}
-        <div className="flex gap-2 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+        <div className="flex gap-2 p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
           <Button
             variant={selectedCategory === 'equipment' ? 'default' : 'ghost'}
             size="sm"
@@ -486,8 +505,8 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             }}
             className={`flex-1 ${
               selectedCategory === 'equipment'
-                ? 'bg-primary/20 text-primary border-primary/50'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                ? 'bg-slate-700/50 text-slate-100'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
             }`}
           >
             <ShoppingCart className="h-4 w-4" />
@@ -501,149 +520,36 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             }}
             className={`flex-1 ${
               selectedCategory === 'consumables'
-                ? 'bg-primary/20 text-primary border-primary/50'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                ? 'bg-slate-700/50 text-slate-100'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
             }`}
           >
             <ShoppingBag className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Filtros Específicos */}
+        {/* Filtros de Equipamento */}
         {selectedCategory === 'equipment' && (
-          <div className="flex gap-1 flex-wrap p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('all')}
-              className={`${
-                equipmentFilter === 'all'
-                  ? 'bg-slate-600/50 text-slate-200'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
-              }`}
-            >
-              <Filter className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('weapon')}
-              className={`${
-                equipmentFilter === 'weapon'
-                  ? 'bg-red-900/30 text-red-400 border border-red-800/50'
-                  : 'text-slate-500 hover:text-red-400 hover:bg-red-900/20'
-              }`}
-            >
-              <Sword className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('armor')}
-              className={`${
-                equipmentFilter === 'armor'
-                  ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50'
-                  : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'
-              }`}
-            >
-              <Shield className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('chest')}
-              className={`${
-                equipmentFilter === 'chest'
-                  ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50'
-                  : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-900/20'
-              }`}
-            >
-              <Shirt className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('helmet')}
-              className={`${
-                equipmentFilter === 'helmet'
-                  ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
-                  : 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-900/20'
-              }`}
-            >
-              <Shield className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('legs')}
-              className={`${
-                equipmentFilter === 'legs'
-                  ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-800/50'
-                  : 'text-slate-500 hover:text-cyan-400 hover:bg-cyan-900/20'
-              }`}
-            >
-              <Shield className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('boots')}
-              className={`${
-                equipmentFilter === 'boots'
-                  ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50'
-                  : 'text-slate-500 hover:text-orange-400 hover:bg-orange-900/20'
-              }`}
-            >
-              <Shield className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('ring')}
-              className={`${
-                equipmentFilter === 'ring'
-                  ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50'
-                  : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'
-              }`}
-            >
-              <Gem className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('necklace')}
-              className={`${
-                equipmentFilter === 'necklace'
-                  ? 'bg-pink-900/30 text-pink-400 border border-pink-800/50'
-                  : 'text-slate-500 hover:text-pink-400 hover:bg-pink-900/20'
-              }`}
-            >
-              <Gem className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEquipmentFilter('amulet')}
-              className={`${
-                equipmentFilter === 'amulet'
-                  ? 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50'
-                  : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20'
-              }`}
-            >
-              <Gem className="h-3 w-3" />
-            </Button>
+          <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/30">
+            <EquipmentFilters
+              filterType={equipmentFilter}
+              onFilterChange={setEquipmentFilter}
+              sortType={equipmentSort}
+              onSortChange={setEquipmentSort}
+              compact={true}
+            />
           </div>
         )}
 
         {selectedCategory === 'consumables' && (
-          <div className="flex gap-1 flex-wrap p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
+          <div className="flex gap-1 p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('all')}
               className={`${
                 consumableFilter === 'all'
-                  ? 'bg-slate-600/50 text-slate-200'
+                  ? 'bg-slate-700/50 text-slate-200'
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'
               }`}
             >
@@ -689,7 +595,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         )}
 
         {/* Lista de Itens */}
-        <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
+        <div className="max-h-[60vh] overflow-y-auto">
           {selectedCategory === 'equipment' ? (
             filteredEquipment.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
@@ -697,7 +603,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 <p className="text-sm">Nenhum equipamento encontrado</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
                 {filteredEquipment.map(renderEquipmentCard)}
               </div>
             )
@@ -714,8 +620,8 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
 
       {/* Coluna Direita - Detalhes do Item */}
       <div className="lg:col-span-2">
-        <Card className="h-full border-slate-700/50 bg-slate-800/30 backdrop-blur-sm">
-          <CardContent className="p-6 h-full">{renderItemDetails()}</CardContent>
+        <Card className="h-full border-slate-700/50 bg-slate-800/30">
+          <CardContent className="p-4 h-full">{renderItemDetails()}</CardContent>
         </Card>
       </div>
     </div>

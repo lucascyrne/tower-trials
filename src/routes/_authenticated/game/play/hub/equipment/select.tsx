@@ -9,15 +9,12 @@ import type {
   CharacterEquipment,
   EquipmentType,
   EquipmentSlotType,
-  EquipmentFilter,
 } from '@/models/equipment.model';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
-  Search,
   Sword,
   Shield,
   Shirt,
@@ -25,11 +22,15 @@ import {
   Star,
   Zap,
   Package,
-  Filter,
+  Crown,
+  Footprints,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-type SortType = 'name' | 'level' | 'rarity' | 'attack' | 'defense';
+import {
+  EquipmentFilters,
+  type EquipmentFilterType,
+  type SortType,
+} from '@/components/equipment/EquipmentFilters';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment/select')({
   component: EquipmentSelectPage,
@@ -48,8 +49,7 @@ function EquipmentSelectPage() {
   const [filteredEquipment, setFilteredEquipment] = useState<CharacterEquipment[]>([]);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<EquipmentFilter>('all');
+  const [filterType, setFilterType] = useState<EquipmentFilterType>('all');
   const [sortType, setSortType] = useState<SortType>('name');
   const [equiping, setEquiping] = useState(false);
 
@@ -94,11 +94,8 @@ function EquipmentSelectPage() {
       const isCompatible = isEquipmentCompatibleWithSlot(equipment, slotType);
       if (!isCompatible) return false;
 
-      // Filtrar por tipo de equipamento
-      if (filterType !== 'all' && equipment.type !== filterType) return false;
-
-      // Filtrar por termo de busca
-      if (searchTerm && !equipment.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      // Filtrar por tipo específico
+      if (filterType !== 'all' && equipment.type !== filterType) {
         return false;
       }
 
@@ -132,7 +129,7 @@ function EquipmentSelectPage() {
     });
 
     setFilteredEquipment(filtered);
-  }, [availableEquipment, searchTerm, filterType, sortType, slotType]);
+  }, [availableEquipment, filterType, sortType, slotType]);
 
   const isEquipmentCompatibleWithSlot = (
     equipment: Equipment,
@@ -178,13 +175,13 @@ function EquipmentSelectPage() {
     const iconMap: Record<EquipmentType, ReactElement> = {
       weapon: <Sword className="h-6 w-6 text-red-400" />,
       armor: <Shield className="h-6 w-6 text-blue-400" />,
-      chest: <Shirt className="h-6 w-6 text-blue-400" />,
-      helmet: <Shield className="h-6 w-6 text-blue-400" />,
-      legs: <Shield className="h-6 w-6 text-blue-400" />,
-      boots: <Shield className="h-6 w-6 text-blue-400" />,
+      chest: <Shirt className="h-6 w-6 text-green-400" />,
+      helmet: <Crown className="h-6 w-6 text-yellow-400" />,
+      legs: <Shield className="h-6 w-6 text-cyan-400" />,
+      boots: <Footprints className="h-6 w-6 text-orange-400" />,
       ring: <Gem className="h-6 w-6 text-purple-400" />,
-      necklace: <Gem className="h-6 w-6 text-purple-400" />,
-      amulet: <Gem className="h-6 w-6 text-purple-400" />,
+      necklace: <Gem className="h-6 w-6 text-pink-400" />,
+      amulet: <Gem className="h-6 w-6 text-indigo-400" />,
     };
     return iconMap[equipment.type] || <Shield className="h-6 w-6 text-slate-400" />;
   };
@@ -279,6 +276,11 @@ function EquipmentSelectPage() {
                   {equipment.mana_bonus > 0 && (
                     <span className="flex items-center gap-1">
                       <Zap className="h-3 w-3 text-purple-400" />+{equipment.mana_bonus}
+                    </span>
+                  )}
+                  {equipment.speed_bonus && equipment.speed_bonus > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-yellow-400" />+{equipment.speed_bonus}
                     </span>
                   )}
                 </div>
@@ -462,8 +464,8 @@ function EquipmentSelectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-2 sm:p-4">
+      <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -478,109 +480,68 @@ function EquipmentSelectPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
-            <div className="mt-2 sm:mt-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 flex items-center gap-2">
-                <Sword className="h-6 sm:h-8 w-6 sm:w-8 text-amber-400" />
-                <span className="hidden sm:inline">Selecionar Equipamento</span>
-                <span className="sm:hidden">Equipamentos</span>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-100 flex items-center gap-2">
+                <Sword className="h-5 sm:h-6 w-5 sm:w-6 text-amber-400" />
+                Selecionar Equipamento
               </h1>
-              <p className="text-slate-400 text-sm sm:text-base">
-                {character.name} - {getSlotDisplayName(slotType)}
+              <p className="text-sm text-slate-400">
+                {character.name} • {getSlotDisplayName(slotType)}
               </p>
             </div>
           </div>
         </div>
 
         {/* Layout Principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Coluna Esquerda - Lista de Equipamentos (1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Coluna Esquerda - Lista de Equipamentos */}
           <div className="space-y-4">
-            {/* Filtros e Busca */}
+            {/* Filtros */}
             <Card className="bg-slate-800/50 border-slate-700/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-slate-100 flex items-center gap-2 text-lg">
-                  <Filter className="h-5 w-5 text-amber-400" />
+              <CardHeader className="pb-2">
+                <CardTitle className="text-slate-100 flex items-center gap-2 text-base">
+                  <Package className="h-4 w-4 text-amber-400" />
                   Filtros
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Busca */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
-                  <Input
-                    placeholder="Buscar equipamento..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-slate-700/50 border-slate-600 text-slate-200"
-                  />
-                </div>
-
-                {/* Filtro por Tipo */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Tipo</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
-                    {[
-                      { value: 'all', label: 'Todos' },
-                      { value: 'weapon', label: 'Armas' },
-                      { value: 'armor', label: 'Armaduras' },
-                      { value: 'accessory', label: 'Acessórios' },
-                    ].map(filter => (
-                      <Button
-                        key={filter.value}
-                        variant={filterType === filter.value ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setFilterType(filter.value as EquipmentFilter)}
-                        className="text-xs"
-                      >
-                        {filter.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Ordenação */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Ordenar por</label>
-                  <select
-                    value={sortType}
-                    onChange={e => setSortType(e.target.value as SortType)}
-                    className="w-full p-2 rounded-md bg-slate-700/50 border border-slate-600 text-slate-200 text-sm"
-                  >
-                    <option value="name">Nome</option>
-                    <option value="level">Nível</option>
-                    <option value="rarity">Raridade</option>
-                    <option value="attack">Ataque</option>
-                    <option value="defense">Defesa</option>
-                  </select>
-                </div>
+              <CardContent>
+                <EquipmentFilters
+                  filterType={filterType}
+                  onFilterChange={setFilterType}
+                  sortType={sortType}
+                  onSortChange={setSortType}
+                  compact={true}
+                />
               </CardContent>
             </Card>
 
             {/* Lista de Equipamentos */}
             <Card className="bg-slate-800/50 border-slate-700/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-slate-100 text-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-slate-100 text-base">
                   Equipamentos ({filteredEquipment.length})
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 max-h-[400px] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
+              <CardContent className="space-y-2 max-h-[400px] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                 {filteredEquipment.length === 0 ? (
                   <div className="text-center py-8">
                     <Package className="h-12 w-12 mx-auto mb-3 text-slate-600 opacity-50" />
                     <p className="text-slate-500">Nenhum equipamento encontrado</p>
                   </div>
                 ) : (
-                  filteredEquipment.map(renderEquipmentCard)
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
+                    {filteredEquipment.map(renderEquipmentCard)}
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Coluna Direita - Detalhes do Item (2/3) */}
+          {/* Coluna Direita - Detalhes do Item */}
           <div className="lg:col-span-2">
-            <Card className="bg-slate-800/50 border-slate-700/50 h-full min-h-[400px]">
-              <CardHeader>
-                <CardTitle className="text-slate-100">Detalhes do Equipamento</CardTitle>
+            <Card className="bg-slate-800/50 border-slate-700/50 h-full">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-slate-100 text-base">Detalhes do Equipamento</CardTitle>
               </CardHeader>
               <CardContent className="h-full">{renderItemDetails()}</CardContent>
             </Card>
