@@ -347,19 +347,15 @@ export class AssetManager {
         }
         break;
 
-      case 'accessory':
-        if (
-          equipment.name.toLowerCase().includes('anel') ||
-          equipment.name.toLowerCase().includes('ring')
-        ) {
+      case 'ring':
+      case 'necklace':
+      case 'amulet':
+        if (equipment.type === 'ring') {
           iconPath = `${basePath}/accessories/rings/basic-ring.png`;
-        } else if (
-          equipment.name.toLowerCase().includes('amuleto') ||
-          equipment.name.toLowerCase().includes('amulet')
-        ) {
-          iconPath = `${basePath}/accessories/amulets/basic-amulet.png`;
+        } else if (equipment.type === 'necklace') {
+          iconPath = `${basePath}/accessories/necklaces/basic-necklace.png`;
         } else {
-          iconPath = `${basePath}/accessories/trinkets/basic-trinket.png`;
+          iconPath = `${basePath}/accessories/amulets/basic-amulet.png`;
         }
         break;
 

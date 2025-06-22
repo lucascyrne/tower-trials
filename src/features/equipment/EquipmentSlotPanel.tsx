@@ -3,8 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { type EquipmentSlots, type Equipment } from '@/models/equipment.model';
-import { Sword, Shield, Shirt, Gem, Plus } from 'lucide-react';
+import {
+  type EquipmentSlots,
+  type Equipment,
+  type EquipmentSlotType,
+} from '@/models/equipment.model';
+import { Sword, Shield, Shirt, Gem, Plus, Crown, Footprints, Heart, Zap } from 'lucide-react';
 
 interface EquipmentSlotPanelProps {
   equippedSlots: EquipmentSlots;
@@ -65,9 +69,20 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
         case 'weapon':
           return <Sword className="h-8 w-8 text-red-400" />;
         case 'armor':
+        case 'chest':
           return <Shirt className="h-8 w-8 text-blue-400" />;
-        case 'accessory':
+        case 'helmet':
+          return <Crown className="h-8 w-8 text-amber-400" />;
+        case 'legs':
+          return <Shirt className="h-8 w-8 text-green-400" />;
+        case 'boots':
+          return <Footprints className="h-8 w-8 text-brown-400" />;
+        case 'ring':
           return <Gem className="h-8 w-8 text-purple-400" />;
+        case 'necklace':
+          return <Heart className="h-8 w-8 text-pink-400" />;
+        case 'amulet':
+          return <Zap className="h-8 w-8 text-yellow-400" />;
         default:
           return <Shield className="h-8 w-8 text-slate-400" />;
       }
@@ -78,9 +93,21 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
       case 'off_hand':
         return <Sword className="h-8 w-8 text-slate-500" />;
       case 'armor':
+      case 'chest':
         return <Shirt className="h-8 w-8 text-slate-500" />;
-      case 'accessory':
+      case 'helmet':
+        return <Crown className="h-8 w-8 text-slate-500" />;
+      case 'legs':
+        return <Shirt className="h-8 w-8 text-slate-500" />;
+      case 'boots':
+        return <Footprints className="h-8 w-8 text-slate-500" />;
+      case 'ring_1':
+      case 'ring_2':
         return <Gem className="h-8 w-8 text-slate-500" />;
+      case 'necklace':
+        return <Heart className="h-8 w-8 text-slate-500" />;
+      case 'amulet':
+        return <Zap className="h-8 w-8 text-slate-500" />;
       default:
         return <Plus className="h-8 w-8 text-slate-500" />;
     }
@@ -99,7 +126,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
-  const renderEquipmentSlot = (slotType: keyof EquipmentSlots, label: string) => {
+  const renderEquipmentSlot = (slotType: EquipmentSlotType, label: string) => {
     const item = equippedSlots[slotType];
     const isEmpty = !item;
 
@@ -159,19 +186,26 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   };
 
   const renderArmorSlot = (index: number) => {
-    // Apenas o primeiro slot (peitoral) está habilitado
-    const isEnabled = index === 0;
-    const slotName =
-      index === 0 ? 'Peitoral' : index === 1 ? 'Capacete' : index === 2 ? 'Pernas' : 'Botas';
+    // Mapear índices para slots específicos
+    const slotMapping: Record<number, { slotType: EquipmentSlotType; label: string }> = {
+      0: { slotType: 'armor', label: 'Peitoral' }, // Slot habilitado (compatibilidade)
+      1: { slotType: 'helmet', label: 'Capacete' },
+      2: { slotType: 'legs', label: 'Pernas' },
+      3: { slotType: 'boots', label: 'Botas' },
+    };
+
+    const slot = slotMapping[index];
+    if (!slot) return null;
+
+    const isEnabled = index === 0; // Apenas o primeiro slot (armor) está habilitado
 
     if (isEnabled) {
-      // Usar o slot de armor existente para o peitoral
-      return renderEquipmentSlot('armor', slotName);
+      return renderEquipmentSlot(slot.slotType, slot.label);
     }
 
     return (
       <div className="space-y-3">
-        <label className="text-sm font-medium text-slate-300 block text-center">{slotName}</label>
+        <label className="text-sm font-medium text-slate-300 block text-center">{slot.label}</label>
         <div className="relative group">
           <Button
             variant="outline"
@@ -180,7 +214,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className="p-3 rounded-lg bg-slate-700/20">
-                <Shirt className="h-8 w-8 text-slate-500" />
+                {getSlotIcon(slot.slotType, null)}
               </div>
               <div className="text-sm text-slate-500 font-medium">Em breve</div>
             </div>
@@ -191,72 +225,39 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
   };
 
   const renderAccessorySlot = (index: number) => {
-    const hasItem = index === 0 && equippedSlots.accessory;
-    const isDisabled = index > 0;
+    // Mapear índices para slots específicos de acessórios
+    const slotMapping: Record<number, { slotType: EquipmentSlotType; label: string }> = {
+      0: { slotType: 'ring_1', label: 'Anel 1' },
+      1: { slotType: 'ring_2', label: 'Anel 2' },
+      2: { slotType: 'necklace', label: 'Colar' },
+      3: { slotType: 'amulet', label: 'Amuleto' },
+    };
+
+    const slot = slotMapping[index];
+    if (!slot) return null;
+
+    const isDisabled = index > 0; // Apenas o primeiro slot (ring_1) está habilitado
+
+    if (!isDisabled) {
+      return renderEquipmentSlot(slot.slotType, slot.label);
+    }
 
     return (
       <div className="space-y-3">
-        <label className="text-sm font-medium text-slate-300 block text-center">
-          {index === 0 ? 'Anel 1' : index === 1 ? 'Anel 2' : index === 2 ? 'Colar' : 'Amuleto'}
-        </label>
+        <label className="text-sm font-medium text-slate-300 block text-center">{slot.label}</label>
         <div className="relative group">
           <Button
             variant="outline"
-            className={`w-full h-32 p-4 border-2 transition-all duration-300 ${
-              hasItem
-                ? `${getRarityColor(equippedSlots.accessory!.rarity)} hover:brightness-110 shadow-lg hover:scale-[1.02]`
-                : isDisabled
-                  ? 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 opacity-60'
-                  : 'border-dashed border-slate-600 bg-gradient-to-br from-slate-800/40 to-slate-900/60 hover:border-slate-500 hover:from-slate-700/50 hover:to-slate-800/70 hover:scale-[1.02]'
-            } active:scale-[0.98] select-none`}
-            // Mouse events
-            onMouseDown={() => index === 0 && startPress('accessory')}
-            onMouseUp={() => index === 0 && endPress('accessory', equippedSlots.accessory ?? null)}
-            onMouseLeave={cancelPress}
-            // Touch events
-            onTouchStart={() => index === 0 && startPress('accessory')}
-            onTouchEnd={() => index === 0 && endPress('accessory', equippedSlots.accessory ?? null)}
-            onTouchCancel={cancelPress}
-            // Prevent context menu on long press
-            onContextMenu={e => e.preventDefault()}
-            disabled={isDisabled}
+            className="w-full h-32 p-4 border-2 border-dashed border-slate-600 bg-gradient-to-br from-slate-800/20 to-slate-900/40 transition-all duration-300 opacity-60"
+            disabled
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
-              <div className={`p-3 rounded-lg ${hasItem ? 'bg-black/20' : 'bg-slate-700/30'}`}>
-                <Gem className="h-8 w-8 text-slate-500" />
+              <div className="p-3 rounded-lg bg-slate-700/30">
+                {getSlotIcon(slot.slotType, null)}
               </div>
-              {hasItem ? (
-                <div className="text-center space-y-1">
-                  <div className="text-sm font-medium text-slate-200 leading-tight max-w-full">
-                    {equippedSlots.accessory!.name.length > 12
-                      ? `${equippedSlots.accessory!.name.substring(0, 12)}...`
-                      : equippedSlots.accessory!.name}
-                  </div>
-                  <Badge variant="outline" className="text-xs px-2 py-0.5">
-                    {equippedSlots.accessory!.rarity}
-                  </Badge>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500 font-medium">
-                  {index === 0 ? 'Vazio' : 'Em breve'}
-                </div>
-              )}
+              <div className="text-sm text-slate-500 font-medium">Em breve</div>
             </div>
           </Button>
-
-          {/* Indicador visual para long press */}
-          {!isDisabled && (
-            <div className="absolute inset-0 rounded-lg border-2 border-transparent group-active:border-amber-400/50 transition-colors duration-200 pointer-events-none" />
-          )}
-
-          {/* Tooltip sutil */}
-          {!isDisabled && (
-            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-              <div className="bg-slate-900/90 text-slate-300 text-xs px-2 py-1 rounded border border-slate-700/50 shadow-lg whitespace-nowrap">
-                {hasItem ? 'Toque para detalhes' : 'Toque e segure para equipar'}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );

@@ -1,4 +1,13 @@
-export type EquipmentType = 'weapon' | 'armor' | 'accessory';
+export type EquipmentType =
+  | 'weapon'
+  | 'armor'
+  | 'chest'
+  | 'helmet'
+  | 'legs'
+  | 'boots'
+  | 'ring'
+  | 'necklace'
+  | 'amulet';
 export type WeaponSubtype = 'sword' | 'axe' | 'blunt' | 'staff' | 'dagger';
 export type EquipmentRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
@@ -58,15 +67,32 @@ export interface EquipmentCraftingRecipe {
   equipment?: Equipment;
 }
 
-// Definir slots para dual-wielding (já existia)
-export type EquipmentSlotType = 'main_hand' | 'off_hand' | 'armor' | 'accessory' | 'accessory_2';
+// ✅ ATUALIZADO: Slots expandidos para incluir novos tipos de armadura e acessórios
+export type EquipmentSlotType =
+  | 'main_hand'
+  | 'off_hand'
+  | 'armor'
+  | 'chest'
+  | 'helmet'
+  | 'legs'
+  | 'boots'
+  | 'ring_1'
+  | 'ring_2'
+  | 'necklace'
+  | 'amulet';
 
 export interface EquipmentSlots {
   main_hand?: Equipment;
   off_hand?: Equipment;
-  armor?: Equipment;
-  accessory?: Equipment;
-  accessory_2?: Equipment;
+  armor?: Equipment; // Mantido para compatibilidade com escudos
+  chest?: Equipment;
+  helmet?: Equipment;
+  legs?: Equipment;
+  boots?: Equipment;
+  ring_1?: Equipment;
+  ring_2?: Equipment;
+  necklace?: Equipment;
+  amulet?: Equipment;
 }
 
 /**
@@ -139,7 +165,7 @@ export interface LegacyEquipmentSlots {
   accessory: Equipment | null;
 }
 
-// Função para calcular bônus total dos equipamentos
+// ✅ ATUALIZADO: Função para calcular bônus total dos equipamentos com novos slots
 export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   const totalBonus = {
     atk: 0,
@@ -154,26 +180,70 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
   };
 
   // Função helper para adicionar bônus de um equipamento
-  const addEquipmentBonus = (equipment: Equipment | null) => {
+  const addEquipmentBonus = (equipment: Equipment | null, isOffHand: boolean = false) => {
     if (equipment) {
-      totalBonus.atk += equipment.atk_bonus || 0;
-      totalBonus.def += equipment.def_bonus || 0;
-      totalBonus.mana += equipment.mana_bonus || 0;
-      totalBonus.speed += equipment.speed_bonus || 0;
-      totalBonus.hp += equipment.hp_bonus || 0;
-      totalBonus.critical_chance += equipment.critical_chance_bonus || 0;
-      totalBonus.critical_damage += equipment.critical_damage_bonus || 0;
-      totalBonus.double_attack_chance += equipment.double_attack_chance_bonus || 0;
-      totalBonus.magic_damage += equipment.magic_damage_bonus || 0;
+      // Sistema de nerf para off-hand weapons (20% de redução)
+      const offHandMultiplier = isOffHand && equipment.type === 'weapon' ? 0.8 : 1.0;
+
+      totalBonus.atk += Math.floor((equipment.atk_bonus || 0) * offHandMultiplier);
+      totalBonus.def += Math.floor((equipment.def_bonus || 0) * offHandMultiplier);
+      totalBonus.mana += Math.floor((equipment.mana_bonus || 0) * offHandMultiplier);
+      totalBonus.speed += Math.floor((equipment.speed_bonus || 0) * offHandMultiplier);
+      totalBonus.hp += Math.floor((equipment.hp_bonus || 0) * offHandMultiplier);
+      totalBonus.critical_chance += (equipment.critical_chance_bonus || 0) * offHandMultiplier;
+      totalBonus.critical_damage += (equipment.critical_damage_bonus || 0) * offHandMultiplier;
+      totalBonus.double_attack_chance +=
+        (equipment.double_attack_chance_bonus || 0) * offHandMultiplier;
+      totalBonus.magic_damage += (equipment.magic_damage_bonus || 0) * offHandMultiplier;
     }
   };
 
-  // Adicionar bônus de cada slot - atualizado para dual-wielding
-  addEquipmentBonus(slots.main_hand ?? null);
-  addEquipmentBonus(slots.off_hand ?? null);
-  addEquipmentBonus(slots.armor ?? null);
-  addEquipmentBonus(slots.accessory ?? null);
-  addEquipmentBonus(slots.accessory_2 ?? null);
+  // ✅ ATUALIZADO: Adicionar bônus de todos os slots incluindo novos tipos de armadura e acessórios
+  addEquipmentBonus(slots.main_hand ?? null, false);
+  addEquipmentBonus(slots.off_hand ?? null, true);
+  addEquipmentBonus(slots.armor ?? null, false); // Escudos
+  addEquipmentBonus(slots.chest ?? null, false);
+  addEquipmentBonus(slots.helmet ?? null, false);
+  addEquipmentBonus(slots.legs ?? null, false);
+  addEquipmentBonus(slots.boots ?? null, false);
+  addEquipmentBonus(slots.ring_1 ?? null, false);
+  addEquipmentBonus(slots.ring_2 ?? null, false);
+  addEquipmentBonus(slots.necklace ?? null, false);
+  addEquipmentBonus(slots.amulet ?? null, false);
+
+  // ✅ NOVO: Bônus especial para conjuntos de acessórios
+  const accessoriesCount = getEquippedAccessoriesCount(slots);
+  const armorPiecesCount = getEquippedArmorPiecesCount(slots);
+
+  // ✅ NOVO: Bônus de conjunto para armadura completa (4 peças)
+  if (armorPiecesCount >= 4) {
+    totalBonus.def = Math.floor(totalBonus.def * 1.2); // +20% defesa
+    totalBonus.hp = Math.floor(totalBonus.hp * 1.15); // +15% HP
+    // Resistência crítica seria aplicada aqui se fosse implementada
+  }
+  // Bônus de conjunto para 3+ peças de armadura
+  else if (armorPiecesCount >= 3) {
+    totalBonus.def = Math.floor(totalBonus.def * 1.1); // +10% defesa
+  }
+  // Bônus de conjunto para 2 peças de armadura
+  else if (armorPiecesCount >= 2) {
+    totalBonus.hp = Math.floor(totalBonus.hp * 1.05); // +5% HP
+  }
+
+  // Bônus de conjunto para acessórios (2 anéis + colar + amuleto)
+  if (accessoriesCount >= 4) {
+    totalBonus.atk = Math.floor(totalBonus.atk * 1.1); // +10% ataque
+    totalBonus.critical_chance = totalBonus.critical_chance * 1.15; // +15% chance crítica
+  }
+  // Bônus de conjunto para 3+ acessórios
+  else if (accessoriesCount >= 3) {
+    totalBonus.critical_chance = totalBonus.critical_chance * 1.1; // +10% chance crítica
+    totalBonus.speed = Math.floor(totalBonus.speed * 1.05); // +5% velocidade
+  }
+  // Bônus de conjunto para 2 anéis
+  else if (getEquippedRingsCount(slots) >= 2) {
+    totalBonus.critical_damage = totalBonus.critical_damage * 1.05; // +5% dano crítico
+  }
 
   // Bônus especial para dual-wielding (15% extra de ataque se ambas as mãos tiverem armas)
   if (
@@ -266,3 +336,80 @@ export const compareEquipment = (
 
   return comparisons;
 };
+
+/**
+ * ✅ NOVO: Verifica se o personagem tem um anel equipado em um slot específico
+ */
+export function hasRingInSlot(slots: EquipmentSlots, slotNumber: 1 | 2): boolean {
+  const slotKey = `ring_${slotNumber}` as keyof EquipmentSlots;
+  return !!(slots[slotKey]?.type === 'ring');
+}
+
+/**
+ * ✅ NOVO: Verifica se o personagem tem colar equipado
+ */
+export function hasNecklace(slots: EquipmentSlots): boolean {
+  return !!(slots.necklace?.type === 'necklace');
+}
+
+/**
+ * ✅ NOVO: Verifica se o personagem tem amuleto equipado
+ */
+export function hasAmulet(slots: EquipmentSlots): boolean {
+  return !!(slots.amulet?.type === 'amulet');
+}
+
+/**
+ * ✅ NOVO: Conta quantos anéis estão equipados
+ */
+export function getEquippedRingsCount(slots: EquipmentSlots): number {
+  let count = 0;
+  if (hasRingInSlot(slots, 1)) count++;
+  if (hasRingInSlot(slots, 2)) count++;
+  return count;
+}
+
+/**
+ * ✅ NOVO: Conta quantos acessórios estão equipados (anéis, colar, amuleto)
+ */
+export function getEquippedAccessoriesCount(slots: EquipmentSlots): number {
+  return getEquippedRingsCount(slots) + (hasNecklace(slots) ? 1 : 0) + (hasAmulet(slots) ? 1 : 0);
+}
+
+/**
+ * ✅ NOVO: Conta quantas peças de armadura estão equipadas (chest, helmet, legs, boots)
+ */
+export function getEquippedArmorPiecesCount(slots: EquipmentSlots): number {
+  let count = 0;
+  if (slots.chest?.type === 'chest') count++;
+  if (slots.helmet?.type === 'helmet') count++;
+  if (slots.legs?.type === 'legs') count++;
+  if (slots.boots?.type === 'boots') count++;
+  return count;
+}
+
+/**
+ * ✅ NOVO: Verifica se tem set completo de armadura (4 peças)
+ */
+export function hasFullArmorSet(slots: EquipmentSlots): boolean {
+  return getEquippedArmorPiecesCount(slots) >= 4;
+}
+
+/**
+ * ✅ NOVO: Verifica se uma peça de armadura específica está equipada
+ */
+export function hasArmorPiece(
+  slots: EquipmentSlots,
+  type: 'chest' | 'helmet' | 'legs' | 'boots'
+): boolean {
+  return !!(slots[type]?.type === type);
+}
+
+/**
+ * ✅ NOVO: Obtém o primeiro slot vazio para anéis
+ */
+export function getFirstEmptyRingSlot(slots: EquipmentSlots): 'ring_1' | 'ring_2' | null {
+  if (!hasRingInSlot(slots, 1)) return 'ring_1';
+  if (!hasRingInSlot(slots, 2)) return 'ring_2';
+  return null;
+}

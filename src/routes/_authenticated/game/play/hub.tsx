@@ -395,16 +395,16 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate({ to: '/game/play' })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate({ to: '/game/play' })}
                 className="flex-shrink-0"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Trocar Personagem</span>
-                <span className="sm:hidden">Trocar</span>
-              </Button>
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Trocar Personagem</span>
+              <span className="sm:hidden">Trocar</span>
+            </Button>
 
               <Button
                 variant="ghost"

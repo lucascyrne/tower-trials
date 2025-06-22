@@ -19,7 +19,7 @@ interface ServiceResponse<T> {
 export class CemeteryService {
   /**
    * Mata um personagem permanentemente, movendo-o para o cemitério
-   * ATUALIZADO: Integrado com Zustand stores para limpeza automática de estado
+   * ATUALIZADO: Usando função simplificada com dead_characters como fonte única
    */
   static async killCharacter(
     characterId?: string,
@@ -53,7 +53,8 @@ export class CemeteryService {
         'system'
       );
 
-      const { data, error } = await supabase.rpc('process_character_death', {
+      // ✅ CORREÇÃO: Usar função simplificada que salva apenas em dead_characters
+      const { data, error } = await supabase.rpc('process_character_death_simple', {
         p_character_id: targetCharacterId,
         p_death_cause: deathCause,
         p_killed_by_monster: killedByMonster || null,
@@ -84,13 +85,14 @@ export class CemeteryService {
         }, 3000);
       }
 
-      // A função process_character_death retorna um array com informações
+      // A função simplificada retorna dados estruturados
       const deathInfo = Array.isArray(data) && data.length > 0 ? data[0] : null;
-      const rankingEntryId = deathInfo?.ranking_entry_id || 'unknown';
+      const success = deathInfo?.success || false;
+      const resultMessage = success ? 'character_moved_to_cemetery' : 'unknown';
 
       return {
         success: true,
-        data: rankingEntryId,
+        data: resultMessage,
         error: null,
       };
     } catch (error) {

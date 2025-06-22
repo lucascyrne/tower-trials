@@ -3,12 +3,23 @@ import {
   type Equipment,
   type CharacterEquipment,
   type EquipmentSlots,
+  type EquipmentSlotType,
 } from '@/models/equipment.model';
 import { EquipmentService } from '@/services/equipment.service';
 import { type Character } from '@/models/character.model';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sword, Shield, Gem, Package } from 'lucide-react';
+import {
+  Sword,
+  Shield,
+  Gem,
+  Package,
+  ShirtIcon,
+  Crown,
+  Footprints,
+  Heart,
+  Zap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EquipmentPanelProps {
@@ -35,13 +46,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
       ]);
 
       setInventory(items || []);
-      setEquippedItems(
-        equipped || {
-          weapon: null,
-          armor: null,
-          accessory: null,
-        }
-      );
+      setEquippedItems(equipped || {});
     } catch (error) {
       console.error('Erro ao carregar equipamentos:', error);
       toast.error('Erro ao carregar equipamentos');
@@ -109,40 +114,98 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
     }
   };
 
-  const getEquipmentIcon = (type: keyof EquipmentSlots) => {
-    switch (type) {
+  const getEquipmentIcon = (slotType: EquipmentSlotType, equipment?: Equipment) => {
+    // Se tem equipamento, usar ícone baseado no tipo do item
+    if (equipment) {
+      switch (equipment.type) {
+        case 'weapon':
+          return <Sword className="h-6 w-6 text-red-400" />;
+        case 'armor':
+        case 'chest':
+          return <ShirtIcon className="h-6 w-6 text-blue-400" />;
+        case 'helmet':
+          return <Crown className="h-6 w-6 text-amber-400" />;
+        case 'legs':
+          return <ShirtIcon className="h-6 w-6 text-green-400" />;
+        case 'boots':
+          return <Footprints className="h-6 w-6 text-brown-400" />;
+        case 'ring':
+          return <Gem className="h-6 w-6 text-purple-400" />;
+        case 'necklace':
+          return <Heart className="h-6 w-6 text-pink-400" />;
+        case 'amulet':
+          return <Zap className="h-6 w-6 text-yellow-400" />;
+        default:
+          return <Shield className="h-6 w-6 text-slate-400" />;
+      }
+    }
+
+    // Ícones para slots vazios baseado no tipo do slot
+    switch (slotType) {
       case 'main_hand':
-        return <Sword className="h-6 w-6" />;
       case 'off_hand':
-        return <Sword className="h-6 w-6" />;
+        return <Sword className="h-6 w-6 text-slate-500" />;
       case 'armor':
-        return <Shield className="h-6 w-6" />;
-      case 'accessory':
-        return <Gem className="h-6 w-6" />;
+      case 'chest':
+        return <ShirtIcon className="h-6 w-6 text-slate-500" />;
+      case 'helmet':
+        return <Crown className="h-6 w-6 text-slate-500" />;
+      case 'legs':
+        return <ShirtIcon className="h-6 w-6 text-slate-500" />;
+      case 'boots':
+        return <Footprints className="h-6 w-6 text-slate-500" />;
+      case 'ring_1':
+      case 'ring_2':
+        return <Gem className="h-6 w-6 text-slate-500" />;
+      case 'necklace':
+        return <Heart className="h-6 w-6 text-slate-500" />;
+      case 'amulet':
+        return <Zap className="h-6 w-6 text-slate-500" />;
+      default:
+        return <Shield className="h-6 w-6 text-slate-500" />;
     }
   };
 
-  const getEquipmentLabel = (type: keyof EquipmentSlots) => {
-    switch (type) {
-      case 'main_hand':
-        return 'Arma';
-      case 'off_hand':
-        return 'Arma';
-      case 'armor':
-        return 'Armadura';
-      case 'accessory':
-        return 'Acessório';
-    }
+  const getEquipmentLabel = (slotType: EquipmentSlotType) => {
+    const labels = {
+      main_hand: 'Mão Principal',
+      off_hand: 'Mão Secundária',
+      armor: 'Armadura',
+      chest: 'Peitoral',
+      helmet: 'Capacete',
+      legs: 'Pernas',
+      boots: 'Botas',
+      ring_1: 'Anel 1',
+      ring_2: 'Anel 2',
+      necklace: 'Colar',
+      amulet: 'Amuleto',
+    };
+    return labels[slotType];
   };
 
-  const renderEquipmentSlot = (type: keyof EquipmentSlots) => {
-    const equipment = equippedItems?.[type];
+  const renderEquipmentSlot = (slotType: EquipmentSlotType) => {
+    const equipment = equippedItems?.[slotType];
+    const isDisabled =
+      slotType !== 'main_hand' &&
+      slotType !== 'off_hand' &&
+      slotType !== 'armor' &&
+      slotType !== 'ring_1' &&
+      !equipment;
 
     return (
-      <Card key={type} className="p-4 bg-card/95 border-2 border-primary/20">
+      <Card
+        key={slotType}
+        className={`p-4 border-2 transition-all duration-200 ${
+          equipment
+            ? 'bg-card/95 border-primary/50 hover:border-primary/70'
+            : isDisabled
+              ? 'bg-card/50 border-primary/20 opacity-60'
+              : 'bg-card/95 border-primary/20'
+        }`}
+      >
         <div className="flex items-center gap-2 mb-2">
-          {getEquipmentIcon(type)}
-          <h3 className="text-lg font-bold">{getEquipmentLabel(type)}</h3>
+          {getEquipmentIcon(slotType, equipment)}
+          <h3 className="text-lg font-bold">{getEquipmentLabel(slotType)}</h3>
         </div>
         {equipment ? (
           <div>
@@ -167,20 +230,37 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
                   <span>+{equipment.mana_bonus}</span>
                 </div>
               )}
+              {equipment.hp_bonus > 0 && (
+                <div className="flex items-center gap-1">
+                  <Heart className="h-4 w-4 text-emerald-400" />
+                  <span>+{equipment.hp_bonus}</span>
+                </div>
+              )}
+              {equipment.speed_bonus > 0 && (
+                <div className="flex items-center gap-1">
+                  <Zap className="h-4 w-4 text-yellow-400" />
+                  <span>+{equipment.speed_bonus}</span>
+                </div>
+              )}
             </div>
           </div>
         ) : (
-          <p className="text-muted-foreground italic">Vazio</p>
+          <p className="text-muted-foreground italic">{isDisabled ? 'Em breve' : 'Vazio'}</p>
         )}
       </Card>
     );
   };
 
+  // Slots organizados por categoria
+  const weaponSlots: EquipmentSlotType[] = ['main_hand', 'off_hand'];
+  const armorSlots: EquipmentSlotType[] = ['armor', 'chest', 'helmet', 'legs', 'boots'];
+  const accessorySlots: EquipmentSlotType[] = ['ring_1', 'ring_2', 'necklace', 'amulet'];
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
             <Card key={i} className="p-4 bg-card/95 border-2 border-primary/20 animate-pulse">
               <div className="h-6 bg-muted rounded mb-2"></div>
               <div className="h-4 bg-muted rounded mb-1"></div>
@@ -212,10 +292,35 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
       {/* Slots equipados */}
       <div>
         <h3 className="text-xl font-bold mb-4">Equipamentos Equipados</h3>
-        <div className="grid grid-cols-3 gap-4">
-          {(['main_hand', 'off_hand', 'armor', 'accessory'] as const).map(type =>
-            renderEquipmentSlot(type)
-          )}
+
+        {/* Armas */}
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-primary mb-3 border-b border-primary/30 pb-1">
+            Armas
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {weaponSlots.map(slotType => renderEquipmentSlot(slotType))}
+          </div>
+        </div>
+
+        {/* Armaduras */}
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-primary mb-3 border-b border-primary/30 pb-1">
+            Armaduras
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {armorSlots.map(slotType => renderEquipmentSlot(slotType))}
+          </div>
+        </div>
+
+        {/* Acessórios */}
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-primary mb-3 border-b border-primary/30 pb-1">
+            Acessórios
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {accessorySlots.map(slotType => renderEquipmentSlot(slotType))}
+          </div>
         </div>
       </div>
 
@@ -250,23 +355,35 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
                     </span>
                   </div>
 
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 flex flex-wrap gap-2 text-sm">
                     {item.equipment!.atk_bonus > 0 && (
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1">
                         <Sword className="h-4 w-4 text-red-400" />
                         <span>+{item.equipment!.atk_bonus}</span>
                       </div>
                     )}
                     {item.equipment!.def_bonus > 0 && (
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1">
                         <Shield className="h-4 w-4 text-blue-400" />
                         <span>+{item.equipment!.def_bonus}</span>
                       </div>
                     )}
                     {item.equipment!.mana_bonus > 0 && (
-                      <div className="flex items-center gap-1 text-sm">
+                      <div className="flex items-center gap-1">
                         <Gem className="h-4 w-4 text-purple-400" />
                         <span>+{item.equipment!.mana_bonus}</span>
+                      </div>
+                    )}
+                    {item.equipment!.hp_bonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Heart className="h-4 w-4 text-emerald-400" />
+                        <span>+{item.equipment!.hp_bonus}</span>
+                      </div>
+                    )}
+                    {item.equipment!.speed_bonus > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Zap className="h-4 w-4 text-yellow-400" />
+                        <span>+{item.equipment!.speed_bonus}</span>
                       </div>
                     )}
                   </div>

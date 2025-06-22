@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   type Equipment,
   type EquipmentComparison as EquipmentComparisonType,
-  compareEquipment,
 } from '@/models/equipment.model';
-import { EquipmentService } from '@/services/equipment.service';
+import { CharacterService } from '@/services/character.service';
 import {
   TrendingUp,
   TrendingDown,
@@ -44,30 +43,74 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
       setError(null);
 
       try {
-        // Se temos o equipamento atual, usar comparação local
-        if (currentEquipment !== undefined) {
-          const localComparisons = compareEquipment(currentEquipment, newEquipment);
+        // Buscar stats atuais do personagem diretamente para garantir dados corretos
+        console.log('Loading character stats for comparison...');
+
+        const characterResponse = await CharacterService.getCharacterForGame(
+          characterId,
+          true,
+          false
+        );
+        if (characterResponse.success && characterResponse.data) {
+          const gamePlayer = characterResponse.data;
+
+          // Criar comparações baseadas nos stats atuais do personagem
+          const localComparisons: EquipmentComparisonType[] = [];
+
+          // Comparar cada stat relevante usando os stats reais do GamePlayer
+          const statsToCompare = [
+            { name: 'Ataque', current: gamePlayer.atk, bonus: newEquipment.atk_bonus },
+            { name: 'Defesa', current: gamePlayer.def, bonus: newEquipment.def_bonus },
+            { name: 'Mana', current: gamePlayer.max_mana, bonus: newEquipment.mana_bonus },
+            { name: 'Velocidade', current: gamePlayer.speed, bonus: newEquipment.speed_bonus },
+            { name: 'HP', current: gamePlayer.max_hp, bonus: newEquipment.hp_bonus },
+            {
+              name: 'Chance Crítica',
+              current: gamePlayer.critical_chance || 0,
+              bonus: newEquipment.critical_chance_bonus,
+            },
+            {
+              name: 'Dano Crítico',
+              current: gamePlayer.critical_damage || 130,
+              bonus: newEquipment.critical_damage_bonus,
+            },
+            {
+              name: 'Duplo Ataque',
+              current: gamePlayer.double_attack_chance || 0,
+              bonus: newEquipment.double_attack_chance_bonus,
+            },
+            {
+              name: 'Dano Mágico',
+              current: gamePlayer.magic_damage_bonus || 0,
+              bonus: newEquipment.magic_damage_bonus,
+            },
+          ];
+
+          console.log('Character stats for comparison:', {
+            atk: gamePlayer.atk,
+            def: gamePlayer.def,
+            max_hp: gamePlayer.max_hp,
+            max_mana: gamePlayer.max_mana,
+            speed: gamePlayer.speed,
+            critical_chance: gamePlayer.critical_chance,
+          });
+
+          statsToCompare.forEach(stat => {
+            if (stat.bonus > 0) {
+              localComparisons.push({
+                stat_name: stat.name,
+                current_value: stat.current,
+                new_value: stat.current + stat.bonus,
+                difference: stat.bonus,
+                is_improvement: stat.bonus > 0,
+              });
+            }
+          });
+
+          console.log('Generated comparisons:', localComparisons);
           setComparisons(localComparisons);
         } else {
-          // Caso contrário, usar o service que faz RPC call
-          const response = await EquipmentService.compareEquipmentStats(
-            characterId,
-            newEquipment.id,
-            slotType
-          );
-
-          if (response.success && response.data) {
-            const formattedComparisons: EquipmentComparisonType[] = response.data.map(item => ({
-              stat_name: item.stat_name,
-              current_value: item.current_value,
-              new_value: item.new_value,
-              difference: item.difference,
-              is_improvement: item.is_improvement,
-            }));
-            setComparisons(formattedComparisons);
-          } else {
-            setError(response.error || 'Erro ao comparar equipamentos');
-          }
+          setError('Erro ao carregar stats do personagem');
         }
       } catch (err) {
         console.error('Erro ao carregar comparação:', err);

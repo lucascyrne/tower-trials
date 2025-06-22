@@ -123,7 +123,10 @@ export function calculateBaseStats(level: number, equipmentSlots?: EquipmentSlot
       equipmentSlots.main_hand,
       equipmentSlots.off_hand,
       equipmentSlots.armor,
-      equipmentSlots.accessory,
+      equipmentSlots.amulet,
+      equipmentSlots.necklace,
+      equipmentSlots.ring_1,
+      equipmentSlots.ring_2,
     ];
     slots.forEach(equipment => {
       if (equipment) {

@@ -118,7 +118,14 @@ function EquipmentPage() {
       to: '/game/play/hub/equipment/select',
       search: {
         character: characterId!,
-        slot: slotType as 'main_hand' | 'off_hand' | 'armor' | 'accessory',
+        slot: slotType as
+          | 'main_hand'
+          | 'off_hand'
+          | 'armor'
+          | 'amulet'
+          | 'necklace'
+          | 'ring_1'
+          | 'ring_2',
       },
     });
   };

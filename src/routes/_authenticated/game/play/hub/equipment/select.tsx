@@ -1,9 +1,16 @@
+import type { ReactElement } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { CharacterService } from '@/services/character.service';
 import { EquipmentService } from '@/services/equipment.service';
 import type { Character } from '@/models/character.model';
-import type { Equipment, CharacterEquipment } from '@/models/equipment.model';
+import type {
+  Equipment,
+  CharacterEquipment,
+  EquipmentType,
+  EquipmentSlotType,
+  EquipmentFilter,
+} from '@/models/equipment.model';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,15 +29,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type SlotType = 'main_hand' | 'off_hand' | 'armor' | 'accessory';
-type FilterType = 'all' | 'weapon' | 'armor' | 'accessory';
 type SortType = 'name' | 'level' | 'rarity' | 'attack' | 'defense';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment/select')({
   component: EquipmentSelectPage,
   validateSearch: search => ({
     character: (search.character as string) || '',
-    slot: (search.slot as SlotType) || 'main_hand',
+    slot: (search.slot as EquipmentSlotType) || 'main_hand',
   }),
 });
 
@@ -44,7 +49,7 @@ function EquipmentSelectPage() {
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [filterType, setFilterType] = useState<EquipmentFilter>('all');
   const [sortType, setSortType] = useState<SortType>('name');
   const [equiping, setEquiping] = useState(false);
 
@@ -129,46 +134,59 @@ function EquipmentSelectPage() {
     setFilteredEquipment(filtered);
   }, [availableEquipment, searchTerm, filterType, sortType, slotType]);
 
-  const isEquipmentCompatibleWithSlot = (equipment: Equipment, slot: SlotType): boolean => {
-    switch (slot) {
-      case 'main_hand':
-      case 'off_hand':
-        return equipment.type === 'weapon';
-      case 'armor':
-        return equipment.type === 'armor';
-      case 'accessory':
-        return equipment.type === 'accessory';
-      default:
-        return false;
-    }
+  const isEquipmentCompatibleWithSlot = (
+    equipment: Equipment,
+    slot: EquipmentSlotType
+  ): boolean => {
+    // Mapeamento de slots para tipos de equipamento compatíveis
+    const slotTypeMap: Record<EquipmentSlotType, EquipmentType[]> = {
+      main_hand: ['weapon'],
+      off_hand: ['weapon', 'armor'], // Permite armas e escudos
+      armor: ['armor'],
+      chest: ['chest'],
+      helmet: ['helmet'],
+      legs: ['legs'],
+      boots: ['boots'],
+      ring_1: ['ring'],
+      ring_2: ['ring'],
+      necklace: ['necklace'],
+      amulet: ['amulet'],
+    };
+
+    const compatibleTypes = slotTypeMap[slot];
+    return compatibleTypes?.includes(equipment.type) || false;
   };
 
-  const getSlotDisplayName = (slot: SlotType): string => {
-    switch (slot) {
-      case 'main_hand':
-        return 'Mão Principal';
-      case 'off_hand':
-        return 'Mão Secundária';
-      case 'armor':
-        return 'Armadura';
-      case 'accessory':
-        return 'Acessório';
-      default:
-        return slot;
-    }
+  const getSlotDisplayName = (slot: EquipmentSlotType): string => {
+    const slotNames: Record<EquipmentSlotType, string> = {
+      main_hand: 'Mão Principal',
+      off_hand: 'Mão Secundária',
+      armor: 'Armadura',
+      chest: 'Peitoral',
+      helmet: 'Capacete',
+      legs: 'Perneiras',
+      boots: 'Botas',
+      ring_1: 'Anel 1',
+      ring_2: 'Anel 2',
+      necklace: 'Colar',
+      amulet: 'Amuleto',
+    };
+    return slotNames[slot] || slot;
   };
 
   const getEquipmentIcon = (equipment: Equipment) => {
-    switch (equipment.type) {
-      case 'weapon':
-        return <Sword className="h-6 w-6 text-red-400" />;
-      case 'armor':
-        return <Shirt className="h-6 w-6 text-blue-400" />;
-      case 'accessory':
-        return <Gem className="h-6 w-6 text-purple-400" />;
-      default:
-        return <Shield className="h-6 w-6 text-slate-400" />;
-    }
+    const iconMap: Record<EquipmentType, ReactElement> = {
+      weapon: <Sword className="h-6 w-6 text-red-400" />,
+      armor: <Shield className="h-6 w-6 text-blue-400" />,
+      chest: <Shirt className="h-6 w-6 text-blue-400" />,
+      helmet: <Shield className="h-6 w-6 text-blue-400" />,
+      legs: <Shield className="h-6 w-6 text-blue-400" />,
+      boots: <Shield className="h-6 w-6 text-blue-400" />,
+      ring: <Gem className="h-6 w-6 text-purple-400" />,
+      necklace: <Gem className="h-6 w-6 text-purple-400" />,
+      amulet: <Gem className="h-6 w-6 text-purple-400" />,
+    };
+    return iconMap[equipment.type] || <Shield className="h-6 w-6 text-slate-400" />;
   };
 
   const getRarityColor = (rarity: string) => {
@@ -511,7 +529,7 @@ function EquipmentSelectPage() {
                         key={filter.value}
                         variant={filterType === filter.value ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setFilterType(filter.value as FilterType)}
+                        onClick={() => setFilterType(filter.value as EquipmentFilter)}
                         className="text-xs"
                       >
                         {filter.label}

@@ -6,12 +6,12 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sword,
   Shield,
+  Shirt,
   Gem,
   Coins,
   Package,
   Sparkles,
   Zap,
-  Star,
   Filter,
   ShoppingCart,
   ShoppingBag,
@@ -31,7 +31,17 @@ interface ShopLayoutProps {
 }
 
 type ShopCategory = 'equipment' | 'consumables';
-type EquipmentFilter = 'all' | 'weapon' | 'armor' | 'accessory';
+type EquipmentFilter =
+  | 'all'
+  | 'weapon'
+  | 'armor'
+  | 'chest'
+  | 'helmet'
+  | 'legs'
+  | 'boots'
+  | 'ring'
+  | 'necklace'
+  | 'amulet';
 type ConsumableFilter = 'all' | 'potion' | 'antidote' | 'buff';
 
 export const ShopLayout: React.FC<ShopLayoutProps> = ({
@@ -76,8 +86,20 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         return <Sword className="h-4 w-4 text-red-400" />;
       case 'armor':
         return <Shield className="h-4 w-4 text-blue-400" />;
-      case 'accessory':
+      case 'chest':
+        return <Shirt className="h-4 w-4 text-emerald-400" />;
+      case 'helmet':
+        return <Shield className="h-4 w-4 text-yellow-400" />;
+      case 'legs':
+        return <Shield className="h-4 w-4 text-cyan-400" />;
+      case 'boots':
+        return <Shield className="h-4 w-4 text-orange-400" />;
+      case 'ring':
         return <Gem className="h-4 w-4 text-purple-400" />;
+      case 'necklace':
+        return <Gem className="h-4 w-4 text-pink-400" />;
+      case 'amulet':
+        return <Gem className="h-4 w-4 text-indigo-400" />;
       default:
         return <Package className="h-4 w-4 text-slate-400" />;
     }
@@ -110,29 +132,37 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         } ${!canBuy ? 'opacity-60 grayscale' : 'hover:bg-slate-800/70'}`}
         onClick={() => setSelectedItem(equipment)}
       >
-        <CardContent className="p-3">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
+        <CardContent className="p-1.5">
+          <div className="flex flex-col items-center text-center gap-1">
+            <div className="p-1.5 rounded bg-slate-700/50">
               {getEquipmentTypeIcon(equipment.type)}
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm truncate text-slate-100">{equipment.name}</h3>
-              <div className="flex items-center gap-2 mt-1">
+            <div className="w-full">
+              <h3 className="font-medium text-xs truncate text-slate-100" title={equipment.name}>
+                {equipment.name.length > 10
+                  ? `${equipment.name.substring(0, 10)}...`
+                  : equipment.name}
+              </h3>
                 <Badge
                   variant="outline"
-                  className={`text-xs border ${getRarityColor(equipment.rarity)}`}
+                className={`text-xs border ${getRarityColor(equipment.rarity)} mt-1`}
                 >
                   {equipment.rarity}
                 </Badge>
-                {equipment.rarity === 'legendary' && (
-                  <Star className="h-3 w-3 text-amber-400 animate-pulse" />
-                )}
-                {equipment.rarity === 'epic' && <Sparkles className="h-3 w-3 text-purple-400" />}
-              </div>
-              <div className="flex items-center gap-1 mt-2">
+              <div className="flex items-center justify-center gap-1 mt-1">
                 <Coins className="h-3 w-3 text-amber-400" />
                 <span className="text-xs font-medium text-amber-300">{equipment.price}</span>
               </div>
+              {/* Stat principal mais relevante */}
+              {equipment.atk_bonus > 0 ? (
+                <div className="text-xs text-red-400 mt-1">+{equipment.atk_bonus} ATK</div>
+              ) : equipment.def_bonus > 0 ? (
+                <div className="text-xs text-blue-400 mt-1">+{equipment.def_bonus} DEF</div>
+              ) : equipment.mana_bonus > 0 ? (
+                <div className="text-xs text-purple-400 mt-1">+{equipment.mana_bonus} MP</div>
+              ) : equipment.speed_bonus > 0 ? (
+                <div className="text-xs text-green-400 mt-1">+{equipment.speed_bonus} SPD</div>
+              ) : null}
             </div>
           </div>
         </CardContent>
@@ -521,11 +551,83 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setEquipmentFilter('accessory')}
+              onClick={() => setEquipmentFilter('chest')}
               className={`${
-                equipmentFilter === 'accessory'
+                equipmentFilter === 'chest'
+                  ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50'
+                  : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-900/20'
+              }`}
+            >
+              <Shirt className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('helmet')}
+              className={`${
+                equipmentFilter === 'helmet'
+                  ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800/50'
+                  : 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-900/20'
+              }`}
+            >
+              <Shield className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('legs')}
+              className={`${
+                equipmentFilter === 'legs'
+                  ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-800/50'
+                  : 'text-slate-500 hover:text-cyan-400 hover:bg-cyan-900/20'
+              }`}
+            >
+              <Shield className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('boots')}
+              className={`${
+                equipmentFilter === 'boots'
+                  ? 'bg-orange-900/30 text-orange-400 border border-orange-800/50'
+                  : 'text-slate-500 hover:text-orange-400 hover:bg-orange-900/20'
+              }`}
+            >
+              <Shield className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('ring')}
+              className={`${
+                equipmentFilter === 'ring'
                   ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50'
                   : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'
+              }`}
+            >
+              <Gem className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('necklace')}
+              className={`${
+                equipmentFilter === 'necklace'
+                  ? 'bg-pink-900/30 text-pink-400 border border-pink-800/50'
+                  : 'text-slate-500 hover:text-pink-400 hover:bg-pink-900/20'
+              }`}
+            >
+              <Gem className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEquipmentFilter('amulet')}
+              className={`${
+                equipmentFilter === 'amulet'
+                  ? 'bg-indigo-900/30 text-indigo-400 border border-indigo-800/50'
+                  : 'text-slate-500 hover:text-indigo-400 hover:bg-indigo-900/20'
               }`}
             >
               <Gem className="h-3 w-3" />
@@ -587,7 +689,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         )}
 
         {/* Lista de Itens */}
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
+        <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
           {selectedCategory === 'equipment' ? (
             filteredEquipment.length === 0 ? (
               <div className="text-center py-8 text-slate-500">
@@ -595,7 +697,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 <p className="text-sm">Nenhum equipamento encontrado</p>
               </div>
             ) : (
-              filteredEquipment.map(renderEquipmentCard)
+              <div className="grid grid-cols-3 gap-2">
+                {filteredEquipment.map(renderEquipmentCard)}
+              </div>
             )
           ) : filteredConsumables.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
@@ -603,7 +707,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               <p className="text-sm">Nenhum consumível encontrado</p>
             </div>
           ) : (
-            filteredConsumables.map(renderConsumableCard)
+            <div className="space-y-2">{filteredConsumables.map(renderConsumableCard)}</div>
           )}
         </div>
       </div>
