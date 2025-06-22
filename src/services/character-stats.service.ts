@@ -1,4 +1,6 @@
 import { type Character } from '@/models/character.model';
+import { type GamePlayer, type Enemy } from '@/models/game.model';
+import { type AttributeModification } from '@/models/spell.model';
 
 interface DerivedStats {
   hp: number;
@@ -241,5 +243,149 @@ export class CharacterStatsService {
       dominantAttribute,
       monoBuild: maxPercentage > 0.8,
     };
+  }
+
+  /**
+   * ✅ NOVO: Calcular stats efetivos incluindo modificadores temporários (buffs/debuffs)
+   */
+  static calculateEffectiveStats(entity: GamePlayer | Enemy): {
+    atk: number;
+    def: number;
+    speed: number;
+    magic_attack: number;
+    critical_chance: number;
+    critical_damage: number;
+  } {
+    // Stats base - usar propriedades corretas para cada tipo
+    const baseAtk = ('atk' in entity ? entity.atk : entity.attack) || 0;
+    const baseDef = ('def' in entity ? entity.def : entity.defense) || 0;
+    const baseSpeed = entity.speed || 0;
+    const baseMagicAttack = ('magic_attack' in entity ? entity.magic_attack : 0) || 0;
+    const baseCriticalChance = entity.critical_chance || 0;
+    const baseCriticalDamage = entity.critical_damage || 110;
+
+    // Se não tem efeitos ativos, retornar stats base
+    if (!entity.active_effects?.attribute_modifications?.length) {
+      return {
+        atk: baseAtk,
+        def: baseDef,
+        speed: baseSpeed,
+        magic_attack: baseMagicAttack,
+        critical_chance: baseCriticalChance,
+        critical_damage: baseCriticalDamage,
+      };
+    }
+
+    // Aplicar modificadores temporários
+    let effectiveAtk = baseAtk;
+    let effectiveDef = baseDef;
+    let effectiveSpeed = baseSpeed;
+    let effectiveMagicAttack = baseMagicAttack;
+    let effectiveCriticalChance = baseCriticalChance;
+    let effectiveCriticalDamage = baseCriticalDamage;
+
+    for (const mod of entity.active_effects.attribute_modifications) {
+      if (mod.duration <= 0) continue; // Pular modificadores expirados
+
+      const value = mod.value;
+      const isPercentage = mod.type === 'percentage';
+
+      switch (mod.attribute) {
+        case 'atk':
+          if (isPercentage) {
+            effectiveAtk = Math.floor(effectiveAtk * (1 + value / 100));
+          } else {
+            effectiveAtk += value;
+          }
+          break;
+        case 'def':
+          if (isPercentage) {
+            effectiveDef = Math.floor(effectiveDef * (1 + value / 100));
+          } else {
+            effectiveDef += value;
+          }
+          break;
+        case 'speed':
+          if (isPercentage) {
+            effectiveSpeed = Math.floor(effectiveSpeed * (1 + value / 100));
+          } else {
+            effectiveSpeed += value;
+          }
+          break;
+        case 'magic_attack':
+          if (isPercentage) {
+            effectiveMagicAttack = Math.floor(effectiveMagicAttack * (1 + value / 100));
+          } else {
+            effectiveMagicAttack += value;
+          }
+          break;
+        case 'critical_chance':
+          if (isPercentage) {
+            effectiveCriticalChance = effectiveCriticalChance * (1 + value / 100);
+          } else {
+            effectiveCriticalChance += value;
+          }
+          break;
+        case 'critical_damage':
+          if (isPercentage) {
+            effectiveCriticalDamage = effectiveCriticalDamage * (1 + value / 100);
+          } else {
+            effectiveCriticalDamage += value;
+          }
+          break;
+      }
+    }
+
+    // Garantir valores mínimos
+    return {
+      atk: Math.max(1, Math.floor(effectiveAtk)),
+      def: Math.max(0, Math.floor(effectiveDef)),
+      speed: Math.max(1, Math.floor(effectiveSpeed)),
+      magic_attack: Math.max(0, Math.floor(effectiveMagicAttack)),
+      critical_chance: Math.max(0, effectiveCriticalChance),
+      critical_damage: Math.max(100, effectiveCriticalDamage),
+    };
+  }
+
+  /**
+   * ✅ NOVO: Obter modificadores ativos por atributo
+   */
+  static getActiveModifiers(
+    entity: GamePlayer | Enemy,
+    attribute: string
+  ): AttributeModification[] {
+    if (!entity.active_effects?.attribute_modifications?.length) {
+      return [];
+    }
+
+    return entity.active_effects.attribute_modifications.filter(
+      mod => mod.attribute === attribute && mod.duration > 0
+    );
+  }
+
+  /**
+   * ✅ NOVO: Verificar se um atributo tem modificadores ativos
+   */
+  static hasActiveModifiers(entity: GamePlayer | Enemy, attribute: string): boolean {
+    return this.getActiveModifiers(entity, attribute).length > 0;
+  }
+
+  /**
+   * ✅ NOVO: Calcular valor total de modificadores para um atributo
+   */
+  static getTotalModifierValue(entity: GamePlayer | Enemy, attribute: string): number {
+    const modifiers = this.getActiveModifiers(entity, attribute);
+    if (!modifiers.length) return 0;
+
+    let total = 0;
+    for (const mod of modifiers) {
+      if (mod.type === 'percentage') {
+        total += mod.value; // Para porcentagem, somamos os valores
+      } else {
+        total += mod.value; // Para flat, somamos diretamente
+      }
+    }
+
+    return total;
   }
 }

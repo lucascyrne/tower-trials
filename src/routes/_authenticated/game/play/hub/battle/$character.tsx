@@ -70,7 +70,7 @@ function BattlePage() {
   // OTIMIZADO: Skeleton loader mais leve
   if (loadingState.shouldShowLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-2 md:p-4">
         <div className="w-full max-w-6xl">
           <div className="text-center mb-8">
             <div className="h-8 w-64 bg-muted/50 animate-pulse rounded mx-auto mb-4"></div>
@@ -112,7 +112,7 @@ function BattlePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-2 md:p-4">
       <GameBattle />
     </div>
   );

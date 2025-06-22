@@ -210,7 +210,7 @@ export function VictoryModal({
                 </div>
 
                 {/* Level Up Section */}
-                {leveledUp && newLevel && (
+                {leveledUp && newLevel && hasAttributePoints && (
                   <motion.div
                     className={`rounded-lg bg-gradient-to-r from-primary/20 to-primary/30 text-center ${
                       isMobileLandscape ? 'p-2 mt-2' : 'p-4 mt-2'

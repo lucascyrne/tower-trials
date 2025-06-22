@@ -333,7 +333,7 @@ function GamePlaySelectionPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-2 md:p-4">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -345,9 +345,9 @@ function GamePlaySelectionPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
+    <div className="container mx-auto p-2 md:p-4 max-w-6xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/game' })}>
             <ArrowLeft className="h-4 w-4 mr-2" />

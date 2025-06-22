@@ -389,21 +389,33 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-950 to-slate-900 p-4">
+    <div className="min-h-screen w-full bg-gradient-to-b from-slate-950 to-slate-900 p-2 md:p-4">
       <div className="w-full max-w-7xl mx-auto space-y-4">
         {/* Header padronizado */}
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: '/game/play' })}
-              className="self-start"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Trocar Personagem</span>
-              <span className="sm:hidden">Trocar</span>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: '/game/play' })}
+                className="flex-shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Trocar Personagem</span>
+                <span className="sm:hidden">Trocar</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: '/game' })}
+                className="flex-shrink-0"
+              >
+                <span className="hidden sm:inline">Menu Principal</span>
+                <span className="sm:hidden">Menu</span>
+              </Button>
+            </div>
 
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">

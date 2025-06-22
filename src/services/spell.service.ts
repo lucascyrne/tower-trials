@@ -3,6 +3,7 @@ import {
   type PlayerSpell,
   type AttributeModification,
   type Spell,
+  isSupportSpell,
 } from '@/models/spell.model';
 import { supabase } from '@/lib/supabase';
 import type { Enemy, GamePlayer, GameState } from '@/models/game.model';
@@ -473,7 +474,7 @@ export class SpellService {
     spell: Spell,
     caster: GamePlayer | Enemy,
     target: GamePlayer | Enemy
-  ): { message: string; success: boolean } {
+  ): { message: string; success: boolean; endsTurn: boolean } {
     const effects = {
       damage: () => {
         const damage = this.calculateScaledSpellDamage(spell.effect_value, caster);
@@ -498,10 +499,25 @@ export class SpellService {
 
     try {
       const message = effects[spell.effect_type]?.() || `${spell.name} não teve efeito!`;
-      return { message, success: true };
+
+      // ✅ CORREÇÃO: Apenas magias de suporte (buffs/heals/debuffs) não consomem turno
+      // Magias de dano devem passar o turno para o inimigo como ataques físicos
+      const isSupportSpellResult = isSupportSpell(spell);
+      const endsTurn = isSupportSpellResult; // Invertido: suporte = true (pula turno), dano = false (passa turno)
+
+      // ✅ DEBUG: Log detalhado para debugging do sistema de turnos
+      console.log(`[SpellService] === ANÁLISE TURNO DA MAGIA ===`, {
+        spellName: spell.name,
+        effectType: spell.effect_type,
+        isSupportSpell: isSupportSpellResult,
+        endsTurn: endsTurn,
+        damageSpellPassesToEnemy: !isSupportSpellResult,
+      });
+
+      return { message, success: true, endsTurn };
     } catch (error) {
       console.error('Erro ao aplicar efeito da magia:', error);
-      return { message: `Erro ao usar ${spell.name}!`, success: false };
+      return { message: `Erro ao usar ${spell.name}!`, success: false, endsTurn: true };
     }
   }
 
@@ -512,15 +528,7 @@ export class SpellService {
   ): string {
     if (!target.active_effects) return `${spell.name} não teve efeito!`;
 
-    const value = this.calculateScaledSpellDamage(spell.effect_value, target);
-    const effect = {
-      type,
-      value,
-      duration: spell.duration,
-      source_spell: spell.name,
-    };
-
-    // ✅ CORREÇÃO: Criar cópia do active_effects para evitar mutação read-only
+    // ✅ CORREÇÃO CRÍTICA: Criar cópia do active_effects para evitar mutação read-only
     const activeEffects = {
       buffs: [...target.active_effects.buffs],
       debuffs: [...target.active_effects.debuffs],
@@ -532,31 +540,81 @@ export class SpellService {
     };
 
     if (type === 'buff') {
-      activeEffects.buffs.push(effect);
       const modifications = this.getAttributeModificationsForSpell(spell);
       if (modifications.length > 0) {
-        activeEffects.attribute_modifications.push(...modifications);
-        const modMessages = modifications
-          .map(
-            mod =>
-              `+${mod.value}${mod.type === 'percentage' ? '%' : ''} ${this.translateAttributeName(mod.attribute)}`
-          )
+        // ✅ CORREÇÃO: Adicionar modificações específicas com duração da spell
+        const spellDuration = spell.duration || 3;
+        const modifiedMods = modifications.map(mod => ({
+          ...mod,
+          duration: spellDuration,
+        }));
+
+        activeEffects.attribute_modifications.push(...modifiedMods);
+
+        const modMessages = modifiedMods
+          .map(mod => {
+            const sign = mod.value > 0 ? '+' : '';
+            const suffix = mod.type === 'percentage' ? '%' : '';
+            return `${sign}${mod.value}${suffix} ${this.translateAttributeName(mod.attribute)}`;
+          })
           .join(', ');
 
-        // ✅ CORREÇÃO: Reatribuir o objeto completo
+        // ✅ CORREÇÃO CRÍTICA: NÃO criar buff genérico quando há modificações específicas
         target.active_effects = activeEffects;
-        return `${spell.name} aumentou: ${modMessages}!`;
+        return `${spell.name} concedeu: ${modMessages} por ${spellDuration} turnos!`;
+      } else {
+        // ✅ CORREÇÃO: Apenas criar buff genérico se NÃO há modificações específicas
+        const value = this.calculateScaledSpellDamage(spell.effect_value, target);
+        const effectDuration = spell.duration || 3;
+        const effect = {
+          type,
+          value,
+          duration: effectDuration,
+          source_spell: spell.name,
+        };
+
+        activeEffects.buffs.push(effect);
+        target.active_effects = activeEffects;
+        return `${spell.name} aplicou um efeito benéfico genérico (+${value}) por ${effectDuration} turnos!`;
       }
-
-      // ✅ CORREÇÃO: Reatribuir o objeto completo
-      target.active_effects = activeEffects;
-      return `${spell.name} aplicou um efeito benéfico (+${value})!`;
     } else {
-      activeEffects.debuffs.push(effect);
+      // Debuffs
+      const modifications = this.getAttributeModificationsForSpell(spell);
+      if (modifications.length > 0) {
+        const effectDuration = spell.duration || 3;
+        // Para debuffs, inverter o sinal dos modificadores
+        const debuffMods = modifications.map(mod => ({
+          ...mod,
+          value: -Math.abs(mod.value), // Garantir que seja negativo
+          duration: effectDuration,
+        }));
+        activeEffects.attribute_modifications.push(...debuffMods);
 
-      // ✅ CORREÇÃO: Reatribuir o objeto completo
-      target.active_effects = activeEffects;
-      return `${spell.name} aplicou um efeito prejudicial (-${value})!`;
+        const modMessages = debuffMods
+          .map(mod => {
+            const suffix = mod.type === 'percentage' ? '%' : '';
+            return `${mod.value}${suffix} ${this.translateAttributeName(mod.attribute)}`;
+          })
+          .join(', ');
+
+        // ✅ CORREÇÃO CRÍTICA: NÃO criar debuff genérico quando há modificações específicas
+        target.active_effects = activeEffects;
+        return `${spell.name} reduziu: ${modMessages} por ${effectDuration} turnos!`;
+      } else {
+        // ✅ CORREÇÃO: Apenas criar debuff genérico se NÃO há modificações específicas
+        const value = this.calculateScaledSpellDamage(spell.effect_value, target);
+        const effectDuration = spell.duration || 3;
+        const effect = {
+          type,
+          value,
+          duration: effectDuration,
+          source_spell: spell.name,
+        };
+
+        activeEffects.debuffs.push(effect);
+        target.active_effects = activeEffects;
+        return `${spell.name} aplicou um efeito prejudicial genérico (-${value}) por ${effectDuration} turnos!`;
+      }
     }
   }
 
@@ -626,42 +684,72 @@ export class SpellService {
         : [],
     };
 
-    // Processar DoTs
-    activeEffects.dots = activeEffects.dots.filter(effect => {
-      target.hp = Math.max(0, target.hp - effect.value);
-      effect.duration--;
-      messages.push(`${effect.source_spell} causou ${effect.value} de dano contínuo.`);
-      return effect.duration > 0;
-    });
+    // ✅ CORREÇÃO: Processar DoTs com cópia dos objetos
+    activeEffects.dots = activeEffects.dots
+      .map(effect => ({ ...effect })) // Criar cópia do objeto
+      .filter(effect => {
+        target.hp = Math.max(0, target.hp - effect.value);
+        effect.duration--;
+        messages.push(`${effect.source_spell} causou ${effect.value} de dano contínuo.`);
+        return effect.duration > 0;
+      });
 
-    // Processar HoTs
-    activeEffects.hots = activeEffects.hots.filter(effect => {
-      const maxHp = 'max_hp' in target ? target.max_hp : target.maxHp;
-      const oldHp = target.hp;
-      target.hp = Math.min(maxHp, target.hp + effect.value);
-      const actualHeal = target.hp - oldHp;
-      effect.duration--;
+    // ✅ CORREÇÃO: Processar HoTs com cópia dos objetos
+    activeEffects.hots = activeEffects.hots
+      .map(effect => ({ ...effect })) // Criar cópia do objeto
+      .filter(effect => {
+        const maxHp = 'max_hp' in target ? target.max_hp : target.maxHp;
+        const oldHp = target.hp;
+        target.hp = Math.min(maxHp, target.hp + effect.value);
+        const actualHeal = target.hp - oldHp;
+        effect.duration--;
 
-      if (actualHeal > 0) {
-        messages.push(`${effect.source_spell} restaurou ${actualHeal} HP.`);
-      }
+        if (actualHeal > 0) {
+          messages.push(`${effect.source_spell} restaurou ${actualHeal} HP.`);
+        }
 
-      return effect.duration > 0;
-    });
+        return effect.duration > 0;
+      });
 
-    // Processar modificações de atributos
+    // ✅ CORREÇÃO CRÍTICA: Processar modificações de atributos com cópia dos objetos
     if (activeEffects.attribute_modifications) {
-      activeEffects.attribute_modifications = activeEffects.attribute_modifications.filter(mod => {
-        mod.duration--;
-        if (mod.duration <= 0) {
-          messages.push(
-            `O efeito de ${mod.source_spell} em ${this.translateAttributeName(mod.attribute)} expirou.`
-          );
+      activeEffects.attribute_modifications = activeEffects.attribute_modifications
+        .map(mod => ({ ...mod })) // Criar cópia do objeto
+        .filter(mod => {
+          mod.duration--;
+          if (mod.duration <= 0) {
+            messages.push(
+              `O efeito de ${mod.source_spell} em ${this.translateAttributeName(mod.attribute)} expirou.`
+            );
+            return false;
+          }
+          return true;
+        });
+    }
+
+    // ✅ CORREÇÃO: Processar buffs genéricos com cópia dos objetos
+    activeEffects.buffs = activeEffects.buffs
+      .map(effect => ({ ...effect })) // Criar cópia do objeto
+      .filter(effect => {
+        effect.duration--;
+        if (effect.duration <= 0) {
+          messages.push(`O efeito benéfico de ${effect.source_spell} expirou.`);
           return false;
         }
         return true;
       });
-    }
+
+    // ✅ CORREÇÃO: Processar debuffs genéricos com cópia dos objetos
+    activeEffects.debuffs = activeEffects.debuffs
+      .map(effect => ({ ...effect })) // Criar cópia do objeto
+      .filter(effect => {
+        effect.duration--;
+        if (effect.duration <= 0) {
+          messages.push(`O efeito prejudicial de ${effect.source_spell} expirou.`);
+          return false;
+        }
+        return true;
+      });
 
     // ✅ CORREÇÃO: Reatribuir o objeto completo ao invés de propriedades individuais
     target.active_effects = activeEffects;
@@ -687,6 +775,42 @@ export class SpellService {
       },
     };
 
+    return updatedGameState;
+  }
+
+  /**
+   * ✅ NOVA FUNÇÃO: Resetar todos os cooldowns das magias
+   * Esta função deve ser chamada quando uma nova batalha é iniciada (novo andar/inimigo)
+   * @param gameState Estado atual do jogo
+   * @returns Estado atualizado com todos os cooldowns resetados
+   */
+  static resetSpellCooldowns(gameState: GameState): GameState {
+    console.log('[SpellService] === RESETANDO COOLDOWNS DAS MAGIAS ===');
+
+    // ✅ CORREÇÃO: Criar cópia do gameState para evitar mutação read-only
+    const updatedGameState = {
+      ...gameState,
+      player: {
+        ...gameState.player,
+        spells: gameState.player.spells.map(spell => {
+          // Log para debugging
+          if (spell.current_cooldown > 0) {
+            console.log(
+              `[SpellService] Resetando cooldown de "${spell.name}" de ${spell.current_cooldown} para 0`
+            );
+          }
+
+          return {
+            ...spell,
+            current_cooldown: 0, // ✅ CRÍTICO: Resetar todos os cooldowns para 0
+          };
+        }),
+      },
+    };
+
+    console.log(
+      `[SpellService] Cooldowns resetados para ${updatedGameState.player.spells.length} magias`
+    );
     return updatedGameState;
   }
 
@@ -738,21 +862,48 @@ export class SpellService {
     const modifications: AttributeModification[] = [];
     const spellName = spell.name.toLowerCase();
 
+    // ✅ CORREÇÃO: Multiplicadores MUITO MAIORES e palavras-chave expandidas
     const attributeMap = [
-      { keywords: ['força', 'strength', 'fortalecer'], attribute: 'atk', multiplier: 0.5 },
-      { keywords: ['velocidade', 'speed', 'agilidade'], attribute: 'speed', multiplier: 0.3 },
-      { keywords: ['defesa', 'defense', 'proteção'], attribute: 'def', multiplier: 0.4 },
       {
-        keywords: ['crítico', 'critical', 'precisão'],
+        keywords: ['força', 'strength', 'fortalecer', 'fúria', 'guerreiro', 'berserker', 'poder'],
+        attribute: 'atk',
+        multiplier: 1.2, // Era 0.5, agora 1.2x
+      },
+      {
+        keywords: ['velocidade', 'speed', 'agilidade', 'pressa', 'vento', 'corrida'],
+        attribute: 'speed',
+        multiplier: 1.0, // Era 0.3, agora 1.0x
+      },
+      {
+        keywords: ['defesa', 'defense', 'proteção', 'armadura', 'barreira', 'escudo'],
+        attribute: 'def',
+        multiplier: 1.1, // Era 0.4, agora 1.1x
+      },
+      {
+        keywords: ['crítico', 'critical', 'precisão', 'foco', 'mira', 'acerto'],
         attribute: 'critical_chance',
-        multiplier: 0.2,
+        multiplier: 0.8, // Era 0.2, agora 0.8x
         type: 'percentage',
       },
-      { keywords: ['magia', 'magic', 'mystic'], attribute: 'magic_attack', multiplier: 0.6 },
+      {
+        keywords: ['magia', 'magic', 'mystic', 'arcano', 'místico', 'feitiço'],
+        attribute: 'magic_attack',
+        multiplier: 1.3, // Era 0.6, agora 1.3x
+      },
+      {
+        keywords: ['destruição', 'devastação', 'carnificina', 'massacre'],
+        attribute: 'critical_damage',
+        multiplier: 1.5, // Novo atributo
+        type: 'percentage',
+      },
     ];
 
     attributeMap.forEach(({ keywords, attribute, multiplier, type = 'flat' }) => {
       if (keywords.some(keyword => spellName.includes(keyword))) {
+        // ✅ CORREÇÃO: Valor mínimo garantido para efeitos visíveis
+        const rawValue = Math.floor(spell.effect_value * multiplier);
+        const finalValue = Math.max(5, rawValue); // Mínimo 5 para garantir efeito visível
+
         modifications.push({
           attribute: attribute as
             | 'atk'
@@ -761,9 +912,10 @@ export class SpellService {
             | 'magic_attack'
             | 'critical_chance'
             | 'critical_damage',
-          value: Math.floor(spell.effect_value * multiplier),
+          value: finalValue,
           type: type as 'flat' | 'percentage',
-          duration: spell.duration,
+          // ✅ CORREÇÃO: Usar duração da spell ao invés de fixo
+          duration: spell.duration || 3,
           source_spell: spell.name,
           applied_at: Date.now(),
         });

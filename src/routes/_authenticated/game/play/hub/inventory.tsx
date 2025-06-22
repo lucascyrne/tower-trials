@@ -140,7 +140,7 @@ function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-black">
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="container mx-auto px-2 sm:px-3 md:px-4 py-2 sm:py-4 md:py-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">

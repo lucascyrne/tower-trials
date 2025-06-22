@@ -13,24 +13,17 @@ function GuidePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      {/* Header padronizado */}
-      <div className="space-y-3 sm:space-y-4 mb-6">
-        <div className="flex flex-col gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate({ to: '/game' })}
-            className="self-start"
-          >
+    <div className="container mx-auto p-2 md:p-4 max-w-6xl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/game' })}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Voltar ao Menu</span>
-            <span className="sm:hidden">Voltar</span>
+            Voltar
           </Button>
-
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Guia do Tower Trials</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Aprenda tudo sobre o jogo</p>
+            <h1 className="text-2xl font-bold">Guia do Jogo</h1>
+            <p className="text-muted-foreground">Aprenda a jogar Tower Trials</p>
           </div>
         </div>
       </div>

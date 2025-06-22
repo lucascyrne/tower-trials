@@ -246,8 +246,10 @@ export const useBattleStore = create<BattleStore>()(
           return;
         }
 
-        // Processar turno do inimigo se necessário
-        if (newState.currentEnemy && !newState.fleeSuccessful) {
+        // ✅ CORREÇÃO CRÍTICA: skipTurn = true significa PULAR o turno do inimigo (magias de suporte)
+        // skipTurn = false significa PROCESSAR o turno do inimigo (ações ofensivas)
+        if (!skipTurn && newState.currentEnemy && !newState.fleeSuccessful) {
+          console.log('[BattleStore] === PROCESSANDO TURNO DO INIMIGO (AÇÃO OFENSIVA) ===');
           addGameLogMessage(message, 'player_action');
 
           // Delay para feedback visual
@@ -255,6 +257,13 @@ export const useBattleStore = create<BattleStore>()(
             get().processEnemyTurn(action, action === 'defend');
           }, 1000);
         } else {
+          // ✅ CRÍTICO: Para magias de suporte (skipTurn = true), o turno permanece com o jogador
+          console.log('[BattleStore] === AÇÃO DE SUPORTE - TURNO PERMANECE COM O JOGADOR ===', {
+            action,
+            skipTurn,
+            allowCombos: skipTurn,
+          });
+          addGameLogMessage(message, 'player_action');
           get().endBattle();
         }
       } catch (error) {

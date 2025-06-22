@@ -138,20 +138,27 @@ export class BattleInitializationService {
         characterDeleted: false,
       };
 
+      // ✅ CORREÇÃO CRÍTICA: Resetar cooldowns das magias para cada nova batalha
+      const { SpellService } = await import('./spell.service');
+      const gameStateWithResetCooldowns = SpellService.resetSpellCooldowns(gameState);
+
       // 🔧 VALIDAÇÃO FINAL DO ESTADO
       console.log(`[BattleInit] Estado gerado:`, {
-        mode: gameState.mode,
-        hasEnemy: Boolean(gameState.currentEnemy),
-        enemyName: gameState.currentEnemy?.name,
-        hasEvent: Boolean(gameState.currentSpecialEvent),
-        eventName: gameState.currentSpecialEvent?.name,
-        playerFloor: gameState.player.floor,
+        mode: gameStateWithResetCooldowns.mode,
+        hasEnemy: Boolean(gameStateWithResetCooldowns.currentEnemy),
+        enemyName: gameStateWithResetCooldowns.currentEnemy?.name,
+        hasEvent: Boolean(gameStateWithResetCooldowns.currentSpecialEvent),
+        eventName: gameStateWithResetCooldowns.currentSpecialEvent?.name,
+        playerFloor: gameStateWithResetCooldowns.player.floor,
+        spellsWithCooldown: gameStateWithResetCooldowns.player.spells.filter(
+          s => s.current_cooldown > 0
+        ).length,
       });
 
       console.log(
-        `[BattleInit] ✅ Batalha inicializada com sucesso para ${targetCharacter.name} - Andar ${gamePlayer.floor} - Inimigo: ${enemy.name}`
+        `[BattleInit] ✅ Batalha inicializada com sucesso para ${targetCharacter.name} - Andar ${gamePlayer.floor} - Inimigo: ${enemy.name} - Cooldowns resetados`
       );
-      return { success: true, gameState };
+      return { success: true, gameState: gameStateWithResetCooldowns };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       console.error(`[BattleInit] ❌ Falha:`, errorMessage);

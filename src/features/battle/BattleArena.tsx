@@ -30,6 +30,7 @@ import { type GamePlayer, type Enemy } from '@/models/game.model';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { ThiefIdleAnimation } from '@/features/character/ThiefIdleAnimation';
 import { StatDisplay } from '@/components/ui/stat-display';
+import { StatusEffectsDisplay } from '@/components/ui/status-effects-display';
 
 interface BattleArenaProps {
   player: GamePlayer | null; // CORRIGIDO: Player pode ser null durante inicialização
@@ -616,6 +617,17 @@ export function BattleArena({
                 </div>
               </div>
 
+              {/* Player Status Effects */}
+              {player.active_effects && (
+                <div className="flex justify-center mb-2 md:mb-3">
+                  <StatusEffectsDisplay
+                    activeEffects={player.active_effects}
+                    size="sm"
+                    maxVisible={4}
+                  />
+                </div>
+              )}
+
               {/* Player Extended Stats Toggle - Apenas Desktop */}
               <div className="hidden md:block">
                 <Button
@@ -1047,6 +1059,17 @@ export function BattleArena({
                   </div>
                 )}
               </div>
+
+              {/* Enemy Status Effects */}
+              {currentEnemy.active_effects && (
+                <div className="flex justify-center mb-2 md:mb-3">
+                  <StatusEffectsDisplay
+                    activeEffects={currentEnemy.active_effects}
+                    size="sm"
+                    maxVisible={4}
+                  />
+                </div>
+              )}
 
               {/* Enemy Combat Stats - Grid Compacto */}
               <div className="grid grid-cols-3 gap-1 md:gap-2">

@@ -3,11 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import {
-  RankingService,
-  type RankingEntry,
-  type RankingMode,
-} from '@/services/ranking.service';
+import { RankingService, type RankingEntry, type RankingMode } from '@/services/ranking.service';
 import { useAuth } from '@/resources/auth/auth-hook';
 import RankingFilters, { type CharacterStatusFilter } from '@/components/ranking/ranking-filters';
 import RankingTable from '@/components/ranking/ranking-table';
@@ -226,9 +222,9 @@ function RankingPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
+    <div className="container mx-auto p-2 md:p-4 max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/game' })}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -250,7 +246,7 @@ function RankingPage() {
       </div>
 
       {/* Filtros */}
-      <Card className="mb-6">
+      <Card className="mb-4 md:mb-6">
         <CardHeader>
           <RankingFilters
             activeMode={rankingMode}
@@ -268,7 +264,7 @@ function RankingPage() {
       </Card>
 
       {/* Conteúdo Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
         {/* Estatísticas do Usuário */}
         {user && (
           <div className="lg:col-span-1">

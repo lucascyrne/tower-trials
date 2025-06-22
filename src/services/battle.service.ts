@@ -15,6 +15,7 @@ import { useBattleStore } from '../stores/useBattleStore';
 import { useLogStore } from '../stores/useLogStore';
 import { BattleLoggerService } from './battle-logger.service';
 import { LoggingUtils } from '@/utils/logging-utils';
+import { CharacterStatsService } from './character-stats.service';
 
 export class BattleService {
   /**
@@ -108,14 +109,11 @@ export class BattleService {
   }
 
   /**
-   * Calcular o dano de ataque com críticos e duplo ataque
+   * ✅ ATUALIZADO: Calcular o dano de ataque usando stats efetivos (incluindo buffs/debuffs)
    */
   static calculateDamage(
-    attackerAttack: number,
-    defenderDefense: number,
-    criticalChance: number = 0,
-    criticalDamage: number = 110,
-    doubleAttackChance: number = 0,
+    attacker: GamePlayer | Enemy,
+    defender: GamePlayer | Enemy,
     attackerDexterity: number = 10,
     attackerSpeed: number = 10
   ): {
@@ -125,8 +123,14 @@ export class BattleService {
     totalAttacks: number;
     damageBreakdown: string;
   } {
-    const safeAttack = Number(attackerAttack) || 0;
-    const safeDefense = Number(defenderDefense) || 0;
+    // ✅ CORREÇÃO: Usar stats efetivos incluindo modificadores temporários
+    const attackerStats = CharacterStatsService.calculateEffectiveStats(attacker);
+    const defenderStats = CharacterStatsService.calculateEffectiveStats(defender);
+
+    const safeAttack = attackerStats.atk || 0;
+    const safeDefense = defenderStats.def || 0;
+    const criticalChance = attackerStats.critical_chance || 0;
+    const criticalDamage = attackerStats.critical_damage || 110;
 
     if (safeAttack <= 0) {
       return {
@@ -142,8 +146,11 @@ export class BattleService {
     const critRoll = Math.random() * 100;
     const isCritical = critRoll < criticalChance;
 
+    // ✅ CORREÇÃO: Calcular double attack chance baseado nos stats efetivos
+    const baseDoubleAttackChance =
+      ('double_attack_chance' in attacker ? attacker.double_attack_chance : 0) || 0;
     const enhancedDoubleAttackChance =
-      doubleAttackChance +
+      baseDoubleAttackChance +
       Math.floor((attackerDexterity - 10) * 0.5) +
       Math.floor((attackerSpeed - 10) * 0.3);
     const doubleRoll = Math.random() * 100;
@@ -223,17 +230,38 @@ export class BattleService {
     let message = '';
     let totalDamage = 0;
 
+    // ✅ CORREÇÃO: Processar efeitos ao longo do tempo no INÍCIO do turno do jogador
+    console.log(`[BattleService] Processando efeitos ao longo do tempo no início do turno...`);
+    if (newState.player.active_effects) {
+      const playerEffectMessages = SpellService.processOverTimeEffects(newState.player);
+      if (playerEffectMessages.length > 0) {
+        console.log(`[BattleService] Efeitos do jogador:`, playerEffectMessages);
+        // Adicionar às mensagens do log se necessário
+        gameLogMessages.push(
+          ...playerEffectMessages.map(msg => ({ message: msg, type: 'system' as const }))
+        );
+      }
+    }
+
+    if (newState.currentEnemy?.active_effects) {
+      const enemyEffectMessages = SpellService.processOverTimeEffects(newState.currentEnemy);
+      if (enemyEffectMessages.length > 0) {
+        console.log(`[BattleService] Efeitos do inimigo:`, enemyEffectMessages);
+        // Adicionar às mensagens do log se necessário
+        gameLogMessages.push(
+          ...enemyEffectMessages.map(msg => ({ message: msg, type: 'system' as const }))
+        );
+      }
+    }
+
     switch (action) {
       case 'attack':
         if (newState.currentEnemy && newState.currentEnemy.hp > 0) {
           const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
 
           const damageResult = this.calculateDamage(
-            newState.player.atk,
-            newState.currentEnemy.defense,
-            newState.player.critical_chance || 0,
-            newState.player.critical_damage || 110,
-            newState.player.double_attack_chance || 0,
+            newState.player,
+            newState.currentEnemy,
             newState.player.dexterity || 10,
             newState.player.speed || 10
           );
@@ -247,6 +275,9 @@ export class BattleService {
           if (newState.player.isDefending) {
             newState.player.isDefending = false;
           }
+
+          // ✅ CORREÇÃO CRÍTICA: Ataques devem processar turno do inimigo (skipTurn = false)
+          skipTurn = false;
 
           // ✅ FONTE ÚNICA: Usar LoggingUtils para log padronizado de ataque
           LoggingUtils.logPlayerAttack(
@@ -334,6 +365,9 @@ export class BattleService {
           newState.player.isDefending = true;
           newState.player.defenseCooldown = 3;
 
+          // ✅ CORREÇÃO CRÍTICA: Defesa bem-sucedida deve processar turno do inimigo (skipTurn = false)
+          skipTurn = false;
+
           // ✅ FONTE ÚNICA: Usar LoggingUtils para log de defesa
           LoggingUtils.logPlayerAction('assumiu postura defensiva', newState.player.name, {
             playerId: newState.player.id,
@@ -398,48 +432,60 @@ export class BattleService {
             let spellResult = '';
             let actualSpellValue = 0;
 
-            if (spell.effect_type === 'damage' && newState.currentEnemy) {
-              let magicDamage = spell.effect_value;
+            // ✅ NOVA LÓGICA: Usar SpellService.applySpellEffect para processar todos os tipos de magia
+            const target = spell.effect_type === 'damage' ? newState.currentEnemy : newState.player;
 
-              if (newState.player.magic_attack) {
-                magicDamage += Math.floor(newState.player.magic_attack * 0.5);
-              }
-
-              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
-                const masteryBonus = Math.floor(
-                  magicDamage * (newState.player.magic_mastery - 1) * 0.1
-                );
-                magicDamage += masteryBonus;
-              }
-
-              actualSpellValue = magicDamage;
-              newState.currentEnemy.hp = Math.max(0, newState.currentEnemy.hp - magicDamage);
-
-              spellResult = `causando ${magicDamage} de dano mágico`;
-
-              if (newState.currentEnemy.hp <= 0) {
-                spellResult += ` e derrotando ${newState.currentEnemy.name}`;
-              }
-            } else if (spell.effect_type === 'heal') {
-              let healAmount = spell.effect_value;
-
-              if (newState.player.magic_attack) {
-                healAmount += Math.floor(newState.player.magic_attack * 0.3);
-              }
-
-              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
-                const masteryBonus = Math.floor(
-                  healAmount * (newState.player.magic_mastery - 1) * 0.1
-                );
-                healAmount += masteryBonus;
-              }
-
-              actualSpellValue = healAmount;
-              newState.player.hp = Math.min(
-                newState.player.max_hp,
-                newState.player.hp + healAmount
+            if (target) {
+              const spellEffectResult = SpellService.applySpellEffect(
+                spell,
+                newState.player,
+                target
               );
-              spellResult = `restaurando ${healAmount} de vida`;
+
+              if (spellEffectResult.success) {
+                // ✅ CORREÇÃO CRÍTICA: Corrigir lógica invertida - se endsTurn é true, devemos pular o turno
+                skipTurn = spellEffectResult.endsTurn;
+
+                // ✅ DEBUG: Log crítico para debugging do sistema de turnos
+                console.log(`[BattleService] === RESULTADO PROCESSAMENTO MAGIA ===`, {
+                  spellName: spell.name,
+                  effectType: spell.effect_type,
+                  spellEffectEndsTurn: spellEffectResult.endsTurn,
+                  skipTurn: skipTurn,
+                  shouldAllowMoreActions: !skipTurn,
+                });
+
+                // Determinar valores para logging
+                if (spell.effect_type === 'damage' && newState.currentEnemy) {
+                  const damageDealt = Math.abs(
+                    newState.currentEnemy.hp - (newState.currentEnemy.hp + spell.effect_value)
+                  );
+                  actualSpellValue = damageDealt;
+                  spellResult = `causando ${damageDealt} de dano mágico`;
+
+                  if (newState.currentEnemy.hp <= 0) {
+                    spellResult += ` e derrotando ${newState.currentEnemy.name}`;
+                  }
+                } else if (spell.effect_type === 'heal') {
+                  actualSpellValue = spell.effect_value;
+                  spellResult = `restaurando vida`;
+                } else if (spell.effect_type === 'buff') {
+                  actualSpellValue = spell.effect_value;
+                  spellResult = `aplicando efeito benéfico`;
+                } else if (spell.effect_type === 'debuff') {
+                  actualSpellValue = spell.effect_value;
+                  spellResult = `aplicando efeito prejudicial`;
+                }
+
+                // Usar mensagem do SpellService se disponível
+                if (spellEffectResult.message) {
+                  const resultMessage = spellEffectResult.message.replace(/!$/, ''); // Remove exclamação final
+                  spellResult = resultMessage;
+                }
+              } else {
+                spellResult = spellEffectResult.message || 'A magia falhou';
+                actualSpellValue = 0;
+              }
             }
 
             // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia
@@ -944,7 +990,19 @@ export class BattleService {
     console.log(`[BattleService] === PROCESSANDO AÇÃO DO INIMIGO ===`);
     console.log(`[BattleService] Inimigo: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`);
 
-    SpellService.processOverTimeEffects(enemy);
+    // ✅ CORREÇÃO: Processar efeitos ao longo do tempo no INÍCIO do turno do inimigo
+    console.log(`[BattleService] Processando efeitos ao longo do tempo do inimigo...`);
+    const enemyEffectMessages = SpellService.processOverTimeEffects(enemy);
+    if (enemyEffectMessages.length > 0) {
+      console.log(`[BattleService] Efeitos do inimigo:`, enemyEffectMessages);
+    }
+
+    // ✅ CORREÇÃO: Também processar efeitos do jogador no turno do inimigo
+    console.log(`[BattleService] Processando efeitos ao longo do tempo do jogador...`);
+    const playerEffectMessages = SpellService.processOverTimeEffects(player);
+    if (playerEffectMessages.length > 0) {
+      console.log(`[BattleService] Efeitos do jogador:`, playerEffectMessages);
+    }
 
     if (enemy.hp <= 0) {
       console.log(`[BattleService] Inimigo morreu por efeitos ao longo do tempo`);
@@ -1008,11 +1066,8 @@ export class BattleService {
         console.log(`[BattleService] Executando ataque físico`);
 
         const enemyDamageResult = this.calculateDamage(
-          enemy.attack,
-          player.def,
-          enemy.critical_chance || 0,
-          enemy.critical_damage || 110,
-          0,
+          enemy,
+          player,
           enemy.dexterity || 10,
           enemy.speed || 10
         );

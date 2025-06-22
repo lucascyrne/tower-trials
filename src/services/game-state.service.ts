@@ -94,7 +94,7 @@ export class GameStateService {
         enemy = enemyResult.data;
       }
 
-      return {
+      const newGameState = {
         ...gameState,
         mode: specialEvent ? 'special_event' : 'battle',
         player: {
@@ -118,6 +118,12 @@ export class GameStateService {
         fleeSuccessful: false,
         highestFloor: Math.max(gameState.highestFloor || 0, nextFloor),
       };
+
+      // ✅ CORREÇÃO CRÍTICA: Resetar cooldowns das magias ao avançar para novo andar
+      const gameStateWithResetCooldowns = SpellService.resetSpellCooldowns(newGameState as GameState);
+
+      console.log(`[GameStateService] Avançando para andar ${nextFloor} - Cooldowns resetados`);
+      return gameStateWithResetCooldowns;
     } catch (error) {
       console.error(`[GameStateService] Erro ao avançar:`, error);
 
@@ -134,7 +140,7 @@ export class GameStateService {
             description: `Andar ${nextFloor} - Área Desconhecida`,
           };
 
-          return {
+          const fallbackGameState = {
             ...gameState,
             player: {
               ...player,
@@ -152,6 +158,13 @@ export class GameStateService {
             mode: 'battle',
             selectedSpell: null,
           };
+
+          // ✅ CORREÇÃO CRÍTICA: Resetar cooldowns das magias no fallback também
+          const fallbackWithResetCooldowns = SpellService.resetSpellCooldowns(
+            fallbackGameState as GameState
+          );
+          console.log(`[GameStateService] Fallback para andar ${nextFloor} - Cooldowns resetados`);
+          return fallbackWithResetCooldowns;
         }
       } catch (fallbackError) {
         console.error('[GameStateService] Falha no fallback:', fallbackError);

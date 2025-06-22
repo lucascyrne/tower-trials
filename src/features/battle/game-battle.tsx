@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { type ActionType } from '@/models/game.model';
+import { type ActionType, type GamePlayer } from '@/models/game.model';
 import { BattleArena } from './BattleArena';
 import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { VictoryModal } from './VictoryModal';
@@ -725,6 +725,30 @@ export default function GameBattle() {
     [updatePlayerStats] // ✅ CORREÇÃO: Remover player?.id das dependências para evitar loops
   );
 
+  // ✅ NOVA FUNÇÃO: Callback para atualizar personagem após distribuição de atributos
+  const handleAttributesUpdated = useCallback(
+    (updatedCharacter: GamePlayer) => {
+      console.log('[GameBattle] === ATUALIZANDO PERSONAGEM APÓS DISTRIBUIÇÃO ===', {
+        characterId: updatedCharacter.id,
+        oldAttributePoints: player?.attribute_points,
+        newAttributePoints: updatedCharacter.attribute_points,
+        playerName: updatedCharacter.name,
+      });
+
+      // ✅ CRÍTICO: Atualizar o gameState com o personagem atualizado
+      const currentGameState = useGameStateStore.getState().gameState;
+      const updatedGameState = {
+        ...currentGameState,
+        player: updatedCharacter,
+      };
+
+      useGameStateStore.getState().setGameState(updatedGameState);
+
+      console.log('[GameBattle] ✅ GameState atualizado com novos atributos do personagem');
+    },
+    [player?.attribute_points] // ✅ CORREÇÃO: Dependência para debug do valor anterior
+  );
+
   const handleContinueAdventure = useCallback(async () => {
     setShowVictoryModal(false);
     try {
@@ -1072,11 +1096,29 @@ export default function GameBattle() {
         isOpen={showAttributeModal}
         onClose={() => {
           setShowAttributeModal(false);
-          if (battleRewards && !showVictoryModal) {
+
+          // ✅ CORREÇÃO: Só reabrir VictoryModal se ainda há pontos disponíveis
+          const currentPlayer = useGameStateStore.getState().gameState.player;
+          const stillHasAttributePoints = (currentPlayer?.attribute_points || 0) > 0;
+
+          console.log('[GameBattle] === FECHANDO MODAL DE ATRIBUTOS ===', {
+            battleRewardsExists: Boolean(battleRewards),
+            showVictoryModalCurrent: showVictoryModal,
+            stillHasAttributePoints,
+            currentAttributePoints: currentPlayer?.attribute_points,
+          });
+
+          if (battleRewards && !showVictoryModal && stillHasAttributePoints) {
+            console.log('[GameBattle] ✅ Reabrindo VictoryModal - ainda há pontos para distribuir');
             setShowVictoryModal(true);
+          } else if (!stillHasAttributePoints) {
+            console.log(
+              '[GameBattle] ✅ Não reabrindo VictoryModal - todos os pontos foram distribuídos'
+            );
           }
         }}
         character={player}
+        onAttributesUpdated={handleAttributesUpdated}
       />
 
       {/* Overlay de Fuga */}
