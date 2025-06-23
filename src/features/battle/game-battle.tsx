@@ -20,6 +20,8 @@ import { Button } from '@/components/ui/button';
 import { BattleInitializationService } from '@/services/battle-initialization.service';
 import { QuickActionPanel } from '../character/QuickActionPanel';
 import AttributeDistributionModal from '../character/AttributeDistributionModal';
+import { useBattleLandscape } from '@/hooks/useMediaQuery';
+import { GameLogModal } from './GameLogModal';
 
 interface BattleRewards {
   xp: number;
@@ -418,6 +420,10 @@ export default function GameBattle() {
   const [fleeSuccess, setFleeSuccess] = useState(false);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
   const [, setShowRetryInterface] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+
+  // Hook para detectar landscape mobile/tablet
+  const isBattleLandscape = useBattleLandscape();
   const [victoryRewards, setVictoryRewards] = useState<BattleRewards>({
     xp: 0,
     gold: 0,
@@ -892,8 +898,8 @@ export default function GameBattle() {
   // Interface de erro com retry
   if (initError && !isInitialized) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-        <div className="text-center max-w-lg">
+      <div className="min-h-svh flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+        <div className={`text-center ${isBattleLandscape ? 'max-w-md' : 'max-w-lg'}`}>
           <div className="text-destructive text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-4">Falha na Inicialização da Batalha</h2>
 
@@ -926,8 +932,8 @@ export default function GameBattle() {
   // 🔧 CORREÇÃO: Interface de loading mais específica - só mostrar se realmente carregando
   if (initLoading || (!isInitialized && canInitialize)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-        <div className="text-center max-w-md">
+      <div className="min-h-svh flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+        <div className={`text-center ${isBattleLandscape ? 'max-w-sm' : 'max-w-md'}`}>
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
           <h2 className="text-2xl font-bold mb-2">Inicializando Batalha</h2>
 
@@ -957,8 +963,8 @@ export default function GameBattle() {
   // 🔧 NOVA VALIDAÇÃO: Se não tem inimigo mas deveria ter, mostrar erro
   if (isInitialized && (mode === 'battle' || mode === 'special_event') && !currentEnemy) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-        <div className="text-center max-w-lg">
+      <div className="min-h-svh flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+        <div className={`text-center ${isBattleLandscape ? 'max-w-md' : 'max-w-lg'}`}>
           <div className="text-destructive text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-4">Erro na Inicialização</h2>
 
@@ -1007,13 +1013,15 @@ export default function GameBattle() {
 
   return (
     <>
-      <div className="w-full max-w-6xl">
+      <div
+        className={`w-full ${isBattleLandscape ? 'max-w-4xl mr-16 overflow-y-auto' : 'max-w-6xl'}`}
+      >
         <BattleHeader currentFloor={currentFloorData} playerLevel={player?.level || 1} />
 
         {/* Arena de Batalha */}
-        <div className="mb-6 relative">
+        <div className={`mb-6 relative ${isBattleLandscape ? 'h-full flex flex-col' : ''}`}>
           {/* Quick Action Panel - Desktop - CORRIGIDO: Só renderizar se player existe */}
-          {!isMobilePortrait && player && (
+          {!isMobilePortrait && !isBattleLandscape && player && (
             <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-20 z-10 hidden lg:block">
               <QuickActionPanel
                 handleAction={handleAction}
@@ -1027,7 +1035,7 @@ export default function GameBattle() {
           )}
 
           {/* Quick Action Panel - Mobile - CORRIGIDO: Só renderizar se player existe */}
-          {!isMobilePortrait && player && (
+          {!isMobilePortrait && !isBattleLandscape && player && (
             <div className="fixed bottom-4 left-4 z-20 block lg:hidden">
               <QuickActionPanel
                 handleAction={handleAction}
@@ -1040,6 +1048,22 @@ export default function GameBattle() {
             </div>
           )}
 
+          {/* Quick Action Panel - Battle Landscape Mode - Ocupa altura disponível */}
+          {isBattleLandscape && player && (
+            <div className="fixed right-2 top-1/2 transform -translate-y-1/2 z-20 flex flex-col justify-center max-h-screen py-4">
+              <div className="bg-slate-900/95 rounded-xl border border-slate-700/50 shadow-2xl backdrop-blur-sm">
+                <QuickActionPanel
+                  handleAction={handleAction}
+                  isPlayerTurn={isPlayerTurn}
+                  loading={loading}
+                  player={player}
+                  potionSlots={potionSlots}
+                  loadingPotionSlots={loadingSlots}
+                />
+              </div>
+            </div>
+          )}
+
           <BattleArena
             player={player}
             currentEnemy={currentEnemy || fallbackEnemy}
@@ -1047,26 +1071,33 @@ export default function GameBattle() {
             playerManaPercentage={battleStats.playerManaPercentage}
             enemyHpPercentage={battleStats.enemyHpPercentage}
             isPlayerTurn={isPlayerTurn}
+            gameLogs={gameLogs}
+            onOpenLogModal={() => setShowLogModal(true)}
           />
         </div>
 
-        {/* Interface de Batalha */}
-        <div className="mb-6">
-          <CombinedBattleInterface
-            handleAction={handleAction}
-            isPlayerTurn={isPlayerTurn}
-            loading={loading}
-            player={player}
-            onPlayerStatsUpdate={handlePlayerStatsUpdate}
-            currentEnemy={currentEnemy}
-            battleRewards={battleRewards}
-            potionSlots={potionSlots}
-            loadingPotionSlots={loadingSlots}
-            onSlotsChange={reloadSlots}
-          />
-        </div>
+        {/* Interface de Batalha - Completamente oculta em landscape mobile/tablet */}
+        {!isBattleLandscape && (
+          <div className="mb-6">
+            <CombinedBattleInterface
+              handleAction={handleAction}
+              isPlayerTurn={isPlayerTurn}
+              loading={loading}
+              player={player}
+              onPlayerStatsUpdate={handlePlayerStatsUpdate}
+              currentEnemy={currentEnemy}
+              battleRewards={battleRewards}
+              potionSlots={potionSlots}
+              loadingPotionSlots={loadingSlots}
+              onSlotsChange={reloadSlots}
+            />
+          </div>
+        )}
 
-        <GameLog gameLog={gameLogs} />
+        {/* Game Log - Invisível em landscape mobile/tablet mas mantém scroll */}
+        <div className={`${isBattleLandscape ? 'invisible h-0 overflow-hidden' : ''}`}>
+          <GameLog gameLog={gameLogs} />
+        </div>
       </div>
 
       <VictoryModal
@@ -1132,6 +1163,15 @@ export default function GameBattle() {
             onComplete={handleFleeOverlayComplete}
           />
         </div>
+      )}
+
+      {/* Modal de Log - Apenas em Battle Landscape Mode */}
+      {isBattleLandscape && (
+        <GameLogModal
+          isOpen={showLogModal}
+          onClose={() => setShowLogModal(false)}
+          gameLogs={gameLogs}
+        />
       )}
     </>
   );

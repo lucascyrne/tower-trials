@@ -19,8 +19,8 @@ function AuthenticatedLayoutInner() {
 
   if (isGamePage) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
-        <main className="flex-1 w-full pt-0 pb-0 md:pt-6 md:pb-6">
+      <div className="flex min-h-screen w-full flex-col bg-transparent">
+        <main className="flex-1 w-full p-0 m-0 min-h-screen">
           <Outlet />
         </main>
       </div>

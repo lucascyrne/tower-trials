@@ -70,3 +70,42 @@ export function useMobileLandscape(): boolean {
 
   return isMobileLandscape;
 }
+
+// Hook específico para detectar tablet/mobile landscape para batalha (otimizado)
+export function useBattleLandscape(): boolean {
+  const [isBattleLandscape, setIsBattleLandscape] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkBattleLandscape = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // Detectar dispositivos móveis/tablets em landscape para batalha:
+      // 1. Largura maior que altura (landscape)
+      // 2. Largura entre 480px-1024px (mobile/tablet range)
+      // 3. Altura entre 320px-600px (landscape móvel/tablet)
+      const isLandscape = width > height;
+      const isMobileTabletWidth = width >= 480 && width <= 1024;
+      const isLandscapeHeight = height >= 320 && height <= 600;
+
+      setIsBattleLandscape(isLandscape && isMobileTabletWidth && isLandscapeHeight);
+    };
+
+    checkBattleLandscape();
+
+    window.addEventListener('resize', checkBattleLandscape);
+    window.addEventListener('orientationchange', () => {
+      // Delay para aguardar a mudança de orientação completar
+      setTimeout(checkBattleLandscape, 100);
+    });
+
+    return () => {
+      window.removeEventListener('resize', checkBattleLandscape);
+      window.removeEventListener('orientationchange', checkBattleLandscape);
+    };
+  }, []);
+
+  return isBattleLandscape;
+}

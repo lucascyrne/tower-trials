@@ -25,12 +25,14 @@ import {
   Crosshair,
   ShieldCheck,
   HelpCircle,
+  MessageCircle,
 } from 'lucide-react';
 import { type GamePlayer, type Enemy } from '@/models/game.model';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { ThiefIdleAnimation } from '@/features/character/ThiefIdleAnimation';
 import { StatDisplay } from '@/components/ui/stat-display';
 import { StatusEffectsDisplay } from '@/components/ui/status-effects-display';
+import { useBattleLandscape } from '@/hooks/useMediaQuery';
 
 interface BattleArenaProps {
   player: GamePlayer | null; // CORRIGIDO: Player pode ser null durante inicialização
@@ -45,6 +47,21 @@ interface BattleArenaProps {
     isCritical?: boolean,
     damageType?: string
   ) => void;
+  gameLogs?: Array<{
+    text: string;
+    type:
+      | 'system'
+      | 'battle'
+      | 'lore'
+      | 'skill_xp'
+      | 'level_up'
+      | 'equipment'
+      | 'enemy_action'
+      | 'player_action'
+      | 'damage'
+      | 'healing';
+  }>; // Props opcionais para logs
+  onOpenLogModal?: () => void; // Callback para abrir modal de logs
 }
 
 interface FloatingDamage {
@@ -63,6 +80,8 @@ export function BattleArena({
   playerManaPercentage,
   enemyHpPercentage,
   isPlayerTurn,
+  gameLogs,
+  onOpenLogModal,
 }: BattleArenaProps) {
   // HOOKS SEMPRE PRIMEIRO - Não podem ser condicionais
   const [showPlayerDetails, setShowPlayerDetails] = useState(false);
@@ -70,6 +89,9 @@ export function BattleArena({
   const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);
   const [showShortcutsTooltip, setShowShortcutsTooltip] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Hook para detectar landscape mobile/tablet
+  const isBattleLandscape = useBattleLandscape();
 
   // OTIMIZADO: Sistema mais confiável para detectar mudanças de HP
   const [lastBattleState, setLastBattleState] = useState<{
@@ -286,11 +308,11 @@ export function BattleArena({
             : playerHpPercentage >= 30
               ? 'battle-card-wounded'
               : 'battle-card-critical'
-        }`}
+        } ${isBattleLandscape ? 'transform scale-90 origin-top-left' : ''}`}
       >
-        <CardContent className="p-3 md:p-6">
+        <CardContent className={`${isBattleLandscape ? 'p-2 md:p-3' : 'p-3 md:p-6'}`}>
           {/* Battle Header - Compacto */}
-          <div className="text-center mb-3 md:mb-6">
+          <div className={`text-center ${isBattleLandscape ? 'mb-2 md:mb-3' : 'mb-3 md:mb-6'}`}>
             <div className="flex items-center justify-center gap-2 md:gap-3 mb-2">
               <Badge variant="outline" className="px-2 py-1 text-xs bg-background/50">
                 <Sword className="h-3 w-3 mr-1" />
@@ -308,6 +330,25 @@ export function BattleArena({
                 >
                   {isPlayerTurn ? 'Seu Turno' : 'Turno do Inimigo'}
                 </Badge>
+
+                {/* Ícone de Chat - Apenas em Battle Landscape Mode */}
+                {isBattleLandscape && onOpenLogModal && (
+                  <div className="relative">
+                    <button
+                      onClick={onOpenLogModal}
+                      className="ml-1 text-muted-foreground hover:text-primary transition-colors touch-manipulation bg-background/50 rounded-full p-1.5 border border-border/50 shadow-sm relative"
+                      aria-label="Abrir log de batalha"
+                    >
+                      <MessageCircle className="h-3 w-3 md:h-4 md:w-4" />
+                      {gameLogs && gameLogs.length > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center min-w-[16px]">
+                          {gameLogs.length > 99 ? '99+' : gameLogs.length}
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 {isPlayerTurn && (
                   <div className="relative" ref={tooltipRef}>
                     <button
@@ -387,9 +428,13 @@ export function BattleArena({
           </div>
 
           {/* Main Battle Display - Layout Responsivo */}
-          <div className="grid grid-cols-2 gap-3 md:gap-8 items-start">
+          <div
+            className={`grid grid-cols-2 items-start ${isBattleLandscape ? 'gap-2 md:gap-4' : 'gap-3 md:gap-8'}`}
+          >
             {/* Player Side */}
-            <div className="space-y-2 md:space-y-4">
+            <div
+              className={`${isBattleLandscape ? 'space-y-1 md:space-y-2' : 'space-y-2 md:space-y-4'}`}
+            >
               {/* Player Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">
@@ -923,7 +968,9 @@ export function BattleArena({
             </div>
 
             {/* Enemy Side */}
-            <div className="space-y-2 md:space-y-4">
+            <div
+              className={`${isBattleLandscape ? 'space-y-1 md:space-y-2' : 'space-y-2 md:space-y-4'}`}
+            >
               {/* Enemy Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
                 <div className="relative inline-block mb-2 md:mb-4">

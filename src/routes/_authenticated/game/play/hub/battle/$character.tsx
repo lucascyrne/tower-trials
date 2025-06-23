@@ -3,12 +3,16 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useGame } from '@/hooks/useGame';
 import { toast } from 'sonner';
 import GameBattle from '@/features/battle/game-battle';
+import { useBattleLandscape } from '@/hooks/useMediaQuery';
 
 function BattlePage() {
   const navigate = useNavigate();
   const { character: characterId } = Route.useParams();
   const { loading } = useGame();
   const [isLoading, setIsLoading] = useState(true);
+
+  // Hook para detectar landscape mobile/tablet
+  const isBattleLandscape = useBattleLandscape();
 
   // OTIMIZADO: Controles de estado mais eficientes
   const initializedRef = useRef(false);
@@ -112,7 +116,13 @@ function BattlePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-2 md:p-4">
+    <div
+      className={`min-h-screen w-full flex flex-col bg-gradient-to-b from-background to-secondary m-0 ${
+        isBattleLandscape
+          ? 'items-start justify-start pl-4 pr-2 py-2'
+          : 'items-center justify-center p-2 md:p-4'
+      }`}
+    >
       <GameBattle />
     </div>
   );
