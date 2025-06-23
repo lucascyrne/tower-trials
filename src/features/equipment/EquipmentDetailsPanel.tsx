@@ -5,7 +5,19 @@ import { Badge } from '@/components/ui/badge';
 import { type Character } from '@/models/character.model';
 import { type Equipment } from '@/models/equipment.model';
 import { EquipmentService } from '@/services/equipment.service';
-import { Sword, Shield, Shirt, Gem, Star, Zap, Package } from 'lucide-react';
+import {
+  Sword,
+  Shield,
+  Shirt,
+  Gem,
+  Star,
+  Zap,
+  Package,
+  Heart,
+  Target,
+  Sparkles,
+  TrendingUp,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 interface EquipmentDetailsPanelProps {
@@ -64,7 +76,23 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
       case 'off_hand':
         return 'Mão Secundária';
       case 'armor':
-        return 'Armadura';
+        return 'Escudo';
+      case 'chest':
+        return 'Peitoral';
+      case 'helmet':
+        return 'Capacete';
+      case 'legs':
+        return 'Perneiras';
+      case 'boots':
+        return 'Botas';
+      case 'ring_1':
+        return 'Anel 1';
+      case 'ring_2':
+        return 'Anel 2';
+      case 'necklace':
+        return 'Colar';
+      case 'amulet':
+        return 'Amuleto';
       case 'accessory':
         return 'Acessório';
       default:
@@ -166,6 +194,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
         <div className="space-y-3">
           <h3 className="text-lg font-semibold text-slate-200">Atributos</h3>
           <div className="grid grid-cols-2 gap-3">
+            {/* Stats de Combate Primários */}
             {selectedItem.atk_bonus > 0 && (
               <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
@@ -186,17 +215,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
               </div>
             )}
 
-            {selectedItem.mana_bonus > 0 && (
-              <div className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-purple-400" />
-                  <span className="text-purple-300 font-medium">Mana</span>
-                </div>
-                <p className="text-purple-200 text-lg font-bold">+{selectedItem.mana_bonus}</p>
-              </div>
-            )}
-
-            {selectedItem.speed_bonus && selectedItem.speed_bonus > 0 && (
+            {selectedItem.speed_bonus > 0 && (
               <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-yellow-400" />
@@ -205,11 +224,81 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
                 <p className="text-yellow-200 text-lg font-bold">+{selectedItem.speed_bonus}</p>
               </div>
             )}
+
+            {/* HP e Mana */}
+            {selectedItem.hp_bonus > 0 && (
+              <div className="bg-green-900/30 border border-green-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-green-400" />
+                  <span className="text-green-300 font-medium">HP</span>
+                </div>
+                <p className="text-green-200 text-lg font-bold">+{selectedItem.hp_bonus}</p>
+              </div>
+            )}
+
+            {selectedItem.mana_bonus > 0 && (
+              <div className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  <span className="text-purple-300 font-medium">Mana</span>
+                </div>
+                <p className="text-purple-200 text-lg font-bold">+{selectedItem.mana_bonus}</p>
+              </div>
+            )}
+
+            {/* Stats Avançados */}
+            {selectedItem.critical_chance_bonus > 0 && (
+              <div className="bg-orange-900/30 border border-orange-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-orange-400" />
+                  <span className="text-orange-300 font-medium">Crit. Chance</span>
+                </div>
+                <p className="text-orange-200 text-lg font-bold">
+                  +{selectedItem.critical_chance_bonus.toFixed(1)}%
+                </p>
+              </div>
+            )}
+
+            {selectedItem.critical_damage_bonus > 0 && (
+              <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-red-400" />
+                  <span className="text-red-300 font-medium">Crit. Dano</span>
+                </div>
+                <p className="text-red-200 text-lg font-bold">
+                  +{selectedItem.critical_damage_bonus.toFixed(0)}%
+                </p>
+              </div>
+            )}
+
+            {selectedItem.double_attack_chance_bonus > 0 && (
+              <div className="bg-cyan-900/30 border border-cyan-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-cyan-400" />
+                  <span className="text-cyan-300 font-medium">Duplo Ataque</span>
+                </div>
+                <p className="text-cyan-200 text-lg font-bold">
+                  +{selectedItem.double_attack_chance_bonus.toFixed(1)}%
+                </p>
+              </div>
+            )}
+
+            {selectedItem.magic_damage_bonus > 0 && (
+              <div className="bg-indigo-900/30 border border-indigo-700/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-indigo-400" />
+                  <span className="text-indigo-300 font-medium">Dano Mágico</span>
+                </div>
+                <p className="text-indigo-200 text-lg font-bold">
+                  +{selectedItem.magic_damage_bonus.toFixed(1)}%
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Requisitos */}
-        {selectedItem.level_requirement && selectedItem.level_requirement > 1 && (
+        {selectedItem.level_requirement > 1 && (
           <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-3">
             <h4 className="text-sm font-medium text-slate-300 mb-2">Requisitos</h4>
             <div className="flex items-center gap-2">
@@ -241,8 +330,9 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
             <Button
               onClick={handleUnequip}
               variant="outline"
-              className="w-full border-red-600 text-red-400 hover:bg-red-900/30"
+              className="w-full bg-slate-800/50 border-slate-600 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500 hover:text-slate-200 transition-all duration-200"
             >
+              <Package className="h-4 w-4 mr-2" />
               Desequipar Item
             </Button>
           </div>

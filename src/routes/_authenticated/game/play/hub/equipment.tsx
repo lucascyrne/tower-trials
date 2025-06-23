@@ -60,13 +60,11 @@ function EquipmentPage() {
           setCharacter(charResponse.data);
         }
 
-        // Carregar equipamentos equipados
-        const slotsData = await EquipmentService.getEquippedItems(characterId);
-        setEquippedSlots(slotsData);
-
-        // Carregar equipamentos do inventário
-        const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
-        setCharacterEquipment(equipmentData);
+        // ✅ OTIMIZADO: Uma única requisição para buscar todos os dados
+        const { allEquipment, equippedSlots } =
+          await EquipmentService.getCharacterEquipmentComplete(characterId);
+        setEquippedSlots(equippedSlots);
+        setCharacterEquipment(allEquipment);
 
         // Carregar consumíveis com log detalhado
         console.log('[EquipmentPage] Carregando consumíveis para personagem:', characterId);
@@ -134,11 +132,30 @@ function EquipmentPage() {
     if (!characterId) return;
 
     try {
-      const slotsData = await EquipmentService.getEquippedItems(characterId);
-      setEquippedSlots(slotsData);
+      console.log('[EquipmentPage] Atualizando dados de equipamentos...');
 
-      const equipmentData = await EquipmentService.getCharacterEquipment(characterId);
-      setCharacterEquipment(equipmentData);
+      // ✅ OTIMIZADO: Uma única requisição para atualizar todos os dados
+      const { allEquipment, equippedSlots } =
+        await EquipmentService.getCharacterEquipmentComplete(characterId);
+
+      setEquippedSlots(equippedSlots);
+      setCharacterEquipment(allEquipment);
+
+      // ✅ CORREÇÃO: Atualizar selectedItem se ainda for o mesmo slot
+      if (selectedSlot && selectedItem) {
+        const updatedItem = equippedSlots[selectedSlot as keyof typeof equippedSlots];
+        if (updatedItem && updatedItem.id === selectedItem.id) {
+          console.log('[EquipmentPage] Atualizando selectedItem com dados mais recentes');
+          setSelectedItem(updatedItem);
+        } else if (!updatedItem) {
+          // Item foi desequipado, limpar seleção
+          console.log('[EquipmentPage] Item foi desequipado, limpando seleção');
+          setSelectedItem(null);
+          setSelectedSlot(null);
+        }
+      }
+
+      console.log('[EquipmentPage] Dados de equipamentos atualizados com sucesso');
     } catch (error) {
       console.error('Erro ao atualizar equipamentos:', error);
     }

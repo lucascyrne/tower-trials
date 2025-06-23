@@ -4,6 +4,7 @@ import { produce } from 'immer';
 import { useEffect } from 'react';
 import { type ActionType } from '@/models/game.model';
 import { useGameStateStore } from './useGameStateStore';
+import { useLogStore } from './useLogStore';
 
 import { GameService } from '../services/game.service';
 import { CharacterService } from '../services/character.service';
@@ -154,12 +155,26 @@ export const useBattleStore = create<BattleStore>()(
     processPlayerTurn: async (action: ActionType, spellId?: string, consumableId?: string) => {
       // ✅ CORREÇÃO: Obter stores uma única vez
       const gameStateStore = useGameStateStore.getState();
+      const logStore = useLogStore.getState();
       const initialGameState = gameStateStore.gameState;
 
-      // Criar função de log simplificada para evitar dependências circulares
-      const addGameLogMessage = (message: string, type: string) => {
+      // ✅ CORREÇÃO: Usar o sistema de logs real ao invés de função simplificada
+      const addGameLogMessage = (
+        message: string,
+        type:
+          | 'system'
+          | 'battle'
+          | 'player_action'
+          | 'enemy_action'
+          | 'damage'
+          | 'healing'
+          | 'skill_xp'
+          | 'level_up'
+          | 'equipment'
+          | 'lore'
+      ) => {
+        logStore.addGameLogMessage(message, type);
         console.log(`[GameLog-${type}] ${message}`);
-        // TODO: Integrar com store de log quando disponível
       };
 
       try {
@@ -182,21 +197,61 @@ export const useBattleStore = create<BattleStore>()(
 
         const { newState, skipTurn, message, skillXpGains, gameLogMessages } = playerResult;
 
-        // Adicionar mensagens ao log
+        // ✅ CORREÇÃO CRÍTICA: Adicionar mensagens do resultado ao log de jogo
         if (gameLogMessages?.length) {
           gameLogMessages.forEach(logMsg => {
-            addGameLogMessage(logMsg.message, logMsg.type);
+            addGameLogMessage(
+              logMsg.message,
+              logMsg.type as
+                | 'system'
+                | 'battle'
+                | 'player_action'
+                | 'enemy_action'
+                | 'damage'
+                | 'healing'
+                | 'skill_xp'
+                | 'level_up'
+                | 'equipment'
+                | 'lore'
+            );
           });
         }
 
-        // ✅ CORREÇÃO: Aplicar skill XP usando player do gameState
+        // ✅ CORREÇÃO CRÍTICA: Aplicar skill XP e registrar nos logs
         if (skillXpGains?.length && initialGameState.player?.id) {
-          for (const skillGain of skillXpGains) {
-            await CharacterService.addSkillXp(
-              initialGameState.player.id,
-              skillGain.skill,
-              skillGain.xp
+          console.log(`[BattleStore] Aplicando ${skillXpGains.length} ganhos de skill XP`);
+
+          try {
+            const { messages: skillMessages, skillLevelUps } = await import(
+              '../services/skill-xp.service'
+            ).then(m => m.SkillXpService.applySkillXp(initialGameState.player.id, skillXpGains));
+
+            // ✅ REGISTRAR MENSAGENS DE SKILL XP NO LOG
+            for (const skillMessage of skillMessages) {
+              if (skillMessage.includes('subiu para nível')) {
+                addGameLogMessage(skillMessage, 'level_up');
+              } else {
+                addGameLogMessage(skillMessage, 'skill_xp');
+              }
+            }
+
+            // ✅ REGISTRAR LEVEL UPS DE SKILLS
+            for (const levelUp of skillLevelUps) {
+              const skillDisplayName = await import('../services/skill-xp.service').then(m =>
+                m.SkillXpService.getSkillDisplayName(levelUp.skill)
+              );
+              addGameLogMessage(
+                `🎉 ${skillDisplayName} subiu para nível ${levelUp.newLevel}!`,
+                'level_up'
+              );
+            }
+
+            console.log(
+              `[BattleStore] ✅ Skill XP aplicado: ${skillMessages.length} mensagens, ${skillLevelUps.length} level ups`
             );
+          } catch (skillError) {
+            console.error('[BattleStore] Erro ao aplicar skill XP:', skillError);
+            addGameLogMessage('Erro ao aplicar experiência de habilidade', 'system');
           }
         }
 
@@ -210,6 +265,19 @@ export const useBattleStore = create<BattleStore>()(
             draft.lastPlayerActionMessage = message;
           })
         );
+
+        // ✅ REGISTRAR AÇÃO PRINCIPAL NO LOG
+        if (message && message.trim()) {
+          const logType =
+            action === 'attack'
+              ? 'player_action'
+              : action === 'defend'
+                ? 'player_action'
+                : action === 'spell'
+                  ? 'player_action'
+                  : 'system';
+          addGameLogMessage(message, logType);
+        }
 
         // Verificar condições especiais
         if (action === 'flee' && (newState.fleeSuccessful === true || newState.mode === 'fled')) {
@@ -230,7 +298,7 @@ export const useBattleStore = create<BattleStore>()(
           console.log('[BattleStore] === INIMIGO DERROTADO ===');
           const defeatedState = await GameService.processEnemyDefeat();
           gameStateStore.setGameState(defeatedState);
-          addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'system');
+          addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'battle');
           get().endBattle();
           return;
         }
@@ -250,7 +318,6 @@ export const useBattleStore = create<BattleStore>()(
         // skipTurn = false significa PROCESSAR o turno do inimigo (ações ofensivas)
         if (!skipTurn && newState.currentEnemy && !newState.fleeSuccessful) {
           console.log('[BattleStore] === PROCESSANDO TURNO DO INIMIGO (AÇÃO OFENSIVA) ===');
-          addGameLogMessage(message, 'player_action');
 
           // Delay para feedback visual
           setTimeout(() => {
@@ -263,11 +330,11 @@ export const useBattleStore = create<BattleStore>()(
             skipTurn,
             allowCombos: skipTurn,
           });
-          addGameLogMessage(message, 'player_action');
           get().endBattle();
         }
       } catch (error) {
         console.error('[BattleStore] Erro no turno do jogador:', error);
+        addGameLogMessage('Erro durante ação do jogador', 'system');
         throw error;
       }
     },
@@ -275,12 +342,26 @@ export const useBattleStore = create<BattleStore>()(
     processEnemyTurn: async (_playerAction: ActionType, playerDefended: boolean) => {
       // ✅ CORREÇÃO: Obter stores uma única vez
       const gameStateStore = useGameStateStore.getState();
+      const logStore = useLogStore.getState();
       const initialGameState = gameStateStore.gameState;
 
-      // Criar função de log simplificada para evitar dependências circulares
-      const addGameLogMessage = (message: string, type: string) => {
+      // ✅ CORREÇÃO: Usar o sistema de logs real
+      const addGameLogMessage = (
+        message: string,
+        type:
+          | 'system'
+          | 'battle'
+          | 'player_action'
+          | 'enemy_action'
+          | 'damage'
+          | 'healing'
+          | 'skill_xp'
+          | 'level_up'
+          | 'equipment'
+          | 'lore'
+      ) => {
+        logStore.addGameLogMessage(message, type);
         console.log(`[GameLog-${type}] ${message}`);
-        // TODO: Integrar com store de log quando disponível
       };
 
       try {
@@ -308,13 +389,42 @@ export const useBattleStore = create<BattleStore>()(
 
         const { newState: finalState, skillXpGains: enemySkillXpGains } = enemyResult;
 
-        // ✅ CORREÇÃO: Aplicar skill XP usando player do gameState
+        // ✅ CORREÇÃO CRÍTICA: Aplicar skill XP do turno do inimigo (ex: defesa)
         if (enemySkillXpGains?.length && initialGameState.player?.id) {
-          for (const skillGain of enemySkillXpGains) {
-            await CharacterService.addSkillXp(
-              initialGameState.player.id,
-              skillGain.skill,
-              skillGain.xp
+          console.log(
+            `[BattleStore] Aplicando ${enemySkillXpGains.length} ganhos de skill XP do turno do inimigo`
+          );
+
+          try {
+            const { messages: skillMessages, skillLevelUps } = await import(
+              '../services/skill-xp.service'
+            ).then(m =>
+              m.SkillXpService.applySkillXp(initialGameState.player.id, enemySkillXpGains)
+            );
+
+            // ✅ REGISTRAR MENSAGENS DE SKILL XP NO LOG
+            for (const skillMessage of skillMessages) {
+              if (skillMessage.includes('subiu para nível')) {
+                addGameLogMessage(skillMessage, 'level_up');
+              } else {
+                addGameLogMessage(skillMessage, 'skill_xp');
+              }
+            }
+
+            // ✅ REGISTRAR LEVEL UPS DE SKILLS
+            for (const levelUp of skillLevelUps) {
+              const skillDisplayName = await import('../services/skill-xp.service').then(m =>
+                m.SkillXpService.getSkillDisplayName(levelUp.skill)
+              );
+              addGameLogMessage(
+                `🎉 ${skillDisplayName} subiu para nível ${levelUp.newLevel}!`,
+                'level_up'
+              );
+            }
+          } catch (skillError) {
+            console.error(
+              '[BattleStore] Erro ao aplicar skill XP do turno do inimigo:',
+              skillError
             );
           }
         }
@@ -322,6 +432,7 @@ export const useBattleStore = create<BattleStore>()(
         // Verificar se jogador morreu
         if (finalState.mode === 'gameover') {
           gameStateStore.setGameState(finalState);
+          addGameLogMessage('Você foi derrotado!', 'battle');
           get().endBattle();
           return;
         }
@@ -335,7 +446,7 @@ export const useBattleStore = create<BattleStore>()(
           );
         }
 
-        // Mostrar feedback do inimigo
+        // ✅ REGISTRAR AÇÃO DO INIMIGO NO LOG
         if (finalState.gameMessage?.trim()) {
           const messageType =
             finalState.gameMessage.includes('causou') && finalState.gameMessage.includes('dano')
@@ -367,6 +478,7 @@ export const useBattleStore = create<BattleStore>()(
         get().endBattle();
       } catch (error) {
         console.error('[BattleStore] Erro no turno do inimigo:', error);
+        addGameLogMessage('Erro durante turno do inimigo', 'system');
         get().endBattle();
       }
     },

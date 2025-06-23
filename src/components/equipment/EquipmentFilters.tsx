@@ -53,12 +53,12 @@ export const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
   compact = false,
 }) => {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Filtros por Tipo */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <label className="text-xs font-medium text-slate-400">Tipo</label>
         <div
-          className={`grid gap-1 ${
+          className={`grid gap-2 ${
             compact ? 'grid-cols-5 sm:grid-cols-10' : 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-10'
           }`}
         >
@@ -76,11 +76,11 @@ export const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
                   isActive
                     ? `bg-slate-800/80 ${filter.color} border border-slate-700`
                     : `text-slate-500 hover:${filter.color} hover:bg-slate-800/50`
-                } ${compact ? 'p-1.5' : 'p-2'} transition-all duration-200`}
+                } ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} transition-all duration-200 flex items-center justify-center gap-1.5`}
                 title={filter.label}
               >
                 <IconComponent className={compact ? 'h-3 w-3' : 'h-4 w-4'} />
-                {!compact && <span className="ml-2 text-xs hidden sm:inline">{filter.label}</span>}
+                {!compact && <span className="text-xs hidden sm:inline">{filter.label}</span>}
               </Button>
             );
           })}
@@ -88,9 +88,9 @@ export const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
       </div>
 
       {/* Ordenação */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <label className="text-xs font-medium text-slate-400">Ordenar por</label>
-        <div className={`grid gap-1 ${compact ? 'grid-cols-5' : 'grid-cols-2 sm:grid-cols-5'}`}>
+        <div className={`grid gap-2 ${compact ? 'grid-cols-5' : 'grid-cols-2 sm:grid-cols-5'}`}>
           {SORT_OPTIONS.map(sort => {
             const IconComponent = sort.icon;
             const isActive = sortType === sort.value;
@@ -105,13 +105,11 @@ export const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
                   isActive
                     ? `bg-slate-800/80 ${sort.color} border border-slate-700`
                     : `text-slate-500 hover:${sort.color} hover:bg-slate-800/50`
-                } ${compact ? 'p-1.5' : 'p-2'} transition-all duration-200`}
+                } ${compact ? 'px-2 py-1.5' : 'px-3 py-2'} transition-all duration-200 flex items-center justify-center gap-1.5`}
                 title={sort.label}
               >
                 <IconComponent className={compact ? 'h-3 w-3' : 'h-4 w-4'} />
-                <span
-                  className={`ml-2 text-xs ${compact ? 'hidden lg:inline' : 'hidden sm:inline'}`}
-                >
+                <span className={`text-xs ${compact ? 'hidden lg:inline' : 'hidden sm:inline'}`}>
                   {sort.label}
                 </span>
               </Button>

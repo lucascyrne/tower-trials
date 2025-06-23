@@ -668,10 +668,61 @@ export class CharacterService {
               gameStatePlayer.hp !== cachedCharacter.hp);
 
           if (cacheAge < maxCacheAge && !hasNewerGameData) {
-            console.log('[CharacterService] ✅ Reutilizando dados da store Zustand (cache válido)');
+            console.log(
+              '[CharacterService] 🔄 Cache Zustand encontrado mas recalculando bônus de equipamentos'
+            );
+
+            // ✅ CORREÇÃO: Sempre recalcular bônus de equipamentos mesmo com cache
+            const { EquipmentService } = await import('./equipment.service');
+            const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
+            const equipmentBonuses =
+              equipmentBonusResponse.success && equipmentBonusResponse.data
+                ? equipmentBonusResponse.data
+                : {
+                    total_atk_bonus: 0,
+                    total_def_bonus: 0,
+                    total_mana_bonus: 0,
+                    total_speed_bonus: 0,
+                    total_hp_bonus: 0,
+                    total_critical_chance_bonus: 0,
+                    total_critical_damage_bonus: 0,
+                    total_double_attack_chance_bonus: 0,
+                    total_magic_damage_bonus: 0,
+                  };
+
             const cachedCharacter = store.selectedCharacter;
 
-            // Converter Character para GamePlayer usando dados da store
+            // ✅ CORREÇÃO: Calcular stats base e totais usando cache + equipamentos
+            const characterStatsResponse =
+              await CharacterStatsService.calculateDerivedStats(cachedCharacter);
+
+            const baseStats = {
+              hp: characterStatsResponse.hp,
+              max_hp: characterStatsResponse.max_hp,
+              mana: characterStatsResponse.mana,
+              max_mana: characterStatsResponse.max_mana,
+              atk: characterStatsResponse.atk,
+              def: characterStatsResponse.def,
+              speed: characterStatsResponse.speed,
+            };
+
+            const totalStats = {
+              hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
+              max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
+              mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
+              max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
+              atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
+              def: baseStats.def + equipmentBonuses.total_def_bonus,
+              speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
+            };
+
+            console.log(`[CharacterService] Cache Zustand + Equipamentos:`, {
+              base: baseStats,
+              equipment: equipmentBonuses,
+              total: totalStats,
+            });
+
+            // Converter Character para GamePlayer usando dados da store + equipamentos
             const gamePlayer: GamePlayer = {
               id: cachedCharacter.id,
               user_id: cachedCharacter.user_id,
@@ -680,13 +731,13 @@ export class CharacterService {
               xp: cachedCharacter.xp,
               xp_next_level: cachedCharacter.xp_next_level,
               gold: cachedCharacter.gold,
-              hp: cachedCharacter.hp,
-              max_hp: cachedCharacter.max_hp,
-              mana: cachedCharacter.mana,
-              max_mana: cachedCharacter.max_mana,
-              atk: cachedCharacter.atk,
-              def: cachedCharacter.def,
-              speed: cachedCharacter.speed,
+              hp: totalStats.hp,
+              max_hp: totalStats.max_hp,
+              mana: totalStats.mana,
+              max_mana: totalStats.max_mana,
+              atk: totalStats.atk,
+              def: totalStats.def,
+              speed: totalStats.speed,
               created_at: cachedCharacter.created_at,
               updated_at: cachedCharacter.updated_at,
               isPlayerTurn: true,
@@ -726,28 +777,36 @@ export class CharacterService {
               defense_mastery_xp: cachedCharacter.defense_mastery_xp || 0,
               magic_mastery_xp: cachedCharacter.magic_mastery_xp || 0,
 
-              // Stats derivados calculados
-              critical_chance: cachedCharacter.critical_chance || 0,
-              critical_damage: cachedCharacter.critical_damage || 0,
-              magic_damage_bonus: 0,
-              magic_attack: 0,
-              double_attack_chance: 0,
+              // ✅ CORREÇÃO: Stats derivados incluindo equipamentos
+              critical_chance:
+                characterStatsResponse.critical_chance +
+                equipmentBonuses.total_critical_chance_bonus,
+              critical_damage:
+                characterStatsResponse.critical_damage +
+                equipmentBonuses.total_critical_damage_bonus,
+              magic_damage_bonus:
+                characterStatsResponse.magic_damage_bonus +
+                equipmentBonuses.total_magic_damage_bonus,
+              magic_attack: characterStatsResponse.magic_attack,
+              double_attack_chance:
+                characterStatsResponse.double_attack_chance +
+                equipmentBonuses.total_double_attack_chance_bonus,
 
-              // Stats base para exibição
-              base_hp: cachedCharacter.hp,
-              base_max_hp: cachedCharacter.max_hp,
-              base_mana: cachedCharacter.mana,
-              base_max_mana: cachedCharacter.max_mana,
-              base_atk: cachedCharacter.atk,
-              base_def: cachedCharacter.def,
-              base_speed: cachedCharacter.speed,
+              // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
+              base_hp: baseStats.hp,
+              base_max_hp: baseStats.max_hp,
+              base_mana: baseStats.mana,
+              base_max_mana: baseStats.max_mana,
+              base_atk: baseStats.atk,
+              base_def: baseStats.def,
+              base_speed: baseStats.speed,
 
-              // Bônus de equipamentos para exibição
-              equipment_hp_bonus: 0,
-              equipment_mana_bonus: 0,
-              equipment_atk_bonus: 0,
-              equipment_def_bonus: 0,
-              equipment_speed_bonus: 0,
+              // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
+              equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
+              equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
+              equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
+              equipment_def_bonus: equipmentBonuses.total_def_bonus,
+              equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
             };
 
             // Carregar magias equipadas de forma assíncrona apenas se necessário
@@ -800,7 +859,55 @@ export class CharacterService {
               store.setSelectedCharacter(cachedCharacter);
             }
 
-            // Converter Character para GamePlayer usando dados em cache
+            // ✅ CORREÇÃO: Recalcular bônus de equipamentos mesmo com cache de service
+            const { EquipmentService } = await import('./equipment.service');
+            const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
+            const equipmentBonuses =
+              equipmentBonusResponse.success && equipmentBonusResponse.data
+                ? equipmentBonusResponse.data
+                : {
+                    total_atk_bonus: 0,
+                    total_def_bonus: 0,
+                    total_mana_bonus: 0,
+                    total_speed_bonus: 0,
+                    total_hp_bonus: 0,
+                    total_critical_chance_bonus: 0,
+                    total_critical_damage_bonus: 0,
+                    total_double_attack_chance_bonus: 0,
+                    total_magic_damage_bonus: 0,
+                  };
+
+            // Calcular stats usando cache + equipamentos atuais
+            const characterStatsResponse =
+              await CharacterStatsService.calculateDerivedStats(cachedCharacter);
+
+            const baseStats = {
+              hp: characterStatsResponse.hp,
+              max_hp: characterStatsResponse.max_hp,
+              mana: characterStatsResponse.mana,
+              max_mana: characterStatsResponse.max_mana,
+              atk: characterStatsResponse.atk,
+              def: characterStatsResponse.def,
+              speed: characterStatsResponse.speed,
+            };
+
+            const totalStats = {
+              hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
+              max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
+              mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
+              max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
+              atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
+              def: baseStats.def + equipmentBonuses.total_def_bonus,
+              speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
+            };
+
+            console.log(`[CharacterService] Cache Service + Equipamentos:`, {
+              base: baseStats,
+              equipment: equipmentBonuses,
+              total: totalStats,
+            });
+
+            // Converter Character para GamePlayer usando dados em cache + equipamentos
             const gamePlayer: GamePlayer = {
               id: cachedCharacter.id,
               user_id: cachedCharacter.user_id,
@@ -809,13 +916,13 @@ export class CharacterService {
               xp: cachedCharacter.xp,
               xp_next_level: cachedCharacter.xp_next_level,
               gold: cachedCharacter.gold,
-              hp: cachedCharacter.hp,
-              max_hp: cachedCharacter.max_hp,
-              mana: cachedCharacter.mana,
-              max_mana: cachedCharacter.max_mana,
-              atk: cachedCharacter.atk,
-              def: cachedCharacter.def,
-              speed: cachedCharacter.speed,
+              hp: totalStats.hp,
+              max_hp: totalStats.max_hp,
+              mana: totalStats.mana,
+              max_mana: totalStats.max_mana,
+              atk: totalStats.atk,
+              def: totalStats.def,
+              speed: totalStats.speed,
               created_at: cachedCharacter.created_at,
               updated_at: cachedCharacter.updated_at,
               isPlayerTurn: true,
@@ -855,28 +962,36 @@ export class CharacterService {
               defense_mastery_xp: cachedCharacter.defense_mastery_xp || 0,
               magic_mastery_xp: cachedCharacter.magic_mastery_xp || 0,
 
-              // Stats derivados calculados
-              critical_chance: cachedCharacter.critical_chance || 0,
-              critical_damage: cachedCharacter.critical_damage || 0,
-              magic_damage_bonus: 0,
-              magic_attack: 0,
-              double_attack_chance: 0,
+              // ✅ CORREÇÃO: Stats derivados incluindo equipamentos
+              critical_chance:
+                characterStatsResponse.critical_chance +
+                equipmentBonuses.total_critical_chance_bonus,
+              critical_damage:
+                characterStatsResponse.critical_damage +
+                equipmentBonuses.total_critical_damage_bonus,
+              magic_damage_bonus:
+                characterStatsResponse.magic_damage_bonus +
+                equipmentBonuses.total_magic_damage_bonus,
+              magic_attack: characterStatsResponse.magic_attack,
+              double_attack_chance:
+                characterStatsResponse.double_attack_chance +
+                equipmentBonuses.total_double_attack_chance_bonus,
 
-              // Stats base para exibição
-              base_hp: cachedCharacter.hp,
-              base_max_hp: cachedCharacter.max_hp,
-              base_mana: cachedCharacter.mana,
-              base_max_mana: cachedCharacter.max_mana,
-              base_atk: cachedCharacter.atk,
-              base_def: cachedCharacter.def,
-              base_speed: cachedCharacter.speed,
+              // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
+              base_hp: baseStats.hp,
+              base_max_hp: baseStats.max_hp,
+              base_mana: baseStats.mana,
+              base_max_mana: baseStats.max_mana,
+              base_atk: baseStats.atk,
+              base_def: baseStats.def,
+              base_speed: baseStats.speed,
 
-              // Bônus de equipamentos para exibição
-              equipment_hp_bonus: 0,
-              equipment_mana_bonus: 0,
-              equipment_atk_bonus: 0,
-              equipment_def_bonus: 0,
-              equipment_speed_bonus: 0,
+              // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
+              equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
+              equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
+              equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
+              equipment_def_bonus: equipmentBonuses.total_def_bonus,
+              equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
             };
 
             // Carregar magias equipadas de forma assíncrona apenas se necessário
@@ -927,12 +1042,60 @@ export class CharacterService {
       // Calcular stats derivados apenas se necessário
       const derivedStats = await CharacterStatsService.calculateDerivedStats(charData);
 
+      // ✅ CORREÇÃO CRÍTICA: Calcular bônus de equipamentos reais
+      const { EquipmentService } = await import('./equipment.service');
+      const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
+      const equipmentBonuses =
+        equipmentBonusResponse.success && equipmentBonusResponse.data
+          ? equipmentBonusResponse.data
+          : {
+              total_atk_bonus: 0,
+              total_def_bonus: 0,
+              total_mana_bonus: 0,
+              total_speed_bonus: 0,
+              total_hp_bonus: 0,
+              total_critical_chance_bonus: 0,
+              total_critical_damage_bonus: 0,
+              total_double_attack_chance_bonus: 0,
+              total_magic_damage_bonus: 0,
+            };
+
+      console.log(`[CharacterService] Bônus de equipamentos calculados:`, equipmentBonuses);
+
       // Carregar magias equipadas
       const spellsResponse = await import('./spell.service').then(m =>
         m.SpellService.getCharacterEquippedSpells(characterId)
       );
       const equippedSpells =
         spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
+
+      // ✅ CORREÇÃO CRÍTICA: Calcular stats base (sem equipamentos) e totais (com equipamentos)
+      const baseStats = {
+        hp: derivedStats.hp,
+        max_hp: derivedStats.max_hp,
+        mana: derivedStats.mana,
+        max_mana: derivedStats.max_mana,
+        atk: derivedStats.atk,
+        def: derivedStats.def,
+        speed: derivedStats.speed,
+      };
+
+      // Stats totais incluindo equipamentos
+      const totalStats = {
+        hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
+        max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
+        mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
+        max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
+        atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
+        def: baseStats.def + equipmentBonuses.total_def_bonus,
+        speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
+      };
+
+      console.log(`[CharacterService] Stats calculados:`, {
+        base: baseStats,
+        equipment: equipmentBonuses,
+        total: totalStats,
+      });
 
       const gamePlayer: GamePlayer = {
         id: charData.id,
@@ -942,13 +1105,13 @@ export class CharacterService {
         xp: charData.xp,
         xp_next_level: charData.xp_next_level,
         gold: charData.gold,
-        hp: derivedStats.hp,
-        max_hp: derivedStats.max_hp,
-        mana: derivedStats.mana,
-        max_mana: derivedStats.max_mana,
-        atk: derivedStats.atk,
-        def: derivedStats.def,
-        speed: derivedStats.speed,
+        hp: totalStats.hp,
+        max_hp: totalStats.max_hp,
+        mana: totalStats.mana,
+        max_mana: totalStats.max_mana,
+        atk: totalStats.atk,
+        def: totalStats.def,
+        speed: totalStats.speed,
         created_at: charData.created_at,
         updated_at: charData.updated_at,
         isPlayerTurn: true,
@@ -988,28 +1151,32 @@ export class CharacterService {
         defense_mastery_xp: charData.defense_mastery_xp || 0,
         magic_mastery_xp: charData.magic_mastery_xp || 0,
 
-        // Stats derivados calculados
-        critical_chance: derivedStats.critical_chance,
-        critical_damage: derivedStats.critical_damage,
-        magic_damage_bonus: derivedStats.magic_damage_bonus,
+        // Stats derivados calculados (incluindo bônus de equipamentos para críticos)
+        critical_chance:
+          derivedStats.critical_chance + equipmentBonuses.total_critical_chance_bonus,
+        critical_damage:
+          derivedStats.critical_damage + equipmentBonuses.total_critical_damage_bonus,
+        magic_damage_bonus:
+          derivedStats.magic_damage_bonus + equipmentBonuses.total_magic_damage_bonus,
         magic_attack: derivedStats.magic_attack,
-        double_attack_chance: derivedStats.double_attack_chance,
+        double_attack_chance:
+          derivedStats.double_attack_chance + equipmentBonuses.total_double_attack_chance_bonus,
 
-        // Stats base para exibição
-        base_hp: derivedStats.hp,
-        base_max_hp: derivedStats.max_hp,
-        base_mana: derivedStats.mana,
-        base_max_mana: derivedStats.max_mana,
-        base_atk: derivedStats.atk,
-        base_def: derivedStats.def,
-        base_speed: derivedStats.speed,
+        // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
+        base_hp: baseStats.hp,
+        base_max_hp: baseStats.max_hp,
+        base_mana: baseStats.mana,
+        base_max_mana: baseStats.max_mana,
+        base_atk: baseStats.atk,
+        base_def: baseStats.def,
+        base_speed: baseStats.speed,
 
-        // Bônus de equipamentos para exibição
-        equipment_hp_bonus: 0,
-        equipment_mana_bonus: 0,
-        equipment_atk_bonus: 0,
-        equipment_def_bonus: 0,
-        equipment_speed_bonus: 0,
+        // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
+        equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
+        equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
+        equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
+        equipment_def_bonus: equipmentBonuses.total_def_bonus,
+        equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
       };
 
       // ✅ CORREÇÃO CRÍTICA: Aplicar auto-heal se solicitado para garantir HP consistente

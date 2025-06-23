@@ -32,16 +32,18 @@ interface CharacterInfoCardProps {
 }
 
 /**
- * ✅ OTIMIZAÇÕES IMPLEMENTADAS NO CHARACTERINFOCARD:
+ * ✅ OTIMIZAÇÕES E RECURSOS IMPLEMENTADOS NO CHARACTERINFOCARD:
  *
  * 1. **React.memo**: Evita re-renderizações desnecessárias quando as props não mudam
  * 2. **useMemo para cálculos**: Progress bars, atributos e skills são memoizados
- * 3. **StatDisplay aprimorado**: HP, Mana, ATK, DEF, SPD e Magic Attack mostram:
- *    - Valores base vs equipados com cores adequadas
- *    - Tooltips detalhados com breakdown dos bônus
- *    - Modificações de efeitos mágicos ativos
+ * 3. **StatDisplay universal**: Todos os stats principais (HP, Mana, ATK, DEF, SPD, Magic Attack) mostram:
+ *    - Diferenciação clara entre valores base e bônus de equipamentos
+ *    - Notação "(+x)" para bônus de equipamentos
+ *    - Tooltips detalhados com breakdown completo dos bônus
+ *    - Modificações de efeitos mágicos ativos com indicadores visuais
  * 4. **Layout otimizado**: Stats derivados organizados e pontos de atributo destacados
  * 5. **Performance**: Dependências específicas nos useMemo para evitar recálculos
+ * 6. **Transparência total**: Usuário vê claramente de onde vem cada bônus nos stats
  */
 
 // ✅ OTIMIZAÇÃO: Usar React.memo para evitar re-renderizações desnecessárias
@@ -359,7 +361,7 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Status</h3>
 
-            {/* ✅ CORREÇÃO: HP com StatDisplay */}
+            {/* HP com diferenciação base/equipamentos */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
@@ -369,16 +371,16 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                     <div className="h-2 w-2 bg-green-400 rounded-full animate-pulse" />
                   )}
                 </span>
-                <div className="text-slate-400 text-right">
+                <div className="text-right">
                   <StatDisplay
                     value={player.max_hp}
                     baseValue={player.base_max_hp}
                     equipmentBonus={player.equipment_hp_bonus}
-                    className="text-slate-400"
+                    className="text-red-400 font-medium"
                     size="sm"
                     showTooltip={true}
                   />
-                  <div className="text-xs">
+                  <div className="text-xs text-slate-400">
                     {player.hp}/{player.max_hp}
                   </div>
                 </div>
@@ -392,23 +394,23 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
               </div>
             </div>
 
-            {/* ✅ CORREÇÃO: Mana com StatDisplay */}
+            {/* Mana com diferenciação base/equipamentos */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
                   <Sparkles className="h-4 w-4 text-blue-400" />
                   Mana
                 </span>
-                <div className="text-slate-400 text-right">
+                <div className="text-right">
                   <StatDisplay
                     value={player.max_mana}
                     baseValue={player.base_max_mana}
                     equipmentBonus={player.equipment_mana_bonus}
-                    className="text-slate-400"
+                    className="text-blue-400 font-medium"
                     size="sm"
                     showTooltip={true}
                   />
-                  <div className="text-xs">
+                  <div className="text-xs text-slate-400">
                     {player.mana}/{player.max_mana}
                   </div>
                 </div>
@@ -450,7 +452,7 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
               Combat Stats
             </h3>
 
-            {/* Stats principais em grid */}
+            {/* Stats principais com diferenciação base/equipamentos */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -458,43 +460,39 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                     <Sword className="h-4 w-4 text-red-400" />
                     <span className="text-muted-foreground">ATK</span>
                   </div>
-                  <span className="font-bold text-red-400">
-                    <StatDisplay
-                      value={player.atk}
-                      baseValue={player.base_atk}
-                      equipmentBonus={player.equipment_atk_bonus}
-                      modifications={
-                        player.active_effects?.attribute_modifications?.filter(
-                          mod => mod.attribute === 'atk'
-                        ) || []
-                      }
-                      className="text-red-400"
-                      size="sm"
-                      showTooltip={true}
-                    />
-                  </span>
+                  <StatDisplay
+                    value={player.atk}
+                    baseValue={player.base_atk}
+                    equipmentBonus={player.equipment_atk_bonus}
+                    modifications={
+                      player.active_effects?.attribute_modifications?.filter(
+                        mod => mod.attribute === 'atk'
+                      ) || []
+                    }
+                    className="text-red-400 font-bold"
+                    size="sm"
+                    showTooltip={true}
+                  />
                 </div>
 
-                {/* ✅ CORREÇÃO: Magic Attack com StatDisplay - Evitar renderização de 0 */}
+                {/* Magic Attack com diferenciação base/equipamentos */}
                 {Boolean(player.magic_attack && player.magic_attack > 0) && (
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
                       <Sparkles className="h-4 w-4 text-purple-400" />
                       <span className="text-muted-foreground">M.ATK</span>
                     </div>
-                    <span className="font-bold text-purple-400">
-                      <StatDisplay
-                        value={player.magic_attack || 0}
-                        modifications={
-                          player.active_effects?.attribute_modifications?.filter(
-                            mod => mod.attribute === 'magic_attack'
-                          ) || []
-                        }
-                        className="text-purple-400"
-                        size="sm"
-                        showTooltip={true}
-                      />
-                    </span>
+                    <StatDisplay
+                      value={player.magic_attack || 0}
+                      modifications={
+                        player.active_effects?.attribute_modifications?.filter(
+                          mod => mod.attribute === 'magic_attack'
+                        ) || []
+                      }
+                      className="text-purple-400 font-bold"
+                      size="sm"
+                      showTooltip={true}
+                    />
                   </div>
                 )}
 
@@ -503,21 +501,19 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                     <Shield className="h-4 w-4 text-blue-400" />
                     <span className="text-muted-foreground">DEF</span>
                   </div>
-                  <span className="font-bold text-blue-400">
-                    <StatDisplay
-                      value={player.def}
-                      baseValue={player.base_def}
-                      equipmentBonus={player.equipment_def_bonus}
-                      modifications={
-                        player.active_effects?.attribute_modifications?.filter(
-                          mod => mod.attribute === 'def'
-                        ) || []
-                      }
-                      className="text-blue-400"
-                      size="sm"
-                      showTooltip={true}
-                    />
-                  </span>
+                  <StatDisplay
+                    value={player.def}
+                    baseValue={player.base_def}
+                    equipmentBonus={player.equipment_def_bonus}
+                    modifications={
+                      player.active_effects?.attribute_modifications?.filter(
+                        mod => mod.attribute === 'def'
+                      ) || []
+                    }
+                    className="text-blue-400 font-bold"
+                    size="sm"
+                    showTooltip={true}
+                  />
                 </div>
               </div>
 
@@ -527,21 +523,19 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                     <Zap className="h-4 w-4 text-yellow-400" />
                     <span className="text-muted-foreground">SPD</span>
                   </div>
-                  <span className="font-bold text-yellow-400">
-                    <StatDisplay
-                      value={player.speed}
-                      baseValue={player.base_speed}
-                      equipmentBonus={player.equipment_speed_bonus}
-                      modifications={
-                        player.active_effects?.attribute_modifications?.filter(
-                          mod => mod.attribute === 'speed'
-                        ) || []
-                      }
-                      className="text-yellow-400"
-                      size="sm"
-                      showTooltip={true}
-                    />
-                  </span>
+                  <StatDisplay
+                    value={player.speed}
+                    baseValue={player.base_speed}
+                    equipmentBonus={player.equipment_speed_bonus}
+                    modifications={
+                      player.active_effects?.attribute_modifications?.filter(
+                        mod => mod.attribute === 'speed'
+                      ) || []
+                    }
+                    className="text-yellow-400 font-bold"
+                    size="sm"
+                    showTooltip={true}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
@@ -554,15 +548,15 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                   </span>
                 </div>
 
-                {/* ✅ NOVO: Dano Crítico */}
-                {Boolean(player.critical_damage && player.critical_damage > 130) && (
+                {/* Bônus Mágico */}
+                {Boolean(player.magic_damage_bonus && player.magic_damage_bonus > 0) && (
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
-                      <Target className="h-4 w-4 text-orange-400" />
-                      <span className="text-muted-foreground">C.DMG</span>
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <span className="text-muted-foreground">M.BONUS</span>
                     </div>
-                    <span className="font-bold text-orange-400">
-                      {(player.critical_damage || 0).toFixed(0)}%
+                    <span className="font-bold text-purple-400">
+                      +{Math.round(player.magic_damage_bonus || 0)}%
                     </span>
                   </div>
                 )}
@@ -608,68 +602,18 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
               })}
             </div>
 
-            {/* ✅ NOVO: Stats derivados melhorados */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                Stats Derivados
-              </h4>
-
-              {/* Chance Crítica */}
-              <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
+            {/* Pontos de atributo disponíveis */}
+            {Boolean(player.attribute_points && player.attribute_points > 0) && (
+              <div className="bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/30">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 text-orange-400" />
-                    <span className="text-xs font-medium text-slate-300">Crítico</span>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-yellow-400" />
+                    <span className="text-sm font-medium text-yellow-300">Pontos Disponíveis</span>
                   </div>
-                  <p className="text-sm font-bold text-orange-400">
-                    {(player.critical_chance || 0).toFixed(1)}%
-                  </p>
+                  <p className="text-lg font-bold text-yellow-400">{player.attribute_points}</p>
                 </div>
               </div>
-
-              {/* Dano Crítico se significativo */}
-              {Boolean(player.critical_damage && player.critical_damage > 130) && (
-                <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Target className="h-3 w-3 text-red-400" />
-                      <span className="text-xs font-medium text-slate-300">Dano Crit</span>
-                    </div>
-                    <p className="text-sm font-bold text-red-400">
-                      {(player.critical_damage || 0).toFixed(0)}%
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Bônus Mágico se houver */}
-              {Boolean(player.magic_damage_bonus && player.magic_damage_bonus > 0) && (
-                <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-purple-400" />
-                      <span className="text-xs font-medium text-slate-300">Bônus Mag</span>
-                    </div>
-                    <p className="text-sm font-bold text-purple-400">
-                      +{Math.round(player.magic_damage_bonus || 0)}%
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Pontos de atributo disponíveis */}
-              {Boolean(player.attribute_points && player.attribute_points > 0) && (
-                <div className="bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-yellow-400" />
-                      <span className="text-xs font-medium text-yellow-300">Pontos</span>
-                    </div>
-                    <p className="text-sm font-bold text-yellow-400">{player.attribute_points}</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

@@ -198,7 +198,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     if (!slot) return null;
 
     // Todos os slots de armadura estão habilitados
-    return renderEquipmentSlot(slot.slotType, slot.label);
+      return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   const renderAccessorySlot = (index: number) => {
@@ -214,7 +214,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     if (!slot) return null;
 
     // Todos os slots de acessórios estão habilitados
-    return renderEquipmentSlot(slot.slotType, slot.label);
+      return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   return (

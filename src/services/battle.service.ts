@@ -269,6 +269,7 @@ export class BattleService {
           totalDamage = damageResult.damage;
           const isCritical = damageResult.isCritical;
           const isDoubleAttack = damageResult.isDoubleAttack;
+          const totalAttacks = damageResult.totalAttacks;
 
           newState.currentEnemy.hp = Math.max(0, newState.currentEnemy.hp - totalDamage);
 
@@ -279,21 +280,47 @@ export class BattleService {
           // ✅ CORREÇÃO CRÍTICA: Ataques devem processar turno do inimigo (skipTurn = false)
           skipTurn = false;
 
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log padronizado de ataque
-          LoggingUtils.logPlayerAttack(
-            newState.player.name,
-            newState.currentEnemy.name,
-            totalDamage,
-            isCritical,
-            isDoubleAttack,
-            {
-              playerId: newState.player.id,
-              playerName: newState.player.name,
-              enemyName: newState.currentEnemy.name,
-              damage: totalDamage,
-              floorNumber: newState.player.floor,
-            }
-          );
+          // ✅ CORREÇÃO: Criar mensagem detalhada de ataque para o log
+          let attackMessage = `${newState.player.name} atacou ${newState.currentEnemy.name}`;
+
+          if (isDoubleAttack) {
+            attackMessage += ` com duplo ataque (${totalAttacks}x)`;
+          }
+
+          if (isCritical) {
+            attackMessage += ` causando dano crítico`;
+          }
+
+          attackMessage += ` causando ${totalDamage} de dano!`;
+
+          // ✅ ADICIONAR MENSAGEM DE ATAQUE AO LOG
+          gameLogMessages.push({
+            message: attackMessage,
+            type: 'player_action',
+          });
+
+          // ✅ ADICIONAR MENSAGEM DE DANO AO LOG
+          if (isDoubleAttack && isCritical) {
+            gameLogMessages.push({
+              message: `💥 Duplo ataque crítico! ${totalDamage} de dano total!`,
+              type: 'damage',
+            });
+          } else if (isDoubleAttack) {
+            gameLogMessages.push({
+              message: `⚔️ Duplo ataque! ${totalDamage} de dano total!`,
+              type: 'damage',
+            });
+          } else if (isCritical) {
+            gameLogMessages.push({
+              message: `💥 Ataque crítico! ${totalDamage} de dano!`,
+              type: 'damage',
+            });
+          } else {
+            gameLogMessages.push({
+              message: `⚔️ ${totalDamage} de dano causado`,
+              type: 'damage',
+            });
+          }
 
           if (playerEquipment) {
             console.log(`[BattleService] Calculando skill XP para ataque com dano ${totalDamage}`);
@@ -305,50 +332,22 @@ export class BattleService {
             if (attackSkillXp.length > 0) {
               skillXpGains.push(...attackSkillXp);
 
-              try {
-                const { messages: xpMessages, skillLevelUps } = await SkillXpService.applySkillXp(
-                  newState.player.id,
-                  attackSkillXp
-                );
-
-                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de ataque
-                for (const xpMessage of xpMessages) {
-                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
-                  if (xpMatch) {
-                    const xpAmount = parseInt(xpMatch[1]);
-                    const skillName = xpMatch[2];
-                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
-                      playerId: newState.player.id,
-                      playerName: newState.player.name,
-                      floorNumber: newState.player.floor,
-                    });
-                  }
-                }
-
-                skillMessages.push(...xpMessages);
-
-                for (const levelUp of skillLevelUps) {
-                  console.log(
-                    `[BattleService] Skill level up: ${levelUp.skill} -> ${levelUp.newLevel}`
-                  );
-                }
-              } catch (error) {
-                console.error('[BattleService] Erro ao aplicar skill XP de ataque:', error);
+              // ✅ ADICIONAR MENSAGENS DE SKILL XP AO LOG
+              for (const skillGain of attackSkillXp) {
+                const skillDisplayName = SkillXpService.getSkillDisplayName(skillGain.skill);
+                gameLogMessages.push({
+                  message: `+${skillGain.xp} XP em ${skillDisplayName}${skillGain.isOffHand ? ' (off-hand)' : ''}`,
+                  type: 'skill_xp',
+                });
               }
             }
           }
 
           if (newState.currentEnemy.hp <= 0) {
-            LoggingUtils.logSpecialEvent(
-              'boss_encounter',
-              `${newState.currentEnemy.name} foi derrotado!`,
-              {
-                playerId: newState.player.id,
-                playerName: newState.player.name,
-                enemyName: newState.currentEnemy.name,
-                floorNumber: newState.player.floor,
-              }
-            );
+            gameLogMessages.push({
+              message: `${newState.currentEnemy.name} foi derrotado!`,
+              type: 'system',
+            });
             message = `Você derrotou ${newState.currentEnemy.name}!`;
           } else {
             // Mensagem baseada no tipo de ataque realizado
@@ -368,14 +367,13 @@ export class BattleService {
           // ✅ CORREÇÃO CRÍTICA: Defesa bem-sucedida deve processar turno do inimigo (skipTurn = false)
           skipTurn = false;
 
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de defesa
-          LoggingUtils.logPlayerAction('assumiu postura defensiva', newState.player.name, {
-            playerId: newState.player.id,
-            playerName: newState.player.name,
-            floorNumber: newState.player.floor,
-          });
-
           const defendMessage = `${newState.player.name} assumiu postura defensiva.`;
+
+          // ✅ ADICIONAR MENSAGEM DE DEFESA AO LOG
+          gameLogMessages.push({
+            message: defendMessage,
+            type: 'player_action',
+          });
 
           const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
           if (playerEquipment) {
@@ -384,36 +382,25 @@ export class BattleService {
             if (defenseSkillXp.length > 0) {
               skillXpGains.push(...defenseSkillXp);
 
-              try {
-                const { messages: xpMessages } = await SkillXpService.applySkillXp(
-                  newState.player.id,
-                  defenseSkillXp
-                );
-
-                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de defesa
-                for (const xpMessage of xpMessages) {
-                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
-                  if (xpMatch) {
-                    const xpAmount = parseInt(xpMatch[1]);
-                    const skillName = xpMatch[2];
-                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
-                      playerId: newState.player.id,
-                      playerName: newState.player.name,
-                      floorNumber: newState.player.floor,
-                    });
-                  }
-                }
-
-                skillMessages.push(...xpMessages);
-              } catch (error) {
-                console.error('[BattleService] Erro ao aplicar skill XP de defesa:', error);
+              // ✅ ADICIONAR MENSAGENS DE SKILL XP DE DEFESA AO LOG
+              for (const skillGain of defenseSkillXp) {
+                const skillDisplayName = SkillXpService.getSkillDisplayName(skillGain.skill);
+                gameLogMessages.push({
+                  message: `+${skillGain.xp} XP em ${skillDisplayName}`,
+                  type: 'skill_xp',
+                });
               }
             }
           }
 
           message = defendMessage;
         } else {
-          message = `Defesa está em cooldown por mais ${newState.player.defenseCooldown} turnos.`;
+          const cooldownMessage = `Defesa está em cooldown por mais ${newState.player.defenseCooldown} turnos.`;
+          gameLogMessages.push({
+            message: cooldownMessage,
+            type: 'system',
+          });
+          message = cooldownMessage;
           skipTurn = true;
         }
         break;
@@ -446,115 +433,65 @@ export class BattleService {
                 // ✅ CORREÇÃO CRÍTICA: Corrigir lógica invertida - se endsTurn é true, devemos pular o turno
                 skipTurn = spellEffectResult.endsTurn;
 
-                // ✅ DEBUG: Log crítico para debugging do sistema de turnos
-                console.log(`[BattleService] === RESULTADO PROCESSAMENTO MAGIA ===`, {
-                  spellName: spell.name,
-                  effectType: spell.effect_type,
-                  spellEffectEndsTurn: spellEffectResult.endsTurn,
-                  skipTurn: skipTurn,
-                  shouldAllowMoreActions: !skipTurn,
+                spellResult = spellEffectResult.message;
+                message = spellResult;
+
+                // ✅ ADICIONAR MENSAGEM DE MAGIA AO LOG
+                gameLogMessages.push({
+                  message: `${newState.player.name} lançou ${spell.name}`,
+                  type: 'player_action',
                 });
 
-                // Determinar valores para logging
-                if (spell.effect_type === 'damage' && newState.currentEnemy) {
-                  const damageDealt = Math.abs(
-                    newState.currentEnemy.hp - (newState.currentEnemy.hp + spell.effect_value)
-                  );
-                  actualSpellValue = damageDealt;
-                  spellResult = `causando ${damageDealt} de dano mágico`;
+                gameLogMessages.push({
+                  message: spellResult,
+                  type: spell.effect_type === 'damage' ? 'damage' : 'system',
+                });
 
-                  if (newState.currentEnemy.hp <= 0) {
-                    spellResult += ` e derrotando ${newState.currentEnemy.name}`;
-                  }
-                } else if (spell.effect_type === 'heal') {
-                  actualSpellValue = spell.effect_value;
-                  spellResult = `restaurando vida`;
-                } else if (spell.effect_type === 'buff') {
-                  actualSpellValue = spell.effect_value;
-                  spellResult = `aplicando efeito benéfico`;
-                } else if (spell.effect_type === 'debuff') {
-                  actualSpellValue = spell.effect_value;
-                  spellResult = `aplicando efeito prejudicial`;
-                }
-
-                // Usar mensagem do SpellService se disponível
-                if (spellEffectResult.message) {
-                  const resultMessage = spellEffectResult.message.replace(/!$/, ''); // Remove exclamação final
-                  spellResult = resultMessage;
-                }
-              } else {
-                spellResult = spellEffectResult.message || 'A magia falhou';
-                actualSpellValue = 0;
-              }
-            }
-
-            // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia
-            const targetName =
-              spell.effect_type === 'damage' && newState.currentEnemy
-                ? newState.currentEnemy.name
-                : newState.player.name;
-
-            const effectType = spell.effect_type === 'damage' ? 'damage' : 'heal';
-
-            LoggingUtils.logSpellCast(
-              newState.player.name,
-              spell.name,
-              targetName,
-              actualSpellValue,
-              effectType,
-              {
-                playerId: newState.player.id,
-                playerName: newState.player.name,
-                spellId: spell.id,
-                spellName: spell.name,
-                floorNumber: newState.player.floor,
-              }
-            );
-
-            const spellMessage = `${newState.player.name} lançou ${spell.name} ${spellResult}!`;
-
-            const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
-            const magicSkillXp = SkillXpService.calculateMagicSkillXp(
-              spell.mana_cost,
-              spell.effect_type === 'damage' ? actualSpellValue : 0,
-              actualSpellValue,
-              playerEquipment
-            );
-
-            if (magicSkillXp.length > 0) {
-              skillXpGains.push(...magicSkillXp);
-
-              try {
-                const { messages: xpMessages } = await SkillXpService.applySkillXp(
-                  newState.player.id,
-                  magicSkillXp
+                // ✅ CALCULAR E ADICIONAR SKILL XP DE MAGIA
+                const playerEquipment = await this.getPlayerEquipmentSlots(newState.player.id);
+                const magicSkillXp = SkillXpService.calculateMagicSkillXp(
+                  spell.mana_cost,
+                  spell.effect_type === 'damage' ? spell.effect_value : 0,
+                  actualSpellValue,
+                  playerEquipment
                 );
 
-                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de skill XP de magia
-                for (const xpMessage of xpMessages) {
-                  const xpMatch = xpMessage.match(/(\d+) XP.*?(\w+)/);
-                  if (xpMatch) {
-                    const xpAmount = parseInt(xpMatch[1]);
-                    const skillName = xpMatch[2];
-                    LoggingUtils.logXpGain(newState.player.name, xpAmount, 'skill', skillName, {
-                      playerId: newState.player.id,
-                      playerName: newState.player.name,
-                      spellId: spell.id,
-                      spellName: spell.name,
-                      floorNumber: newState.player.floor,
+                if (magicSkillXp.length > 0) {
+                  skillXpGains.push(...magicSkillXp);
+
+                  // ✅ ADICIONAR MENSAGENS DE SKILL XP DE MAGIA AO LOG
+                  for (const skillGain of magicSkillXp) {
+                    const skillDisplayName = SkillXpService.getSkillDisplayName(skillGain.skill);
+                    gameLogMessages.push({
+                      message: `+${skillGain.xp} XP em ${skillDisplayName}${skillGain.isOffHand ? ' (off-hand)' : ''}`,
+                      type: 'skill_xp',
                     });
                   }
                 }
+              } else {
+                spellResult = 'A magia falhou!';
+                message = spellResult;
+                skipTurn = false;
 
-                skillMessages.push(...xpMessages);
-              } catch (error) {
-                console.error('[BattleService] Erro ao aplicar skill XP de magia:', error);
+                gameLogMessages.push({
+                  message: `${newState.player.name} tentou lançar ${spell.name}, mas a magia falhou!`,
+                  type: 'system',
+                });
               }
             }
-
-            message = spellMessage;
           } else {
-            message = 'Não é possível usar esta magia agora.';
+            if (!spell) {
+              message = 'Magia não encontrada!';
+            } else if (newState.player.mana < spell.mana_cost) {
+              message = `Mana insuficiente! Necessário: ${spell.mana_cost}, Atual: ${newState.player.mana}`;
+            } else if (spell.current_cooldown > 0) {
+              message = `${spell.name} está em recarga por mais ${spell.current_cooldown} turnos.`;
+            }
+
+            gameLogMessages.push({
+              message: message,
+              type: 'system',
+            });
             skipTurn = true;
           }
         }
