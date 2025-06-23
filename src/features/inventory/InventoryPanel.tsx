@@ -4,17 +4,30 @@ import { ConsumableService } from '@/services/consumable.service';
 import { type Character } from '@/models/character.model';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Coins, Sparkles, Star, Package } from 'lucide-react';
+import { Coins, Sparkles, Star, Package, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { PotionSlotManager } from '@/features/consumable/PotionSlotManager';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
 import { ConsumableImage } from '@/components/ui/consumable-image';
+import { SellItemModal } from '@/components/ui/sell-item-modal';
 import type { CharacterDrop } from '@/models/monster.model';
 
 interface InventoryPanelProps {
   character: Character;
   onInventoryChange: () => void;
+}
+
+interface SellModalState {
+  isOpen: boolean;
+  type: 'consumable' | 'drop' | null;
+  item: CharacterConsumable | CharacterDrop | null;
+  sellPrice: {
+    canSell: boolean;
+    availableQuantity: number;
+    unitSellPrice: number;
+    originalPrice: number;
+  } | null;
 }
 
 export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInventoryChange }) => {
@@ -24,6 +37,13 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
   const [selectedConsumable, setSelectedConsumable] = useState<CharacterConsumable | null>(null);
   const [selectedDrop, setSelectedDrop] = useState<CharacterDrop | null>(null);
   const [usingConsumable, setUsingConsumable] = useState<string | null>(null);
+  const [sellModal, setSellModal] = useState<SellModalState>({
+    isOpen: false,
+    type: null,
+    item: null,
+    sellPrice: null,
+  });
+  const [currentGold, setCurrentGold] = useState(character.gold);
 
   const loadInventory = useCallback(async () => {
     try {
@@ -49,6 +69,10 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
   useEffect(() => {
     loadInventory();
   }, [loadInventory]);
+
+  useEffect(() => {
+    setCurrentGold(character.gold);
+  }, [character.gold]);
 
   const handleUseConsumable = async (item: CharacterConsumable) => {
     if (!item.consumable || item.quantity <= 0) {
@@ -82,6 +106,103 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
 
   const handleSlotsUpdate = () => {
     loadInventory();
+  };
+
+  const handleSellConsumable = async (item: CharacterConsumable) => {
+    if (!item.consumable) return;
+
+    try {
+      const priceResponse = await ConsumableService.calculateConsumableSellPrice(
+        character.id,
+        item.consumable_id,
+        1
+      );
+
+      if (!priceResponse.success || !priceResponse.data?.canSell) {
+        toast.error('Este item não pode ser vendido');
+        return;
+      }
+
+      setSellModal({
+        isOpen: true,
+        type: 'consumable',
+        item,
+        sellPrice: priceResponse.data,
+      });
+    } catch (error) {
+      console.error('Erro ao calcular preço de venda:', error);
+      toast.error('Erro ao calcular preço de venda');
+    }
+  };
+
+  const handleSellDrop = async (item: CharacterDrop) => {
+    if (!item.drop) return;
+
+    try {
+      const priceResponse = await ConsumableService.calculateDropSellPrice(
+        character.id,
+        item.drop_id,
+        1
+      );
+
+      if (!priceResponse.success || !priceResponse.data?.canSell) {
+        toast.error('Este material não pode ser vendido');
+        return;
+      }
+
+      setSellModal({
+        isOpen: true,
+        type: 'drop',
+        item,
+        sellPrice: priceResponse.data,
+      });
+    } catch (error) {
+      console.error('Erro ao calcular preço de venda:', error);
+      toast.error('Erro ao calcular preço de venda');
+    }
+  };
+
+  const handleConfirmSell = async (quantity: number) => {
+    if (!sellModal.item || !sellModal.type) return;
+
+    try {
+      if (sellModal.type === 'consumable') {
+        const item = sellModal.item as CharacterConsumable;
+        const result = await ConsumableService.sellConsumablesBatch(character.id, [
+          { consumable_id: item.consumable_id, quantity },
+        ]);
+
+        if (result.success && result.data) {
+          toast.success(
+            `Vendido ${quantity}x ${item.consumable?.name} por ${result.data.totalGoldEarned} gold!`
+          );
+          await loadInventory();
+          onInventoryChange();
+          setCurrentGold(result.data.newGold);
+        } else {
+          toast.error(result.error || 'Erro ao vender consumível');
+        }
+      } else if (sellModal.type === 'drop') {
+        const item = sellModal.item as CharacterDrop;
+        const result = await ConsumableService.sellDropsBatch(character.id, [
+          { drop_id: item.drop_id, quantity },
+        ]);
+
+        if (result.success && result.data) {
+          toast.success(
+            `Vendido ${quantity}x ${item.drop?.name} por ${result.data.totalGoldEarned} gold!`
+          );
+          await loadInventory();
+          onInventoryChange();
+          setCurrentGold(result.data.newGold);
+        } else {
+          toast.error(result.error || 'Erro ao vender material');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao vender item:', error);
+      toast.error('Erro ao vender item');
+    }
   };
 
   const canUseConsumable = (item: CharacterConsumable): boolean => {
@@ -273,6 +394,15 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
                 'Não pode ser usado agora'
               )}
             </Button>
+
+            <Button
+              onClick={() => handleSellConsumable(item)}
+              variant="outline"
+              className="w-full border-slate-600 text-slate-300 hover:bg-slate-700/50"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Vender Item
+            </Button>
           </div>
         </div>
       );
@@ -310,6 +440,16 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
             </div>
             <p className="text-amber-200">{drop.value} gold por unidade</p>
           </div>
+
+          {/* Botão de venda para materiais */}
+          <Button
+            onClick={() => handleSellDrop(item)}
+            variant="outline"
+            className="w-full border-slate-600 text-slate-300 hover:bg-slate-700/50"
+          >
+            <DollarSign className="h-4 w-4 mr-2" />
+            Vender Material
+          </Button>
         </div>
       );
     }
@@ -365,9 +505,7 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
           <h2 className="text-xl sm:text-2xl font-bold text-slate-100">Inventário</h2>
           <div className="flex items-center gap-2 text-amber-400 bg-slate-800/30 px-3 py-1 rounded-lg border border-slate-700/50">
             <Coins className="h-4 w-4" />
-            <span className="font-medium text-sm sm:text-base">
-              {character.gold.toLocaleString()}
-            </span>
+            <span className="font-medium text-sm sm:text-base">{currentGold.toLocaleString()}</span>
           </div>
         </div>
 
@@ -411,6 +549,38 @@ export const InventoryPanel: React.FC<InventoryPanelProps> = ({ character, onInv
           <CardContent className="p-4 sm:p-6 h-full">{renderItemDetails()}</CardContent>
         </Card>
       </div>
+
+      {/* Modal de venda */}
+      <SellItemModal
+        isOpen={sellModal.isOpen}
+        onClose={() => setSellModal({ isOpen: false, type: null, item: null, sellPrice: null })}
+        onConfirm={handleConfirmSell}
+        itemName={
+          sellModal.type === 'consumable'
+            ? (sellModal.item as CharacterConsumable)?.consumable?.name || ''
+            : (sellModal.item as CharacterDrop)?.drop?.name || ''
+        }
+        itemIcon={
+          sellModal.type === 'consumable' &&
+          sellModal.item &&
+          (sellModal.item as CharacterConsumable).consumable ? (
+            <ConsumableImage
+              consumable={(sellModal.item as CharacterConsumable).consumable!}
+              size="lg"
+            />
+          ) : (
+            <Star className="h-8 w-8 text-amber-400" />
+          )
+        }
+        itemRarity={
+          sellModal.type === 'consumable'
+            ? undefined
+            : (sellModal.item as CharacterDrop)?.drop?.rarity
+        }
+        availableQuantity={sellModal.sellPrice?.availableQuantity || 0}
+        unitSellPrice={sellModal.sellPrice?.unitSellPrice || 0}
+        originalPrice={sellModal.sellPrice?.originalPrice}
+      />
     </div>
   );
 };

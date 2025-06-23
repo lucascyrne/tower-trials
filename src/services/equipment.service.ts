@@ -416,6 +416,119 @@ export class EquipmentService {
     }
   }
 
+  /**
+   * ✅ NOVO: Vender equipamentos em lote
+   */
+  static async sellEquipmentBatch(
+    characterId: string,
+    equipmentSales: { equipment_id: string; quantity: number }[]
+  ): Promise<ServiceResponse<{ totalGoldEarned: number; itemsSold: number; newGold: number }>> {
+    try {
+      console.log(
+        `[EquipmentService] Vendendo ${equipmentSales.length} tipos de equipamentos em lote para: ${characterId}`
+      );
+
+      const { data, error } = await supabase
+        .rpc('sell_character_equipment_batch', {
+          p_character_id: characterId,
+          p_equipment_sales: equipmentSales,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        total_gold_earned: number;
+        items_sold: number;
+        new_character_gold: number;
+      };
+
+      console.log(
+        `[EquipmentService] Venda em lote concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
+      );
+
+      // Invalidar caches
+      await this.invalidateCharacterCaches(characterId);
+
+      // Atualizar stores
+      await this.updateStoresAfterSale(characterId, result.new_character_gold);
+
+      return {
+        data: {
+          totalGoldEarned: result.total_gold_earned,
+          itemsSold: result.items_sold,
+          newGold: result.new_character_gold,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[EquipmentService] Erro ao vender equipamentos em lote:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao vender equipamentos'),
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Calcular preço de venda de equipamento
+   */
+  static async calculateEquipmentSellPrice(
+    characterId: string,
+    equipmentId: string,
+    quantity: number = 1
+  ): Promise<
+    ServiceResponse<{
+      canSell: boolean;
+      availableQuantity: number;
+      unitSellPrice: number;
+      totalSellPrice: number;
+      originalPrice: number;
+    }>
+  > {
+    try {
+      const { data, error } = await supabase
+        .rpc('calculate_sell_prices', {
+          p_character_id: characterId,
+          p_item_type: 'equipment',
+          p_item_id: equipmentId,
+          p_quantity: quantity,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        can_sell: boolean;
+        available_quantity: number;
+        unit_sell_price: number;
+        total_sell_price: number;
+        original_price: number;
+      };
+
+      return {
+        data: {
+          canSell: result.can_sell,
+          availableQuantity: result.available_quantity,
+          unitSellPrice: result.unit_sell_price,
+          totalSellPrice: result.total_sell_price,
+          originalPrice: result.original_price,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[EquipmentService] Erro ao calcular preço de venda:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao calcular preço'),
+        success: false,
+      };
+    }
+  }
+
   // === MÉTODOS DE CRAFTING COM INTEGRAÇÃO ZUSTAND ===
 
   static async getEquipmentCraftingRecipes(): Promise<ServiceResponse<EquipmentCraftingRecipe[]>> {
@@ -802,6 +915,37 @@ export class EquipmentService {
       console.log(`[EquipmentService] Caches invalidados para personagem: ${characterId}`);
     } catch (error) {
       console.warn(`[EquipmentService] Erro ao invalidar cache (não crítico):`, error);
+    }
+  }
+
+  /**
+   * ✅ NOVO: Atualizar stores após venda
+   */
+  private static async updateStoresAfterSale(characterId: string, newGold: number): Promise<void> {
+    try {
+      // Atualizar store do personagem
+      const characterStore = useCharacterStore.getState();
+      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
+        // Atualizar gold na store
+        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
+        characterStore.setSelectedCharacter(updatedCharacter);
+
+        // Atualizar também na lista se existir
+        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
+        if (characterIndex !== -1) {
+          characterStore.characters[characterIndex] = updatedCharacter;
+        }
+      }
+
+      // Atualizar estado do jogo se necessário
+      const gameStore = useGameStateStore.getState();
+      if (gameStore.gameState.player?.id === characterId) {
+        gameStore.updatePlayerGold(newGold);
+      }
+
+      console.log(`[EquipmentService] Stores atualizadas com novo gold: ${newGold}`);
+    } catch (error) {
+      console.warn(`[EquipmentService] Erro ao atualizar stores (não crítico):`, error);
     }
   }
 

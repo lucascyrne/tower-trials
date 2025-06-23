@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { useCharacterStore } from '../stores/useCharacterStore';
+import { useGameStateStore } from '../stores/useGameStateStore';
 import {
   type Consumable,
   type CharacterConsumable,
@@ -656,6 +658,257 @@ export class ConsumableService {
     } catch (error) {
       console.error('Erro ao buscar drops:', error instanceof Error ? error.message : error);
       return { data: null, error: 'Erro ao buscar informações dos drops', success: false };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Vender consumíveis em lote
+   */
+  static async sellConsumablesBatch(
+    characterId: string,
+    consumableSales: { consumable_id: string; quantity: number }[]
+  ): Promise<ServiceResponse<{ totalGoldEarned: number; itemsSold: number; newGold: number }>> {
+    try {
+      console.log(
+        `[ConsumableService] Vendendo ${consumableSales.length} tipos de consumíveis em lote para: ${characterId}`
+      );
+
+      const { data, error } = await supabase
+        .rpc('sell_character_consumables_batch', {
+          p_character_id: characterId,
+          p_consumable_sales: consumableSales,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        total_gold_earned: number;
+        items_sold: number;
+        new_character_gold: number;
+      };
+
+      console.log(
+        `[ConsumableService] Venda em lote concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
+      );
+
+      // ✅ NOVO: Atualizar stores após venda
+      await this.updateStoresAfterSale(characterId, result.new_character_gold);
+
+      return {
+        data: {
+          totalGoldEarned: result.total_gold_earned,
+          itemsSold: result.items_sold,
+          newGold: result.new_character_gold,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[ConsumableService] Erro ao vender consumíveis em lote:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao vender consumíveis'),
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Vender materiais (drops) em lote
+   */
+  static async sellDropsBatch(
+    characterId: string,
+    dropSales: { drop_id: string; quantity: number }[]
+  ): Promise<ServiceResponse<{ totalGoldEarned: number; itemsSold: number; newGold: number }>> {
+    try {
+      console.log(
+        `[ConsumableService] Vendendo ${dropSales.length} tipos de materiais em lote para: ${characterId}`
+      );
+
+      const { data, error } = await supabase
+        .rpc('sell_character_drops_batch', {
+          p_character_id: characterId,
+          p_drop_sales: dropSales,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        total_gold_earned: number;
+        items_sold: number;
+        new_character_gold: number;
+      };
+
+      console.log(
+        `[ConsumableService] Venda de materiais concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
+      );
+
+      // ✅ NOVO: Atualizar stores após venda
+      await this.updateStoresAfterSale(characterId, result.new_character_gold);
+
+      return {
+        data: {
+          totalGoldEarned: result.total_gold_earned,
+          itemsSold: result.items_sold,
+          newGold: result.new_character_gold,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[ConsumableService] Erro ao vender materiais em lote:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao vender materiais'),
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Calcular preço de venda de consumível
+   */
+  static async calculateConsumableSellPrice(
+    characterId: string,
+    consumableId: string,
+    quantity: number = 1
+  ): Promise<
+    ServiceResponse<{
+      canSell: boolean;
+      availableQuantity: number;
+      unitSellPrice: number;
+      totalSellPrice: number;
+      originalPrice: number;
+    }>
+  > {
+    try {
+      const { data, error } = await supabase
+        .rpc('calculate_sell_prices', {
+          p_character_id: characterId,
+          p_item_type: 'consumable',
+          p_item_id: consumableId,
+          p_quantity: quantity,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        can_sell: boolean;
+        available_quantity: number;
+        unit_sell_price: number;
+        total_sell_price: number;
+        original_price: number;
+      };
+
+      return {
+        data: {
+          canSell: result.can_sell,
+          availableQuantity: result.available_quantity,
+          unitSellPrice: result.unit_sell_price,
+          totalSellPrice: result.total_sell_price,
+          originalPrice: result.original_price,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[ConsumableService] Erro ao calcular preço de venda:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao calcular preço'),
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Calcular preço de venda de material
+   */
+  static async calculateDropSellPrice(
+    characterId: string,
+    dropId: string,
+    quantity: number = 1
+  ): Promise<
+    ServiceResponse<{
+      canSell: boolean;
+      availableQuantity: number;
+      unitSellPrice: number;
+      totalSellPrice: number;
+      originalPrice: number;
+    }>
+  > {
+    try {
+      const { data, error } = await supabase
+        .rpc('calculate_sell_prices', {
+          p_character_id: characterId,
+          p_item_type: 'drop',
+          p_item_id: dropId,
+          p_quantity: quantity,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const result = data as {
+        can_sell: boolean;
+        available_quantity: number;
+        unit_sell_price: number;
+        total_sell_price: number;
+        original_price: number;
+      };
+
+      return {
+        data: {
+          canSell: result.can_sell,
+          availableQuantity: result.available_quantity,
+          unitSellPrice: result.unit_sell_price,
+          totalSellPrice: result.total_sell_price,
+          originalPrice: result.original_price,
+        },
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error('[ConsumableService] Erro ao calcular preço de venda:', error);
+      return {
+        data: null,
+        error: extractErrorMessage(error, 'Erro ao calcular preço'),
+        success: false,
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Atualizar stores após venda
+   */
+  private static async updateStoresAfterSale(characterId: string, newGold: number): Promise<void> {
+    try {
+      // Atualizar store do personagem
+      const characterStore = useCharacterStore.getState();
+      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
+        // Atualizar gold na store
+        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
+        characterStore.setSelectedCharacter(updatedCharacter);
+
+        // Atualizar também na lista se existir
+        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
+        if (characterIndex !== -1) {
+          characterStore.characters[characterIndex] = updatedCharacter;
+        }
+      }
+
+      // Atualizar estado do jogo se necessário
+      const gameStore = useGameStateStore.getState();
+      if (gameStore.gameState.player?.id === characterId) {
+        gameStore.updatePlayerGold(newGold);
+      }
+
+      console.log(`[ConsumableService] Stores atualizadas com novo gold: ${newGold}`);
+    } catch (error) {
+      console.warn(`[ConsumableService] Erro ao atualizar stores (não crítico):`, error);
     }
   }
 }
