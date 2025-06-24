@@ -47,7 +47,7 @@ function RootComponent() {
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>
-          <TanStackRouterDevtools />
+          {import.meta.env.DEV && <TanStackRouterDevtools />}
         </GameStoreProvider>
       </AuthProvider>
     </div>
