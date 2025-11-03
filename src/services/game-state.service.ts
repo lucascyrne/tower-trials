@@ -87,7 +87,7 @@ export class GameStateService {
       // Gerar inimigo se não há evento
       let enemy = null;
       if (!specialEvent) {
-        const enemyResult = await MonsterService.getEnemyForFloor(nextFloor);
+        const enemyResult = await MonsterService.getEnemyForFloor(nextFloor, true);  // ✅ forceRefresh=true para garantir drops
         if (!enemyResult.success || !enemyResult.data) {
           throw new Error(`Falha ao gerar inimigo para andar ${nextFloor}`);
         }

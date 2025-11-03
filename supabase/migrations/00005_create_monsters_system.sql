@@ -91,7 +91,7 @@ BEGIN
            m.primary_trait, m.secondary_trait, m.special_abilities
     FROM monsters m
     WHERE m.min_floor <= p_floor
-    ORDER BY RANDOM()
+    ORDER BY m.min_floor DESC, m.name  -- ✅ CRÍTICO: Seleciona monstro apropriado para o andar, não aleatório!
     LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;

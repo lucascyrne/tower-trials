@@ -346,6 +346,23 @@ export default function GameBattle() {
 
   const { potionSlots, loadingSlots, loadPotionSlots, reloadSlots } = usePotionSlots(player?.id);
 
+  // ✅ NOVO: Tratamento de erro de inicialização - redirecionar ao hub
+  useEffect(() => {
+    if (initError && initError.includes('Dados do banco inválidos')) {
+      console.error('[GameBattle] ❌ Erro crítico de carregamento de monstro:', initError);
+      toast.error('Erro ao carregar inimigo', {
+        description: 'Retornando ao hub. Por favor, tente novamente.',
+      });
+      navigate({ to: '/game/play/hub', search: { character: characterId } });
+    } else if (initError && initError.includes('Falha ao')) {
+      console.error('[GameBattle] ❌ Erro ao inicializar batalha:', initError);
+      toast.error('Erro ao inicializar batalha', {
+        description: 'Retornando ao hub.',
+      });
+      navigate({ to: '/game/play/hub', search: { character: characterId } });
+    }
+  }, [initError, navigate, characterId]);
+
   // ✅ CORREÇÃO: Ref para controlar se componente está montado
   const mountedRef = useRef(true);
   useEffect(() => {

@@ -511,8 +511,6 @@ function CraftingPage() {
   const navigate = useNavigate();
   const { character: characterId } = Route.useSearch();
 
-  console.log('[CraftingPage] Iniciando com characterId:', characterId);
-
   const { characters, selectedCharacter, selectCharacter } = useGame();
   const [loading, setLoading] = useState(false);
   const [isCrafting, setIsCrafting] = useState(false);

@@ -17,11 +17,12 @@ interface DatabaseMonsterData {
   name?: string;
   level?: number;
   hp?: number;
-  attack?: number;
-  defense?: number;
+  atk?: number; // ✅ CORRIGIDO: SQL retorna 'atk', não 'attack'
+  def?: number; // ✅ CORRIGIDO: SQL retorna 'def', não 'defense'
+  mana?: number;
   speed?: number;
   behavior?: string;
-  mana?: number;
+  min_floor?: number;
   reward_xp?: number;
   reward_gold?: number;
   strength?: number;
@@ -376,9 +377,12 @@ function generateEnemyFromDatabaseLogic(floor: number): Enemy {
 export class MonsterService {
   /**
    * MÉTODO PRINCIPAL: Buscar inimigo para batalha
-   * SEMPRE usa a mesma lógica do banco para consistência total
+   * ✅ CORRIGIDO: Agora prioriza monstros DO BANCO com seus drops associados
    */
-  static async getEnemyForFloor(floor: number): Promise<ServiceResponse<Enemy>> {
+  static async getEnemyForFloor(
+    floor: number,
+    forceRefresh: boolean = false
+  ): Promise<ServiceResponse<Enemy>> {
     if (floor <= 0) {
       return { data: null, error: `Andar inválido: ${floor}`, success: false };
     }
@@ -387,20 +391,31 @@ export class MonsterService {
       useMonsterStore.getState();
     const { updateGameState } = useGameStateStore.getState();
 
-    // Verificar cache
-    const cachedEnemy = getCachedMonster(floor);
-    if (cachedEnemy) {
-      updateGameState(draft => {
-        draft.currentEnemy = cachedEnemy;
-      });
-      return { data: cachedEnemy, error: null, success: true };
+    // ✅ CRÍTICO: Bypass de cache se forceRefresh for true (para batalhas)
+    if (!forceRefresh) {
+      const cachedEnemy = getCachedMonster(floor);
+      if (cachedEnemy) {
+        console.log(
+          `[MonsterService] ✅ Inimigo em cache para andar ${floor}: ${cachedEnemy.name}`
+        );
+        updateGameState(draft => {
+          draft.currentEnemy = cachedEnemy;
+        });
+        return { data: cachedEnemy, error: null, success: true };
+      }
+    } else {
+      console.log(
+        `[MonsterService] 🔄 Forçando recarregamento de inimigo para andar ${floor} (forceRefresh=true)`
+      );
     }
 
     setFetchingMonster(true);
     setError(null);
 
     try {
-      // TENTATIVA 1: RPC do banco
+      console.log(`[MonsterService] 🔍 Buscando inimigo para andar ${floor}...`);
+
+      // ✅ TENTATIVA 1: RPC do banco (prioriza monstros cadastrados)
       let { data, error } = await Promise.race([
         supabase.rpc('get_monster_for_floor_with_initiative', { p_floor: floor }),
         new Promise<{ data: null; error: { message: string } }>((_, reject) =>
@@ -411,13 +426,14 @@ export class MonsterService {
         ),
       ]).catch(err => ({ data: null, error: err }));
 
-      // TENTATIVA 2: RPC alternativa se a principal falhar
+      // ✅ TENTATIVA 2: RPC alternativa se a principal falhar
       const isTypeError =
         error?.code === '42804' ||
         error?.message?.includes('does not match function result type') ||
         error?.message?.includes('structure of query does not match');
 
       if (isTypeError || error) {
+        console.warn(`[MonsterService] ⚠️ RPC principal falhou, tentando alternativa...`);
         const altResult = await Promise.race([
           supabase.rpc('get_monster_for_floor_simple', { p_floor: floor }),
           new Promise<{ data: null; error: { message: string } }>((_, reject) =>
@@ -431,30 +447,49 @@ export class MonsterService {
         if (altResult.data && !altResult.error) {
           data = altResult.data;
           error = altResult.error;
+          console.log('[MonsterService] ✅ Usando dados da RPC alternativa');
         }
       }
 
       let enemy: Enemy;
 
-      // Se o banco funcionou, converter mantendo consistência com a lógica unificada
+      // ✅ Se o banco funcionou, usar dados REAIS do banco
       if (data && !error) {
         const monsterData = Array.isArray(data) ? data[0] : data;
 
         // SEMPRE validar se os dados do banco fazem sentido
         if (this.isValidMonsterData(monsterData)) {
           enemy = this.convertToEnemyUnified(monsterData, floor);
+          console.log(`[MonsterService] ✅ Inimigo do banco: ${enemy.name} (nível ~${floor})`);
         } else {
-          enemy = generateEnemyFromDatabaseLogic(floor);
+          console.error(
+            `[MonsterService] ❌ Dados do banco inválidos para andar ${floor}:`,
+            monsterData
+          );
+          throw new Error(
+            `Dados do banco inválidos para andar ${floor}. Verifique a migração 00005.`
+          );
         }
       } else {
-        enemy = generateEnemyFromDatabaseLogic(floor);
+        console.error(
+          `[MonsterService] ❌ Falha ao buscar monstro do banco para andar ${floor}:`,
+          error
+        );
+        throw new Error(
+          `Falha ao carregar monstro para andar ${floor}: ${error?.message || 'Erro desconhecido'}`
+        );
       }
 
-      // Carregar drops
+      // ✅ CRÍTICO: Carregar drops SEMPRE (eles estão associados aos monstros no banco)
       try {
+        console.log(`[MonsterService] 📦 Carregando drops para ${enemy.name}...`);
         await this.loadPossibleDrops(enemy);
+        console.log(
+          `[MonsterService] ✅ Drops carregados: ${enemy.possible_drops?.length || 0} possíveis`
+        );
       } catch (dropError) {
-        console.warn('[MonsterService] Erro ao carregar drops:', dropError);
+        console.warn('[MonsterService] ⚠️ Erro ao carregar drops:', dropError);
+        // Continuar mesmo sem drops - eles podem estar vazios
       }
 
       // Cache e atualizar estado
@@ -466,18 +501,19 @@ export class MonsterService {
       setFetchingMonster(false);
       return { data: enemy, error: null, success: true };
     } catch (error) {
-      console.error(`[MonsterService] Erro crítico:`, error);
-
-      // FALLBACK FINAL: sempre usar lógica unificada
-      const fallbackEnemy = generateEnemyFromDatabaseLogic(floor);
-      cacheMonster(floor, fallbackEnemy);
-
-      updateGameState(draft => {
-        draft.currentEnemy = fallbackEnemy;
-      });
-
+      console.error(`[MonsterService] ❌ Erro crítico ao carregar inimigo:`, error);
       setFetchingMonster(false);
-      return { data: fallbackEnemy, error: null, success: true };
+
+      // ✅ CRÍTICO: Retornar erro em vez de fallback
+      const errorMessage =
+        error instanceof Error ? error.message : 'Erro desconhecido ao carregar monstro';
+      setError(errorMessage);
+
+      return {
+        data: null,
+        error: errorMessage,
+        success: false,
+      };
     }
   }
 
@@ -485,17 +521,23 @@ export class MonsterService {
    * Validar se os dados do banco são consistentes
    */
   private static isValidMonsterData(monsterData: DatabaseMonsterData): boolean {
-    if (!monsterData || typeof monsterData !== 'object') return false;
+    if (!monsterData || typeof monsterData !== 'object') {
+      return false;
+    }
 
-    const requiredNumericFields = ['hp', 'attack', 'defense', 'level'];
+    // ✅ CRÍTICO: Campos obrigatórios (sem level - será calculado de min_floor)
+    const requiredNumericFields = ['hp', 'atk', 'def', 'min_floor'];
     for (const field of requiredNumericFields) {
       const value = monsterData[field as keyof DatabaseMonsterData];
+
       if (typeof value !== 'number' || value <= 0) {
         return false;
       }
     }
 
-    if (!monsterData.name || typeof monsterData.name !== 'string') return false;
+    if (!monsterData.name || typeof monsterData.name !== 'string') {
+      return false;
+    }
 
     return true;
   }
@@ -511,10 +553,10 @@ export class MonsterService {
     // Usar dados do banco quando válidos, fallback para lógica unificada quando não
     const id = typeof monsterData.id === 'string' ? monsterData.id : crypto.randomUUID();
     const name = typeof monsterData.name === 'string' ? monsterData.name : `Monster Floor ${floor}`;
-    const level =
-      typeof monsterData.level === 'number'
-        ? monsterData.level
-        : Math.max(1, Math.floor(floor / 3));
+
+    // ✅ CRÍTICO: Calcular level a partir de min_floor (não vem do RPC)
+    const minFloor = typeof monsterData.min_floor === 'number' ? monsterData.min_floor : 1;
+    const level = Math.max(1, Math.floor(minFloor / 3));
 
     // Stats principais - validar antes de usar
     const hp =
@@ -522,12 +564,12 @@ export class MonsterService {
         ? monsterData.hp
         : generateEnemyFromDatabaseLogic(floor).hp;
     const attack =
-      typeof monsterData.attack === 'number' && monsterData.attack > 0
-        ? monsterData.attack
+      typeof monsterData.atk === 'number' && monsterData.atk > 0
+        ? monsterData.atk
         : generateEnemyFromDatabaseLogic(floor).attack;
     const defense =
-      typeof monsterData.defense === 'number' && monsterData.defense >= 0
-        ? monsterData.defense
+      typeof monsterData.def === 'number' && monsterData.def >= 0
+        ? monsterData.def
         : generateEnemyFromDatabaseLogic(floor).defense;
     const speed =
       typeof monsterData.speed === 'number' && monsterData.speed > 0
@@ -637,6 +679,11 @@ export class MonsterService {
   private static async loadPossibleDrops(enemy: Enemy): Promise<void> {
     const { setLoadingDrops, setError } = useMonsterStore.getState();
 
+    // ✅ CRÍTICO: Garantir que possible_drops sempre existe (array vazio se necessário)
+    if (!enemy.possible_drops) {
+      enemy.possible_drops = [];
+    }
+
     setLoadingDrops(true);
 
     try {
@@ -649,12 +696,14 @@ export class MonsterService {
       );
 
       if (error) {
-        console.warn(`[MonsterService] Erro ao carregar drops via RPC:`, error);
+        console.warn(`[MonsterService] ⚠️ Erro ao carregar drops via RPC:`, error);
         setError(`Drops não carregados: ${error.message}`);
+        // ✅ Manter array vazio ao invés de deixar undefined
         return;
       }
 
-      if (possibleDropsData && Array.isArray(possibleDropsData)) {
+      if (possibleDropsData && Array.isArray(possibleDropsData) && possibleDropsData.length > 0) {
+        console.log(`[MonsterService] ✅ Carregados ${possibleDropsData.length} drops possíveis`);
         enemy.possible_drops = possibleDropsData.map(
           (dropData: {
             drop_id: string;
@@ -679,9 +728,11 @@ export class MonsterService {
             },
           })
         );
+      } else {
+        console.log(`[MonsterService] ℹ️ Este inimigo não possui drops possíveis`);
       }
     } catch (error) {
-      console.warn(`[MonsterService] Erro ao carregar drops:`, error);
+      console.warn(`[MonsterService] ❌ Erro ao carregar drops:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Erro ao carregar drops';
       setError(`Drops não carregados: ${errorMessage}`);
     } finally {

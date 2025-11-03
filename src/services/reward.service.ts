@@ -4,12 +4,13 @@ import { type GamePlayer, type BattleRewards } from '../models/game.model';
 import { CharacterService } from './character.service';
 import { ConsumableService } from './consumable.service';
 import { FloorService } from './floor.service';
+import { MonsterService } from './monster.service';
 import type { MonsterDropChance } from '@/models/monster.model';
 
 export class RewardService {
   /**
    * Processar a derrota do inimigo e calcular recompensas
-   * Agora integrado com Zustand stores para gestão de estado
+   * ✅ MELHORADO: Garante que drops são carregados antes de processar
    */
   static async processEnemyDefeat(): Promise<void> {
     const { gameState, updateGameState, setError } = useGameStateStore.getState();
@@ -35,10 +36,34 @@ export class RewardService {
         return;
       }
 
+      console.log(`[RewardService] Processando derrota de ${currentEnemy.name}...`);
+
+      // ✅ CRÍTICO: Tentar carregar drops se não foram carregados
+      let enemyWithDrops = currentEnemy;
+      if (!currentEnemy.possible_drops || currentEnemy.possible_drops.length === 0) {
+        console.log(`[RewardService] ⚠️ Drops não carregados, tentando recarregar...`);
+        
+        try {
+          // Recarregar drops do servidor
+          const { data: freshEnemy } = await MonsterService.getEnemyForFloor(currentEnemy.level || 1);
+          if (freshEnemy && freshEnemy.possible_drops && freshEnemy.possible_drops.length > 0) {
+            enemyWithDrops = freshEnemy;
+            console.log(`[RewardService] ✅ ${freshEnemy.possible_drops.length} drops recarregados`);
+          } else {
+            console.warn(`[RewardService] ❌ Não foi possível recarregar drops para o inimigo`);
+          }
+        } catch (reloadError) {
+          console.warn(`[RewardService] Erro ao recarregar drops:`, reloadError);
+          // Continuar mesmo sem drops - usaremos fallback
+        }
+      }
+
       // Calcular recompensas
       const baseXP = currentEnemy.reward_xp || 10;
       const baseGold = currentEnemy.reward_gold || 5;
       const { xp, gold } = FloorService.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
+
+      console.log(`[RewardService] XP: ${xp}, Gold: ${gold}`);
 
       // Persistir XP
       const xpResult = await CharacterService.grantSecureXP(player.id, xp, 'combat');
@@ -54,8 +79,8 @@ export class RewardService {
       }
       const newGoldTotal = goldResult.data!;
 
-      // Processar drops
-      const drops = await this.processMonsterDrops(currentEnemy, currentFloor, player.id);
+      // ✅ CRÍTICO: Processar drops com enemy que tem dados completos
+      const drops = await this.processMonsterDrops(enemyWithDrops, currentFloor, player.id);
 
       // Criar recompensas
       const battleRewards: BattleRewards = {
@@ -65,6 +90,8 @@ export class RewardService {
         leveledUp: xpData.leveled_up,
         newLevel: xpData.leveled_up ? xpData.new_level : undefined,
       };
+
+      console.log(`[RewardService] 🎉 Recompensas: ${drops.length} drops, XP: ${xp}, Gold: ${gold}`);
 
       // Atualizar player nas stores
       const updatedPlayer: GamePlayer = {
@@ -79,7 +106,7 @@ export class RewardService {
         draft.player = updatedPlayer;
         draft.battleRewards = battleRewards;
         draft.isPlayerTurn = true;
-        draft.gameMessage = `Inimigo derrotado! +${xp} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`;
+        draft.gameMessage = `Inimigo derrotado! +${xp} XP, +${gold} Gold${drops.length > 0 ? ` + ${drops.length} items` : ''}${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`;
       });
     } catch (error) {
       console.error('[RewardService] Erro ao processar derrota:', error);
@@ -105,6 +132,8 @@ export class RewardService {
   ): Promise<{ name: string; quantity: number }[]> {
     let drops: { name: string; quantity: number }[] = [];
 
+    console.log(`[RewardService] Verificando drops: ${currentEnemy.possible_drops?.length || 0} possíveis`);
+
     if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
       const dropsObtidos = ConsumableService.processMonsterDrops(
         currentEnemy.level,
@@ -112,11 +141,30 @@ export class RewardService {
         currentFloor.type === 'boss' ? 1.5 : 1.0
       );
 
+      console.log(`[RewardService] Drops obtidos: ${dropsObtidos.length}`);
+
       if (dropsObtidos.length > 0) {
+        // ✅ CRÍTICO: Persistir drops PRIMEIRO antes de tentar carregar informações
+        console.log(`[RewardService] Persistindo ${dropsObtidos.length} drops...`);
+        const addDropsResult = await ConsumableService.addDropsToInventory(
+          playerId,
+          dropsObtidos
+        );
+        
+        if (!addDropsResult.success) {
+          console.error(`[RewardService] ❌ Falha ao persistir drops:`, addDropsResult.error);
+          throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
+        }
+        
+        console.log(`[RewardService] ✅ ${addDropsResult.data} drops persistidos com sucesso`);
+
+        // ✅ OTIMIZAÇÃO: Tentar carregar informações dos drops para exibição
+        // Se falhar, usamos IDs truncados como fallback
         const dropIds = dropsObtidos.map(d => d.drop_id);
         const dropInfoResponse = await ConsumableService.getDropInfoByIds(dropIds);
 
         if (dropInfoResponse.success && dropInfoResponse.data) {
+          // ✅ Mapeamento com informações completas
           drops = dropsObtidos.map(dropObtido => {
             const dropInfo = dropInfoResponse.data!.find(d => d.id === dropObtido.drop_id);
             return {
@@ -124,18 +172,10 @@ export class RewardService {
               quantity: dropObtido.quantity,
             };
           });
-
-          // Persistir drops
-          const addDropsResult = await ConsumableService.addDropsToInventory(
-            playerId,
-            dropsObtidos
-          );
-          if (!addDropsResult.success) {
-            throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
-          }
         } else {
-          console.error(
-            `[RewardService] Erro ao buscar informações dos drops:`,
+          // ✅ Fallback: usar ID truncado como nome (drops já foram persistidos!)
+          console.warn(
+            `[RewardService] ⚠️ Não foi possível carregar informações dos drops (continuando mesmo assim):`,
             dropInfoResponse.error
           );
           drops = dropsObtidos.map(d => ({
@@ -143,7 +183,11 @@ export class RewardService {
             quantity: d.quantity,
           }));
         }
+      } else {
+        console.log(`[RewardService] Nenhum drop foi obtido nesta batalha`);
       }
+    } else {
+      console.log(`[RewardService] Inimigo não possui possíveis drops`);
     }
 
     return drops;

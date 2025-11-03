@@ -1,5 +1,5 @@
 import { type Character } from '@/models/character.model';
-import { type GameState, type GamePlayer, type Enemy } from '@/models/game.model';
+import { type GameState, type GamePlayer } from '@/models/game.model';
 import { CharacterService } from './character.service';
 import { FloorService } from './floor.service';
 import { MonsterService } from './monster.service';
@@ -77,26 +77,19 @@ export class BattleInitializationService {
       // 3. Verificar evento especial (chance muito baixa)
       const specialEvent = await FloorService.checkForSpecialEvent(gamePlayer.floor);
 
-      // 4. 🔧 CORREÇÃO CRÍTICA: SEMPRE gerar inimigo, mesmo com evento especial
-      let enemy = null;
-      onProgress?.({ step: 'enemy', progress: 85, message: 'Gerando inimigo...' });
-      const enemyResult = await MonsterService.getEnemyForFloor(gamePlayer.floor);
+      // 4. 🔧 CRÍTICO: Carregar inimigo DO BANCO - sem fallbacks
+      onProgress?.({ step: 'enemy', progress: 85, message: 'Carregando inimigo...' });
+      const enemyResult = await MonsterService.getEnemyForFloor(gamePlayer.floor, true); // ✅ forceRefresh=true para garantir drops
 
-      // 🔧 GARANTIA: Se falhar, forçar geração via fallback
+      // ✅ CRÍTICO: Sem fallback - se falhar, retornar erro claro
       if (!enemyResult.success || !enemyResult.data) {
-        console.warn(
-          `[BattleInit] Falha na geração normal - usando fallback para andar ${gamePlayer.floor}`
-        );
-        // Tentar novamente usando MonsterService diretamente
-        try {
-          const fallbackResult = await this.generateFallbackEnemy(gamePlayer.floor);
-          enemy = fallbackResult;
-        } catch (fallbackError) {
-          throw new Error(`Falha crítica na geração de inimigo: ${fallbackError}`);
-        }
-      } else {
-        enemy = enemyResult.data;
+        const errorMsg =
+          enemyResult.error || `Falha ao carregar monstro para andar ${gamePlayer.floor}`;
+        console.error(`[BattleInit] ❌ ${errorMsg}`);
+        throw new Error(errorMsg);
       }
+
+      const enemy = enemyResult.data;
 
       // 🔧 VALIDAÇÃO FINAL: Garantir que o inimigo foi criado
       if (!enemy || !enemy.id) {
@@ -140,89 +133,6 @@ export class BattleInitializationService {
       console.error(`[BattleInit] ❌ Falha:`, errorMessage);
       return { success: false, error: errorMessage };
     }
-  }
-
-  /**
-   * 🔧 NOVO: Método para gerar inimigo de fallback diretamente
-   */
-  private static generateFallbackEnemy(floor: number): Enemy {
-    // ✅ CORREÇÃO: Garantir que floor seja pelo menos 1
-    const safeFloor = Math.max(1, floor);
-
-    const level = Math.max(1, Math.floor(safeFloor / 5) + 1);
-    const tier = Math.max(1, Math.floor(safeFloor / 20) + 1);
-    const isBoss = safeFloor % 10 === 0;
-
-    const monsterNames = [
-      'Slime',
-      'Goblin',
-      'Orc',
-      'Skeleton',
-      'Wolf',
-      'Spider',
-      'Troll',
-      'Dragon',
-    ];
-    const nameIndex = Math.floor(safeFloor / 2) % monsterNames.length;
-    const baseName = monsterNames[nameIndex];
-    const name = `${isBoss ? 'Boss ' : ''}${baseName}${tier > 1 ? ` T${tier}` : ''}`;
-
-    const baseHp = isBoss ? 80 : 50;
-    const baseAtk = isBoss ? 15 : 10;
-    const baseDef = isBoss ? 8 : 5;
-
-    const hp = Math.floor(baseHp + level * 15 + tier * 25);
-    const atk = Math.floor(baseAtk + level * 3 + tier * 5);
-    const def = Math.floor(baseDef + level * 2 + tier * 3);
-    const speed = Math.floor(10 + level * 1 + tier * 2);
-
-    const reward_xp = Math.floor((5 + level * 2 + tier * 2) * (isBoss ? 2.5 : 1));
-    const reward_gold = Math.floor((3 + level * 1 + tier * 1) * (isBoss ? 2.5 : 1));
-
-    return {
-      id: `fallback_${safeFloor}_${Date.now()}`,
-      name,
-      level,
-      hp,
-      maxHp: hp,
-      attack: atk,
-      defense: def,
-      speed,
-      image: isBoss ? '👑' : '👾',
-      behavior: 'balanced',
-      mana: Math.floor(20 + level * 5),
-      reward_xp,
-      reward_gold,
-      possible_drops: [],
-      active_effects: {
-        buffs: [],
-        debuffs: [],
-        dots: [],
-        hots: [],
-        attribute_modifications: [],
-      },
-      tier,
-      base_tier: 1,
-      cycle_position: ((safeFloor - 1) % 20) + 1, // ✅ CORREÇÃO: Usar safeFloor
-      is_boss: isBoss,
-      strength: Math.floor(10 + level * 2),
-      dexterity: Math.floor(10 + level * 1),
-      intelligence: Math.floor(8 + level * 1),
-      wisdom: Math.floor(8 + level * 1),
-      vitality: Math.floor(12 + level * 2),
-      luck: Math.floor(5 + level),
-      critical_chance: 0.05 + level * 0.005,
-      critical_damage: 1.5 + level * 0.05,
-      critical_resistance: 0.1,
-      physical_resistance: 0.0,
-      magical_resistance: 0.0,
-      debuff_resistance: 0.0,
-      physical_vulnerability: 1.0,
-      magical_vulnerability: 1.0,
-      primary_trait: isBoss ? 'boss' : 'common',
-      secondary_trait: 'basic',
-      special_abilities: isBoss ? ['Boss Fury'] : [],
-    };
   }
 
   /**
