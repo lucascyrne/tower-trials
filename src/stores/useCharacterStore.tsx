@@ -22,6 +22,14 @@ interface CharacterState {
 
   // Personagem selecionado completo (cache)
   selectedCharacter: Character | null;
+
+  // ✅ P3: Sistema de cache unificado
+  cacheTimestamps: Record<string, number>; // ID do personagem -> timestamp
+  cacheDurations: {
+    character: number; // Duração do cache de personagem individual (30s)
+    userList: number; // Duração do cache da lista de usuário (15s)
+  };
+  lastUserListFetch: number | null; // Timestamp da última busca da lista de usuários
 }
 
 interface CharacterActions {
@@ -41,6 +49,14 @@ interface CharacterActions {
   // Ações de cache do personagem selecionado
   setSelectedCharacter: (character: Character | null) => void;
   loadSelectedCharacter: (characterId: string) => Promise<void>;
+
+  // ✅ P3: Ações de gerenciamento de cache
+  getCachedCharacter: (characterId: string) => Character | null;
+  isCacheValid: (characterId: string) => boolean;
+  isUserListCacheValid: () => boolean;
+  invalidateCharacterCache: (characterId: string) => void;
+  invalidateUserListCache: () => void;
+  invalidateAllCache: () => void;
 
   // Ações de limpeza
   reset: () => void;
@@ -62,6 +78,14 @@ export const useCharacterStore = create<CharacterStore>()(
         selectedCharacterName: null,
         selectedCharacter: null,
 
+        // ✅ P3: Estado inicial do cache
+        cacheTimestamps: {},
+        cacheDurations: {
+          character: 30000, // 30 segundos
+          userList: 15000, // 15 segundos
+        },
+        lastUserListFetch: null,
+
         // === AÇÕES DA LISTA DE PERSONAGENS ===
 
         loadCharacters: async (userId: string, setGameMessage?: (message: string) => void) => {
@@ -69,7 +93,6 @@ export const useCharacterStore = create<CharacterStore>()(
 
           // Verificar se usuário mudou
           if (state.currentUserId !== userId) {
-            console.log('[CharacterStore] Usuário mudou, resetando estado');
             set(
               produce(draft => {
                 draft.characters = [];
@@ -93,7 +116,6 @@ export const useCharacterStore = create<CharacterStore>()(
           }
 
           try {
-            console.log('[CharacterStore] Carregando personagens para:', userId);
             set(
               produce(draft => {
                 draft.isLoading = true;
@@ -103,10 +125,17 @@ export const useCharacterStore = create<CharacterStore>()(
             const response = await CharacterService.getUserCharacters(userId);
 
             if (response.success && response.data) {
+              const now = Date.now();
               set(
                 produce(draft => {
                   draft.characters = response.data!;
                   draft.hasLoadedCharacters = true;
+
+                  // ✅ P3: Atualizar cache timestamps
+                  draft.lastUserListFetch = now;
+                  response.data!.forEach(character => {
+                    draft.cacheTimestamps[character.id] = now;
+                  });
 
                   // Verificar se o personagem selecionado ainda existe
                   if (draft.selectedCharacterId) {
@@ -213,7 +242,6 @@ export const useCharacterStore = create<CharacterStore>()(
         },
 
         reloadCharacters: () => {
-          console.log('[CharacterStore] Forçando recarga de personagens');
           set(
             produce(draft => {
               draft.hasLoadedCharacters = false;
@@ -224,7 +252,6 @@ export const useCharacterStore = create<CharacterStore>()(
         // === AÇÕES DA SELEÇÃO DE PERSONAGEM ===
 
         selectCharacter: (characterId: string, characterName: string) => {
-          console.log('[CharacterStore] Selecionando personagem:', { characterId, characterName });
           set(
             produce(draft => {
               draft.selectedCharacterId = characterId;
@@ -243,7 +270,6 @@ export const useCharacterStore = create<CharacterStore>()(
         },
 
         clearSelection: () => {
-          console.log('[CharacterStore] Limpando seleção');
           set(
             produce(draft => {
               draft.selectedCharacterId = null;
@@ -265,7 +291,6 @@ export const useCharacterStore = create<CharacterStore>()(
 
         loadSelectedCharacter: async (characterId: string) => {
           try {
-            console.log('[CharacterStore] Carregando dados completos do personagem:', characterId);
             const response = await CharacterService.getCharacter(characterId);
 
             if (response.success && response.data) {
@@ -285,10 +310,72 @@ export const useCharacterStore = create<CharacterStore>()(
           }
         },
 
+        // === ✅ P3: AÇÕES DE GERENCIAMENTO DE CACHE ===
+
+        getCachedCharacter: (characterId: string) => {
+          const state = get();
+          const character = state.characters.find(c => c.id === characterId);
+
+          if (!character) {
+            return state.selectedCharacter?.id === characterId ? state.selectedCharacter : null;
+          }
+
+          // Verificar se cache é válido
+          if (!state.isCacheValid(characterId)) {
+            return null;
+          }
+
+          return character;
+        },
+
+        isCacheValid: (characterId: string) => {
+          const state = get();
+          const timestamp = state.cacheTimestamps[characterId];
+
+          if (!timestamp) return false;
+
+          const age = Date.now() - timestamp;
+          return age <= state.cacheDurations.character;
+        },
+
+        isUserListCacheValid: () => {
+          const state = get();
+          if (!state.lastUserListFetch) return false;
+
+          const age = Date.now() - state.lastUserListFetch;
+          return age <= state.cacheDurations.userList;
+        },
+
+        invalidateCharacterCache: (characterId: string) => {
+          set(
+            produce(draft => {
+              delete draft.cacheTimestamps[characterId];
+            })
+          );
+        },
+
+        invalidateUserListCache: () => {
+          set(
+            produce(draft => {
+              draft.lastUserListFetch = null;
+              draft.hasLoadedCharacters = false;
+            })
+          );
+        },
+
+        invalidateAllCache: () => {
+          set(
+            produce(draft => {
+              draft.cacheTimestamps = {};
+              draft.lastUserListFetch = null;
+              draft.hasLoadedCharacters = false;
+            })
+          );
+        },
+
         // === AÇÕES DE LIMPEZA ===
 
         reset: () => {
-          console.log('[CharacterStore] Resetando estado completo');
           set(
             produce(draft => {
               draft.characters = [];
@@ -298,12 +385,14 @@ export const useCharacterStore = create<CharacterStore>()(
               draft.selectedCharacterId = null;
               draft.selectedCharacterName = null;
               draft.selectedCharacter = null;
+              // ✅ P3: Limpar cache também
+              draft.cacheTimestamps = {};
+              draft.lastUserListFetch = null;
             })
           );
         },
 
         resetForUser: (userId: string) => {
-          console.log('[CharacterStore] Resetando estado para usuário:', userId);
           set(
             produce(draft => {
               draft.characters = [];
@@ -313,6 +402,9 @@ export const useCharacterStore = create<CharacterStore>()(
               draft.selectedCharacterId = null;
               draft.selectedCharacterName = null;
               draft.selectedCharacter = null;
+              // ✅ P3: Limpar cache
+              draft.cacheTimestamps = {};
+              draft.lastUserListFetch = null;
             })
           );
         },

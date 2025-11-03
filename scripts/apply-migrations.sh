@@ -69,4 +69,4 @@ case $ENVIRONMENT in
         ;;
 esac
 
-echo -e "${GREEN}🎉 Processo concluído!${NC}" 
+echo -e "${GREEN}🎉 Processo concluído!${NC}"

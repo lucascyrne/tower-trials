@@ -206,8 +206,7 @@ function EquipmentSelectPage() {
       const result = await EquipmentService.toggleEquipment(
         characterId,
         equipment.id,
-        true,
-        slotType
+        true
       );
 
       if (result.success) {

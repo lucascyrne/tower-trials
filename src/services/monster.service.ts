@@ -11,14 +11,6 @@ interface ServiceResponse<T> {
   success: boolean;
 }
 
-interface SupabaseDropData {
-  drop_id: string;
-  drop_chance: number;
-  min_quantity: number;
-  max_quantity: number;
-  monster_drops: unknown;
-}
-
 // Interface para dados do monstro vindos do banco
 interface DatabaseMonsterData {
   id?: string;
@@ -324,12 +316,8 @@ function generateEnemyFromDatabaseLogic(floor: number): Enemy {
   const criticalDamage = Math.min(1.8, 1.1 + tier * 0.05 + floorInTier * 0.01);
   const criticalResistance = Math.min(0.2, tier * 0.01 + (isBoss ? 0.08 : 0.03));
 
-  console.log(
-    `[MonsterService] ✅ Enemy gerado tutorial-friendly: ${name} (T${tier}F${floorInTier}) - HP:${scaledHp} ATK:${scaledAtk} DEF:${scaledDef} | XP:${finalBaseStats.rewardXp} Gold:${finalBaseStats.rewardGold}${isNemesis ? ` [NEMESIS: ${nemesisType}]` : ''}`
-  );
-
   return {
-    id: `unified_${floor}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: crypto.randomUUID(),
     name,
     level,
     hp: scaledHp,
@@ -412,8 +400,6 @@ export class MonsterService {
     setError(null);
 
     try {
-      console.log(`[MonsterService] Buscando enemy para andar ${floor}`);
-
       // TENTATIVA 1: RPC do banco
       let { data, error } = await Promise.race([
         supabase.rpc('get_monster_for_floor_with_initiative', { p_floor: floor }),
@@ -432,24 +418,19 @@ export class MonsterService {
         error?.message?.includes('structure of query does not match');
 
       if (isTypeError || error) {
-        console.log(`[MonsterService] RPC principal falhou, tentando alternativa:`, error?.message);
-        try {
-          const altResult = await Promise.race([
-            supabase.rpc('get_monster_for_floor_simple', { p_floor: floor }),
-            new Promise<{ data: null; error: { message: string } }>((_, reject) =>
-              setTimeout(
-                () => reject({ data: null, error: { message: 'Timeout alternativo' } }),
-                2000
-              )
-            ),
-          ]).catch(err => ({ data: null, error: err }));
+        const altResult = await Promise.race([
+          supabase.rpc('get_monster_for_floor_simple', { p_floor: floor }),
+          new Promise<{ data: null; error: { message: string } }>((_, reject) =>
+            setTimeout(
+              () => reject({ data: null, error: { message: 'Timeout alternativo' } }),
+              2000
+            )
+          ),
+        ]).catch(err => ({ data: null, error: err }));
 
-          if (altResult.data && !altResult.error) {
-            data = altResult.data;
-            error = altResult.error;
-          }
-        } catch (altError) {
-          console.log('[MonsterService] RPC alternativa também falhou:', altError);
+        if (altResult.data && !altResult.error) {
+          data = altResult.data;
+          error = altResult.error;
         }
       }
 
@@ -463,12 +444,9 @@ export class MonsterService {
         if (this.isValidMonsterData(monsterData)) {
           enemy = this.convertToEnemyUnified(monsterData, floor);
         } else {
-          console.warn('[MonsterService] Dados do banco inválidos, usando lógica unificada');
           enemy = generateEnemyFromDatabaseLogic(floor);
         }
       } else {
-        // Se o banco falhou, usar a lógica unificada que replica exatamente o banco
-        console.log('[MonsterService] Banco indisponível, usando lógica unificada');
         enemy = generateEnemyFromDatabaseLogic(floor);
       }
 
@@ -531,8 +509,7 @@ export class MonsterService {
     const isBoss = floor === 5 || floor % 10 === 0;
 
     // Usar dados do banco quando válidos, fallback para lógica unificada quando não
-    const id =
-      typeof monsterData.id === 'string' ? monsterData.id : `converted_${floor}_${Date.now()}`;
+    const id = typeof monsterData.id === 'string' ? monsterData.id : crypto.randomUUID();
     const name = typeof monsterData.name === 'string' ? monsterData.name : `Monster Floor ${floor}`;
     const level =
       typeof monsterData.level === 'number'
@@ -663,32 +640,44 @@ export class MonsterService {
     setLoadingDrops(true);
 
     try {
-      const { data: possibleDropsData } = await supabase
-        .from('monster_possible_drops')
-        .select(
-          `
-          drop_id,
-          drop_chance,
-          min_quantity,
-          max_quantity,
-          monster_drops:drop_id (id, name, description, rarity, value)
-        `
-        )
-        .eq('monster_id', enemy.id);
+      // ✅ CORREÇÃO: Usar função RPC ao invés de query direta com join
+      const { data: possibleDropsData, error } = await supabase.rpc(
+        'get_monster_possible_drops_with_info',
+        {
+          p_monster_id: enemy.id,
+        }
+      );
 
-      if (possibleDropsData) {
-        enemy.possible_drops = possibleDropsData.map((dropData: SupabaseDropData) => ({
-          drop_id: dropData.drop_id,
-          drop_chance: dropData.drop_chance,
-          min_quantity: dropData.min_quantity,
-          max_quantity: dropData.max_quantity,
-          drop_info: Array.isArray(dropData.monster_drops)
-            ? dropData.monster_drops[0]
-            : dropData.monster_drops,
-        }));
+      if (error) {
+        console.warn(`[MonsterService] Erro ao carregar drops via RPC:`, error);
+        setError(`Drops não carregados: ${error.message}`);
+        return;
+      }
 
-        console.log(
-          `[MonsterService] Carregados ${enemy.possible_drops.length} drops possíveis para ${enemy.name}`
+      if (possibleDropsData && Array.isArray(possibleDropsData)) {
+        enemy.possible_drops = possibleDropsData.map(
+          (dropData: {
+            drop_id: string;
+            drop_chance: number;
+            min_quantity: number;
+            max_quantity: number;
+            drop_name: string;
+            drop_description: string;
+            rarity: string;
+            value: number;
+          }) => ({
+            drop_id: dropData.drop_id,
+            drop_chance: dropData.drop_chance,
+            min_quantity: dropData.min_quantity,
+            max_quantity: dropData.max_quantity,
+            drop_info: {
+              id: dropData.drop_id,
+              name: dropData.drop_name,
+              description: dropData.drop_description,
+              rarity: dropData.rarity,
+              value: dropData.value,
+            },
+          })
         );
       }
     } catch (error) {
@@ -746,7 +735,6 @@ export class MonsterService {
     }
 
     if (promises.length > 0) {
-      console.log(`[MonsterService] Pré-carregando ${promises.length} andares próximos`);
       await Promise.allSettled(promises);
     }
   }

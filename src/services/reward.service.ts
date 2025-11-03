@@ -15,8 +15,6 @@ export class RewardService {
     const { gameState, updateGameState, setError } = useGameStateStore.getState();
 
     try {
-      console.log('[RewardService] Processando derrota do inimigo');
-
       const { player, currentEnemy, currentFloor } = gameState;
 
       if (!currentEnemy || !currentFloor) {
@@ -42,8 +40,6 @@ export class RewardService {
       const baseGold = currentEnemy.reward_gold || 5;
       const { xp, gold } = FloorService.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
 
-      console.log(`[RewardService] Recompensas calculadas - XP: ${xp}, Gold: ${gold}`);
-
       // Persistir XP
       const xpResult = await CharacterService.grantSecureXP(player.id, xp, 'combat');
       if (!xpResult.success) {
@@ -52,7 +48,7 @@ export class RewardService {
       const xpData = xpResult.data!;
 
       // Persistir Gold
-      const goldResult = await CharacterService.grantSecureGold(player.id, gold, 'combat');
+      const goldResult = await CharacterService.grantSecureGold(player.id, gold);
       if (!goldResult.success) {
         throw new Error(`Falha ao conceder gold: ${goldResult.error}`);
       }
@@ -85,17 +81,6 @@ export class RewardService {
         draft.isPlayerTurn = true;
         draft.gameMessage = `Inimigo derrotado! +${xp} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`;
       });
-
-      // Sincronizar com CharacterStore (converter GamePlayer para Character)
-      // Note: Pode precisar de conversão de tipos específica se GamePlayer != Character
-
-      console.log(`[RewardService] Derrota processada com sucesso:`, {
-        level: updatedPlayer.level,
-        levelUp: xpData.leveled_up,
-        xp: updatedPlayer.xp,
-        gold: updatedPlayer.gold,
-        drops: drops.length,
-      });
     } catch (error) {
       console.error('[RewardService] Erro ao processar derrota:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -127,8 +112,6 @@ export class RewardService {
         currentFloor.type === 'boss' ? 1.5 : 1.0
       );
 
-      console.log(`[RewardService] ${dropsObtidos.length} drops obtidos`);
-
       if (dropsObtidos.length > 0) {
         const dropIds = dropsObtidos.map(d => d.drop_id);
         const dropInfoResponse = await ConsumableService.getDropInfoByIds(dropIds);
@@ -150,8 +133,6 @@ export class RewardService {
           if (!addDropsResult.success) {
             throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
           }
-
-          console.log(`[RewardService] ${addDropsResult.data} drops persistidos`);
         } else {
           console.error(
             `[RewardService] Erro ao buscar informações dos drops:`,
@@ -173,8 +154,6 @@ export class RewardService {
    */
   static clearBattleRewards(): void {
     const { updateGameState } = useGameStateStore.getState();
-
-    console.log('[RewardService] Limpando recompensas de batalha');
     updateGameState(draft => {
       draft.battleRewards = null;
     });

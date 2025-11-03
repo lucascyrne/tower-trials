@@ -80,17 +80,14 @@ export function VictoryModal({
   }, [isMobileLandscape]);
 
   const handleContinue = () => {
-    console.log('[VictoryModal] Botão Continuar clicado - chamando onContinue');
     onContinue();
   };
 
   const handleReturnToHub = () => {
-    console.log('[VictoryModal] Botão Voltar ao Hub clicado - chamando onReturnToHub');
     onReturnToHub();
   };
 
   const handleOpenAttributeModal = () => {
-    console.log('[VictoryModal] Botão Distribuir Pontos clicado - chamando onOpenAttributeModal');
     onOpenAttributeModal();
   };
 

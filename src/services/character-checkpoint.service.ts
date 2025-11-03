@@ -1,5 +1,14 @@
+/**
+ * Service de gerenciamento de checkpoints e progressão de andar
+ *
+ * ✅ REFATORADO (P1): Service puro - não acessa caches
+ * - Sempre busca do banco (fonte da verdade)
+ * - Gerencia checkpoints (1, 5, 11, 21, 31, etc.)
+ * - Cura personagens ao trocar checkpoint
+ * - Testável sem mocks
+ */
+
 import { supabase } from '@/lib/supabase';
-import { CharacterCacheService } from '@/services/character-cache.service';
 import { CharacterHealingService } from '@/services/character-healing.service';
 
 interface ServiceResponse<T> {
@@ -22,27 +31,18 @@ export class CharacterCheckpointService {
     newFloor: number
   ): Promise<ServiceResponse<null>> {
     try {
-      console.log(
-        `[CharacterCheckpointService] Atualizando andar - ID: ${characterId}, Andar: ${newFloor}`
-      );
-
-      const { supabaseAdmin } = await import('@/lib/supabase');
-
-      const { error } = await supabaseAdmin.rpc('secure_advance_floor', {
+      const { error } = await supabase.rpc('update_character_floor', {
         p_character_id: characterId,
-        p_new_floor: newFloor,
+        p_floor: newFloor,
       });
 
       if (error) {
         console.error(
-          '[CharacterCheckpointService] Erro na função secure_advance_floor:',
+          '[CharacterCheckpointService] Erro na função update_character_floor:',
           error.message
         );
         throw error;
       }
-
-      CharacterCacheService.invalidateCharacterCache(characterId);
-      console.log(`[CharacterCheckpointService] Andar atualizado para ${newFloor}`);
 
       return { data: null, error: null, success: true };
     } catch (error) {
@@ -61,47 +61,14 @@ export class CharacterCheckpointService {
    */
   static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<Checkpoint[]>> {
     try {
-      console.log(`[CharacterCheckpointService] Obtendo checkpoints para ${characterId}`);
+      // Buscar sempre do banco (fonte da verdade)
+      const { data: character, error } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', characterId)
+        .single();
 
-      try {
-        // Tentar usar a nova função RPC específica
-        const { data, error } = await supabase.rpc('get_character_unlocked_checkpoints', {
-          p_character_id: characterId,
-        });
-
-        if (!error && data) {
-          const checkpoints = data.map((row: { floor_number: number; description: string }) => ({
-            floor: row.floor_number,
-            description: row.description,
-          }));
-
-          console.log(`[CharacterCheckpointService] Checkpoints obtidos:`, checkpoints);
-          return { data: checkpoints, error: null, success: true };
-        } else if (error) {
-          console.warn(`[CharacterCheckpointService] Erro na RPC:`, error);
-        }
-      } catch (rpcError) {
-        console.warn(
-          '[CharacterCheckpointService] Função RPC não disponível, usando fallback:',
-          rpcError
-        );
-      }
-
-      // Fallback: calcular checkpoints manualmente
-      console.log(`[CharacterCheckpointService] Usando fallback`);
-
-      let character = CharacterCacheService.getCachedCharacter(characterId);
-
-      if (!character) {
-        const { data: charData, error } = await supabase
-          .from('characters')
-          .select('*')
-          .eq('id', characterId)
-          .single();
-
-        if (error) throw error;
-        character = charData;
-      }
+      if (error) throw error;
 
       if (!character) {
         return { data: null, error: 'Personagem não encontrado', success: false };
@@ -115,10 +82,6 @@ export class CharacterCheckpointService {
           : character.floor) || character.floor
       );
 
-      console.log(
-        `[CharacterCheckpointService] Andar atual: ${character.floor}, Highest: ${highestFloor}`
-      );
-
       // ✅ CORRIGIDO: Gerar checkpoints usando nova lógica padronizada
       const checkpoints: Checkpoint[] = [];
 
@@ -128,7 +91,6 @@ export class CharacterCheckpointService {
       // ✅ NOVO: Checkpoint especial no andar 5 (se alcançado)
       if (highestFloor >= 5) {
         checkpoints.push({ floor: 5, description: 'Andar 5 - Primeiro Desafio' });
-        console.log(`[CharacterCheckpointService] Checkpoint especial 5 desbloqueado`);
       }
 
       // ✅ CORRIGIDO: Checkpoints pós-boss até andar 1000: 11, 21, 31, 41, 51, etc.
@@ -143,13 +105,11 @@ export class CharacterCheckpointService {
             floor: checkpointFloor,
             description: `Andar ${checkpointFloor} - Checkpoint Pós-Boss`,
           });
-          console.log(`[CharacterCheckpointService] Checkpoint ${checkpointFloor} desbloqueado`);
         } else {
           break;
         }
       }
 
-      console.log(`[CharacterCheckpointService] Checkpoints calculados:`, checkpoints);
       return { data: checkpoints, error: null, success: true };
     } catch (error) {
       console.error('Erro ao obter checkpoints:', error instanceof Error ? error.message : error);
@@ -196,15 +156,21 @@ export class CharacterCheckpointService {
         return updateResponse;
       }
 
+      // Buscar character do banco para obter stats de cura
+      const { data: character, error: charError } = await supabase
+        .from('characters')
+        .select('max_hp, max_mana')
+        .eq('id', characterId)
+        .single();
+
+      if (charError) throw charError;
+
       // Curar personagem ao máximo
-      const character = CharacterCacheService.getCachedCharacter(characterId);
-      if (character) {
-        await CharacterHealingService.updateCharacterHpMana(
-          characterId,
-          character.max_hp,
-          character.max_mana
-        );
-      }
+      await CharacterHealingService.updateCharacterHpMana(
+        characterId,
+        character.max_hp,
+        character.max_mana
+      );
 
       return { data: null, error: null, success: true };
     } catch (error) {
@@ -231,15 +197,21 @@ export class CharacterCheckpointService {
         return result;
       }
 
+      // Buscar character do banco para obter stats de cura
+      const { data: character, error: charError } = await supabase
+        .from('characters')
+        .select('max_hp, max_mana')
+        .eq('id', characterId)
+        .single();
+
+      if (charError) throw charError;
+
       // Curar personagem ao máximo
-      const character = CharacterCacheService.getCachedCharacter(characterId);
-      if (character) {
-        await CharacterHealingService.updateCharacterHpMana(
-          characterId,
-          character.max_hp,
-          character.max_mana
-        );
-      }
+      await CharacterHealingService.updateCharacterHpMana(
+        characterId,
+        character.max_hp,
+        character.max_mana
+      );
 
       return { data: null, error: null, success: true };
     } catch (error) {

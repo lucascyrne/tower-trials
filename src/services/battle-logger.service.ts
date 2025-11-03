@@ -22,7 +22,6 @@ export class BattleLoggerService {
   static startBattle(playerId: string, floorNumber: number): string {
     // ✅ CRÍTICO: Limpar logs antigos ao iniciar nova batalha
     if (this.currentBattleId) {
-      console.log(`[BattleLogger] Finalizando batalha anterior: ${this.currentBattleId}`);
       this.endBattle('error', { reason: 'Batalha interrompida por nova inicialização' });
     }
 

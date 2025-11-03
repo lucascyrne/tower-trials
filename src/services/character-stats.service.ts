@@ -44,15 +44,6 @@ export class CharacterStatsService {
       magic_mastery = 1,
     } = character;
 
-    console.log(`[CharacterStatsService] Calculando stats sem diversidade para nível ${level}:`, {
-      strength,
-      dexterity,
-      intelligence,
-      wisdom,
-      vitality,
-      luck,
-    });
-
     // =====================================
     // VALORES BASE MÍNIMOS
     // =====================================
@@ -187,14 +178,6 @@ export class CharacterStatsService {
       magic_damage_bonus: calculatedMagicDamage,
       double_attack_chance: calculatedDoubleAttack,
     };
-
-    console.log(`[CharacterStatsService] Stats calculados (SEM diversidade) para nível ${level}:`, {
-      criticalChance: finalStats.critical_chance.toFixed(1) + '%',
-      criticalDamage: finalStats.critical_damage.toFixed(0) + '%',
-      magicDamage: finalStats.magic_damage_bonus.toFixed(1) + '%',
-      hp: finalStats.max_hp,
-      atk: finalStats.atk,
-    });
 
     return finalStats;
   }

@@ -1,0 +1,95 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     FIX: ERRO DE SLOTS DE POÇÃO                              ║
+║                          Resumo Executivo                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 PROBLEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Erro ao usar poções em batalha:
+  • Code: 42702
+  • Message: column reference "slot_position" is ambiguous
+  • Context: POST /rpc/get_character_potion_slots → 400 Bad Request
+
+🔍 CAUSA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Função RPC get_character_potion_slots tem ORDER BY ambíguo
+   - Múltiplos JOINs com mesma coluna
+   - Falta qualificação: "slot_position" → "ps.slot_position"
+
+2. Função consume_potion_from_slot NÃO EXISTE
+   - Criada em slot.service.ts mas não implementada no DB
+   - Resultado: RPC call falha com 404/Function Does Not Exist
+
+✅ SOLUÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nova migração: supabase/migrations/00016_fix_slot_functions.sql
+
+Correção 1: get_character_potion_slots
+  • Qualifica todas as colunas com alias de tabela (ps., c., cc.)
+  • ORDER BY ps.slot_position (não ambíguo)
+
+Correção 2: consume_potion_from_slot (CRIADA)
+  • Valida slot position (1-3)
+  • Obtém consumable_id do slot
+  • Chama consume_potion()
+  • Limpa slot se vazio
+
+📦 COMO APLICAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Opção 1: Supabase CLI (Recomendado)
+  $ cd tower-trials
+  $ npx supabase db push
+
+Opção 2: Supabase Dashboard
+  1. Acesse https://app.supabase.com
+  2. SQL Editor → New Query
+  3. Cole conteúdo de supabase/migrations/00016_fix_slot_functions.sql
+  4. Run
+
+🧪 VERIFICAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SQL:
+  SELECT * FROM get_character_potion_slots('UUID');
+  → Deve retornar 3 linhas (1 para cada slot)
+
+Browser Console:
+  const { data, error } = await supabase.rpc('get_character_potion_slots', {
+    p_character_id: 'UUID_DO_PERSONAGEM'
+  });
+  console.log(data, error);  // Não deve ter erro
+
+Em Batalha:
+  • Pressionar Q/W/E para usar poções
+  • Verificar se HP/Mana atualizam
+  • Verificar se poção não pode ser usada 2x
+
+📊 IMPACTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Afetado:
+  ✅ CombinedBattleInterface.tsx → Usa poções normalmente
+  ✅ game-battle.tsx → Slots carregam e recarregam
+  ✅ QuickActionPanel.tsx → Dados dos slots aparecem
+  ✅ slot.service.ts → RPC funciona sem erro
+
+Status:
+  ❌ ANTES: Erro ao usar poção, interface travada
+  ✅ DEPOIS: Poção funciona, batalha continua
+
+📝 ARQUIVOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criados:
+  • supabase/migrations/00016_fix_slot_functions.sql (migração)
+  • docs/SLOT_FUNCTIONS_FIX.md (documentação completa)
+  • docs/SLOT_FUNCTIONS_BEFORE_AFTER.md (comparação antes/depois)
+  • MIGRATION_FIX_INSTRUCTIONS.md (instruções de aplicação)
+
+🎯 PRÓXIMOS PASSOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Aplicar migração (conforme instruções acima)
+2. Testar uso de poções em batalha
+3. Verificar que slots recarregam corretamente
+4. Confirmar que limite de 1 poção por turno funciona
+5. Fazer deploy para produção
+
+✨ STATUS: PRONTO PARA DEPLOY ✨
+

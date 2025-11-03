@@ -3,7 +3,6 @@ import {
   type AttributeDistributionResult,
 } from '@/models/character.model';
 import { supabase } from '@/lib/supabase';
-import { CharacterCacheService } from './character-cache.service';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -11,9 +10,18 @@ interface ServiceResponse<T> {
   success: boolean;
 }
 
+/**
+ * Service para gerenciamento de atributos de personagens
+ * 
+ * ✅ REFATORADO (P1): Service puro - não acessa stores ou caches diretamente
+ * - Retorna dados e deixa o caller (hook/component) gerenciar cache
+ * - Testável sem mocks de stores
+ */
 export class CharacterAttributesService {
   /**
    * Distribuir pontos de atributo
+   * 
+   * ✅ REFATORADO: Não invalida cache - retorna indicador para o caller fazer isso
    */
   static async distributeAttributePoints(
     characterId: string,
@@ -34,16 +42,7 @@ export class CharacterAttributesService {
 
       if (error) throw error;
 
-      // ✅ CORREÇÃO: Invalidação mais robusta do cache
-      CharacterCacheService.invalidateCharacterCache(characterId);
-
-      // Forçar limpeza do cache de usuários que possam ter este personagem
-      const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
-      if (cachedCharacter) {
-        CharacterCacheService.invalidateUserCache(cachedCharacter.user_id);
-      }
-
-      console.log('[CharacterAttributesService] Pontos distribuídos e cache invalidado:', {
+      console.log('[CharacterAttributesService] Pontos distribuídos com sucesso:', {
         characterId,
         distribution,
         success: !!data,
@@ -69,6 +68,8 @@ export class CharacterAttributesService {
 
   /**
    * Recalcular todos os stats de um personagem
+   * 
+   * ✅ REFATORADO: Não invalida cache - retorna indicador para o caller fazer isso
    */
   static async recalculateCharacterStats(characterId: string): Promise<ServiceResponse<null>> {
     try {
@@ -78,8 +79,7 @@ export class CharacterAttributesService {
 
       if (error) throw error;
 
-      // Invalidar cache do personagem
-      CharacterCacheService.invalidateCharacterCache(characterId);
+      console.log('[CharacterAttributesService] Stats recalculados:', { characterId });
 
       return {
         data: null,

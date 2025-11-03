@@ -16,7 +16,7 @@ O jogo foi projetado para fornecer uma experiência equilibrada onde:
 ## Monstros e Drops
 
 ### Monstros
-- 40 tipos de monstros distribuídos em 20 andares, cada um com seu drop único
+- X tipos de monstros distribuídos em Y andares, cada um com seu drop único
 - Monstros em andares mais altos têm mais HP, ATK e DEF
 - Recompensas (XP e Gold) aumentam com o nível do andar, mas a uma taxa controlada
 - A ordem de encontro dos monstros é aleatória para cada andar, aumentando a rejogabilidade

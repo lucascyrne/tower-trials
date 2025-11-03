@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
 import { useEffect } from 'react';
-import { type ActionType } from '../models/game.model';
 import { type Character } from '../models/character.model';
 import { useGameStateStore } from './useGameStateStore';
 import { GameStateService } from '../services/game-state.service';
@@ -32,7 +31,7 @@ interface GameStoreActions {
   loadCharacterForHub: (characterId: string) => Promise<void>;
 
   // Ações de jogo
-  performAction: (action: ActionType, spellId?: string, consumableId?: string) => Promise<void>;
+  // performAction foi movido para useBattleStore (P2 - Consolidação)
   saveProgress: () => Promise<void>;
   returnToMenu: () => void;
 
@@ -59,7 +58,6 @@ export const useGameStore = create<GameStore>()(
     // === INICIALIZAÇÃO ===
 
     initializeGame: () => {
-      console.log('[GameStore] Inicializando sistema de jogo');
       const sessionId = `game-session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
       set(
@@ -75,7 +73,6 @@ export const useGameStore = create<GameStore>()(
     },
 
     clearGame: () => {
-      console.log('[GameStore] Limpando estado do jogo');
       set(
         produce(draft => {
           draft.isProcessingAction = false;
@@ -96,7 +93,6 @@ export const useGameStore = create<GameStore>()(
       const gameStateStore = useGameStateStore.getState();
 
       try {
-        console.log('[GameStore] Iniciando jogo com personagem:', characterId);
         gameStateStore.updateLoading('startGame', true);
 
         // Carregar dados do personagem para o jogo
@@ -128,7 +124,6 @@ export const useGameStore = create<GameStore>()(
       const gameStateStore = useGameStateStore.getState();
 
       try {
-        console.log('[GameStore] Carregando personagem para hub:', characterId);
         gameStateStore.updateLoading('loadProgress', true);
 
         // Carregar dados completos do personagem
@@ -150,61 +145,8 @@ export const useGameStore = create<GameStore>()(
     },
 
     // === AÇÕES DE JOGO ===
-
-    performAction: async (action: ActionType, spellId?: string, consumableId?: string) => {
-      const state = get();
-      const gameStateStore = useGameStateStore.getState();
-
-      // Controle de debounce
-      const now = Date.now();
-      const timeSinceLastAction = now - state.lastActionTimestamp;
-
-      if (state.isProcessingAction) {
-        console.warn('[GameStore] Ação bloqueada - já processando outra ação');
-        return;
-      }
-
-      if (timeSinceLastAction < 500) {
-        // 500ms debounce
-        console.warn('[GameStore] Ação bloqueada - debounce ativo');
-        return;
-      }
-
-      try {
-        console.log('[GameStore] Processando ação:', action, { spellId, consumableId });
-
-        set(
-          produce(draft => {
-            draft.isProcessingAction = true;
-            draft.lastActionTimestamp = now;
-          })
-        );
-
-        gameStateStore.updateLoading('performAction', true);
-
-        // Aqui seria a lógica de processamento da ação
-        // Por exemplo, chamar GameService.processPlayerAction
-        // Para agora, apenas simulo uma atualização
-
-        gameStateStore.updateGameState(draft => {
-          draft.gameMessage = `Ação ${action} processada com sucesso!`;
-        });
-
-        // Simular delay de processamento
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error('[GameStore] Erro ao processar ação:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Erro ao processar ação';
-        gameStateStore.setError(errorMessage);
-      } finally {
-        set(
-          produce(draft => {
-            draft.isProcessingAction = false;
-          })
-        );
-        gameStateStore.updateLoading('performAction', false);
-      }
-    },
+    // ℹ️ REFATORAÇÃO P2: performAction foi movido para useBattleStore
+    // Use useBattleStore().performAction para processar ações de batalha
 
     saveProgress: async () => {
       const gameStateStore = useGameStateStore.getState();
@@ -216,7 +158,6 @@ export const useGameStore = create<GameStore>()(
       }
 
       try {
-        console.log('[GameStore] Salvando progresso do personagem:', currentGameState.player.id);
         gameStateStore.updateLoading('saveProgress', true);
 
         // Atualizar stats do personagem
@@ -247,7 +188,6 @@ export const useGameStore = create<GameStore>()(
     },
 
     returnToMenu: () => {
-      console.log('[GameStore] Retornando ao menu principal');
       const gameStateStore = useGameStateStore.getState();
 
       // Salvar progresso antes de voltar ao menu
@@ -293,7 +233,6 @@ export const useGameStore = create<GameStore>()(
 
     refreshCharacterData: async (characterId: string) => {
       try {
-        console.log('[GameStore] Atualizando dados do personagem:', characterId);
         const response = await CharacterService.getCharacter(characterId);
 
         if (response.success && response.data) {
@@ -309,7 +248,9 @@ export const useGameStore = create<GameStore>()(
           // Atualizar cache de personagens disponíveis
           set(
             produce(draft => {
-              const index = draft.availableCharacters.findIndex((c: Character) => c.id === characterId);
+              const index = draft.availableCharacters.findIndex(
+                (c: Character) => c.id === characterId
+              );
               if (index !== -1) {
                 draft.availableCharacters[index] = response.data!;
               }
@@ -336,7 +277,7 @@ export const useGameActions = () =>
   useGameStore(state => ({
     startGame: state.startGame,
     loadCharacterForHub: state.loadCharacterForHub,
-    performAction: state.performAction,
+    // performAction foi movido para useBattleStore
     saveProgress: state.saveProgress,
     returnToMenu: state.returnToMenu,
   }));

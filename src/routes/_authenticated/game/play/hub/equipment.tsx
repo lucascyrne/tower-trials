@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { CharacterService } from '@/services/character.service';
-import { EquipmentService } from '@/services/equipment.service';
-import type { Character } from '@/models/character.model';
-import type { EquipmentSlots, CharacterEquipment, Equipment } from '@/models/equipment.model';
-import type { CharacterConsumable } from '@/models/consumable.model';
 import { ConsumableService } from '@/services/consumable.service';
+import type { Character } from '@/models/character.model';
+import type { CharacterConsumable } from '@/models/consumable.model';
+import type { Equipment } from '@/models/equipment.model';
+import { useEquipment } from '@/hooks/useEquipment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Shield, Sword } from 'lucide-react';
@@ -39,12 +39,16 @@ function EquipmentPage() {
   const { character: characterId } = Route.useSearch();
 
   const [character, setCharacter] = useState<Character | null>(null);
-  const [equippedSlots, setEquippedSlots] = useState<EquipmentSlots>({});
-  const [, setCharacterEquipment] = useState<CharacterEquipment[]>([]);
   const [consumables, setConsumables] = useState<CharacterConsumable[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // ✅ NOVO: Usar hook para carregar equipamentos
+  const {
+    equippedSlots,
+    loading: equipLoading,
+    refresh: refreshEquipment,
+  } = useEquipment(characterId);
 
   // Carregar dados do personagem
   useEffect(() => {
@@ -52,44 +56,16 @@ function EquipmentPage() {
       if (!characterId) return;
 
       try {
-        setLoading(true);
-
         // Carregar personagem
         const charResponse = await CharacterService.getCharacter(characterId);
         if (charResponse.success && charResponse.data) {
           setCharacter(charResponse.data);
         }
 
-        // ✅ OTIMIZADO: Uma única requisição para buscar todos os dados
-        const { allEquipment, equippedSlots } =
-          await EquipmentService.getCharacterEquipmentComplete(characterId);
-        setEquippedSlots(equippedSlots);
-        setCharacterEquipment(allEquipment);
-
         // Carregar consumíveis com log detalhado
-        console.log('[EquipmentPage] Carregando consumíveis para personagem:', characterId);
         const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
-        console.log('[EquipmentPage] Resposta dos consumíveis:', consumablesResponse);
 
         if (consumablesResponse.success && consumablesResponse.data) {
-          console.log(
-            '[EquipmentPage] Consumíveis carregados com sucesso:',
-            consumablesResponse.data
-          );
-          console.log('[EquipmentPage] Total de consumíveis:', consumablesResponse.data.length);
-
-          // Log detalhado de cada consumível
-          consumablesResponse.data.forEach((consumable, index) => {
-            console.log(`[EquipmentPage] Consumível ${index + 1}:`, {
-              id: consumable.id,
-              consumable_id: consumable.consumable_id,
-              quantity: consumable.quantity,
-              consumable_name: consumable.consumable?.name,
-              consumable_type: consumable.consumable?.type,
-              hasConsumableData: !!consumable.consumable,
-            });
-          });
-
           setConsumables(consumablesResponse.data);
         } else {
           console.error('[EquipmentPage] Erro ao carregar consumíveis:', consumablesResponse.error);
@@ -98,8 +74,6 @@ function EquipmentPage() {
       } catch (error) {
         console.error('Erro ao carregar dados do equipamento:', error);
         toast.error('Erro ao carregar equipamentos');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -128,59 +102,17 @@ function EquipmentPage() {
     });
   };
 
-  const refreshEquipment = async () => {
-    if (!characterId) return;
-
-    try {
-      console.log('[EquipmentPage] Atualizando dados de equipamentos...');
-
-      // ✅ OTIMIZADO: Uma única requisição para atualizar todos os dados
-      const { allEquipment, equippedSlots } =
-        await EquipmentService.getCharacterEquipmentComplete(characterId);
-
-      setEquippedSlots(equippedSlots);
-      setCharacterEquipment(allEquipment);
-
-      // ✅ CORREÇÃO: Atualizar selectedItem se ainda for o mesmo slot
-      if (selectedSlot && selectedItem) {
-        const updatedItem = equippedSlots[selectedSlot as keyof typeof equippedSlots];
-        if (updatedItem && updatedItem.id === selectedItem.id) {
-          console.log('[EquipmentPage] Atualizando selectedItem com dados mais recentes');
-          setSelectedItem(updatedItem);
-        } else if (!updatedItem) {
-          // Item foi desequipado, limpar seleção
-          console.log('[EquipmentPage] Item foi desequipado, limpando seleção');
-          setSelectedItem(null);
-          setSelectedSlot(null);
-        }
-      }
-
-      console.log('[EquipmentPage] Dados de equipamentos atualizados com sucesso');
-    } catch (error) {
-      console.error('Erro ao atualizar equipamentos:', error);
-    }
-  };
-
   // Função específica para recarregar consumíveis
   const refreshConsumables = async () => {
     if (!characterId) return;
+    const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
 
-    try {
-      console.log('[EquipmentPage] Recarregando consumíveis...');
-      const consumablesResponse = await ConsumableService.getCharacterConsumables(characterId);
-
-      if (consumablesResponse.success && consumablesResponse.data) {
-        console.log('[EquipmentPage] Consumíveis recarregados:', consumablesResponse.data.length);
-        setConsumables(consumablesResponse.data);
-      } else {
-        console.error('[EquipmentPage] Erro ao recarregar consumíveis:', consumablesResponse.error);
-      }
-    } catch (error) {
-      console.error('Erro ao recarregar consumíveis:', error);
+    if (consumablesResponse.success && consumablesResponse.data) {
+      setConsumables(consumablesResponse.data);
     }
   };
 
-  if (loading) {
+  if (equipLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
         <div className="max-w-7xl mx-auto">

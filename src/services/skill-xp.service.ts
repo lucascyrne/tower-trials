@@ -93,8 +93,6 @@ export class SkillXpService {
 
     const finalXp = Math.max(1, Math.floor(baseXp));
 
-    console.log(`[SkillXpService] XP de defesa: ${finalXp} (dano bloqueado: ${damageBlocked})`);
-
     return [
       {
         skill: SkillType.DEFENSE_MASTERY,
@@ -196,8 +194,6 @@ export class SkillXpService {
       return { messages, skillLevelUps };
     }
 
-    console.log(`[SkillXpService] Aplicando ${skillGains.length} ganhos de XP para ${characterId}`);
-
     // Acessar stores para sincronização
     const { gameState, updateGameState } = useGameStateStore.getState();
     const { setSelectedCharacter } = useCharacterStore.getState();
@@ -217,11 +213,9 @@ export class SkillXpService {
               skill: gain.skill,
               newLevel: result.data.new_skill_level,
             });
-            console.log(`[SkillXpService] ${levelUpMessage}`);
           } else {
             const xpMessage = `+${gain.xp} XP em ${skillDisplayName}${offHandIndicator}`;
             messages.push(xpMessage);
-            console.log(`[SkillXpService] ${xpMessage} (${gain.reason})`);
           }
 
           // Sincronizar com gameState se for o jogador atual

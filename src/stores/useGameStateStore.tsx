@@ -63,7 +63,6 @@ export const useGameStateStore = create<GameStateStore>()(
     // === AÇÕES DO ESTADO DO JOGO ===
 
     setGameState: (gameState: GameState) => {
-      console.log('[GameStateStore] Atualizando estado completo do jogo');
       set(
         produce(draft => {
           draft.gameState = gameState;
@@ -80,7 +79,6 @@ export const useGameStateStore = create<GameStateStore>()(
     },
 
     resetGameState: () => {
-      console.log('[GameStateStore] Resetando estado do jogo');
       set(
         produce(draft => {
           draft.gameState = structuredClone(initialGameState);
@@ -135,7 +133,6 @@ export const useGameStateStore = create<GameStateStore>()(
     // === AÇÕES ESPECÍFICAS DO JOGO ===
 
     setGameMode: (mode: GameState['mode']) => {
-      console.log('[GameStateStore] Mudando modo do jogo para:', mode);
       set(
         produce(draft => {
           draft.gameState.mode = mode;

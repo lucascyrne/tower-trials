@@ -546,8 +546,6 @@ export const useLogStore = create<LogStore>()(
 
               // Garantir que filteredLogs é inicializado corretamente
               state.filteredLogs = [];
-
-              console.log('[LogStore] Dados sanitizados após carregar do localStorage');
             } catch (error) {
               console.error('[LogStore] Erro ao sanitizar dados do localStorage:', error);
               // Reset para estado inicial em caso de erro

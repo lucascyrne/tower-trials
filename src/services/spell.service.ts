@@ -14,21 +14,6 @@ interface ServiceResponse<T> {
   success: boolean;
 }
 
-// Interface para dados brutos retornados pela função do banco
-interface RawSpellData {
-  spell_id: string;
-  name: string;
-  description: string;
-  effect_type: SpellEffectType;
-  mana_cost: number;
-  cooldown: number;
-  effect_value: number;
-  duration: number;
-  unlocked_at_level: number;
-  is_equipped: boolean;
-  slot_position: number | null;
-}
-
 // Interface para magias disponíveis com informações de equipamento
 export interface AvailableSpell extends Spell {
   is_equipped: boolean;
@@ -64,12 +49,10 @@ export class SpellService {
   // NOVO: Cache aprimorado para dados de personagem
   private static characterSpellCache = new Map<string, CacheEntry<AvailableSpell[]>>();
   private static equippedSpellCache = new Map<string, CacheEntry<PlayerSpell[]>>();
-  private static spellStatsCache = new Map<string, CacheEntry<SpellStats>>();
 
   // Controle de requisições pendentes
   private static pendingAvailableRequests = new Map<string, PendingRequest<AvailableSpell[]>>();
   private static pendingEquippedRequests = new Map<string, PendingRequest<PlayerSpell[]>>();
-  private static pendingStatsRequests = new Map<string, PendingRequest<SpellStats>>();
 
   // Configurações
   private static readonly CHARACTER_CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
@@ -93,7 +76,6 @@ export class SpellService {
   ): void {
     const pending = pendingMap.get(key);
     if (pending) {
-      console.log(`[SpellService] Cancelando requisição pendente: ${key}`);
       pending.abortController.abort();
       pendingMap.delete(key);
     }
@@ -103,12 +85,9 @@ export class SpellService {
    * NOVO: Invalidar cache de personagem
    */
   static invalidateCharacterCache(characterId: string): void {
-    console.log(`[SpellService] Invalidando cache para: ${characterId}`);
-
     // Cancelar requisições pendentes
     this.cancelPendingRequest(this.pendingAvailableRequests, characterId);
     this.cancelPendingRequest(this.pendingEquippedRequests, characterId);
-    this.cancelPendingRequest(this.pendingStatsRequests, characterId);
 
     // Invalidar entradas de cache
     const availableEntry = this.characterSpellCache.get(characterId);
@@ -116,17 +95,12 @@ export class SpellService {
 
     const equippedEntry = this.equippedSpellCache.get(characterId);
     if (equippedEntry) equippedEntry.isValid = false;
-
-    const statsEntry = this.spellStatsCache.get(characterId);
-    if (statsEntry) statsEntry.isValid = false;
   }
 
   /**
    * NOVO: Limpar todo o cache
    */
   static clearCache(): void {
-    console.log('[SpellService] Limpando todo o cache');
-
     // Cache tradicional
     this.spellCache.clear();
     this.lastFetchTimestamp = 0;
@@ -138,37 +112,29 @@ export class SpellService {
     for (const [, pending] of this.pendingEquippedRequests) {
       pending.abortController.abort();
     }
-    for (const [, pending] of this.pendingStatsRequests) {
-      pending.abortController.abort();
-    }
 
     // Limpar caches de personagem
     this.characterSpellCache.clear();
     this.equippedSpellCache.clear();
-    this.spellStatsCache.clear();
     this.pendingAvailableRequests.clear();
     this.pendingEquippedRequests.clear();
-    this.pendingStatsRequests.clear();
   }
 
   // REFATORADO: Obter todas as magias disponíveis com cache robusto
   static async getCharacterAvailableSpells(
-    characterId: string
+    characterId: string,
+    characterLevel: number
   ): Promise<ServiceResponse<AvailableSpell[]>> {
     try {
-      console.log(`[SpellService] Solicitando magias disponíveis para: ${characterId}`);
-
       // 1. Verificar cache primeiro
       const cachedEntry = this.characterSpellCache.get(characterId);
       if (this.isCacheValid(cachedEntry)) {
-        console.log(`[SpellService] Cache hit para magias disponíveis: ${characterId}`);
         return { data: cachedEntry!.data, error: null, success: true };
       }
 
       // 2. Verificar se há requisição pendente
       const pendingRequest = this.pendingAvailableRequests.get(characterId);
       if (pendingRequest) {
-        console.log(`[SpellService] Reutilizando requisição pendente: ${characterId}`);
         try {
           return await pendingRequest.promise;
         } catch (error) {
@@ -182,6 +148,7 @@ export class SpellService {
       const abortController = new AbortController();
       const requestPromise = this.fetchCharacterAvailableSpells(
         characterId,
+        characterLevel,
         abortController.signal
       );
 
@@ -219,6 +186,7 @@ export class SpellService {
   // NOVO: Método privado para buscar magias disponíveis do servidor
   private static async fetchCharacterAvailableSpells(
     characterId: string,
+    characterLevel: number,
     signal: AbortSignal
   ): Promise<ServiceResponse<AvailableSpell[]>> {
     // Timeout Promise
@@ -233,31 +201,51 @@ export class SpellService {
       });
     });
 
-    // RPC Promise
-    const rpcPromise = supabase.rpc('get_character_available_spells', {
-      p_character_id: characterId,
+    // RPC Promise - Buscar magias disponíveis para o nível
+    const rpcPromise = supabase.rpc('get_available_spells', {
+      p_level: characterLevel,
     });
 
-    const { data, error } = await Promise.race([rpcPromise, timeoutPromise]);
+    const { data: spellsData, error: spellsError } = await Promise.race([
+      rpcPromise,
+      timeoutPromise,
+    ]);
 
     if (signal.aborted) {
       throw new Error('Request cancelado');
     }
 
-    if (error) throw error;
+    if (spellsError) throw spellsError;
 
-    const spells: AvailableSpell[] = data.map((item: RawSpellData) => ({
-      id: item.spell_id,
-      name: item.name,
-      description: item.description,
-      effect_type: item.effect_type,
-      mana_cost: item.mana_cost,
-      cooldown: item.cooldown,
-      effect_value: item.effect_value,
-      duration: item.duration,
-      unlocked_at_level: item.unlocked_at_level,
-      is_equipped: item.is_equipped,
-      slot_position: item.slot_position,
+    // Buscar informações de equipamento do personagem
+    const { data: equippedData, error: equippedError } = await supabase
+      .from('spell_slots')
+      .select('slot_position, spell_id')
+      .eq('character_id', characterId);
+
+    if (equippedError) throw equippedError;
+
+    // Mapear equipamento por spell_id
+    const equippedMap = new Map<string, number>();
+    (equippedData || []).forEach((item: { slot_position: number; spell_id: string | null }) => {
+      if (item.spell_id) {
+        equippedMap.set(item.spell_id, item.slot_position);
+      }
+    });
+
+    // Combinar dados de spells com informações de equipamento
+    const spells: AvailableSpell[] = (spellsData || []).map((spell: Spell) => ({
+      id: spell.id,
+      name: spell.name,
+      description: spell.description,
+      effect_type: spell.effect_type,
+      mana_cost: spell.mana_cost,
+      cooldown: spell.cooldown,
+      effect_value: spell.effect_value,
+      duration: spell.duration,
+      unlocked_at_level: spell.unlocked_at_level || 1, // Fallback se não existir o campo
+      is_equipped: equippedMap.has(spell.id),
+      slot_position: equippedMap.get(spell.id) || null,
     }));
 
     return { data: spells, error: null, success: true };
@@ -271,14 +259,31 @@ export class SpellService {
     try {
       const [spell1, spell2, spell3] = spellIds;
 
-      const { error } = await supabase.rpc('set_character_spells', {
-        p_character_id: characterId,
-        p_spell_1_id: spell1 || null,
-        p_spell_2_id: spell2 || null,
-        p_spell_3_id: spell3 || null,
-      });
+      // ✅ Usar RPC correta: set_spell_slot (para cada slot)
 
-      if (error) throw error;
+      // Chamar set_spell_slot para cada slot
+      const results = await Promise.all([
+        supabase.rpc('set_spell_slot', {
+          p_character_id: characterId,
+          p_slot_position: 1,
+          p_spell_id: spell1 || null,
+        }),
+        supabase.rpc('set_spell_slot', {
+          p_character_id: characterId,
+          p_slot_position: 2,
+          p_spell_id: spell2 || null,
+        }),
+        supabase.rpc('set_spell_slot', {
+          p_character_id: characterId,
+          p_slot_position: 3,
+          p_spell_id: spell3 || null,
+        }),
+      ]);
+
+      // Verificar erros
+      for (const result of results) {
+        if (result.error) throw result.error;
+      }
 
       // CRÍTICO: Invalidar cache após mudança
       this.invalidateCharacterCache(characterId);
@@ -294,80 +299,24 @@ export class SpellService {
     }
   }
 
-  // REFATORADO: Obter estatísticas com cache
-  static async getCharacterSpellStats(characterId: string): Promise<ServiceResponse<SpellStats>> {
-    try {
-      // Verificar cache primeiro
-      const cachedEntry = this.spellStatsCache.get(characterId);
-      if (this.isCacheValid(cachedEntry)) {
-        console.log(`[SpellService] Cache hit para spell stats: ${characterId}`);
-        return { data: cachedEntry!.data, error: null, success: true };
-      }
+  // REFATORADO: Obter estatísticas com cálculo local
+  static calculateSpellStats(availableSpells: AvailableSpell[]): SpellStats {
+    const equipped = availableSpells.filter(s => s.is_equipped);
+    const spellsByType: Record<string, number> = {};
 
-      // Verificar requisição pendente
-      const pendingRequest = this.pendingStatsRequests.get(characterId);
-      if (pendingRequest) {
-        console.log(`[SpellService] Reutilizando requisição stats pendente: ${characterId}`);
-        return await pendingRequest.promise;
-      }
-
-      // Criar nova requisição
-      const abortController = new AbortController();
-      const requestPromise = this.fetchCharacterSpellStats(characterId, abortController.signal);
-
-      this.pendingStatsRequests.set(characterId, {
-        promise: requestPromise,
-        abortController,
-      });
-
-      try {
-        const result = await requestPromise;
-
-        if (result.success && result.data) {
-          this.spellStatsCache.set(characterId, {
-            data: result.data,
-            timestamp: Date.now(),
-            isValid: true,
-          });
-        }
-
-        return result;
-      } finally {
-        this.pendingStatsRequests.delete(characterId);
-      }
-    } catch (error) {
-      console.error('[SpellService] Erro ao buscar estatísticas de magias:', error);
-      return {
-        data: null,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
-        success: false,
-      };
-    }
-  }
-
-  // NOVO: Método privado para buscar stats do servidor
-  private static async fetchCharacterSpellStats(
-    characterId: string,
-    signal: AbortSignal
-  ): Promise<ServiceResponse<SpellStats>> {
-    const { data, error } = await supabase.rpc('get_character_spell_stats', {
-      p_character_id: characterId,
+    availableSpells.forEach(spell => {
+      spellsByType[spell.effect_type] = (spellsByType[spell.effect_type] || 0) + 1;
     });
 
-    if (signal.aborted) {
-      throw new Error('Request cancelado');
-    }
-
-    if (error) throw error;
-
-    const stats = data[0] || {
-      total_available: 0,
-      total_equipped: 0,
-      highest_level_unlocked: 1,
-      spells_by_type: {},
+    const stats: SpellStats = {
+      total_available: availableSpells.length,
+      total_equipped: equipped.length,
+      highest_level_unlocked:
+        availableSpells.length > 0 ? Math.max(...availableSpells.map(s => s.unlocked_at_level)) : 1,
+      spells_by_type: spellsByType,
     };
 
-    return { data: stats, error: null, success: true };
+    return stats;
   }
 
   // Método existente - obter magias disponíveis por nível (usado no combate)
@@ -422,12 +371,6 @@ export class SpellService {
     totalBonus = Math.min(300, totalBonus);
     const scaledDamage = Math.round(baseDamage * (1 + totalBonus / 100));
 
-    console.log('[SpellService] Dano mágico calculado:', {
-      baseDamage,
-      totalBonus: `${totalBonus.toFixed(1)}%`,
-      scaledDamage,
-    });
-
     return scaledDamage;
   }
 
@@ -453,12 +396,6 @@ export class SpellService {
 
     totalBonus = Math.min(220, totalBonus);
     const scaledHealing = Math.round(baseHealing * (1 + totalBonus / 100));
-
-    console.log('[SpellService] Cura mágica calculada:', {
-      baseHealing,
-      totalBonus: `${totalBonus.toFixed(1)}%`,
-      scaledHealing,
-    });
 
     return scaledHealing;
   }
@@ -504,15 +441,6 @@ export class SpellService {
       // Magias de dano devem passar o turno para o inimigo como ataques físicos
       const isSupportSpellResult = isSupportSpell(spell);
       const endsTurn = isSupportSpellResult; // Invertido: suporte = true (pula turno), dano = false (passa turno)
-
-      // ✅ DEBUG: Log detalhado para debugging do sistema de turnos
-      console.log(`[SpellService] === ANÁLISE TURNO DA MAGIA ===`, {
-        spellName: spell.name,
-        effectType: spell.effect_type,
-        isSupportSpell: isSupportSpellResult,
-        endsTurn: endsTurn,
-        damageSpellPassesToEnemy: !isSupportSpellResult,
-      });
 
       return { message, success: true, endsTurn };
     } catch (error) {
@@ -785,21 +713,12 @@ export class SpellService {
    * @returns Estado atualizado com todos os cooldowns resetados
    */
   static resetSpellCooldowns(gameState: GameState): GameState {
-    console.log('[SpellService] === RESETANDO COOLDOWNS DAS MAGIAS ===');
-
     // ✅ CORREÇÃO: Criar cópia do gameState para evitar mutação read-only
     const updatedGameState = {
       ...gameState,
       player: {
         ...gameState.player,
         spells: gameState.player.spells.map(spell => {
-          // Log para debugging
-          if (spell.current_cooldown > 0) {
-            console.log(
-              `[SpellService] Resetando cooldown de "${spell.name}" de ${spell.current_cooldown} para 0`
-            );
-          }
-
           return {
             ...spell,
             current_cooldown: 0, // ✅ CRÍTICO: Resetar todos os cooldowns para 0
@@ -807,10 +726,6 @@ export class SpellService {
         }),
       },
     };
-
-    console.log(
-      `[SpellService] Cooldowns resetados para ${updatedGameState.player.spells.length} magias`
-    );
     return updatedGameState;
   }
 
@@ -947,19 +862,15 @@ export class SpellService {
     characterId: string
   ): Promise<ServiceResponse<PlayerSpell[]>> {
     try {
-      console.log(`[SpellService] Solicitando magias equipadas para: ${characterId}`);
-
       // Verificar cache primeiro
       const cachedEntry = this.equippedSpellCache.get(characterId);
       if (this.isCacheValid(cachedEntry)) {
-        console.log(`[SpellService] Cache hit para magias equipadas: ${characterId}`);
         return { data: cachedEntry!.data, error: null, success: true };
       }
 
       // Verificar se há requisição pendente
       const pendingRequest = this.pendingEquippedRequests.get(characterId);
       if (pendingRequest) {
-        console.log(`[SpellService] Reutilizando requisição equipadas pendente: ${characterId}`);
         try {
           return await pendingRequest.promise;
         } catch (error) {
@@ -1009,10 +920,8 @@ export class SpellService {
     characterId: string,
     signal: AbortSignal
   ): Promise<ServiceResponse<PlayerSpell[]>> {
-    console.log(`[SpellService] Buscando magias equipadas do servidor: ${characterId}`);
-
     const { data, error } = await supabase
-      .from('character_spell_slots')
+      .from('spell_slots')
       .select(
         `
         slot_position,
@@ -1056,7 +965,6 @@ export class SpellService {
       };
     });
 
-    console.log(`[SpellService] ${playerSpells.length} magias equipadas encontradas`);
     return { data: playerSpells, error: null, success: true };
   }
 }

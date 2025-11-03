@@ -104,22 +104,6 @@ export function BattleArena({
     battleId: `${player?.floor || 0}-${currentEnemy?.name || 'unknown'}-${Date.now()}`,
   });
 
-  // Log para debug das props recebidas
-  useEffect(() => {
-    if (player && currentEnemy) {
-      console.log('[BattleArena] Props recebidas:');
-      console.log('- player:', player?.name, `(andar: ${player?.floor})`);
-      console.log(
-        '- currentEnemy:',
-        currentEnemy?.name,
-        `(HP: ${currentEnemy?.hp}/${currentEnemy?.maxHp})`
-      );
-      console.log('- playerHpPercentage:', playerHpPercentage);
-      console.log('- enemyHpPercentage:', enemyHpPercentage);
-      console.log('- isPlayerTurn:', isPlayerTurn);
-    }
-  }, [player, currentEnemy, playerHpPercentage, enemyHpPercentage, isPlayerTurn]);
-
   // Hook para fechar tooltip ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: Event) => {
@@ -166,7 +150,6 @@ export function BattleArena({
     // Detectar dano no jogador (apenas se HP diminuiu significativamente)
     if (player.hp < lastBattleState.playerHp && lastBattleState.playerHp - player.hp >= 1) {
       const damage = lastBattleState.playerHp - player.hp;
-      console.log(`[BattleArena] Jogador recebeu ${damage} de dano`);
       showFloatingDamage(damage, true, false, 'physical');
       hasChanges = true;
     }
@@ -178,9 +161,6 @@ export function BattleArena({
     ) {
       const damage = lastBattleState.enemyHp - currentEnemy.hp;
       const isCritical = damage > (player.atk || 0) * 1.5;
-      console.log(
-        `[BattleArena] Inimigo recebeu ${damage} de dano ${isCritical ? '(CRÍTICO)' : ''}`
-      );
       showFloatingDamage(damage, false, isCritical, 'physical');
       hasChanges = true;
     }
@@ -228,7 +208,6 @@ export function BattleArena({
 
   // VERIFICAÇÃO DE SEGURANÇA: Proteger contra player null (APÓS todos os hooks)
   if (!player || !currentEnemy) {
-    console.warn('[BattleArena] Player ou currentEnemy é null - renderizando componente vazio');
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-muted-foreground">Carregando dados da batalha...</div>

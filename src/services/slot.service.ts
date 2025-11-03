@@ -77,7 +77,6 @@ export class SlotService {
   ): void {
     const pending = pendingMap.get(key);
     if (pending) {
-      console.log(`[SlotService] Cancelando requisição pendente: ${key}`);
       pending.abortController.abort();
       pendingMap.delete(key);
     }
@@ -87,8 +86,6 @@ export class SlotService {
    * NOVO: Invalidar cache
    */
   static invalidateCache(characterId: string): void {
-    console.log(`[SlotService] Invalidando cache para: ${characterId}`);
-
     // Cancelar requisições pendentes
     this.cancelPendingRequest(this.pendingPotionRequests, characterId);
     this.cancelPendingRequest(this.pendingSpellRequests, characterId);
@@ -112,19 +109,15 @@ export class SlotService {
     characterId: string
   ): Promise<ServiceResponse<PotionSlot[]>> {
     try {
-      console.log(`[SlotService] Solicitando slots de poção para: ${characterId}`);
-
       // 1. Verificar cache primeiro
       const cachedEntry = this.potionSlotsCache.get(characterId);
       if (this.isCacheValid(cachedEntry)) {
-        console.log(`[SlotService] Cache hit para slots de poção: ${characterId}`);
         return { data: cachedEntry!.data, error: null, success: true };
       }
 
       // 2. Verificar se há requisição pendente
       const pendingRequest = this.pendingPotionRequests.get(characterId);
       if (pendingRequest) {
-        console.log(`[SlotService] Reutilizando requisição pendente: ${characterId}`);
         try {
           return await pendingRequest.promise;
         } catch (error) {
@@ -178,8 +171,6 @@ export class SlotService {
     characterId: string,
     signal: AbortSignal
   ): Promise<ServiceResponse<PotionSlot[]>> {
-    console.log(`[SlotService] Buscando slots do servidor: ${characterId}`);
-
     // Timeout Promise
     const timeoutPromise = new Promise<never>((_, reject) => {
       const timeoutId = setTimeout(() => {
@@ -228,11 +219,9 @@ export class SlotService {
         );
       }
 
-      console.log(`[SlotService] ${slots.length} slots carregados do servidor`);
       return { data: slots, error: null, success: true };
     } catch (error) {
       if (signal.aborted) {
-        console.log(`[SlotService] Request cancelado para: ${characterId}`);
         throw error; // Re-throw para ser tratado pelo caller
       }
 
@@ -245,7 +234,6 @@ export class SlotService {
    * NOVO: Fallback seguro para slots de poção
    */
   private static getFallbackPotionSlots(): ServiceResponse<PotionSlot[]> {
-    console.log('[SlotService] Retornando slots vazios como fallback');
     const fallbackSlots: PotionSlot[] = [];
     for (let i = 1; i <= 3; i++) {
       fallbackSlots.push({
@@ -275,14 +263,12 @@ export class SlotService {
       // Verificar cache primeiro
       const cachedEntry = this.spellSlotsCache.get(characterId);
       if (this.isCacheValid(cachedEntry)) {
-        console.log(`[SlotService] Cache hit para spell slots: ${characterId}`);
         return { data: cachedEntry!.data, error: null, success: true };
       }
 
       // Verificar requisição pendente
       const pendingRequest = this.pendingSpellRequests.get(characterId);
       if (pendingRequest) {
-        console.log(`[SlotService] Reutilizando requisição spell pendente: ${characterId}`);
         return await pendingRequest.promise;
       }
 
@@ -362,8 +348,6 @@ export class SlotService {
     consumableId: string
   ): Promise<ServiceResponse<null>> {
     try {
-      console.log(`[SlotService] Configurando slot ${slotPosition} com consumível ${consumableId}`);
-
       const { data, error } = await supabase
         .rpc('set_potion_slot', {
           p_character_id: characterId,
@@ -391,7 +375,6 @@ export class SlotService {
       // CRÍTICO: Invalidar cache após mudança
       this.invalidateCache(characterId);
 
-      console.log(`[SlotService] Slot ${slotPosition} configurado com sucesso`);
       return { data: null, error: null, success: true };
     } catch (error) {
       console.error('Erro ao configurar slot de poção:', error);
@@ -411,8 +394,6 @@ export class SlotService {
     slotPosition: number
   ): Promise<ServiceResponse<null>> {
     try {
-      console.log(`[SlotService] Limpando slot ${slotPosition}`);
-
       const { data, error } = await supabase
         .rpc('clear_potion_slot', {
           p_character_id: characterId,
@@ -439,7 +420,6 @@ export class SlotService {
       // CRÍTICO: Invalidar cache após mudança
       this.invalidateCache(characterId);
 
-      console.log(`[SlotService] Slot ${slotPosition} limpo com sucesso`);
       return { data: null, error: null, success: true };
     } catch (error) {
       console.error('Erro ao limpar slot de poção:', error);
@@ -490,8 +470,6 @@ export class SlotService {
     slotPosition: number
   ): Promise<ServiceResponse<PotionUseResult>> {
     try {
-      console.log(`[SlotService] Consumindo poção do slot ${slotPosition}`);
-
       if (!characterId) {
         return { success: false, error: 'ID do personagem é obrigatório', data: null };
       }
@@ -505,15 +483,6 @@ export class SlotService {
       const { data, error } = await supabaseAdmin.rpc('consume_potion_from_slot', {
         p_character_id: characterId,
         p_slot_position: slotPosition,
-      });
-
-      // ✅ CORREÇÃO: Log detalhado da resposta bruta do RPC
-      console.log(`[SlotService] 🔍 DEBUG: Resposta bruta do RPC:`, {
-        data,
-        error,
-        dataType: typeof data,
-        isArray: Array.isArray(data),
-        dataLength: Array.isArray(data) ? data.length : 'N/A',
       });
 
       if (error) {
@@ -535,15 +504,6 @@ export class SlotService {
       }
 
       const resultData = data[0];
-      console.log(`[SlotService] 🔍 DEBUG: Dados do primeiro elemento:`, {
-        resultData,
-        resultDataType: typeof resultData,
-        success: resultData?.success,
-        successType: typeof resultData?.success,
-        message: resultData?.message,
-        new_hp: resultData?.new_hp,
-        new_mana: resultData?.new_mana,
-      });
 
       if (!resultData) {
         return {
@@ -568,12 +528,6 @@ export class SlotService {
       } else {
         isSuccess = Boolean(rawSuccess);
       }
-
-      console.log(`[SlotService] 🔍 DEBUG: Conversão de success:`, {
-        rawSuccess,
-        rawSuccessType: typeof rawSuccess,
-        isSuccess,
-      });
 
       // ✅ CORREÇÃO: Validação mais robusta de números
       const newHp = Math.floor(Number(rawHp) || 0);
@@ -601,11 +555,6 @@ export class SlotService {
         new_mana: newMana,
       };
 
-      console.log(`[SlotService] 🔍 DEBUG: Resultado processado:`, {
-        result,
-        originalData: resultData,
-      });
-
       // CRÍTICO: Invalidar cache APENAS APÓS consumo bem-sucedido ou erro
       this.invalidateCache(characterId);
 
@@ -624,13 +573,6 @@ export class SlotService {
           data: null,
         };
       }
-
-      console.log(`[SlotService] ✅ Resultado final da poção:`, {
-        success: result.success,
-        message: result.message,
-        hp: result.new_hp,
-        mana: result.new_mana,
-      });
 
       return {
         success: true,
@@ -665,8 +607,6 @@ export class SlotService {
    * NOVO: Limpar todo o cache (útil para debugging)
    */
   static clearAllCache(): void {
-    console.log('[SlotService] Limpando todo o cache');
-
     // Cancelar todas as requisições pendentes
     for (const [, pending] of this.pendingPotionRequests) {
       pending.abortController.abort();

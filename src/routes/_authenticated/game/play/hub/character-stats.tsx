@@ -59,7 +59,6 @@ function CharacterStatsPage() {
   const { character: characterId } = Route.useSearch();
 
   // Log para depuração
-  console.log('[CharacterStatsPage] Character ID recebido:', characterId);
   const [characterStats, setCharacterStats] = useState<CharacterStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDistributing, setIsDistributing] = useState(false);
@@ -87,7 +86,6 @@ function CharacterStatsPage() {
         // ✅ CORREÇÃO CRÍTICA: Forçar busca de dados atualizados com auto-heal aplicado
         // Sempre forçar refresh nesta página para garantir dados corretos
         const shouldForceRefresh = forceRefresh || true; // Sempre forçar na página de stats
-        console.log(`[CharacterStatsPage] Carregando stats: forceRefresh=${shouldForceRefresh}`);
         const response = await CharacterService.getCharacterForGame(
           characterId,
           shouldForceRefresh,
@@ -144,12 +142,6 @@ function CharacterStatsPage() {
             equipment_speed_bonus: gamePlayer.equipment_speed_bonus,
           };
 
-          console.log('[CharacterStatsPage] Stats atualizados:', {
-            strength: characterStats.strength,
-            attribute_points: characterStats.attribute_points,
-            hp: characterStats.max_hp,
-            forceRefresh,
-          });
           setCharacterStats(characterStats);
         } else {
           toast.error('Erro ao carregar stats do personagem', {

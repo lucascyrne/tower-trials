@@ -1,4 +1,3 @@
-import { useGameStateStore } from '@/stores/useGameStateStore';
 import { supabase } from '@/lib/supabase';
 import { AuthService } from '@/resources/auth/auth.service';
 
@@ -24,7 +23,7 @@ export interface SaveRankingData {
 
 export type RankingMode = 'floor' | 'level' | 'gold';
 
-interface ServiceResponse<T> {
+export interface ServiceResponse<T> {
   data: T;
   error: string | null;
 }
@@ -83,30 +82,16 @@ export class RankingService {
 
   /**
    * Salvar entrada no ranking
-   * Agora integrado com stores para sincronização automática
+   * @param data - Dados do ranking. Se não fornecido, retorna erro (use hook para obter do store)
    */
-  static async saveScore(data?: SaveRankingData): Promise<ServiceResponse<string>> {
+  static async saveScore(data: SaveRankingData): Promise<ServiceResponse<string>> {
     try {
-      // Se não fornecido, obter dados do jogador atual
-      let scoreData = data;
-      if (!scoreData) {
-        const { gameState } = useGameStateStore.getState();
-        const user = await AuthService.getCurrentUser();
+      const scoreData = data;
 
-        if (!gameState.player || !user?.id) {
-          return {
-            data: '',
-            error: 'Jogador ou usuário não encontrado para salvar ranking',
-          };
-        }
-
-        scoreData = {
-          user_id: user.id,
-          player_name: gameState.player.name,
-          floor: gameState.player.floor,
-          character_level: gameState.player.level,
-          character_gold: gameState.player.gold,
-          character_alive: gameState.player.hp > 0,
+      if (!scoreData || !scoreData.user_id || !scoreData.player_name) {
+        return {
+          data: '',
+          error: 'Dados do ranking são obrigatórios',
         };
       }
 
@@ -496,20 +481,18 @@ export class RankingService {
   }
 
   /**
-   * Salvar ranking automaticamente para o jogador atual
+   * Obter posição do jogador no ranking
+   * @param userId - ID do usuário
+   * @param playerName - Nome do personagem
+   * @param mode - Modo do ranking ('floor' ou 'gold')
    */
-  static async saveCurrentPlayerScore(): Promise<ServiceResponse<string>> {
-    return this.saveScore(); // Usa dados do store automaticamente
-  }
-
-  /**
-   * Obter posição do jogador atual no ranking
-   */
-  static async getCurrentPlayerRankingPosition(mode: RankingMode = 'floor'): Promise<number> {
-    const { gameState } = useGameStateStore.getState();
-    const user = await AuthService.getCurrentUser();
-
-    if (!gameState.player || !user?.id) {
+  static async getPlayerRankingPosition(
+    userId: string,
+    playerName: string,
+    mode: RankingMode = 'floor'
+  ): Promise<number> {
+    if (!userId || !playerName) {
+      console.warn('[RankingService] userId e playerName são obrigatórios');
       return 0;
     }
 
@@ -521,7 +504,7 @@ export class RankingService {
       }
 
       const position = ranking.data.findIndex(
-        entry => entry.user_id === user.id && entry.player_name === gameState.player?.name
+        entry => entry.user_id === userId && entry.player_name === playerName
       );
 
       return position >= 0 ? position + 1 : 0;

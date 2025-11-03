@@ -1,3 +1,10 @@
+-- =============================================
+-- SEED V2: Dados Iniciais Tower Trials
+-- Version: 2.0
+-- Description: Dados de teste com balanceamento aplicado (final)
+-- Execute após aplicar migrations 00001-00015
+-- =============================================
+
 -- Remover dados existentes em ordem adequada para evitar problemas de chaves estrangeiras
 DELETE FROM monster_possible_drops;
 DELETE FROM crafting_ingredients;

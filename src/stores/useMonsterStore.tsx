@@ -60,7 +60,6 @@ export const useMonsterStore = create<MonsterStore>()(
 
     // === AÇÕES DE CACHE ===
     cacheMonster: (floor: number, enemy: Enemy) => {
-      console.log(`[MonsterStore] Cacheando monstro para andar ${floor}:`, enemy.name);
       set(
         produce(draft => {
           const now = Date.now();
@@ -97,13 +96,10 @@ export const useMonsterStore = create<MonsterStore>()(
         );
         return null;
       }
-
-      console.log(`[MonsterStore] Usando monstro do cache para andar ${floor}:`, cache.enemy.name);
       return cache.enemy;
     },
 
     clearCache: () => {
-      console.log('[MonsterStore] Limpando cache de monstros');
       set(
         produce(draft => {
           draft.monsterCache = {};

@@ -28,14 +28,9 @@ export class BattleInitializationService {
         throw new Error('Nenhum personagem deve ser fornecido para inicializar batalha');
       }
 
-      console.log(`[BattleInit] Iniciando batalha para ${targetCharacter.name}`);
-
       onProgress?.({ step: 'character', progress: 25, message: 'Carregando personagem...' });
 
       // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal aplicado para fonte única de verdade
-      console.log(
-        `[BattleInit] Carregando dados de GamePlayer para ${targetCharacter.name} com auto-heal`
-      );
       const characterResponse = await CharacterService.getCharacterForGame(
         targetCharacter.id,
         true,
@@ -45,7 +40,6 @@ export class BattleInitializationService {
         throw new Error(characterResponse.error || 'Falha ao carregar personagem');
       }
       const gamePlayer = characterResponse.data as GamePlayer;
-      console.log(`[BattleInit] Personagem carregado - HP: ${gamePlayer.hp}/${gamePlayer.max_hp}`);
 
       // Validação
       if (!gamePlayer || !gamePlayer.id) {
@@ -61,7 +55,6 @@ export class BattleInitializationService {
         // Atualizar no banco para corrigir dados inconsistentes
         try {
           await CharacterService.updateCharacterFloor(gamePlayer.id, 1);
-          console.log(`[BattleInit] ✅ Floor corrigido no banco para ${gamePlayer.name}`);
         } catch (updateError) {
           console.error(`[BattleInit] ❌ Erro ao corrigir floor no banco:`, updateError);
         }
@@ -98,7 +91,6 @@ export class BattleInitializationService {
         try {
           const fallbackResult = await this.generateFallbackEnemy(gamePlayer.floor);
           enemy = fallbackResult;
-          console.log(`[BattleInit] Fallback gerado: ${enemy.name}`);
         } catch (fallbackError) {
           throw new Error(`Falha crítica na geração de inimigo: ${fallbackError}`);
         }
@@ -142,22 +134,6 @@ export class BattleInitializationService {
       const { SpellService } = await import('./spell.service');
       const gameStateWithResetCooldowns = SpellService.resetSpellCooldowns(gameState);
 
-      // 🔧 VALIDAÇÃO FINAL DO ESTADO
-      console.log(`[BattleInit] Estado gerado:`, {
-        mode: gameStateWithResetCooldowns.mode,
-        hasEnemy: Boolean(gameStateWithResetCooldowns.currentEnemy),
-        enemyName: gameStateWithResetCooldowns.currentEnemy?.name,
-        hasEvent: Boolean(gameStateWithResetCooldowns.currentSpecialEvent),
-        eventName: gameStateWithResetCooldowns.currentSpecialEvent?.name,
-        playerFloor: gameStateWithResetCooldowns.player.floor,
-        spellsWithCooldown: gameStateWithResetCooldowns.player.spells.filter(
-          s => s.current_cooldown > 0
-        ).length,
-      });
-
-      console.log(
-        `[BattleInit] ✅ Batalha inicializada com sucesso para ${targetCharacter.name} - Andar ${gamePlayer.floor} - Inimigo: ${enemy.name} - Cooldowns resetados`
-      );
       return { success: true, gameState: gameStateWithResetCooldowns };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';

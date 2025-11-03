@@ -10,12 +10,7 @@ interface DerivedStatsSectionProps {
 }
 
 export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps) {
-  // ✅ FONTE ÚNICA DA VERDADE: Usar CharacterUtils para eliminar duplicação
-  console.log('[DerivedStatsSection] Re-renderizando com stats:', {
-    strength: characterStats.strength,
-    hp: characterStats.max_hp,
-    timestamp: Date.now(),
-  });
+
 
   // ✅ CRÍTICO: Obter breakdown detalhado usando fonte única
   const [statsBreakdown, setStatsBreakdown] = React.useState<{

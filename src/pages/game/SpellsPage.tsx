@@ -23,8 +23,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { SpellService, type AvailableSpell, type SpellStats } from '@/services/spell.service';
-import { CharacterService } from '@/services/character.service';
-import type { Character } from '@/models/character.model';
+import { useCharacter } from '@/hooks/useCharacter';
 import type { SpellEffectType } from '@/models/spell.model';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,7 +39,9 @@ export default function SpellsPage() {
   const search = useSearch({ from: '/_authenticated/game/play/hub/spells' });
   const characterId = search.character;
 
-  const [character, setCharacter] = useState<Character | null>(null);
+  // ✅ NOVO: Usar hook que garante level nunca será null
+  const { character, loading: characterLoading, error: characterError } = useCharacter(characterId);
+
   const [spells, setSpells] = useState<AvailableSpell[]>([]);
   const [spellStats, setSpellStats] = useState<SpellStats | null>(null);
   const [selectedSpells, setSelectedSpells] = useState<SpellSelectionState>({
@@ -53,7 +54,7 @@ export default function SpellsPage() {
     slot2: null,
     slot3: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<SpellEffectType | 'all'>('all');
@@ -65,34 +66,30 @@ export default function SpellsPage() {
       navigate({ to: '/game/play' });
       return;
     }
-
-    loadData();
   }, [characterId, navigate]);
 
   const loadData = async () => {
-    if (!characterId) return;
+    if (!character) return;
 
     setLoading(true);
     try {
-      // Carregar dados do personagem
-      const characterResponse = await CharacterService.getCharacter(characterId);
-      if (!characterResponse.success || !characterResponse.data) {
-        throw new Error('Erro ao carregar personagem');
-      }
-      setCharacter(characterResponse.data);
+      // ✅ CRÍTICO: Agora character.level é garantido não ser null
+      console.log(`[SpellsPage] Carregando magias para nível: ${character.level}`);
 
-      // Carregar magias disponíveis
-      const spellsResponse = await SpellService.getCharacterAvailableSpells(characterId);
+      const spellsResponse = await SpellService.getCharacterAvailableSpells(
+        characterId,
+        character.level
+      );
+
       if (!spellsResponse.success || !spellsResponse.data) {
-        throw new Error('Erro ao carregar magias');
+        throw new Error(spellsResponse.error || 'Erro ao carregar magias');
       }
+
       setSpells(spellsResponse.data);
 
-      // Carregar estatísticas
-      const statsResponse = await SpellService.getCharacterSpellStats(characterId);
-      if (statsResponse.success && statsResponse.data) {
-        setSpellStats(statsResponse.data);
-      }
+      // Calcular estatísticas localmente
+      const stats = SpellService.calculateSpellStats(spellsResponse.data);
+      setSpellStats(stats);
 
       // Carregar seleção atual
       const equippedSpells = spellsResponse.data.filter(spell => spell.is_equipped);
@@ -110,6 +107,10 @@ export default function SpellsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [character]);
 
   const handleSpellSelect = (spell: AvailableSpell, slot: 'slot1' | 'slot2' | 'slot3') => {
     setSelectedSpells(prev => {
@@ -221,7 +222,20 @@ export default function SpellsPage() {
 
   const hasChanges = JSON.stringify(selectedSpells) !== JSON.stringify(originalSelection);
 
-  if (loading) {
+  // ✅ ERRO: Mostrar mensagem clara se houver erro ao carregar personagem
+  if (characterError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive font-semibold mb-4">Erro ao carregar personagem</p>
+          <p className="text-muted-foreground mb-6">{characterError}</p>
+          <Button onClick={() => navigate({ to: '/game/play' })}>Voltar à Seleção</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (characterLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

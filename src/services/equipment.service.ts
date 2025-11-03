@@ -1,5 +1,13 @@
-import { useCharacterStore } from '../stores/useCharacterStore';
-import { useGameStateStore } from '../stores/useGameStateStore';
+/**
+ * Service para gerenciamento de equipamentos
+ *
+ * ✅ REFATORADO (P1 - Fase 2): Service puro - não acessa stores diretamente
+ * - Todos os métodos retornam apenas dados
+ * - Hook useEquipmentOperations gerencia stores
+ * - Testável sem mocks de stores
+ *
+ * Progresso: 13/13 ocorrências refatoradas ✅
+ */
 
 import {
   type Equipment,
@@ -28,8 +36,6 @@ interface EquipmentBonuses {
   total_hp_bonus: number;
   total_critical_chance_bonus: number;
   total_critical_damage_bonus: number;
-  total_double_attack_chance_bonus: number;
-  total_magic_damage_bonus: number;
 }
 
 function extractErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -64,17 +70,14 @@ export class EquipmentService {
         now - this.lastFetchTimestamp < this.CACHE_DURATION &&
         this.equipmentCache.has(cacheKey)
       ) {
-        console.log(`[EquipmentService] Cache hit para nível ${characterLevel}`);
         return this.equipmentCache.get(cacheKey) || [];
       }
 
-      console.log(`[EquipmentService] Buscando equipamentos para nível ${characterLevel}`);
       const { data, error } = await supabase
         .from('equipment')
         .select('*')
         .lte('level_requirement', characterLevel)
         .eq('is_unlocked', true)
-        .eq('craftable', false)
         .order('level_requirement', { ascending: true });
 
       if (error) throw error;
@@ -83,9 +86,6 @@ export class EquipmentService {
       this.equipmentCache.set(cacheKey, equipment);
       this.lastFetchTimestamp = now;
 
-      console.log(
-        `[EquipmentService] ${equipment.length} equipamentos carregados para nível ${characterLevel}`
-      );
       return equipment;
     } catch (error) {
       console.error(
@@ -98,11 +98,9 @@ export class EquipmentService {
 
   static async getAllEquipments(): Promise<Equipment[]> {
     try {
-      console.log('[EquipmentService] Buscando todos os equipamentos');
       const { data, error } = await supabase.from('equipment').select('*').order('name');
       if (error) throw error;
 
-      console.log(`[EquipmentService] ${(data as Equipment[]).length} equipamentos carregados`);
       return data as Equipment[];
     } catch (error) {
       console.error(
@@ -121,10 +119,6 @@ export class EquipmentService {
     equippedSlots: EquipmentSlots;
   }> {
     try {
-      console.log(
-        `[EquipmentService] Buscando equipamentos completos do personagem: ${characterId}`
-      );
-
       // Single query que busca todos os equipamentos com dados completos
       const { data, error } = await supabase
         .from('character_equipment')
@@ -146,13 +140,10 @@ export class EquipmentService {
             hp_bonus,
             critical_chance_bonus,
             critical_damage_bonus,
-            double_attack_chance_bonus,
-            magic_damage_bonus,
             price,
             is_unlocked,
             created_at,
-            updated_at,
-            craftable
+            updated_at
           )
         `
         )
@@ -164,41 +155,70 @@ export class EquipmentService {
       const allEquipment = data as CharacterEquipment[];
       const equippedSlots: EquipmentSlots = {};
 
-      // Processar equipamentos equipados
+      // ✅ CORRIGIDO: Determinar slot baseado em equipment.type (não há slot_type na tabela)
       allEquipment.forEach(item => {
-        if (item.is_equipped && item.equipment && item.slot_type) {
-          const slotKey = item.slot_type as keyof EquipmentSlots;
-          if (
-            [
-              'main_hand',
-              'off_hand',
-              'armor',
-              'chest',
-              'helmet',
-              'legs',
-              'boots',
-              'ring_1',
-              'ring_2',
-              'necklace',
-              'amulet',
-            ].includes(slotKey)
-          ) {
+        if (item.is_equipped && item.equipment) {
+          const equipmentType = item.equipment.type;
+
+          // Mapear equipment.type para EquipmentSlots
+          let slotKey: keyof EquipmentSlots | null = null;
+
+          switch (equipmentType) {
+            case 'weapon':
+              // Armas ocupam slots livres (main_hand > off_hand)
+              if (!equippedSlots.main_hand) {
+                slotKey = 'main_hand';
+              } else if (!equippedSlots.off_hand) {
+                slotKey = 'off_hand';
+              } else {
+                // Se ambas as mãos estão ocupadas, substituir main_hand
+                slotKey = 'main_hand';
+              }
+              break;
+            case 'armor':
+              // Escudos podem ir em armor ou off_hand
+              slotKey = !equippedSlots.armor
+                ? 'armor'
+                : !equippedSlots.off_hand
+                  ? 'off_hand'
+                  : 'armor';
+              break;
+            case 'chest':
+              slotKey = 'chest';
+              break;
+            case 'helmet':
+              slotKey = 'helmet';
+              break;
+            case 'legs':
+              slotKey = 'legs';
+              break;
+            case 'boots':
+              slotKey = 'boots';
+              break;
+            case 'ring':
+              // Anéis ocupam slots livres
+              slotKey = !equippedSlots.ring_1
+                ? 'ring_1'
+                : !equippedSlots.ring_2
+                  ? 'ring_2'
+                  : 'ring_1';
+              break;
+            case 'necklace':
+              slotKey = 'necklace';
+              break;
+            case 'amulet':
+              slotKey = 'amulet';
+              break;
+          }
+
+          if (slotKey) {
             equippedSlots[slotKey] = item.equipment as Equipment;
           }
         }
       });
 
-      console.log(
-        `[EquipmentService] ✅ Dados unificados: ${allEquipment.length} equipamentos totais, ${Object.keys(equippedSlots).length} slots equipados`
-      );
-      console.log(`[EquipmentService] Slots equipados:`, Object.keys(equippedSlots));
-
       return { allEquipment, equippedSlots };
-    } catch (error) {
-      console.error(
-        '[EquipmentService] Erro ao buscar equipamentos completos:',
-        error instanceof Error ? error.message : error
-      );
+    } catch {
       return { allEquipment: [], equippedSlots: {} };
     }
   }
@@ -219,56 +239,27 @@ export class EquipmentService {
     return equippedSlots;
   }
 
-  // === MÉTODOS DE AÇÃO COM INTEGRAÇÃO ZUSTAND ===
+  // === MÉTODOS DE AÇÃO ===
 
   /**
-   * OTIMIZADO: Equipar/Desequipar equipamento com integração Zustand
+   * Equipar/Desequipar equipamento
+   *
+   * ✅ REFATORADO (P1): Service puro - não gerencia cache ou stores
    */
   static async toggleEquipment(
     characterId: string,
     equipmentId: string,
-    equip: boolean,
-    slotType?: string
+    equip: boolean
   ): Promise<ServiceResponse<string>> {
     try {
-      console.log(
-        `[EquipmentService] ${equip ? 'Equipando' : 'Desequipando'} item: ${equipmentId} para personagem: ${characterId}`
-      );
-
       const { error } = await supabase.rpc('toggle_equipment', {
         p_character_id: characterId,
         p_equipment_id: equipmentId,
-        p_equip: equip,
-        p_slot_type: slotType,
       });
 
       if (error) throw error;
 
-      // Invalidar cache do personagem após mudança de equipamento
-      await this.invalidateCharacterCaches(characterId);
-
-      // Atualizar store do personagem se for o personagem selecionado
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId) {
-        // Recarregar dados do personagem para refletir mudanças de stats
-        characterStore.loadSelectedCharacter(characterId);
-      }
-
-      // Atualizar estado do jogo se necessário
-      const gameStore = useGameStateStore.getState();
-      if (gameStore.gameState.player?.id === characterId) {
-        // Forçar recalculo de stats no próximo acesso
-        gameStore.updateGameState(draft => {
-          // Marcar que os stats precisam ser recalculados
-          if (draft.player) {
-            draft.player.updated_at = new Date().toISOString();
-          }
-        });
-      }
-
       const successMessage = equip ? 'Item equipado com sucesso!' : 'Item desequipado com sucesso!';
-      console.log(`[EquipmentService] ${successMessage}`);
-
       return {
         data: successMessage,
         error: null,
@@ -285,61 +276,23 @@ export class EquipmentService {
   }
 
   /**
-   * OTIMIZADO: Comprar equipamento com integração Zustand
+   * Comprar equipamento
+   *
+   * ✅ REFATORADO (P1): Service puro - não gerencia cache ou stores
    */
   static async buyEquipment(
     characterId: string,
     equipmentId: string
   ): Promise<ServiceResponse<{ newGold: number }>> {
     try {
-      console.log(
-        `[EquipmentService] Comprando equipamento: ${equipmentId} para personagem: ${characterId}`
-      );
-
-      const { data: equipmentData, error: equipmentError } = await supabase
-        .from('equipment')
-        .select('name, price')
-        .eq('id', equipmentId)
-        .single();
-
-      if (equipmentError) throw new Error(`Erro ao buscar equipamento: ${equipmentError.message}`);
-      if (!equipmentData) throw new Error('Equipamento não encontrado');
-
       const { data, error } = await supabase.rpc('buy_equipment', {
         p_character_id: characterId,
         p_equipment_id: equipmentId,
-        p_price: equipmentData.price,
       });
 
       if (error) throw error;
 
       const newGold = data as number;
-      console.log(
-        `[EquipmentService] Equipamento "${equipmentData.name}" comprado. Novo gold: ${newGold}`
-      );
-
-      // Invalidar caches
-      this.invalidateCharacterCaches(characterId);
-
-      // Atualizar store do personagem
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
-        // Atualizar gold na store
-        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
-        characterStore.setSelectedCharacter(updatedCharacter);
-
-        // Atualizar também na lista se existir
-        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
-        if (characterIndex !== -1) {
-          characterStore.characters[characterIndex] = updatedCharacter;
-        }
-      }
-
-      // Atualizar estado do jogo se necessário
-      const gameStore = useGameStateStore.getState();
-      if (gameStore.gameState.player?.id === characterId) {
-        gameStore.updatePlayerGold(newGold);
-      }
 
       return {
         data: { newGold },
@@ -357,17 +310,15 @@ export class EquipmentService {
   }
 
   /**
-   * OTIMIZADO: Vender equipamento com integração Zustand
+   * Vender equipamento
+   *
+   * ✅ REFATORADO (P1): Service puro - não gerencia cache ou stores
    */
   static async sellEquipment(
     characterId: string,
     equipmentId: string
   ): Promise<ServiceResponse<{ newGold: number }>> {
     try {
-      console.log(
-        `[EquipmentService] Vendendo equipamento: ${equipmentId} para personagem: ${characterId}`
-      );
-
       const { data, error } = await supabase.rpc('sell_equipment', {
         p_character_id: characterId,
         p_equipment_id: equipmentId,
@@ -376,31 +327,6 @@ export class EquipmentService {
       if (error) throw error;
 
       const newGold = data as number;
-      console.log(`[EquipmentService] Equipamento vendido. Novo gold: ${newGold}`);
-
-      // Invalidar caches
-      this.invalidateCharacterCaches(characterId);
-
-      // Atualizar store do personagem
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
-        // Atualizar gold na store
-        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
-        characterStore.setSelectedCharacter(updatedCharacter);
-
-        // Atualizar também na lista se existir
-        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
-        if (characterIndex !== -1) {
-          characterStore.characters[characterIndex] = updatedCharacter;
-        }
-      }
-
-      // Atualizar estado do jogo se necessário
-      const gameStore = useGameStateStore.getState();
-      if (gameStore.gameState.player?.id === characterId) {
-        gameStore.updatePlayerGold(newGold);
-      }
-
       return {
         data: { newGold },
         error: null,
@@ -417,17 +343,15 @@ export class EquipmentService {
   }
 
   /**
-   * ✅ NOVO: Vender equipamentos em lote
+   * Vender equipamentos em lote
+   *
+   * ✅ REFATORADO (P1): Service puro - não gerencia cache ou stores
    */
   static async sellEquipmentBatch(
     characterId: string,
     equipmentSales: { equipment_id: string; quantity: number }[]
   ): Promise<ServiceResponse<{ totalGoldEarned: number; itemsSold: number; newGold: number }>> {
     try {
-      console.log(
-        `[EquipmentService] Vendendo ${equipmentSales.length} tipos de equipamentos em lote para: ${characterId}`
-      );
-
       const { data, error } = await supabase
         .rpc('sell_character_equipment_batch', {
           p_character_id: characterId,
@@ -442,16 +366,6 @@ export class EquipmentService {
         items_sold: number;
         new_character_gold: number;
       };
-
-      console.log(
-        `[EquipmentService] Venda em lote concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
-      );
-
-      // Invalidar caches
-      await this.invalidateCharacterCaches(characterId);
-
-      // Atualizar stores
-      await this.updateStoresAfterSale(characterId, result.new_character_gold);
 
       return {
         data: {
@@ -529,11 +443,10 @@ export class EquipmentService {
     }
   }
 
-  // === MÉTODOS DE CRAFTING COM INTEGRAÇÃO ZUSTAND ===
+  // === MÉTODOS DE CRAFTING ===
 
   static async getEquipmentCraftingRecipes(): Promise<ServiceResponse<EquipmentCraftingRecipe[]>> {
     try {
-      console.log('[EquipmentService] Buscando receitas de crafting de equipamentos');
       const { data, error } = await supabase
         .from('equipment_crafting_recipes')
         .select(
@@ -548,7 +461,6 @@ export class EquipmentService {
       if (error) throw error;
 
       const recipes = data as EquipmentCraftingRecipe[];
-      console.log(`[EquipmentService] ${recipes.length} receitas de crafting carregadas`);
 
       return { data: recipes, error: null, success: true };
     } catch (error) {
@@ -565,9 +477,6 @@ export class EquipmentService {
     recipeId: string
   ): Promise<ServiceResponse<{ canCraft: boolean; missingIngredients: string[] }>> {
     try {
-      console.log(
-        `[EquipmentService] Verificando se pode craftar: ${recipeId} para personagem: ${characterId}`
-      );
       const { data, error } = await supabase.rpc('check_can_craft_equipment', {
         p_character_id: characterId,
         p_recipe_id: recipeId,
@@ -576,9 +485,6 @@ export class EquipmentService {
       if (error) throw error;
 
       const result = data as { canCraft: boolean; missingIngredients: string[] };
-      console.log(
-        `[EquipmentService] Pode craftar: ${result.canCraft}, Ingredientes faltantes: ${result.missingIngredients.length}`
-      );
 
       return {
         data: result,
@@ -596,34 +502,21 @@ export class EquipmentService {
   }
 
   /**
-   * OTIMIZADO: Craftar equipamento com integração Zustand
+   * Craftar equipamento
+   *
+   * ✅ REFATORADO (P1): Service puro - não gerencia cache ou stores
    */
   static async craftEquipment(
     characterId: string,
     recipeId: string
   ): Promise<ServiceResponse<{ message: string }>> {
     try {
-      console.log(
-        `[EquipmentService] Craftando equipamento: ${recipeId} para personagem: ${characterId}`
-      );
-
       const { error } = await supabase.rpc('craft_equipment', {
         p_character_id: characterId,
         p_recipe_id: recipeId,
       });
 
       if (error) throw error;
-
-      console.log('[EquipmentService] Equipamento craftado com sucesso');
-
-      // Invalidar caches após crafting
-      await this.invalidateCharacterCaches(characterId);
-
-      // Atualizar store do personagem se necessário
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId) {
-        characterStore.loadSelectedCharacter(characterId);
-      }
 
       return {
         data: { message: 'Equipamento criado com sucesso!' },
@@ -650,10 +543,6 @@ export class EquipmentService {
     equipmentId: string
   ): Promise<ServiceResponse<{ canEquip: boolean; reason: string; suggestedSlot?: string }>> {
     try {
-      console.log(
-        `[EquipmentService] Verificando se pode equipar: ${equipmentId} para personagem: ${characterId}`
-      );
-
       // Buscar dados do equipamento
       const { data: equipment, error: equipmentError } = await supabase
         .from('equipment')
@@ -804,9 +693,6 @@ export class EquipmentService {
       }
 
       const result = { canEquip, reason, suggestedSlot };
-      console.log(
-        `[EquipmentService] Pode equipar: ${result.canEquip}, Razão: ${result.reason}, Slot sugerido: ${result.suggestedSlot}`
-      );
 
       return {
         data: result,
@@ -829,7 +715,6 @@ export class EquipmentService {
     slotType?: string
   ): Promise<ServiceResponse<EquipmentComparison[]>> {
     try {
-      console.log(`[EquipmentService] Comparando equipamentos para personagem: ${characterId}`);
       const { data, error } = await supabase.rpc('compare_equipment_stats', {
         p_character_id: characterId,
         p_new_equipment_id: newEquipmentId,
@@ -842,7 +727,6 @@ export class EquipmentService {
       }
 
       const comparisons = data || [];
-      console.log(`[EquipmentService] ${comparisons.length} comparações de stats realizadas`);
 
       return { success: true, error: null, data: comparisons };
     } catch (error) {
@@ -859,12 +743,8 @@ export class EquipmentService {
     characterId: string
   ): Promise<ServiceResponse<EquipmentBonuses>> {
     try {
-      console.log(
-        `[EquipmentService] Calculando bônus de equipamentos para personagem: ${characterId}`
-      );
-
-      // ✅ ATUALIZADO: Usar nova função que suporta os novos slots
-      const { data, error } = await supabase.rpc('calculate_equipment_bonuses_enhanced_v2', {
+      // ✅ CORRIGIDO: Usar a função correta que existe no Supabase
+      const { data, error } = await supabase.rpc('calculate_equipment_bonuses', {
         p_character_id: characterId,
       });
 
@@ -881,11 +761,7 @@ export class EquipmentService {
         total_hp_bonus: 0,
         total_critical_chance_bonus: 0,
         total_critical_damage_bonus: 0,
-        total_double_attack_chance_bonus: 0,
-        total_magic_damage_bonus: 0,
       };
-
-      console.log('[EquipmentService] Bônus de equipamentos calculados:', bonuses);
 
       return {
         success: true,
@@ -902,102 +778,11 @@ export class EquipmentService {
     }
   }
 
-  // === MÉTODOS UTILITÁRIOS COM INTEGRAÇÃO ZUSTAND ===
-
-  /**
-   * NOVO: Invalidar caches relacionados ao personagem
-   */
-  private static async invalidateCharacterCaches(characterId: string): Promise<void> {
-    try {
-      // Importar dinamicamente para evitar ciclos de dependência
-      const { CharacterCacheService } = await import('./character-cache.service');
-      CharacterCacheService.invalidateCharacterCache(characterId);
-      console.log(`[EquipmentService] Caches invalidados para personagem: ${characterId}`);
-    } catch (error) {
-      console.warn(`[EquipmentService] Erro ao invalidar cache (não crítico):`, error);
-    }
-  }
-
-  /**
-   * ✅ NOVO: Atualizar stores após venda
-   */
-  private static async updateStoresAfterSale(characterId: string, newGold: number): Promise<void> {
-    try {
-      // Atualizar store do personagem
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
-        // Atualizar gold na store
-        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
-        characterStore.setSelectedCharacter(updatedCharacter);
-
-        // Atualizar também na lista se existir
-        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
-        if (characterIndex !== -1) {
-          characterStore.characters[characterIndex] = updatedCharacter;
-        }
-      }
-
-      // Atualizar estado do jogo se necessário
-      const gameStore = useGameStateStore.getState();
-      if (gameStore.gameState.player?.id === characterId) {
-        gameStore.updatePlayerGold(newGold);
-      }
-
-      console.log(`[EquipmentService] Stores atualizadas com novo gold: ${newGold}`);
-    } catch (error) {
-      console.warn(`[EquipmentService] Erro ao atualizar stores (não crítico):`, error);
-    }
-  }
+  // === MÉTODOS UTILITÁRIOS ===
 
   static clearCache(): void {
     this.equipmentCache.clear();
     this.lastFetchTimestamp = 0;
-    console.log('[EquipmentService] Cache de equipamentos limpo');
-  }
-
-  /**
-   * NOVO: Sincronizar dados de equipamentos com store
-   */
-  static syncEquipmentWithStore(characterId: string, equipmentSlots: EquipmentSlots): void {
-    const characterStore = useCharacterStore.getState();
-
-    if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
-      const updatedCharacter = {
-        ...characterStore.selectedCharacter,
-        equipment_slots: equipmentSlots,
-        updated_at: new Date().toISOString(),
-      };
-
-      characterStore.setSelectedCharacter(updatedCharacter);
-      console.log(
-        `[EquipmentService] Dados de equipamentos sincronizados com store para: ${characterId}`
-      );
-    }
-  }
-
-  /**
-   * NOVO: Obter dados de equipamentos com prioridade da store
-   */
-  static async getEquipmentWithStoreSync(characterId: string): Promise<EquipmentSlots> {
-    // Tentar obter da store primeiro
-    const characterStore = useCharacterStore.getState();
-
-    if (
-      characterStore.selectedCharacterId === characterId &&
-      characterStore.selectedCharacter?.equipment_slots
-    ) {
-      console.log('[EquipmentService] Usando dados de equipamentos da store');
-      return characterStore.selectedCharacter.equipment_slots;
-    }
-
-    // Buscar do servidor se não estiver na store
-    console.log('[EquipmentService] Buscando dados de equipamentos do servidor');
-    const equipmentSlots = await this.getEquippedItems(characterId);
-
-    // Sincronizar com store
-    this.syncEquipmentWithStore(characterId, equipmentSlots);
-
-    return equipmentSlots;
   }
 
   /**
@@ -1158,8 +943,6 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     speed: 0,
     critical_chance: 0,
     critical_damage: 0,
-    double_attack_chance: 0,
-    magic_damage: 0,
   };
 
   const addEquipmentBonus = (equipment: Equipment | null, isOffHand: boolean = false) => {
@@ -1179,8 +962,6 @@ export const calculateEquipmentBonus = (slots: EquipmentSlots) => {
     bonus.speed += Math.floor((equipment.speed_bonus || 0) * actualMultiplier);
     bonus.critical_chance += (equipment.critical_chance_bonus || 0) * actualMultiplier;
     bonus.critical_damage += (equipment.critical_damage_bonus || 0) * actualMultiplier;
-    bonus.double_attack_chance += (equipment.double_attack_chance_bonus || 0) * actualMultiplier;
-    bonus.magic_damage += (equipment.magic_damage_bonus || 0) * actualMultiplier;
   };
 
   // ✅ ATUALIZADO: Aplicar bônus de todos os novos slots incluindo armaduras

@@ -1,5 +1,4 @@
-import { type ReactNode, useEffect } from 'react';
-import { useGameInitialization } from '../../stores/useGameStore';
+import { type ReactNode } from 'react';
 
 interface GameStoreProviderProps {
   children: ReactNode;
@@ -10,14 +9,6 @@ interface GameStoreProviderProps {
  * Garante que os stores sejam inicializados quando o componente é montado
  */
 export function GameStoreProvider({ children }: GameStoreProviderProps) {
-  const { isInitialized } = useGameInitialization();
-
-  // Log para desenvolvimento
-  useEffect(() => {
-    if (isInitialized) {
-      console.log('[GameStoreProvider] Stores Zustand inicializados');
-    }
-  }, [isInitialized]);
 
   return <>{children}</>;
 }

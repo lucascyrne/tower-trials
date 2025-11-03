@@ -165,7 +165,7 @@ export const useEventStore = create<EventStore>()(
             // Conceder ouro se ganhou
             const goldGained = updatedState.player.gold - gameState.player.gold;
             if (goldGained > 0) {
-              await CharacterService.grantSecureGold(characterId, goldGained, 'special_event');
+              await CharacterService.grantSecureGold(characterId, goldGained);
             }
           }
 

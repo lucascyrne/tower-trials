@@ -19,27 +19,14 @@ export function useCharacterHubOperations() {
 
   const loadCharacterForHub = useCallback(
     async (character: Character) => {
-      console.log(
-        `[useCharacterHubOperations] loadCharacterForHub chamado para: ${character.name}`
-      );
-
       if (loadingRef.current) {
-        console.log(
-          `[useCharacterHubOperations] Carregamento em andamento, aguardando para ${character.name}`
-        );
         return;
       }
 
       try {
-        console.log(
-          `[useCharacterHubOperations] Carregando personagem para o hub: ${character.name}`
-        );
         loadingRef.current = true;
 
         // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal integrado (fonte única de verdade)
-        console.log(
-          `[useCharacterHubOperations] Carregando dados com auto-heal para ${character.name}`
-        );
         const gamePlayerResponse = await CharacterService.getCharacterForGame(
           character.id,
           false,
@@ -51,9 +38,6 @@ export function useCharacterHubOperations() {
         }
 
         const gamePlayer = gamePlayerResponse.data;
-        console.log(
-          `[useCharacterHubOperations] Personagem carregado no hub com HP: ${gamePlayer.hp}/${gamePlayer.max_hp}`
-        );
 
         // Atualizar seleção no contexto específico
         selectCharacter(character.id, character.name);
@@ -74,9 +58,6 @@ export function useCharacterHubOperations() {
         };
 
         setGameState(newGameState);
-        console.log(
-          `[useCharacterHubOperations] Hub carregado com sucesso para ${gamePlayer.name}`
-        );
       } catch (error) {
         console.error('[useCharacterHubOperations] Erro ao carregar personagem para o hub:', error);
         toast.error('Erro', {
@@ -107,14 +88,7 @@ export function useCharacterBattleOperations() {
 
   const initializeBattle = useCallback(
     async (character: Character, battleKey: string) => {
-      console.log(
-        `[useCharacterBattleOperations] initializeBattle chamado para: ${character.name} (key: ${battleKey})`
-      );
-
       if (initializingRef.current && lastBattleKeyRef.current === battleKey) {
-        console.log(
-          `[useCharacterBattleOperations] Batalha já sendo inicializada para key: ${battleKey}`
-        );
         return;
       }
 
@@ -123,13 +97,9 @@ export function useCharacterBattleOperations() {
 
       try {
         // ✅ CORREÇÃO CRÍTICA: Garantir dados frescos e consistentes antes da batalha
-        console.log(
-          `[useCharacterBattleOperations] Garantindo dados frescos para ${character.name}`
-        );
 
         // Invalidar cache para forçar dados atualizados
-        const { CharacterCacheService } = await import('@/services/character-cache.service');
-        CharacterCacheService.invalidateCharacterCache(character.id);
+        CharacterService.invalidateCharacterCache(character.id);
 
         // Carregar dados atualizados do personagem com auto-heal aplicado
         const freshCharacterResponse = await CharacterService.getCharacterForGame(
@@ -145,9 +115,6 @@ export function useCharacterBattleOperations() {
         }
 
         const freshGamePlayer = freshCharacterResponse.data;
-        console.log(
-          `[useCharacterBattleOperations] Dados frescos carregados: HP ${freshGamePlayer.hp}/${freshGamePlayer.max_hp}`
-        );
 
         // Criar character object atualizado para o BattleInitializationService
         const updatedCharacter: Character = {
@@ -206,9 +173,6 @@ export function useCharacterBattleOperations() {
           : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado! HP: ${result.gameState.player.hp}/${result.gameState.player.max_hp}`;
 
         addGameLogMessage(logMessage, 'system');
-        console.log(
-          `[useCharacterBattleOperations] Batalha inicializada com sucesso para ${character.name} com HP: ${result.gameState.player.hp}/${result.gameState.player.max_hp}`
-        );
       } catch (error) {
         console.error('[useCharacterBattleOperations] Erro na inicialização:', error);
         toast.error('Falha ao inicializar batalha', {
@@ -242,14 +206,7 @@ export function useCharacterEventOperations() {
 
   const initializeSpecialEvent = useCallback(
     async (character: Character, eventKey: string) => {
-      console.log(
-        `[useCharacterEventOperations] initializeSpecialEvent chamado para: ${character.name} (key: ${eventKey})`
-      );
-
       if (initializingRef.current && lastEventKeyRef.current === eventKey) {
-        console.log(
-          `[useCharacterEventOperations] Evento já sendo inicializado para key: ${eventKey}`
-        );
         return;
       }
 
@@ -260,9 +217,6 @@ export function useCharacterEventOperations() {
         // Verificar se o andar é elegível para evento especial
         const floor = character.floor;
         if (floor % 5 === 0 || floor % 10 === 0) {
-          console.log(
-            `[useCharacterEventOperations] Andar ${floor} não elegível para eventos especiais`
-          );
           throw new Error('Andar não elegível para eventos especiais');
         }
 

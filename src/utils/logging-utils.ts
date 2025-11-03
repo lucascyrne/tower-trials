@@ -517,7 +517,6 @@ export class LoggingUtils {
   static clearUILogs(): void {
     const logStore = useLogStore.getState();
     logStore.clearAllLogs();
-    console.log('[LoggingUtils] Logs da UI limpos para nova batalha');
   }
 
   /**
@@ -526,6 +525,5 @@ export class LoggingUtils {
   static clearAllLogs(): void {
     this.clearOldLogs(); // Limpa logs do console
     this.clearUILogs(); // Limpa logs da UI
-    console.log('[LoggingUtils] Todos os logs limpos');
   }
 }

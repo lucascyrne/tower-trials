@@ -249,7 +249,7 @@ export class FloorService {
             await CharacterService.updateCharacterHpMana(player.id, newHp, newMana);
           }
           if (newGold !== player.gold) {
-            await CharacterService.grantSecureGold(player.id, newGold - player.gold, 'event');
+            await CharacterService.grantSecureGold(player.id, newGold - player.gold);
           }
         } catch (error) {
           console.error('[FloorService] Erro ao atualizar stats após evento:', error);

@@ -72,26 +72,21 @@ function useBattleInitialization(
 
     // Verificações básicas
     if (!characterId || !userId) {
-      console.log('[BattleInit] Dados insuficientes para inicialização');
       setIsLoading(false);
       return;
     }
 
     // Evitar re-inicialização
     if (state.isInitialized && state.lastCharacterId === characterId) {
-      console.log('[BattleInit] Já inicializado para este personagem');
       setIsLoading(false);
       return;
     }
 
     if (state.isInitializing) {
-      console.log('[BattleInit] Já inicializando - ignorando');
       return;
     }
 
     try {
-      console.log(`[BattleInit] === INICIANDO INICIALIZAÇÃO SIMPLES ===`);
-
       state.isInitializing = true;
       state.lastCharacterId = characterId;
       setIsLoading(true);
@@ -104,7 +99,6 @@ function useBattleInitialization(
       }
 
       // ✅ CRÍTICO: Limpar logs antes de inicializar nova batalha
-      console.log('[BattleInit] Limpando logs da batalha anterior');
       const { LoggingUtils } = await import('@/utils/logging-utils');
       LoggingUtils.clearAllLogs();
 
@@ -117,14 +111,6 @@ function useBattleInitialization(
 
       // ✅ CORREÇÃO CRÍTICA: Aplicar o gameState retornado na store
       if (result.gameState) {
-        console.log(`[BattleInit] Aplicando gameState na store`, {
-          hasPlayer: Boolean(result.gameState.player),
-          hasEnemy: Boolean(result.gameState.currentEnemy),
-          playerName: result.gameState.player?.name,
-          enemyName: result.gameState.currentEnemy?.name,
-          mode: result.gameState.mode,
-        });
-
         setGameStateRef.current(result.gameState);
       } else {
         throw new Error('gameState não foi retornado pelo BattleInitializationService');
@@ -139,11 +125,7 @@ function useBattleInitialization(
       if (markAsInitializedRef.current) {
         markAsInitializedRef.current();
       }
-
-      console.log(`[BattleInit] === INICIALIZAÇÃO CONCLUÍDA COM SUCESSO ===`);
     } catch (error) {
-      console.error('[BattleInit] Erro na inicialização:', error);
-
       state.hasError = true;
       state.errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       setError(state.errorMessage);
@@ -182,7 +164,6 @@ function useBattleInitializationGuard(characterId: string | undefined) {
 
   const markAsInitialized = useCallback(() => {
     if (characterId) {
-      console.log(`[BattleGuard] Marcando ${characterId} como inicializado`);
       guardRef.current.initialized.add(characterId);
       guardRef.current.canInitialize = false;
     }
@@ -218,25 +199,12 @@ function usePotionSlots(playerId: string | undefined) {
 
     try {
       setLoadingSlots(true);
-      console.log(`[PotionSlots] Carregando slots para ${currentPlayerId}`);
-
       const { SlotService } = await import('@/services/slot.service');
       const result = await SlotService.getCharacterPotionSlots(currentPlayerId);
 
       if (result.success && result.data) {
-        console.log(
-          `[PotionSlots] ${result.data.length} slots carregados:`,
-          result.data.map(slot => ({
-            position: slot.slot_position,
-            name: slot.consumable_name,
-            quantity: slot.available_quantity,
-            isEmpty: !slot.consumable_id,
-          }))
-        );
-
         setPotionSlots(result.data);
       } else {
-        console.error('[PotionSlots] Erro ao carregar slots:', result.error);
         setPotionSlots([
           {
             slot_position: 1,
@@ -270,8 +238,7 @@ function usePotionSlots(playerId: string | undefined) {
           },
         ]);
       }
-    } catch (error) {
-      console.error('[PotionSlots] Erro ao carregar slots:', error);
+    } catch {
       setPotionSlots([
         {
           slot_position: 1,
@@ -313,8 +280,6 @@ function usePotionSlots(playerId: string | undefined) {
   const reloadSlots = useCallback(async () => {
     const currentPlayerId = playerIdRef.current;
     if (currentPlayerId) {
-      console.log(`[PotionSlots] 🔄 FORÇANDO RELOAD dos slots para ${currentPlayerId}`);
-
       const { SlotService } = await import('@/services/slot.service');
       SlotService.invalidateCache(currentPlayerId);
 
@@ -334,7 +299,6 @@ export default function GameBattle() {
   // 🚨 DEBUG: Contador de renders
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
-  console.log(`🔄 [GameBattle] RENDER #${renderCountRef.current}`);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -360,17 +324,6 @@ export default function GameBattle() {
 
   const { character: characterId } = useParams({
     from: '/_authenticated/game/play/hub/battle/$character',
-  });
-
-  // 🚨 DEBUG: Log do estado atual
-  console.log(`📊 [GameBattle] Estado atual:`, {
-    renderCount: renderCountRef.current,
-    characterId,
-    playerId: player?.id,
-    gameMode: mode,
-    hasEnemy: Boolean(currentEnemy),
-    selectedCharacterId: player?.id,
-    isPlayerTurn,
   });
 
   // REMOVIDO: Efeitos de debug desnecessários que causavam re-renders
@@ -405,7 +358,6 @@ export default function GameBattle() {
   // ✅ CORREÇÃO: Efeito para carregar slots quando player muda
   useEffect(() => {
     if (player?.id) {
-      console.log('[GameBattle] Carregando slots para player:', player.id);
       loadPotionSlots().catch(error => {
         console.error('[GameBattle] Erro ao carregar slots:', error);
       });
@@ -437,33 +389,26 @@ export default function GameBattle() {
 
   // CRITICAL: Inicialização única no mount COM PROTEÇÃO ADICIONAL - CORRIGIDA
   useEffect(() => {
-    console.log(`🚀 [GameBattle] === MOUNT EFFECT === render #${renderCountRef.current}`);
-
     mountedRef.current = true;
 
     // ✅ CORREÇÃO: Verificações básicas sem dependência de isInitialized
     if (!characterId || !user?.id) {
-      console.log(`⏳ [GameBattle] Aguardando dados básicos...`);
       return;
     }
 
     // ✅ CORREÇÃO CRÍTICA: Evitar re-inicialização se já está processando
     if (initTimerRef.current) {
-      console.log(`⏳ [GameBattle] Timer já ativo para ${characterId} - ignorando`);
       return;
     }
 
     // ✅ CORREÇÃO: Usar canInitialize apenas como verificação inicial, não como dependência
     if (!canInitialize) {
-      console.log(`⏳ [GameBattle] Guard bloqueou inicialização para ${characterId}`);
       return;
     }
 
     // ✅ CORREÇÃO: Timer simples sem verificações complexas
-    console.log(`⏰ [GameBattle] Agendando inicialização para ${characterId}...`);
     initTimerRef.current = setTimeout(() => {
       if (mountedRef.current && characterId && user?.id && initializeBattleRef.current) {
-        console.log(`🎯 [GameBattle] Executando inicialização para ${characterId}`);
         initializeBattleRef.current().catch(error => {
           console.error('[GameBattle] Erro na inicialização:', error);
         });
@@ -473,7 +418,6 @@ export default function GameBattle() {
     }, 200);
 
     return () => {
-      console.log(`💀 [GameBattle] Cleanup para ${characterId}`);
       mountedRef.current = false;
       if (initTimerRef.current) {
         clearTimeout(initTimerRef.current);
@@ -481,16 +425,6 @@ export default function GameBattle() {
       }
     };
   }, [characterId, user?.id, canInitialize]); // ✅ CORREÇÃO: Dependências mínimas - removido initializeBattle
-
-  // REMOVIDO: Debug effect que causava re-renders desnecessários
-
-  // CRITICAL: Evitar desmontagem quando batalha está ativa - SIMPLIFICADO
-  useEffect(() => {
-    if ((mode === 'battle' || mode === 'special_event') && currentEnemy) {
-      console.log(`🛡️ [GameBattle] Batalha/evento ativo - componente estável`);
-      // Componente deve manter-se montado
-    }
-  }, [mode, currentEnemy?.id]);
 
   // OTIMIZADO: Stats memorizados para evitar recálculos
   const battleStats = useMemo(() => {
@@ -632,7 +566,6 @@ export default function GameBattle() {
   // ESTÁVEL: Verificação de game over - CORRIGIDO
   useEffect(() => {
     if (mode === 'gameover' && player?.hp !== undefined && player.hp <= 0 && !showDeathModal) {
-      console.log('[GameBattle] Personagem morreu - exibindo modal');
       setShowDeathModal(true);
 
       if (characterDeleted && player?.name) {
@@ -777,7 +710,6 @@ export default function GameBattle() {
     const currentPlayer = useGameStateStore.getState().gameState.player;
     if (currentPlayer?.id) {
       // ✅ CRÍTICO: Finalizar logs da batalha ao voltar ao hub
-      console.log('[GameBattle] Finalizando logs da batalha - retornando ao hub');
       const { LoggingUtils } = await import('@/utils/logging-utils');
       LoggingUtils.logSpecialEvent(
         'level_checkpoint',
@@ -797,14 +729,12 @@ export default function GameBattle() {
       });
 
       // ✅ CORREÇÃO CRÍTICA: Invalidar cache para garantir dados atualizados no hub
-      console.log('[GameBattle] 🔄 Invalidando cache antes de voltar ao hub');
       CharacterService.invalidateCharacterCache(currentPlayer.id);
 
       // ✅ CORREÇÃO: Limpar store Zustand para forçar recarregamento no hub
       const { useCharacterStore } = await import('@/stores/useCharacterStore');
       const characterStore = useCharacterStore.getState();
       if (characterStore.selectedCharacterId === currentPlayer.id) {
-        console.log('[GameBattle] 🧹 Limpando cache da store para forçar reload no hub');
         characterStore.setSelectedCharacter(null);
       }
 

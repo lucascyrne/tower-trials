@@ -10,7 +10,6 @@ import { SlotService } from './slot.service';
 import { ConsumableService } from './consumable.service';
 import { GameService } from './game.service';
 import { useGameStateStore } from '../stores/useGameStateStore';
-import { useCharacterStore } from '../stores/useCharacterStore';
 import { useBattleStore } from '../stores/useBattleStore';
 import { useLogStore } from '../stores/useLogStore';
 import { BattleLoggerService } from './battle-logger.service';
@@ -28,7 +27,6 @@ export class BattleService {
     consumableId?: string
   ): Promise<boolean> {
     // const gameStateStore = useGameStateStore.getState();
-    const characterStore = useCharacterStore.getState();
     const battleStore = useBattleStore.getState();
 
     try {
@@ -37,12 +35,6 @@ export class BattleService {
 
       // Obter estado atual das stores
       // const currentGameState = gameStateStore.gameState;
-      const selectedCharacter = characterStore.selectedCharacter;
-
-      if (!selectedCharacter) {
-        console.warn('[BattleService] Nenhum personagem selecionado');
-        return false;
-      }
 
       if (battleStore.isProcessingAction) {
         console.warn('[BattleService] Já processando ação');
@@ -203,14 +195,12 @@ export class BattleService {
   }> {
     // Integração com stores
     const gameStateStore = useGameStateStore.getState();
-    const characterStore = useCharacterStore.getState();
     // const battleStore = useBattleStore.getState();
     const logStore = useLogStore.getState();
 
     // Usar estado da store se não fornecido
     const currentState = gameState || gameStateStore.gameState;
 
-    console.log(`[BattleService] Processando ação do jogador: ${action}`);
     BattleLoggerService.logPlayerAction(action, { spellId, consumableId });
 
     // ✅ CORREÇÃO: Criar cópia profunda para evitar mutação de objetos read-only
@@ -231,11 +221,9 @@ export class BattleService {
     let totalDamage = 0;
 
     // ✅ CORREÇÃO: Processar efeitos ao longo do tempo no INÍCIO do turno do jogador
-    console.log(`[BattleService] Processando efeitos ao longo do tempo no início do turno...`);
     if (newState.player.active_effects) {
       const playerEffectMessages = SpellService.processOverTimeEffects(newState.player);
       if (playerEffectMessages.length > 0) {
-        console.log(`[BattleService] Efeitos do jogador:`, playerEffectMessages);
         // Adicionar às mensagens do log se necessário
         gameLogMessages.push(
           ...playerEffectMessages.map(msg => ({ message: msg, type: 'system' as const }))
@@ -246,7 +234,6 @@ export class BattleService {
     if (newState.currentEnemy?.active_effects) {
       const enemyEffectMessages = SpellService.processOverTimeEffects(newState.currentEnemy);
       if (enemyEffectMessages.length > 0) {
-        console.log(`[BattleService] Efeitos do inimigo:`, enemyEffectMessages);
         // Adicionar às mensagens do log se necessário
         gameLogMessages.push(
           ...enemyEffectMessages.map(msg => ({ message: msg, type: 'system' as const }))
@@ -323,7 +310,6 @@ export class BattleService {
           }
 
           if (playerEquipment) {
-            console.log(`[BattleService] Calculando skill XP para ataque com dano ${totalDamage}`);
             const attackSkillXp = SkillXpService.calculateAttackSkillXp(
               playerEquipment,
               totalDamage
@@ -417,7 +403,7 @@ export class BattleService {
             );
 
             let spellResult = '';
-            let actualSpellValue = 0;
+            const actualSpellValue = 0;
 
             // ✅ NOVA LÓGICA: Usar SpellService.applySpellEffect para processar todos os tipos de magia
             const target = spell.effect_type === 'damage' ? newState.currentEnemy : newState.player;
@@ -503,13 +489,10 @@ export class BattleService {
       case 'consumable':
         if (consumableId) {
           try {
-            console.log(`[BattleService] Processando consumível: ${consumableId}`);
-
             // NOVO: Verificar se é um slot (formato: "slot_X") ou consumível direto
             if (consumableId.startsWith('slot_')) {
               // Usar poção do slot
               const slotPosition = parseInt(consumableId.replace('slot_', ''));
-              console.log(`[BattleService] Usando poção do slot ${slotPosition}`);
 
               const slotResult = await SlotService.consumePotionFromSlot(
                 newState.player.id,
@@ -540,10 +523,6 @@ export class BattleService {
                 );
 
                 skipTurn = false;
-
-                console.log(
-                  `[BattleService] Poção do slot usada com sucesso - HP: ${newState.player.hp}, Mana: ${newState.player.mana}`
-                );
               } else {
                 message = slotResult.error || 'Erro ao usar poção do slot.';
                 skipTurn = true;
@@ -551,9 +530,6 @@ export class BattleService {
               }
             } else {
               // Usar consumível direto do inventário
-              console.log(
-                `[BattleService] Usando consumível direto do inventário: ${consumableId}`
-              );
 
               // Criar uma cópia do player para ser modificada pelo service
               const playerCopy = { ...newState.player };
@@ -592,17 +568,11 @@ export class BattleService {
                 );
 
                 skipTurn = false;
-
-                console.log(
-                  `[BattleService] Consumível direto usado com sucesso - HP: ${newState.player.hp}, Mana: ${newState.player.mana}`
-                );
               } else {
                 message = useResult.error || 'Erro ao usar item consumível.';
                 skipTurn = true;
               }
             }
-
-            console.log(`[BattleService] Turno NÃO consumido para ação de consumível`);
           } catch (error) {
             console.error('[BattleService] Erro ao usar consumível:', error);
             message = 'Erro ao usar item consumível.';
@@ -623,16 +593,12 @@ export class BattleService {
       case 'continue':
         // Avançar para o próximo andar
         try {
-          console.log('[BattleService] Processando ação de continuar para próximo andar');
           const updatedState = await GameService.advanceToNextFloor(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do avanço
           Object.assign(newState, updatedState);
 
           message = updatedState.gameMessage || 'Avançando para o próximo andar...';
-          console.log(
-            `[BattleService] Avanço processado - novo andar: ${updatedState.player.floor}`
-          );
           skipTurn = false;
         } catch (error) {
           console.error('[BattleService] Erro ao avançar para próximo andar:', error);
@@ -644,17 +610,12 @@ export class BattleService {
       case 'interact_event':
         // Processar evento especial
         try {
-          console.log('[BattleService] Processando interação com evento especial');
           const updatedState = await GameService.processSpecialEventInteraction(newState);
 
           // CRÍTICO: Atualizar o estado com o resultado do evento
           Object.assign(newState, updatedState);
 
           message = updatedState.gameMessage || 'Evento especial processado com sucesso!';
-
-          console.log(
-            `[BattleService] Evento especial processado - novo modo: ${updatedState.mode}`
-          );
 
           // Se o evento foi processado com sucesso, não pular turno para continuar o fluxo
           skipTurn = false;
@@ -702,13 +663,6 @@ export class BattleService {
           logMsg.type as 'player_action' | 'damage' | 'system' | 'skill_xp'
         );
       });
-
-      // Aplicar skill XP se houver personagem selecionado
-      if (skillXpGains.length > 0 && characterStore.selectedCharacter) {
-        skillXpGains.forEach(gain => {
-          console.log(`[BattleService] Aplicando ${gain.xp} XP em ${gain.skill}`);
-        });
-      }
     }
 
     BattleLoggerService.log(
@@ -721,13 +675,6 @@ export class BattleService {
         skillXpGains: skillXpGains.length,
       }
     );
-
-    console.log(`[BattleService] Ação processada: ${action}, mensagem: ${message}`);
-    console.log(
-      `[BattleService] Player HP: ${newState.player.hp}/${newState.player.max_hp}, Mana: ${newState.player.mana}/${newState.player.max_mana}`
-    );
-    console.log(`[BattleService] skipTurn FINAL: ${skipTurn} (poções nunca consomem turno)`);
-    console.log(`[BattleService] Skill XP gains:`, skillXpGains.length);
 
     return {
       newState,
@@ -924,25 +871,7 @@ export class BattleService {
     const player = { ...gameState.player };
     const skillXpGains: SkillXpGain[] = [];
 
-    console.log(`[BattleService] === PROCESSANDO AÇÃO DO INIMIGO ===`);
-    console.log(`[BattleService] Inimigo: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`);
-
-    // ✅ CORREÇÃO: Processar efeitos ao longo do tempo no INÍCIO do turno do inimigo
-    console.log(`[BattleService] Processando efeitos ao longo do tempo do inimigo...`);
-    const enemyEffectMessages = SpellService.processOverTimeEffects(enemy);
-    if (enemyEffectMessages.length > 0) {
-      console.log(`[BattleService] Efeitos do inimigo:`, enemyEffectMessages);
-    }
-
-    // ✅ CORREÇÃO: Também processar efeitos do jogador no turno do inimigo
-    console.log(`[BattleService] Processando efeitos ao longo do tempo do jogador...`);
-    const playerEffectMessages = SpellService.processOverTimeEffects(player);
-    if (playerEffectMessages.length > 0) {
-      console.log(`[BattleService] Efeitos do jogador:`, playerEffectMessages);
-    }
-
     if (enemy.hp <= 0) {
-      console.log(`[BattleService] Inimigo morreu por efeitos ao longo do tempo`);
       return {
         newState: {
           ...gameState,
@@ -990,18 +919,12 @@ export class BattleService {
       actionType = 'spell';
     }
 
-    console.log(
-      `[BattleService] Ação escolhida: ${actionType} (special: ${specialChance}, spell: ${spellChance})`
-    );
-
     let message = '';
     let damage = 0;
     let actualDamage = 0;
 
     switch (actionType) {
       case 'attack': {
-        console.log(`[BattleService] Executando ataque físico`);
-
         const enemyDamageResult = this.calculateDamage(
           enemy,
           player,
@@ -1033,7 +956,6 @@ export class BattleService {
             const blockedDamage = damage - actualDamage;
             const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(null, blockedDamage);
             skillXpGains.push(...defenseSkillXp);
-            console.log(`[BattleService] XP de defesa por bloqueio:`, defenseSkillXp);
           } catch (error) {
             console.warn('[BattleService] Erro ao calcular XP de defesa:', error);
           }
@@ -1061,7 +983,6 @@ export class BattleService {
               Math.floor(actualDamage * 0.3)
             );
             skillXpGains.push(...defenseSkillXp);
-            console.log(`[BattleService] XP de defesa passiva:`, defenseSkillXp);
           } catch (error) {
             console.warn('[BattleService] Erro ao calcular XP de defesa passiva:', error);
           }
@@ -1070,9 +991,6 @@ export class BattleService {
         const newHp = Math.max(0, player.hp - actualDamage);
 
         if (newHp <= 0) {
-          console.log(
-            `[BattleService] Jogador ${player.name} morreu - iniciando processo de permadeath`
-          );
           return {
             newState: await this.processPlayerDeath(gameState, player, enemy, message),
           };
@@ -1098,12 +1016,10 @@ export class BattleService {
             : undefined;
 
         const updatedResultState = SpellService.updateSpellCooldowns(resultState);
-        console.log(`[BattleService] Ataque processado com sucesso. Mensagem: ${message}`);
         return { newState: updatedResultState, skillXpGains, skillMessages };
       }
 
       case 'spell': {
-        console.log(`[BattleService] Executando magia`);
         const spellDamage = Math.floor(enemy.attack * 1.2);
         const spellCost = 10;
 
@@ -1150,9 +1066,6 @@ export class BattleService {
         const newSpellHp = Math.max(0, player.hp - actualDamage);
 
         if (newSpellHp <= 0) {
-          console.log(
-            `[BattleService] Jogador ${player.name} morreu por magia - iniciando processo de permadeath`
-          );
           return {
             newState: await this.processPlayerDeath(gameState, player, enemy, message),
           };
@@ -1182,7 +1095,6 @@ export class BattleService {
             : undefined;
 
         const updatedSpellResultState = SpellService.updateSpellCooldowns(spellResultState);
-        console.log(`[BattleService] Magia processada com sucesso. Mensagem: ${message}`);
         return {
           newState: updatedSpellResultState,
           skillXpGains,
@@ -1310,9 +1222,6 @@ export class BattleService {
         const newSpecialHp = Math.max(0, player.hp - actualDamage);
 
         if (newSpecialHp <= 0) {
-          console.log(
-            `[BattleService] Jogador ${player.name} morreu por habilidade especial - iniciando processo de permadeath`
-          );
           return {
             newState: await this.processPlayerDeath(gameState, player, enemy, message),
           };
@@ -1338,9 +1247,6 @@ export class BattleService {
             : undefined;
 
         const updatedSpecialResultState = SpellService.updateSpellCooldowns(specialResultState);
-        console.log(
-          `[BattleService] Habilidade especial processada com sucesso. Mensagem: ${message}`
-        );
         return {
           newState: updatedSpecialResultState,
           skillXpGains,
@@ -1349,7 +1255,6 @@ export class BattleService {
       }
 
       default: {
-        console.log(`[BattleService] ERRO: Ação desconhecida: ${actionType}`);
         const defaultState = {
           ...gameState,
           player: {

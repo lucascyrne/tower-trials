@@ -4,8 +4,27 @@ import { useBattleStore } from '../stores/useBattleStore';
 import { useLogStore } from '../stores/useLogStore';
 
 /**
- * Serviço central de cache para o sistema de jogo
- * ATUALIZADO: Integrado com Zustand stores para limpeza coordenada de estado
+ * Serviço central de gerenciamento de cache e estado do sistema
+ *
+ * ✅ EXCEÇÃO À REGRA P1: Este é um serviço de infraestrutura
+ *
+ * Este service DEVE acessar stores diretamente porque sua responsabilidade
+ * é coordenar a limpeza e sincronização de múltiplos stores e caches.
+ *
+ * É um serviço de "orquestração de sistema" que gerencia o estado global,
+ * não um service de domínio/negócio que deveria ser puro.
+ *
+ * Categoria: Infraestrutura/Sistema
+ * Responsabilidade: Coordenação de stores e caches
+ * Padrão: Singleton com métodos estáticos
+ *
+ * @example
+ * // Limpar todos os caches ao fazer logout
+ * CacheService.clearAllGameCaches();
+ *
+ * @example
+ * // Limpar cache de um personagem específico
+ * CacheService.clearCharacterCache(characterId);
  */
 export class CacheService {
   /**
@@ -37,7 +56,6 @@ export class CacheService {
     Promise.all([
       import('./floor.service').then(m => m.FloorService.clearCache()),
       import('./monster.service').then(m => m.MonsterService.clearCache()),
-      import('./character-cache.service').then(m => m.CharacterCacheService.clearAllCache()),
     ]).catch(error => {
       console.error('[CacheService] Erro ao limpar caches dos serviços:', error);
     });
@@ -45,11 +63,12 @@ export class CacheService {
 
   /**
    * Limpar cache de personagem específico
+   * ATUALIZADO: CharacterCacheService deprecated - stores gerenciadas diretamente
    */
   static clearCharacterCache(characterId: string): void {
-    import('./character-cache.service')
-      .then(m => m.CharacterCacheService.invalidateCharacterCache(characterId))
-      .catch(error => console.error('[CacheService] Erro ao limpar cache do personagem:', error));
+    console.log(`[CacheService] Cache do personagem ${characterId} limpo (gerenciado por stores)`);
+    // Cache agora é gerenciado pelas stores Zustand (useCharacterStore)
+    // Não há cache separado para limpar
   }
 
   /**
@@ -73,14 +92,11 @@ export class CacheService {
 
       // Limpar logs do usuário
       logStore.clearAllLogs();
+
+      console.log('[CacheService] Cache do usuário limpo com sucesso');
     } catch (error) {
       console.error('[CacheService] Erro ao limpar stores do usuário:', error);
     }
-
-    // Limpar cache tradicional
-    import('./character-cache.service')
-      .then(m => m.CharacterCacheService.invalidateUserCache(userId))
-      .catch(error => console.error('[CacheService] Erro ao limpar cache do usuário:', error));
   }
 
   /**

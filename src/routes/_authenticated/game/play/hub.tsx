@@ -133,14 +133,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         return;
       }
 
-      console.log('[GameHub] Verificando estado atual:', {
-        characterId,
-        gameMode,
-        playerId,
-        playerName,
-        loadingState,
-      });
-
       // Se já temos o personagem correto carregado no hub, não fazer nada
       if (
         gameMode === 'hub' &&
@@ -148,7 +140,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         playerName &&
         loadingState !== 'initial'
       ) {
-        console.log(`[GameHub] Personagem ${playerName} já carregado no hub`);
         if (loadingState !== 'loaded') {
           setLoadingState('loaded');
         }
@@ -157,12 +148,10 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
 
       // Evitar carregamentos duplicados
       if (loadingRef.current && lastLoadedCharacterRef.current === characterId) {
-        console.log('[GameHub] Carregamento já em andamento para:', characterId);
         return;
       }
 
       // Iniciar carregamento
-      console.log('[GameHub] Iniciando carregamento para:', characterId);
       loadingRef.current = true;
       lastLoadedCharacterRef.current = characterId;
       setLoadingState('loading');
@@ -171,7 +160,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
       // Timeout para detectar problemas
       errorTimeoutRef.current = setTimeout(() => {
         if (loadingRef.current && mountedRef.current) {
-          console.error('[GameHub] Timeout no carregamento');
           setLoadingState('error');
           setErrorMessage('Timeout ao carregar personagem. Tente novamente.');
           loadingRef.current = false;
@@ -188,13 +176,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
           gameStatePlayer.id !== characterId || // Player diferente
           gameState.mode !== 'hub'; // Não está no modo hub
 
-        console.log(`[GameHub] Buscando dados: forceRefresh=${shouldForceRefresh}`, {
-          hasGameStatePlayer: Boolean(gameStatePlayer?.id),
-          gameStatePlayerId: gameStatePlayer?.id,
-          targetCharacterId: characterId,
-          gameMode: gameState.mode || 'undefined',
-        });
-
         const response = await CharacterService.getCharacterForGame(
           characterId,
           shouldForceRefresh,
@@ -208,17 +189,13 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         const characterData = response.data;
 
         if (!mountedRef.current) {
-          console.log('[GameHub] Componente desmontado após buscar dados');
           return;
         }
-
-        console.log('[GameHub] Dados obtidos, carregando para hub:', characterData.name);
 
         // Carregar personagem para o hub
         await stableLoadCharacterForHub(characterData as Character);
 
         if (mountedRef.current) {
-          console.log('[GameHub] Carregamento concluído com sucesso');
           setLoadingState('loaded');
           if (errorTimeoutRef.current) {
             clearTimeout(errorTimeoutRef.current);
@@ -226,7 +203,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
           }
         }
       } catch (error) {
-        console.error('[GameHub] Erro no carregamento:', error);
         if (mountedRef.current) {
           setLoadingState('error');
           setErrorMessage(error instanceof Error ? error.message : 'Erro desconhecido');
@@ -254,7 +230,6 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
       playerName &&
       loadingState === 'loading'
     ) {
-      console.log('[GameHub] Estado atualizado para hub, finalizando loading');
       setLoadingState('loaded');
     }
   }, [gameMode, playerId, playerName, characterId, loadingState]);
@@ -356,8 +331,7 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         params: { character: player.id },
         search: { character: player.id },
       });
-    } catch (error) {
-      console.error('Erro ao iniciar do começo:', error);
+    } catch {
       toast.error('Erro ao iniciar aventura');
     }
   };
@@ -382,8 +356,7 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
           description: response.error,
         });
       }
-    } catch (error) {
-      console.error('Erro ao iniciar do checkpoint:', error);
+    } catch {
       toast.error('Erro ao iniciar do checkpoint');
     }
   };
@@ -395,16 +368,16 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         <div className="space-y-3 sm:space-y-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate({ to: '/game/play' })}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: '/game/play' })}
                 className="flex-shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Trocar Personagem</span>
-              <span className="sm:hidden">Trocar</span>
-            </Button>
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Trocar Personagem</span>
+                <span className="sm:hidden">Trocar</span>
+              </Button>
 
               <Button
                 variant="ghost"

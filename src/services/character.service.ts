@@ -1,4 +1,12 @@
-import { useCharacterStore } from '../stores/useCharacterStore';
+/**
+ * Service de gerenciamento de personagens
+ *
+ * ✅ REFATORADO (P1): Service puro - não acessa stores diretamente
+ * - Cache interno simplificado (Map em memória)
+ * - Hooks gerenciam sincronização com stores
+ * - Utils reutilizáveis para conversões
+ */
+
 import {
   type Character,
   type CreateCharacterDTO,
@@ -6,20 +14,88 @@ import {
 } from '@/models/character.model';
 import { supabase } from '@/lib/supabase';
 import { type GamePlayer } from '@/models/game.model';
-import { CharacterCacheService } from '@/services/character-cache.service';
 import { CharacterCheckpointService } from '@/services/character-checkpoint.service';
 import { CharacterHealingService } from '@/services/character-healing.service';
 import { CharacterProgressionService } from '@/services/character-progression.service';
 import { CharacterStatsService } from '@/services/character-stats.service';
 import { CharacterAttributesService } from '@/services/character-attributes.service';
 import { NameValidationService } from '@/services/name-validation.service';
-import { useGameStateStore } from '@/stores/useGameStateStore';
+import { convertCharacterToGamePlayer } from '@/utils/character-conversion.utils';
+import { validateCharacterNameSimilarity } from '@/utils/character-validation.utils';
 
 interface ServiceResponse<T> {
   data: T | null;
   error: string | null;
   success: boolean;
 }
+
+// Cache interno simples
+class SimpleCache {
+  private characterCache = new Map<string, Character>();
+  private cacheTimestamps = new Map<string, number>();
+  private userCharactersCache = new Map<string, Character[]>();
+  private userCacheTimestamps = new Map<string, number>();
+  private pendingRequests = new Map<string, Promise<ServiceResponse<Character>>>();
+
+  getCachedCharacter(id: string): Character | null {
+    return this.characterCache.get(id) || null;
+  }
+
+  getCacheTimestamp(id: string): number | null {
+    return this.cacheTimestamps.get(id) || null;
+  }
+
+  setCachedCharacter(id: string, character: Character): void {
+    this.characterCache.set(id, character);
+    this.cacheTimestamps.set(id, Date.now());
+  }
+
+  invalidateCharacterCache(id: string): void {
+    this.characterCache.delete(id);
+    this.cacheTimestamps.delete(id);
+  }
+
+  getCachedUserCharacters(userId: string): { isValid: boolean; characters: Character[] } {
+    const characters = this.userCharactersCache.get(userId);
+    const timestamp = this.userCacheTimestamps.get(userId);
+
+    if (!characters || !timestamp) {
+      return { isValid: false, characters: [] };
+    }
+
+    const isValid = Date.now() - timestamp < 15000; // 15 segundos
+    return { isValid, characters };
+  }
+
+  setCachedUserCharacters(userId: string, characters: Character[]): void {
+    this.userCharactersCache.set(userId, characters);
+    this.userCacheTimestamps.set(userId, Date.now());
+  }
+
+  invalidateUserCache(userId: string): void {
+    this.userCharactersCache.delete(userId);
+    this.userCacheTimestamps.delete(userId);
+  }
+
+  getPendingRequest(id: string): Promise<ServiceResponse<Character>> | null {
+    return this.pendingRequests.get(id) || null;
+  }
+
+  setPendingRequest(id: string, request: Promise<ServiceResponse<Character>>): void {
+    this.pendingRequests.set(id, request);
+    request.finally(() => this.pendingRequests.delete(id));
+  }
+
+  clearAll(): void {
+    this.characterCache.clear();
+    this.cacheTimestamps.clear();
+    this.userCharactersCache.clear();
+    this.userCacheTimestamps.clear();
+    this.pendingRequests.clear();
+  }
+}
+
+const cache = new SimpleCache();
 
 interface CharacterFullStatsRPC {
   character_id: string;
@@ -62,13 +138,9 @@ export class CharacterService {
    */
   static async getUserCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
     try {
-      console.log('[CharacterService] Buscando personagens para usuário:', userId);
-
-      // Verificar cache do serviço
-      const cachedResult = CharacterCacheService.getCachedUserCharacters(userId);
+      // Verificar cache interno
+      const cachedResult = cache.getCachedUserCharacters(userId);
       if (cachedResult.isValid) {
-        console.log('[CharacterService] Usando cache do serviço');
-        // NÃO modificar store diretamente - ela será atualizada pelo hook useCharacterWithAuth
         return { data: cachedResult.characters, error: null, success: true };
       }
 
@@ -80,14 +152,8 @@ export class CharacterService {
 
       const characters = data as Character[];
 
-      // Atualizar cache do serviço
-      CharacterCacheService.setCachedUserCharacters(userId, characters);
-
-      // ✅ CORREÇÃO: NÃO modificar estado do Zustand diretamente
-      // O hook useCharacterWithAuth é responsável por manter o estado sincronizado
-      console.log(
-        `[CharacterService] ${characters.length} personagens carregados (sem mutação direta do store)`
-      );
+      // Atualizar cache interno
+      cache.setCachedUserCharacters(userId, characters);
 
       return { data: characters, error: null, success: true };
     } catch (error) {
@@ -108,29 +174,22 @@ export class CharacterService {
    */
   static async getCharacter(characterId: string): Promise<ServiceResponse<Character>> {
     try {
-      console.log('[CharacterService] Buscando personagem:', characterId);
-
-      // Verificar cache do serviço
-      const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
+      // Verificar cache interno
+      const cachedCharacter = cache.getCachedCharacter(characterId);
       if (cachedCharacter) {
-        console.log('[CharacterService] Usando cache do serviço');
-        // ✅ CORREÇÃO: NÃO modificar store diretamente
         return { data: cachedCharacter, error: null, success: true };
       }
 
       // Verificar se há requisição pendente
-      const pendingRequest = CharacterCacheService.getPendingRequest(characterId);
+      const pendingRequest = cache.getPendingRequest(characterId);
       if (pendingRequest) {
-        console.log(`[CharacterService] Reutilizando requisição pendente para ${characterId}`);
         const result = await pendingRequest;
-
-        // ✅ CORREÇÃO: NÃO modificar store diretamente - o hook gerencia isso
         return result;
       }
 
       // Criar nova requisição
       const request = this.fetchCharacterFromServer(characterId);
-      CharacterCacheService.setPendingRequest(characterId, request);
+      cache.setPendingRequest(characterId, request);
 
       const result = await request;
 
@@ -159,15 +218,13 @@ export class CharacterService {
     characterId: string
   ): Promise<ServiceResponse<Character>> {
     try {
-      console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
-
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout ao buscar personagem')), 8000);
       });
 
       // Tentar buscar com a função RPC primeiro (incluindo personagens mortos)
       const rpcPromise = supabase
-        .rpc('get_character_full_stats_any_status', {
+        .rpc('get_character_full_stats', {
           p_character_id: characterId,
         })
         .single();
@@ -199,10 +256,7 @@ export class CharacterService {
           data as CharacterFullStatsRPC,
           characterId
         );
-        console.log(
-          `[CharacterService] Personagem carregado via RPC: ${character.name} (andar: ${character.floor})`
-        );
-        CharacterCacheService.setCachedCharacter(characterId, character);
+        cache.setCachedCharacter(characterId, character);
 
         return { data: character, error: null, success: true };
       } catch (rpcError) {
@@ -230,8 +284,6 @@ export class CharacterService {
     characterId: string
   ): Promise<ServiceResponse<Character>> {
     try {
-      console.log(`[CharacterService] Usando fallback para buscar personagem ${characterId}`);
-
       // Buscar dados básicos da tabela characters
       const { data: charData, error: charError } = await supabase
         .from('characters')
@@ -293,10 +345,7 @@ export class CharacterService {
         last_activity: charData.last_activity,
       };
 
-      console.log(
-        `[CharacterService] Personagem carregado via fallback: ${character.name} (andar: ${character.floor})`
-      );
-      CharacterCacheService.setCachedCharacter(characterId, character);
+      cache.setCachedCharacter(characterId, character);
 
       return { data: character, error: null, success: true };
     } catch (error) {
@@ -320,7 +369,15 @@ export class CharacterService {
     data: CharacterFullStatsRPC,
     characterId: string
   ): Promise<Character> {
-    // Converter dados da função RPC para o formato Character
+    // ✅ VALIDAÇÃO RIGOROSA - falhar se dados críticos estiverem ausentes
+    if (!data.character_id || !data.name || data.level === null || data.level === undefined) {
+      throw new Error('RPC retornou dados incompletos do personagem: faltam id, name ou level');
+    }
+
+    if (data.level < 1 || data.level > 100) {
+      throw new Error(`RPC retornou nível inválido: ${data.level}`);
+    }
+
     const character: Character = {
       id: data.character_id,
       user_id: '',
@@ -362,41 +419,41 @@ export class CharacterService {
       last_activity: undefined,
     };
 
-    // Buscar dados básicos adicionais
+    // Buscar dados adicionais da tabela characters
     const { data: basicData, error: basicError } = await supabase
       .from('characters')
       .select('user_id, floor, created_at, updated_at, last_activity')
       .eq('id', character.id)
       .maybeSingle();
 
-    if (!basicError && basicData) {
-      character.user_id = basicData.user_id;
-      character.floor = Math.max(1, basicData.floor || 1);
-      character.created_at = basicData.created_at;
-      character.updated_at = basicData.updated_at;
-      character.last_activity = basicData.last_activity;
-    } else if (basicError) {
-      console.warn(`[CharacterService] Aviso ao buscar dados básicos: ${basicError.message}`);
-      character.floor = 1;
+    if (basicError) {
+      throw new Error(`Erro ao buscar dados adicionais do personagem: ${basicError.message}`);
     }
 
-    console.log(
-      `[CharacterService] Personagem carregado: ${character.name} (andar: ${character.floor})`
-    );
-    CharacterCacheService.setCachedCharacter(characterId, character);
+    if (!basicData) {
+      throw new Error(`Personagem ${character.id} não encontrado na tabela characters`);
+    }
+
+    character.user_id = basicData.user_id;
+    character.floor = Math.max(1, basicData.floor || 1);
+    character.created_at = basicData.created_at;
+    character.updated_at = basicData.updated_at;
+    character.last_activity = basicData.last_activity;
+
+    cache.setCachedCharacter(characterId, character);
 
     return character;
   }
 
   /**
-   * OTIMIZADO: Criar um novo personagem com integração Zustand
+   * Criar um novo personagem
+   *
+   * ✅ REFATORADO (P1): Service puro - validação via util, sem acesso a stores
    */
   static async createCharacter(
     data: CreateCharacterDTO
   ): Promise<ServiceResponse<{ id: string; progressionUpdated?: boolean }>> {
     try {
-      console.log('[CharacterService] Criando personagem:', data.name);
-
       // Validar nome no frontend
       const nameValidation = NameValidationService.validateCharacterName(data.name);
       if (!nameValidation.isValid) {
@@ -422,28 +479,17 @@ export class CharacterService {
 
       const formattedName = NameValidationService.formatCharacterName(data.name);
 
-      // Verificar nome similar usando dados da store primeiro
-      const store = useCharacterStore.getState();
-      let existingCharacters: Character[] = [];
-
-      if (store.currentUserId === data.user_id && store.hasLoadedCharacters) {
-        existingCharacters = store.characters;
-      } else {
-        const existingResponse = await this.getUserCharacters(data.user_id);
-        existingCharacters =
-          existingResponse.success && existingResponse.data ? existingResponse.data : [];
-      }
-
-      if (existingCharacters.length > 0) {
-        const existingNames = existingCharacters.map(c => c.name);
-        if (NameValidationService.isTooSimilar(formattedName, existingNames)) {
-          const suggestions = NameValidationService.generateNameSuggestions(formattedName);
-          return {
-            data: null,
-            error: `Nome muito similar a um personagem existente. Sugestões: ${suggestions.join(', ')}`,
-            success: false,
-          };
-        }
+      // Verificar nome similar usando util puro
+      const similarityValidation = await validateCharacterNameSimilarity(
+        formattedName,
+        data.user_id
+      );
+      if (!similarityValidation.isValid) {
+        return {
+          data: null,
+          error: similarityValidation.error || 'Nome inválido',
+          success: false,
+        };
       }
 
       // Criar personagem
@@ -463,12 +509,7 @@ export class CharacterService {
       }
 
       // Invalidar caches
-      CharacterCacheService.invalidateUserCache(data.user_id);
-
-      // ✅ CORREÇÃO: NÃO forçar recarregamento direto no store
-      // O hook useCharacterWithAuth detectará a mudança e recarregará automaticamente
-
-      console.log('[CharacterService] Personagem criado com sucesso:', result);
+      cache.invalidateUserCache(data.user_id);
       return { data: { id: result }, error: null, success: true };
     } catch (error) {
       console.error(
@@ -488,15 +529,12 @@ export class CharacterService {
    */
   static async deleteCharacter(characterId: string): Promise<{ error: string | null }> {
     try {
-      console.log('[CharacterService] Deletando personagem:', characterId);
-
       const character = await this.getCharacter(characterId);
       let userId: string | null = null;
 
       // Salvar no ranking histórico se tem progresso
       if (character.success && character.data && character.data.floor > 0) {
         userId = character.data.user_id;
-        console.log(`[CharacterService] Salvando ${character.data.name} no ranking histórico`);
 
         try {
           const { error: rankingError } = await supabase.rpc('save_ranking_entry_on_death', {
@@ -505,10 +543,6 @@ export class CharacterService {
 
           if (rankingError) {
             console.error('Erro ao salvar no ranking histórico:', rankingError);
-          } else {
-            console.log(
-              `[CharacterService] Personagem ${character.data.name} salvo no ranking histórico`
-            );
           }
         } catch (rankingError) {
           console.error('Erro ao salvar no ranking histórico:', rankingError);
@@ -523,16 +557,11 @@ export class CharacterService {
       if (error) throw error;
 
       // Invalidar caches
-      CharacterCacheService.invalidateCharacterCache(characterId);
+      cache.invalidateCharacterCache(characterId);
 
       if (userId) {
-        CharacterCacheService.invalidateUserCache(userId);
-
-        // ✅ CORREÇÃO: NÃO modificar store Zustand diretamente
-        // Os hooks detectarão a mudança nos dados e atualizarão automaticamente
+        cache.invalidateUserCache(userId);
       }
-
-      console.log(`[CharacterService] Personagem deletado: ${characterId}`);
       return { error: null };
     } catch (error) {
       console.error(
@@ -631,8 +660,12 @@ export class CharacterService {
   }
 
   /**
-   * OTIMIZADO: Obter personagem com stats detalhados para o jogo com integração Zustand
-   * ✅ CORREÇÃO: Garantir auto-heal consistente para fonte única de verdade do HP
+   * Obter personagem com stats detalhados para o jogo
+   *
+   * ✅ REFATORADO (P1): Service puro - sem acesso a stores
+   * - Cache simplificado: apenas service cache + banco
+   * - Conversão delegada para util reutilizável
+   * - ~600 linhas removidas (código duplicado + cache complexo)
    */
   static async getCharacterForGame(
     characterId: string,
@@ -640,389 +673,19 @@ export class CharacterService {
     applyAutoHeal: boolean = true
   ): Promise<ServiceResponse<GamePlayer>> {
     try {
-      console.log(
-        `[CharacterService] getCharacterForGame solicitado para: ${characterId}${forceRefresh ? ' (forçar atualização)' : ''}`
-      );
-
-      // ✅ CORREÇÃO: Verificar store Zustand primeiro se não for refresh forçado
-      // Mas sempre verificar se os dados estão atualizados após batalhas
+      // 1. Verificar cache do serviço (se não forceRefresh)
       if (!forceRefresh) {
-        const store = useCharacterStore.getState();
-        if (store.selectedCharacterId === characterId && store.selectedCharacter) {
-          console.log('[CharacterService] Verificando dados da store Zustand...');
+        const cachedCharacter = cache.getCachedCharacter(characterId);
+        const cacheTimestamp = cache.getCacheTimestamp(characterId);
 
-          // ✅ CORREÇÃO: Cache mais conservador para garantir dados atualizados
-          const cacheAge = Date.now() - (CharacterCacheService.getCacheTimestamp(characterId) || 0);
-          const maxCacheAge = 2 * 60 * 1000; // ✅ REDUZIDO: 2 minutos ao invés de 5
-
-          // ✅ CORREÇÃO CRÍTICA: Verificar se dados parecem desatualizados
-          const cachedCharacter = store.selectedCharacter;
-          const gameStatePlayer = useGameStateStore.getState().gameState.player;
-
-          // Se há um player no gameState com gold/xp diferente, forçar refresh
-          const hasNewerGameData =
-            gameStatePlayer &&
-            gameStatePlayer.id === characterId &&
-            (gameStatePlayer.gold !== cachedCharacter.gold ||
-              gameStatePlayer.xp !== cachedCharacter.xp ||
-              gameStatePlayer.hp !== cachedCharacter.hp);
-
-          if (cacheAge < maxCacheAge && !hasNewerGameData) {
-            console.log(
-              '[CharacterService] 🔄 Cache Zustand encontrado mas recalculando bônus de equipamentos'
-            );
-
-            // ✅ CORREÇÃO: Sempre recalcular bônus de equipamentos mesmo com cache
-            const { EquipmentService } = await import('./equipment.service');
-            const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
-            const equipmentBonuses =
-              equipmentBonusResponse.success && equipmentBonusResponse.data
-                ? equipmentBonusResponse.data
-                : {
-                    total_atk_bonus: 0,
-                    total_def_bonus: 0,
-                    total_mana_bonus: 0,
-                    total_speed_bonus: 0,
-                    total_hp_bonus: 0,
-                    total_critical_chance_bonus: 0,
-                    total_critical_damage_bonus: 0,
-                    total_double_attack_chance_bonus: 0,
-                    total_magic_damage_bonus: 0,
-                  };
-
-            const cachedCharacter = store.selectedCharacter;
-
-            // ✅ CORREÇÃO: Calcular stats base e totais usando cache + equipamentos
-            const characterStatsResponse =
-              await CharacterStatsService.calculateDerivedStats(cachedCharacter);
-
-            const baseStats = {
-              hp: characterStatsResponse.hp,
-              max_hp: characterStatsResponse.max_hp,
-              mana: characterStatsResponse.mana,
-              max_mana: characterStatsResponse.max_mana,
-              atk: characterStatsResponse.atk,
-              def: characterStatsResponse.def,
-              speed: characterStatsResponse.speed,
-            };
-
-            const totalStats = {
-              hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
-              max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
-              mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
-              max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
-              atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
-              def: baseStats.def + equipmentBonuses.total_def_bonus,
-              speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
-            };
-
-            console.log(`[CharacterService] Cache Zustand + Equipamentos:`, {
-              base: baseStats,
-              equipment: equipmentBonuses,
-              total: totalStats,
-            });
-
-            // Converter Character para GamePlayer usando dados da store + equipamentos
-            const gamePlayer: GamePlayer = {
-              id: cachedCharacter.id,
-              user_id: cachedCharacter.user_id,
-              name: cachedCharacter.name,
-              level: cachedCharacter.level,
-              xp: cachedCharacter.xp,
-              xp_next_level: cachedCharacter.xp_next_level,
-              gold: cachedCharacter.gold,
-              hp: totalStats.hp,
-              max_hp: totalStats.max_hp,
-              mana: totalStats.mana,
-              max_mana: totalStats.max_mana,
-              atk: totalStats.atk,
-              def: totalStats.def,
-              speed: totalStats.speed,
-              created_at: cachedCharacter.created_at,
-              updated_at: cachedCharacter.updated_at,
-              isPlayerTurn: true,
-              specialCooldown: 0,
-              defenseCooldown: 0,
-              isDefending: false,
-              floor: cachedCharacter.floor,
-              spells: [], // Será carregado separadamente se necessário
-              consumables: [],
-              active_effects: {
-                buffs: [],
-                debuffs: [],
-                dots: [],
-                hots: [],
-                attribute_modifications: [],
-              },
-
-              // Atributos primários
-              strength: cachedCharacter.strength || 10,
-              dexterity: cachedCharacter.dexterity || 10,
-              intelligence: cachedCharacter.intelligence || 10,
-              wisdom: cachedCharacter.wisdom || 10,
-              vitality: cachedCharacter.vitality || 10,
-              luck: cachedCharacter.luck || 10,
-              attribute_points: cachedCharacter.attribute_points || 0,
-
-              // Habilidades
-              sword_mastery: cachedCharacter.sword_mastery || 1,
-              axe_mastery: cachedCharacter.axe_mastery || 1,
-              blunt_mastery: cachedCharacter.blunt_mastery || 1,
-              defense_mastery: cachedCharacter.defense_mastery || 1,
-              magic_mastery: cachedCharacter.magic_mastery || 1,
-
-              sword_mastery_xp: cachedCharacter.sword_mastery_xp || 0,
-              axe_mastery_xp: cachedCharacter.axe_mastery_xp || 0,
-              blunt_mastery_xp: cachedCharacter.blunt_mastery_xp || 0,
-              defense_mastery_xp: cachedCharacter.defense_mastery_xp || 0,
-              magic_mastery_xp: cachedCharacter.magic_mastery_xp || 0,
-
-              // ✅ CORREÇÃO: Stats derivados incluindo equipamentos
-              critical_chance:
-                characterStatsResponse.critical_chance +
-                equipmentBonuses.total_critical_chance_bonus,
-              critical_damage:
-                characterStatsResponse.critical_damage +
-                equipmentBonuses.total_critical_damage_bonus,
-              magic_damage_bonus:
-                characterStatsResponse.magic_damage_bonus +
-                equipmentBonuses.total_magic_damage_bonus,
-              magic_attack: characterStatsResponse.magic_attack,
-              double_attack_chance:
-                characterStatsResponse.double_attack_chance +
-                equipmentBonuses.total_double_attack_chance_bonus,
-
-              // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
-              base_hp: baseStats.hp,
-              base_max_hp: baseStats.max_hp,
-              base_mana: baseStats.mana,
-              base_max_mana: baseStats.max_mana,
-              base_atk: baseStats.atk,
-              base_def: baseStats.def,
-              base_speed: baseStats.speed,
-
-              // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
-              equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
-              equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
-              equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
-              equipment_def_bonus: equipmentBonuses.total_def_bonus,
-              equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
-            };
-
-            // Carregar magias equipadas de forma assíncrona apenas se necessário
-            try {
-              const spellsResponse = await import('./spell.service').then(m =>
-                m.SpellService.getCharacterEquippedSpells(characterId)
-              );
-              gamePlayer.spells =
-                spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
-            } catch (spellError) {
-              console.warn('[CharacterService] Erro ao carregar magias (não crítico):', spellError);
-              gamePlayer.spells = [];
-            }
-
-            console.log(
-              `[CharacterService] GamePlayer criado a partir da store Zustand (${Math.round(cacheAge / 1000)}s atrás) para: ${gamePlayer.name}`
-            );
-            return { success: true, error: null, data: gamePlayer };
-          } else {
-            // ✅ CORREÇÃO: Log detalhado sobre por que não usar cache
-            console.log('[CharacterService] 🔄 Cache da store inválido:', {
-              cacheAgeSeconds: Math.round(cacheAge / 1000),
-              maxAgeSeconds: Math.round(maxCacheAge / 1000),
-              hasNewerGameData,
-              cachedGold: cachedCharacter.gold,
-              gameStateGold: gameStatePlayer?.gold,
-              cachedHp: cachedCharacter.hp,
-              gameStateHp: gameStatePlayer?.hp,
-            });
-          }
+        if (cachedCharacter && cacheTimestamp && Date.now() - cacheTimestamp < 5 * 60 * 1000) {
+          // Converter usando util (com recálculo de equipamentos)
+          const gamePlayer = await convertCharacterToGamePlayer(cachedCharacter, characterId);
+          return { success: true, error: null, data: gamePlayer };
         }
       }
 
-      // Verificar cache do serviço
-      if (!forceRefresh) {
-        const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
-        if (cachedCharacter) {
-          console.log(
-            `[CharacterService] Reutilizando dados em cache do serviço para: ${cachedCharacter.name}`
-          );
-
-          // Verificar se o cache é recente (menos de 5 minutos)
-          const cacheAge = Date.now() - (CharacterCacheService.getCacheTimestamp(characterId) || 0);
-          const maxCacheAge = 5 * 60 * 1000; // 5 minutos
-
-          if (cacheAge < maxCacheAge) {
-            // Atualizar store se for o personagem selecionado
-            const store = useCharacterStore.getState();
-            if (store.selectedCharacterId === characterId) {
-              store.setSelectedCharacter(cachedCharacter);
-            }
-
-            // ✅ CORREÇÃO: Recalcular bônus de equipamentos mesmo com cache de service
-            const { EquipmentService } = await import('./equipment.service');
-            const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
-            const equipmentBonuses =
-              equipmentBonusResponse.success && equipmentBonusResponse.data
-                ? equipmentBonusResponse.data
-                : {
-                    total_atk_bonus: 0,
-                    total_def_bonus: 0,
-                    total_mana_bonus: 0,
-                    total_speed_bonus: 0,
-                    total_hp_bonus: 0,
-                    total_critical_chance_bonus: 0,
-                    total_critical_damage_bonus: 0,
-                    total_double_attack_chance_bonus: 0,
-                    total_magic_damage_bonus: 0,
-                  };
-
-            // Calcular stats usando cache + equipamentos atuais
-            const characterStatsResponse =
-              await CharacterStatsService.calculateDerivedStats(cachedCharacter);
-
-            const baseStats = {
-              hp: characterStatsResponse.hp,
-              max_hp: characterStatsResponse.max_hp,
-              mana: characterStatsResponse.mana,
-              max_mana: characterStatsResponse.max_mana,
-              atk: characterStatsResponse.atk,
-              def: characterStatsResponse.def,
-              speed: characterStatsResponse.speed,
-            };
-
-            const totalStats = {
-              hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
-              max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
-              mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
-              max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
-              atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
-              def: baseStats.def + equipmentBonuses.total_def_bonus,
-              speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
-            };
-
-            console.log(`[CharacterService] Cache Service + Equipamentos:`, {
-              base: baseStats,
-              equipment: equipmentBonuses,
-              total: totalStats,
-            });
-
-            // Converter Character para GamePlayer usando dados em cache + equipamentos
-            const gamePlayer: GamePlayer = {
-              id: cachedCharacter.id,
-              user_id: cachedCharacter.user_id,
-              name: cachedCharacter.name,
-              level: cachedCharacter.level,
-              xp: cachedCharacter.xp,
-              xp_next_level: cachedCharacter.xp_next_level,
-              gold: cachedCharacter.gold,
-              hp: totalStats.hp,
-              max_hp: totalStats.max_hp,
-              mana: totalStats.mana,
-              max_mana: totalStats.max_mana,
-              atk: totalStats.atk,
-              def: totalStats.def,
-              speed: totalStats.speed,
-              created_at: cachedCharacter.created_at,
-              updated_at: cachedCharacter.updated_at,
-              isPlayerTurn: true,
-              specialCooldown: 0,
-              defenseCooldown: 0,
-              isDefending: false,
-              floor: cachedCharacter.floor,
-              spells: [], // Será carregado separadamente se necessário
-              consumables: [],
-              active_effects: {
-                buffs: [],
-                debuffs: [],
-                dots: [],
-                hots: [],
-                attribute_modifications: [],
-              },
-
-              // Atributos primários
-              strength: cachedCharacter.strength || 10,
-              dexterity: cachedCharacter.dexterity || 10,
-              intelligence: cachedCharacter.intelligence || 10,
-              wisdom: cachedCharacter.wisdom || 10,
-              vitality: cachedCharacter.vitality || 10,
-              luck: cachedCharacter.luck || 10,
-              attribute_points: cachedCharacter.attribute_points || 0,
-
-              // Habilidades
-              sword_mastery: cachedCharacter.sword_mastery || 1,
-              axe_mastery: cachedCharacter.axe_mastery || 1,
-              blunt_mastery: cachedCharacter.blunt_mastery || 1,
-              defense_mastery: cachedCharacter.defense_mastery || 1,
-              magic_mastery: cachedCharacter.magic_mastery || 1,
-
-              sword_mastery_xp: cachedCharacter.sword_mastery_xp || 0,
-              axe_mastery_xp: cachedCharacter.axe_mastery_xp || 0,
-              blunt_mastery_xp: cachedCharacter.blunt_mastery_xp || 0,
-              defense_mastery_xp: cachedCharacter.defense_mastery_xp || 0,
-              magic_mastery_xp: cachedCharacter.magic_mastery_xp || 0,
-
-              // ✅ CORREÇÃO: Stats derivados incluindo equipamentos
-              critical_chance:
-                characterStatsResponse.critical_chance +
-                equipmentBonuses.total_critical_chance_bonus,
-              critical_damage:
-                characterStatsResponse.critical_damage +
-                equipmentBonuses.total_critical_damage_bonus,
-              magic_damage_bonus:
-                characterStatsResponse.magic_damage_bonus +
-                equipmentBonuses.total_magic_damage_bonus,
-              magic_attack: characterStatsResponse.magic_attack,
-              double_attack_chance:
-                characterStatsResponse.double_attack_chance +
-                equipmentBonuses.total_double_attack_chance_bonus,
-
-              // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
-              base_hp: baseStats.hp,
-              base_max_hp: baseStats.max_hp,
-              base_mana: baseStats.mana,
-              base_max_mana: baseStats.max_mana,
-              base_atk: baseStats.atk,
-              base_def: baseStats.def,
-              base_speed: baseStats.speed,
-
-              // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
-              equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
-              equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
-              equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
-              equipment_def_bonus: equipmentBonuses.total_def_bonus,
-              equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
-            };
-
-            // Carregar magias equipadas de forma assíncrona apenas se necessário
-            try {
-              const spellsResponse = await import('./spell.service').then(m =>
-                m.SpellService.getCharacterEquippedSpells(characterId)
-              );
-              gamePlayer.spells =
-                spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
-            } catch (spellError) {
-              console.warn('[CharacterService] Erro ao carregar magias (não crítico):', spellError);
-              gamePlayer.spells = [];
-            }
-
-            console.log(
-              `[CharacterService] GamePlayer criado a partir do cache (${Math.round(cacheAge / 1000)}s atrás) para: ${gamePlayer.name}`
-            );
-            return { success: true, error: null, data: gamePlayer };
-          } else {
-            console.log(
-              `[CharacterService] Cache expirado (${Math.round(cacheAge / 1000)}s) - buscando dados atualizados`
-            );
-          }
-        }
-      }
-
-      // FALLBACK: Buscar dados básicos apenas se não estiver em cache ou cache expirado
-      console.log(
-        `[CharacterService] Cache miss ou expirado - buscando dados do banco para: ${characterId}`
-      );
-
+      // 2. Buscar do banco
       const { data: charData, error: charError } = await supabase
         .from('characters')
         .select('*')
@@ -1039,205 +702,42 @@ export class CharacterService {
         };
       }
 
-      // Calcular stats derivados apenas se necessário
-      const derivedStats = await CharacterStatsService.calculateDerivedStats(charData);
-
-      // ✅ CORREÇÃO CRÍTICA: Calcular bônus de equipamentos reais
-      const { EquipmentService } = await import('./equipment.service');
-      const equipmentBonusResponse = await EquipmentService.getEquipmentBonuses(characterId);
-      const equipmentBonuses =
-        equipmentBonusResponse.success && equipmentBonusResponse.data
-          ? equipmentBonusResponse.data
-          : {
-              total_atk_bonus: 0,
-              total_def_bonus: 0,
-              total_mana_bonus: 0,
-              total_speed_bonus: 0,
-              total_hp_bonus: 0,
-              total_critical_chance_bonus: 0,
-              total_critical_damage_bonus: 0,
-              total_double_attack_chance_bonus: 0,
-              total_magic_damage_bonus: 0,
-            };
-
-      console.log(`[CharacterService] Bônus de equipamentos calculados:`, equipmentBonuses);
-
-      // Carregar magias equipadas
-      const spellsResponse = await import('./spell.service').then(m =>
-        m.SpellService.getCharacterEquippedSpells(characterId)
-      );
-      const equippedSpells =
-        spellsResponse.success && spellsResponse.data ? spellsResponse.data : [];
-
-      // ✅ CORREÇÃO CRÍTICA: Calcular stats base (sem equipamentos) e totais (com equipamentos)
-      const baseStats = {
-        hp: derivedStats.hp,
-        max_hp: derivedStats.max_hp,
-        mana: derivedStats.mana,
-        max_mana: derivedStats.max_mana,
-        atk: derivedStats.atk,
-        def: derivedStats.def,
-        speed: derivedStats.speed,
-      };
-
-      // Stats totais incluindo equipamentos
-      const totalStats = {
-        hp: baseStats.hp + equipmentBonuses.total_hp_bonus,
-        max_hp: baseStats.max_hp + equipmentBonuses.total_hp_bonus,
-        mana: baseStats.mana + equipmentBonuses.total_mana_bonus,
-        max_mana: baseStats.max_mana + equipmentBonuses.total_mana_bonus,
-        atk: baseStats.atk + equipmentBonuses.total_atk_bonus,
-        def: baseStats.def + equipmentBonuses.total_def_bonus,
-        speed: baseStats.speed + equipmentBonuses.total_speed_bonus,
-      };
-
-      console.log(`[CharacterService] Stats calculados:`, {
-        base: baseStats,
-        equipment: equipmentBonuses,
-        total: totalStats,
-      });
-
-      const gamePlayer: GamePlayer = {
-        id: charData.id,
-        user_id: charData.user_id,
-        name: charData.name,
-        level: charData.level,
-        xp: charData.xp,
-        xp_next_level: charData.xp_next_level,
-        gold: charData.gold,
-        hp: totalStats.hp,
-        max_hp: totalStats.max_hp,
-        mana: totalStats.mana,
-        max_mana: totalStats.max_mana,
-        atk: totalStats.atk,
-        def: totalStats.def,
-        speed: totalStats.speed,
-        created_at: charData.created_at,
-        updated_at: charData.updated_at,
-        isPlayerTurn: true,
-        specialCooldown: 0,
-        defenseCooldown: 0,
-        isDefending: false,
-        floor: charData.floor,
-        spells: equippedSpells,
-        consumables: [],
-        active_effects: {
-          buffs: [],
-          debuffs: [],
-          dots: [],
-          hots: [],
-          attribute_modifications: [],
-        },
-
-        // Atributos primários
-        strength: charData.strength || 10,
-        dexterity: charData.dexterity || 10,
-        intelligence: charData.intelligence || 10,
-        wisdom: charData.wisdom || 10,
-        vitality: charData.vitality || 10,
-        luck: charData.luck || 10,
-        attribute_points: charData.attribute_points || 0,
-
-        // Habilidades
-        sword_mastery: charData.sword_mastery || 1,
-        axe_mastery: charData.axe_mastery || 1,
-        blunt_mastery: charData.blunt_mastery || 1,
-        defense_mastery: charData.defense_mastery || 1,
-        magic_mastery: charData.magic_mastery || 1,
-
-        sword_mastery_xp: charData.sword_mastery_xp || 0,
-        axe_mastery_xp: charData.axe_mastery_xp || 0,
-        blunt_mastery_xp: charData.blunt_mastery_xp || 0,
-        defense_mastery_xp: charData.defense_mastery_xp || 0,
-        magic_mastery_xp: charData.magic_mastery_xp || 0,
-
-        // Stats derivados calculados (incluindo bônus de equipamentos para críticos)
-        critical_chance:
-          derivedStats.critical_chance + equipmentBonuses.total_critical_chance_bonus,
-        critical_damage:
-          derivedStats.critical_damage + equipmentBonuses.total_critical_damage_bonus,
-        magic_damage_bonus:
-          derivedStats.magic_damage_bonus + equipmentBonuses.total_magic_damage_bonus,
-        magic_attack: derivedStats.magic_attack,
-        double_attack_chance:
-          derivedStats.double_attack_chance + equipmentBonuses.total_double_attack_chance_bonus,
-
-        // ✅ CORREÇÃO: Stats base (sem equipamentos) para exibição
-        base_hp: baseStats.hp,
-        base_max_hp: baseStats.max_hp,
-        base_mana: baseStats.mana,
-        base_max_mana: baseStats.max_mana,
-        base_atk: baseStats.atk,
-        base_def: baseStats.def,
-        base_speed: baseStats.speed,
-
-        // ✅ CORREÇÃO: Bônus reais de equipamentos para exibição
-        equipment_hp_bonus: equipmentBonuses.total_hp_bonus,
-        equipment_mana_bonus: equipmentBonuses.total_mana_bonus,
-        equipment_atk_bonus: equipmentBonuses.total_atk_bonus,
-        equipment_def_bonus: equipmentBonuses.total_def_bonus,
-        equipment_speed_bonus: equipmentBonuses.total_speed_bonus,
-      };
-
-      // ✅ CORREÇÃO CRÍTICA: Aplicar auto-heal se solicitado para garantir HP consistente
+      // 3. Aplicar auto-heal se necessário (ANTES de converter)
       if (applyAutoHeal) {
         try {
-          console.log(
-            `[CharacterService] 🩺 Aplicando auto-heal para ${gamePlayer.name} (HP atual: ${gamePlayer.hp}/${gamePlayer.max_hp})`
-          );
-          // ✅ CORREÇÃO: Forçar cura completa quando carregando para o hub
-          const healResult = await CharacterHealingService.applyAutoHeal(characterId, true);
+          const healResult = await CharacterHealingService.applyAutoHeal(charData, true);
 
-          if (healResult.success && healResult.data) {
-            if (healResult.data.healed) {
-              console.log(
-                `[CharacterService] ✅ Auto-heal APLICADO: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP (curou ${healResult.data.newHp - healResult.data.oldHp} HP)`
-              );
+          if (healResult.success && healResult.data && healResult.data.healed) {
+            // Atualizar dados do personagem com HP/Mana curados
+            charData.hp = healResult.data.newHp;
+            charData.mana = healResult.data.character.mana;
 
-              // Atualizar o gamePlayer com os valores curados
-              gamePlayer.hp = healResult.data.newHp;
-              gamePlayer.mana = healResult.data.character.mana;
-
-              // Invalidar cache para que próximas consultas usem dados atualizados
-              CharacterCacheService.invalidateCharacterCache(characterId);
-            } else {
-              console.log(
-                `[CharacterService] ℹ️ Auto-heal NÃO NECESSÁRIO para ${gamePlayer.name} - já com HP/Mana máximos (${healResult.data.newHp}/${gamePlayer.max_hp})`
-              );
-            }
-          } else {
-            console.warn(
-              `[CharacterService] ⚠️ Auto-heal FALHOU para ${gamePlayer.name}: ${healResult.error}`
-            );
+            // Cache será atualizado no final
+            cache.invalidateCharacterCache(characterId);
           }
         } catch (healError) {
           console.warn(`[CharacterService] Erro no auto-heal (não crítico):`, healError);
-          // Continuar mesmo se auto-heal falhar
         }
       }
 
-      // IMPORTANTE: Atualizar caches com os novos dados (incluindo auto-heal se aplicado)
+      // 4. Converter Character → GamePlayer usando util
+      const gamePlayer = await convertCharacterToGamePlayer(charData, characterId);
+
+      // 5. Atualizar cache com os novos dados
       const characterForCache: Character = {
         ...charData,
-        hp: gamePlayer.hp, // ✅ CORREÇÃO: Usar HP após auto-heal
+        hp: gamePlayer.hp,
         max_hp: gamePlayer.max_hp,
-        mana: gamePlayer.mana, // ✅ CORREÇÃO: Usar mana após auto-heal
+        mana: gamePlayer.mana,
         max_mana: gamePlayer.max_mana,
-        atk: derivedStats.atk,
-        def: derivedStats.def,
-        speed: derivedStats.speed,
-        critical_chance: derivedStats.critical_chance,
-        critical_damage: derivedStats.critical_damage,
+        atk: gamePlayer.base_atk,
+        def: gamePlayer.base_def,
+        speed: gamePlayer.base_speed,
+        critical_chance: gamePlayer.critical_chance,
+        critical_damage: gamePlayer.critical_damage,
       };
 
-      CharacterCacheService.setCachedCharacter(characterId, characterForCache);
-
-      // ✅ CORREÇÃO: NÃO modificar store Zustand diretamente
-      // Os hooks gerenciarão a sincronização do estado automaticamente
-
-      console.log(
-        `[CharacterService] GamePlayer criado a partir do banco para: ${gamePlayer.name} (HP final: ${gamePlayer.hp}/${gamePlayer.max_hp})`
-      );
+      cache.setCachedCharacter(characterId, characterForCache);
       return { success: true, error: null, data: gamePlayer };
     } catch (error) {
       console.error('[CharacterService] Erro ao buscar personagem para o jogo:', error);
@@ -1253,8 +753,7 @@ export class CharacterService {
    * ✅ CORREÇÃO: Invalidar cache específico de um personagem para garantir dados atualizados
    */
   static invalidateCharacterCache(characterId: string): void {
-    CharacterCacheService.invalidateCharacterCache(characterId);
-    console.log(`[CharacterService] Cache invalidado para personagem ${characterId}`);
+    cache.invalidateCharacterCache(characterId);
   }
 
   /**
@@ -1264,8 +763,6 @@ export class CharacterService {
     characterId: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      console.log(`[CharacterService] 🔧 DEBUG: Forçando cura completa para ${characterId}`);
-
       // Buscar personagem atual
       const charResult = await this.getCharacter(characterId);
       if (!charResult.success || !charResult.data) {
@@ -1273,9 +770,6 @@ export class CharacterService {
       }
 
       const character = charResult.data;
-      console.log(
-        `[CharacterService] 🔧 DEBUG: HP antes da cura: ${character.hp}/${character.max_hp}`
-      );
 
       // Forçar cura via direct update
       const updateResult = await CharacterHealingService.updateCharacterHpMana(
@@ -1290,10 +784,6 @@ export class CharacterService {
 
       // Invalidar cache
       this.invalidateCharacterCache(characterId);
-
-      console.log(
-        `[CharacterService] 🔧 DEBUG: HP após cura forçada: ${character.max_hp}/${character.max_hp}`
-      );
       return {
         success: true,
         message: `Cura forçada aplicada: ${character.hp} -> ${character.max_hp} HP, ${character.mana} -> ${character.max_mana} Mana`,

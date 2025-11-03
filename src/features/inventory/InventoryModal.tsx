@@ -142,7 +142,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
       if (response.success) {
         toast.success('Item usado com sucesso!');
         loadInventory();
-        onItemSold(character.gold);
+        onItemSold(character.gold || 0);
       } else {
         toast.error(response.error || 'Erro ao usar item');
       }
@@ -561,7 +561,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
               <span>Inventário</span>
               <div className="flex items-center gap-2 text-sm">
                 <Coins className="h-4 w-4 text-amber-400" />
-                <span className="text-amber-300">{character.gold.toLocaleString()}</span>
+                <span className="text-amber-300">{(character.gold || 0).toLocaleString()}</span>
               </div>
             </DialogTitle>
           </DialogHeader>

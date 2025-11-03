@@ -43,9 +43,6 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
       setError(null);
 
       try {
-        // Buscar stats atuais do personagem diretamente para garantir dados corretos
-        console.log('Loading character stats for comparison...');
-
         const characterResponse = await CharacterService.getCharacterForGame(
           characterId,
           true,
@@ -86,15 +83,6 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
             },
           ];
 
-          console.log('Character stats for comparison:', {
-            atk: gamePlayer.atk,
-            def: gamePlayer.def,
-            max_hp: gamePlayer.max_hp,
-            max_mana: gamePlayer.max_mana,
-            speed: gamePlayer.speed,
-            critical_chance: gamePlayer.critical_chance,
-          });
-
           statsToCompare.forEach(stat => {
             if (stat.bonus > 0) {
               localComparisons.push({
@@ -106,8 +94,6 @@ export const EquipmentComparison: React.FC<EquipmentComparisonProps> = ({
               });
             }
           });
-
-          console.log('Generated comparisons:', localComparisons);
           setComparisons(localComparisons);
         } else {
           setError('Erro ao carregar stats do personagem');

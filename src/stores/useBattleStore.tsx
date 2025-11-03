@@ -127,8 +127,6 @@ export const useBattleStore = create<BattleStore>()(
         return;
       }
 
-      console.log(`[BattleStore] === PROCESSANDO AÇÃO: ${action} ===`);
-
       // Marcar como processando e atualizar timestamps
       set(
         produce(draft => {
@@ -178,8 +176,6 @@ export const useBattleStore = create<BattleStore>()(
       };
 
       try {
-        console.log('[BattleStore] Processando turno do jogador:', action);
-
         set(
           produce(draft => {
             draft.currentTurnType = 'player';
@@ -219,8 +215,6 @@ export const useBattleStore = create<BattleStore>()(
 
         // ✅ CORREÇÃO CRÍTICA: Aplicar skill XP e registrar nos logs
         if (skillXpGains?.length && initialGameState.player?.id) {
-          console.log(`[BattleStore] Aplicando ${skillXpGains.length} ganhos de skill XP`);
-
           try {
             const { messages: skillMessages, skillLevelUps } = await import(
               '../services/skill-xp.service'
@@ -245,10 +239,6 @@ export const useBattleStore = create<BattleStore>()(
                 'level_up'
               );
             }
-
-            console.log(
-              `[BattleStore] ✅ Skill XP aplicado: ${skillMessages.length} mensagens, ${skillLevelUps.length} level ups`
-            );
           } catch (skillError) {
             console.error('[BattleStore] Erro ao aplicar skill XP:', skillError);
             addGameLogMessage('Erro ao aplicar experiência de habilidade', 'system');
@@ -281,21 +271,18 @@ export const useBattleStore = create<BattleStore>()(
 
         // Verificar condições especiais
         if (action === 'flee' && (newState.fleeSuccessful === true || newState.mode === 'fled')) {
-          console.log('[BattleStore] === FUGA BEM-SUCEDIDA ===');
           addGameLogMessage(message, 'system');
           get().endBattle();
           return;
         }
 
         if (skipTurn) {
-          console.log('[BattleStore] === TURNO PULADO ===');
           addGameLogMessage(message, 'system');
           get().endBattle();
           return;
         }
 
         if (newState.currentEnemy && newState.currentEnemy.hp <= 0) {
-          console.log('[BattleStore] === INIMIGO DERROTADO ===');
           const defeatedState = await GameService.processEnemyDefeat();
           gameStateStore.setGameState(defeatedState);
           addGameLogMessage(`${newState.currentEnemy.name} foi derrotado!`, 'battle');
@@ -308,7 +295,6 @@ export const useBattleStore = create<BattleStore>()(
           (action === 'continue' && newState.battleRewards === null && newState.currentEnemy) ||
           (action === 'interact_event' && newState.mode === 'battle' && newState.currentEnemy)
         ) {
-          console.log('[BattleStore] === AÇÃO ESPECIAL PROCESSADA ===');
           addGameLogMessage(message, 'system');
           get().endBattle();
           return;
@@ -317,19 +303,11 @@ export const useBattleStore = create<BattleStore>()(
         // ✅ CORREÇÃO CRÍTICA: skipTurn = true significa PULAR o turno do inimigo (magias de suporte)
         // skipTurn = false significa PROCESSAR o turno do inimigo (ações ofensivas)
         if (!skipTurn && newState.currentEnemy && !newState.fleeSuccessful) {
-          console.log('[BattleStore] === PROCESSANDO TURNO DO INIMIGO (AÇÃO OFENSIVA) ===');
-
           // Delay para feedback visual
           setTimeout(() => {
             get().processEnemyTurn(action, action === 'defend');
           }, 1000);
         } else {
-          // ✅ CRÍTICO: Para magias de suporte (skipTurn = true), o turno permanece com o jogador
-          console.log('[BattleStore] === AÇÃO DE SUPORTE - TURNO PERMANECE COM O JOGADOR ===', {
-            action,
-            skipTurn,
-            allowCombos: skipTurn,
-          });
           get().endBattle();
         }
       } catch (error) {
@@ -365,8 +343,6 @@ export const useBattleStore = create<BattleStore>()(
       };
 
       try {
-        console.log('[BattleStore] === INICIANDO TURNO DO INIMIGO ===');
-
         set(
           produce(draft => {
             draft.currentTurnType = 'enemy';
@@ -391,10 +367,6 @@ export const useBattleStore = create<BattleStore>()(
 
         // ✅ CORREÇÃO CRÍTICA: Aplicar skill XP do turno do inimigo (ex: defesa)
         if (enemySkillXpGains?.length && initialGameState.player?.id) {
-          console.log(
-            `[BattleStore] Aplicando ${enemySkillXpGains.length} ganhos de skill XP do turno do inimigo`
-          );
-
           try {
             const { messages: skillMessages, skillLevelUps } = await import(
               '../services/skill-xp.service'
@@ -486,7 +458,6 @@ export const useBattleStore = create<BattleStore>()(
     // === CONTROLE DE BATALHA ===
 
     startBattle: (battleId?: string) => {
-      console.log('[BattleStore] Iniciando batalha:', battleId);
       set(
         produce(draft => {
           draft.currentBattleId = battleId || `battle-${Date.now()}`;
@@ -502,7 +473,6 @@ export const useBattleStore = create<BattleStore>()(
     },
 
     endBattle: () => {
-      console.log('[BattleStore] Finalizando batalha');
       const gameStateStore = useGameStateStore.getState();
 
       set(
@@ -529,7 +499,6 @@ export const useBattleStore = create<BattleStore>()(
     },
 
     resetBattleState: () => {
-      console.log('[BattleStore] Resetando estado de batalha');
       const gameStateStore = useGameStateStore.getState();
 
       set(

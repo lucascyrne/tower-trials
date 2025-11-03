@@ -1,6 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { useCharacterStore } from '../stores/useCharacterStore';
-import { useGameStateStore } from '../stores/useGameStateStore';
 import {
   type Consumable,
   type CharacterConsumable,
@@ -692,9 +690,7 @@ export class ConsumableService {
         `[ConsumableService] Venda em lote concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
       );
 
-      // ✅ NOVO: Atualizar stores após venda
-      await this.updateStoresAfterSale(characterId, result.new_character_gold);
-
+      // ✅ REFATORADO: Service retorna dados, hook atualiza stores
       return {
         data: {
           totalGoldEarned: result.total_gold_earned,
@@ -745,9 +741,7 @@ export class ConsumableService {
         `[ConsumableService] Venda de materiais concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
       );
 
-      // ✅ NOVO: Atualizar stores após venda
-      await this.updateStoresAfterSale(characterId, result.new_character_gold);
-
+      // ✅ REFATORADO: Service retorna dados, hook atualiza stores
       return {
         data: {
           totalGoldEarned: result.total_gold_earned,
@@ -878,37 +872,6 @@ export class ConsumableService {
         error: extractErrorMessage(error, 'Erro ao calcular preço'),
         success: false,
       };
-    }
-  }
-
-  /**
-   * ✅ NOVO: Atualizar stores após venda
-   */
-  private static async updateStoresAfterSale(characterId: string, newGold: number): Promise<void> {
-    try {
-      // Atualizar store do personagem
-      const characterStore = useCharacterStore.getState();
-      if (characterStore.selectedCharacterId === characterId && characterStore.selectedCharacter) {
-        // Atualizar gold na store
-        const updatedCharacter = { ...characterStore.selectedCharacter, gold: newGold };
-        characterStore.setSelectedCharacter(updatedCharacter);
-
-        // Atualizar também na lista se existir
-        const characterIndex = characterStore.characters.findIndex(c => c.id === characterId);
-        if (characterIndex !== -1) {
-          characterStore.characters[characterIndex] = updatedCharacter;
-        }
-      }
-
-      // Atualizar estado do jogo se necessário
-      const gameStore = useGameStateStore.getState();
-      if (gameStore.gameState.player?.id === characterId) {
-        gameStore.updatePlayerGold(newGold);
-      }
-
-      console.log(`[ConsumableService] Stores atualizadas com novo gold: ${newGold}`);
-    } catch (error) {
-      console.warn(`[ConsumableService] Erro ao atualizar stores (não crítico):`, error);
     }
   }
 }

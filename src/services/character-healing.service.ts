@@ -1,6 +1,14 @@
+/**
+ * Service de cura e gerenciamento de HP/Mana de personagens
+ *
+ * ✅ REFATORADO (P1): Service puro - não acessa caches ou stores
+ * - Recebe dados via parâmetros
+ * - Retorna resultados para caller gerenciar
+ * - Testável sem mocks
+ */
+
 import { type Character } from '@/models/character.model';
 import { supabase } from '@/lib/supabase';
-import { CharacterCacheService } from '@/services/character-cache.service';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -17,7 +25,10 @@ interface HealResult {
 
 export class CharacterHealingService {
   /**
-   * OTIMIZADO: Atualizar HP e Mana com validação de limites e cache inteligente
+   * Atualizar HP e Mana com validação de limites
+   *
+   * ✅ REFATORADO (P1): Service puro - sem verificações de cache
+   * Nota: Verificação de mudança é feita pelo caller (applyAutoHeal)
    */
   static async updateCharacterHpMana(
     characterId: string,
@@ -42,19 +53,8 @@ export class CharacterHealingService {
         return { success: false, error: 'Valor de Mana inválido', data: null };
       }
 
-      // Verificar se realmente houve mudança
-      const cachedCharacter = CharacterCacheService.getCachedCharacter(characterId);
-      if (cachedCharacter) {
-        const hpChanged = integerHp !== undefined && integerHp !== cachedCharacter.hp;
-        const manaChanged = integerMana !== undefined && integerMana !== cachedCharacter.mana;
-
-        if (!hpChanged && !manaChanged) {
-          console.log(`[CharacterHealingService] Stats inalterados para ${cachedCharacter.name}`);
-          return { success: true, error: null, data: null };
-        }
-      }
-
-      const { error } = await supabase.rpc('internal_update_character_hp_mana', {
+      // Atualizar DB
+      const { error } = await supabase.rpc('update_character_stats', {
         p_character_id: characterId,
         p_hp: integerHp,
         p_mana: integerMana,
@@ -63,17 +63,6 @@ export class CharacterHealingService {
       if (error) {
         console.error('Erro ao atualizar HP/Mana:', error);
         return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
-      }
-
-      // Atualizar cache ao invés de invalidar
-      if (cachedCharacter && (integerHp !== undefined || integerMana !== undefined)) {
-        const updatedCharacter = { ...cachedCharacter };
-        if (integerHp !== undefined) updatedCharacter.hp = integerHp;
-        if (integerMana !== undefined) updatedCharacter.mana = integerMana;
-
-        CharacterCacheService.setCachedCharacter(characterId, updatedCharacter);
-      } else {
-        CharacterCacheService.invalidateCharacterCache(characterId);
       }
 
       return { success: true, error: null, data: null };
@@ -99,10 +88,6 @@ export class CharacterHealingService {
   ): { hp: number; mana: number } {
     // ✅ CORREÇÃO CRÍTICA: Forçar cura completa no hub (independente de tempo)
     if (forceFullHeal) {
-      const needsHealing = character.hp < character.max_hp || character.mana < character.max_mana;
-      console.log(
-        `[AutoHeal] 🏥 FORÇANDO cura completa para ${character.name}: HP ${character.hp}/${character.max_hp} -> ${character.max_hp}/${character.max_hp}, Mana ${character.mana}/${character.max_mana} -> ${character.max_mana}/${character.max_mana} ${needsHealing ? '(CURA NECESSÁRIA)' : '(JÁ CHEIO)'}`
-      );
       return {
         hp: character.max_hp,
         mana: character.max_mana,
@@ -168,42 +153,20 @@ export class CharacterHealingService {
       newMana = Math.min(character.max_mana, adjustedCurrentMana + healAmount);
     }
 
-    // Log apenas se houve cura significativa
-    if (newHp > character.hp || newMana > character.mana) {
-      console.log(
-        `[AutoHeal] ${character.name}: HP ${character.hp} -> ${newHp} (+${newHp - character.hp}), Mana ${character.mana} -> ${newMana} (+${newMana - character.mana}) após ${Math.floor(timeDiffSeconds / 60)}min`
-      );
-    }
-
     return { hp: newHp, mana: newMana };
   }
 
   /**
    * Aplicar cura automática em um personagem
-   * ✅ CORREÇÃO: Adicionado parâmetro para forçar cura completa no hub
+   *
+   * ✅ REFATORADO (P1): Service puro - recebe character via parâmetro
+   * Caller é responsável por buscar o personagem e gerenciar cache
    */
   static async applyAutoHeal(
-    characterId: string,
+    character: Character,
     forceFullHeal: boolean = false
   ): Promise<ServiceResponse<HealResult>> {
     try {
-      let character = CharacterCacheService.getCachedCharacter(characterId);
-
-      if (!character) {
-        const { data: charData, error } = await supabase
-          .from('characters')
-          .select('*')
-          .eq('id', characterId)
-          .single();
-
-        if (error) throw error;
-        character = charData as Character;
-      }
-
-      if (!character) {
-        return { data: null, error: 'Personagem não encontrado', success: false };
-      }
-
       const currentTime = new Date();
       const { hp, mana } = CharacterHealingService.calculateAutoHeal(
         character,
@@ -227,7 +190,7 @@ export class CharacterHealingService {
 
       // Atualizar HP e Mana
       const updateResult = await CharacterHealingService.updateCharacterHpMana(
-        characterId,
+        character.id,
         hp,
         mana
       );
@@ -236,14 +199,12 @@ export class CharacterHealingService {
       }
 
       // Atualizar timestamp de atividade
-      await CharacterHealingService.updateLastActivity(characterId);
-
-      CharacterCacheService.invalidateCharacterCache(characterId);
+      await CharacterHealingService.updateLastActivity(character.id);
 
       const updatedCharacter = {
         ...character,
-        hp: hp,
-        mana: mana,
+        hp,
+        mana,
         last_activity: currentTime.toISOString(),
       };
 
@@ -271,25 +232,43 @@ export class CharacterHealingService {
   }
 
   /**
-   * ✅ NOVO: Forçar cura completa para o hub (sempre 100% HP/Mana)
+   * Forçar cura completa para o hub (sempre 100% HP/Mana)
+   *
+   * ✅ REFATORADO (P1): Busca character e chama applyAutoHeal
    */
   static async forceFullHealForHub(characterId: string): Promise<ServiceResponse<HealResult>> {
     console.log(`[CharacterHealingService] Forçando cura completa para o hub: ${characterId}`);
-    return await this.applyAutoHeal(characterId, true);
+
+    // Buscar character do DB
+    const { data: charData, error } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('id', characterId)
+      .single();
+
+    if (error || !charData) {
+      return {
+        data: null,
+        error: error?.message || 'Personagem não encontrado',
+        success: false,
+      };
+    }
+
+    return await this.applyAutoHeal(charData as Character, true);
   }
 
   /**
    * Atualizar timestamp de última atividade do personagem
+   *
+   * ✅ REFATORADO (P1): Service puro - sem invalidação de cache
    */
   static async updateLastActivity(characterId: string): Promise<ServiceResponse<null>> {
     try {
-      const { error } = await supabase.rpc('update_character_activity', {
+      const { error } = await supabase.rpc('update_character_last_activity', {
         p_character_id: characterId,
       });
 
       if (error) throw error;
-
-      CharacterCacheService.invalidateCharacterCache(characterId);
 
       return { data: null, error: null, success: true };
     } catch (error) {
