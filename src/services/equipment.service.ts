@@ -152,11 +152,26 @@ export class EquipmentService {
 
       if (error) throw error;
 
-      const allEquipment = data as CharacterEquipment[];
+      let allEquipment = data as CharacterEquipment[];
       const equippedSlots: EquipmentSlots = {};
 
+      // ✅ CORRIGIDO: Expandir duplicatas (quantity > 1) para múltiplos itens na UI
+      // Se um personagem tem 2x "Machado de Batalha", criar 2 entries na UI
+      const expandedEquipment: CharacterEquipment[] = [];
+      for (const item of allEquipment) {
+        const quantity = (item as any).quantity || 1;
+        for (let i = 0; i < quantity; i++) {
+          expandedEquipment.push({
+            ...item,
+            id: `${item.id}-${i}`, // Gerar IDs únicos para cada cópia (mantém original no select)
+          });
+        }
+      }
+
+      allEquipment = expandedEquipment;
+
       // ✅ CORRIGIDO: Determinar slot baseado em equipment.type (não há slot_type na tabela)
-      allEquipment.forEach(item => {
+      allEquipment.forEach((item) => {
         if (item.is_equipped && item.equipment) {
           const equipmentType = item.equipment.type;
 
@@ -249,12 +264,14 @@ export class EquipmentService {
   static async toggleEquipment(
     characterId: string,
     equipmentId: string,
-    equip: boolean
+    equip: boolean,
+    slotType?: string
   ): Promise<ServiceResponse<string>> {
     try {
       const { error } = await supabase.rpc('toggle_equipment', {
         p_character_id: characterId,
         p_equipment_id: equipmentId,
+        p_slot_type: slotType || null,
       });
 
       if (error) throw error;
@@ -928,6 +945,22 @@ export class EquipmentService {
           maxSlots: 0,
         };
     }
+  }
+
+  /**
+   * ✅ HELPER: Extrair equipment_id original do ID expandido
+   * IDs expandidos têm formato: "uuid-0", "uuid-1", etc.
+   * Esta função retorna o uuid original
+   */
+  static extractOriginalEquipmentId(expandedId: string): string {
+    // Se o ID contém hífen no final (como "uuid-0"), pega tudo antes do último hífen
+    const parts = expandedId.split('-');
+    if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+      // Último segmento é número, então ID foi expandido
+      return parts.slice(0, -1).join('-');
+    }
+    // Caso contrário, retorna como está (ID normal)
+    return expandedId;
   }
 }
 

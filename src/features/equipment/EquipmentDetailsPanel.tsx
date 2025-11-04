@@ -104,7 +104,15 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
     if (!selectedItem || !selectedSlot) return;
 
     try {
-      const result = await EquipmentService.toggleEquipment(character.id, selectedItem.id, false);
+      // ✅ CORRIGIDO: Usar equipment_id original (não o ID expandido)
+      // selectedItem é Equipment, então usamos selectedItem.id
+      // Se fosse CharacterEquipment, usaríamos selectedItem.equipment_id
+      const originalEquipmentId = selectedItem.id;
+      const result = await EquipmentService.toggleEquipment(
+        character.id,
+        originalEquipmentId,
+        false
+      );
 
       if (result.success) {
         toast.success('Item desequipado com sucesso!');

@@ -47,7 +47,10 @@ function EquipmentSelectPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [availableEquipment, setAvailableEquipment] = useState<CharacterEquipment[]>([]);
   const [filteredEquipment, setFilteredEquipment] = useState<CharacterEquipment[]>([]);
-  const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{
+    characterEquipment: CharacterEquipment;
+    equipment: Equipment;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<EquipmentFilterType>('all');
   const [sortType, setSortType] = useState<SortType>('name');
@@ -203,14 +206,16 @@ function EquipmentSelectPage() {
     try {
       setEquiping(true);
 
+      // ✅ CORREÇÃO: Passar slotType para o RPC
       const result = await EquipmentService.toggleEquipment(
         characterId,
         equipment.id,
-        true
+        true,
+        slotType
       );
 
       if (result.success) {
-        toast.success(`${equipment.name} equipado com sucesso!`);
+        toast.success(`${equipment.name} equipado em ${getSlotDisplayName(slotType)}!`);
         navigate({ to: '/game/play/hub/equipment', search: { character: characterId } });
       } else {
         toast.error(result.error || 'Erro ao equipar item');
@@ -227,15 +232,21 @@ function EquipmentSelectPage() {
     if (!item.equipment) return null;
 
     const equipment = item.equipment;
-    const isSelected = selectedItem?.id === equipment.id;
+    const isSelected = selectedItem?.characterEquipment.id === item.id;
+
+    // ✅ NOVO: Mostrar se o item está equipado
+    const isEquipped = item.is_equipped;
+    const equippedSlotLabel = item.slot_type
+      ? getSlotDisplayName(item.slot_type as EquipmentSlotType)
+      : null;
 
     return (
       <div
-        key={equipment.id}
+        key={item.id}
         className={`relative cursor-pointer transition-all duration-200 ${
           isSelected ? 'transform scale-[1.02]' : 'hover:transform hover:scale-[1.01]'
         }`}
-        onClick={() => setSelectedItem(equipment)}
+        onClick={() => setSelectedItem({ characterEquipment: item, equipment })}
       >
         <Card
           className={`border-2 transition-all duration-200 ${
@@ -251,6 +262,16 @@ function EquipmentSelectPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-slate-200 truncate">{equipment.name}</h3>
+
+                {/* ✅ NOVO: Mostrar onde está equipado */}
+                {isEquipped && equippedSlotLabel && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Badge variant="default" className="bg-green-700 text-green-100 text-xs">
+                      ✓ Equipado em {equippedSlotLabel}
+                    </Badge>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">
                     {equipment.rarity}
@@ -304,25 +325,31 @@ function EquipmentSelectPage() {
       );
     }
 
-    const canEquip = character ? character.level >= (selectedItem.level_requirement || 1) : false;
+    const canEquip = character
+      ? character.level >= (selectedItem.equipment.level_requirement || 1)
+      : false;
 
     return (
       <div className="space-y-6">
         {/* Header do Item */}
         <div className="flex items-start gap-4">
-          <div className={`p-4 rounded-lg border-2 ${getRarityColor(selectedItem.rarity)}`}>
-            {getEquipmentIcon(selectedItem)}
+          <div
+            className={`p-4 rounded-lg border-2 ${getRarityColor(selectedItem.equipment.rarity)}`}
+          >
+            {getEquipmentIcon(selectedItem.equipment)}
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-slate-100 mb-2">{selectedItem.name}</h2>
+            <h2 className="text-2xl font-bold text-slate-100 mb-2">
+              {selectedItem.equipment.name}
+            </h2>
             <div className="flex items-center gap-3 mb-2">
-              <Badge className={`border ${getRarityColor(selectedItem.rarity)}`}>
-                {selectedItem.rarity}
+              <Badge className={`border ${getRarityColor(selectedItem.equipment.rarity)}`}>
+                {selectedItem.equipment.rarity}
               </Badge>
               <Badge variant="outline" className="text-slate-300">
-                {selectedItem.type}
+                {selectedItem.equipment.type}
               </Badge>
-              {selectedItem.rarity === 'legendary' && (
+              {selectedItem.equipment.rarity === 'legendary' && (
                 <Star className="h-4 w-4 text-amber-400 animate-pulse" />
               )}
             </div>
@@ -331,80 +358,89 @@ function EquipmentSelectPage() {
 
         {/* Descrição */}
         <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-          <p className="text-slate-300 leading-relaxed">{selectedItem.description}</p>
+          <p className="text-slate-300 leading-relaxed">{selectedItem.equipment.description}</p>
         </div>
 
         {/* Estatísticas */}
         <div className="space-y-3">
           <h3 className="text-lg font-semibold text-slate-200">Atributos</h3>
           <div className="grid grid-cols-2 gap-3">
-            {selectedItem.atk_bonus > 0 && (
+            {selectedItem.equipment.atk_bonus > 0 && (
               <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <Sword className="h-4 w-4 text-red-400" />
                   <span className="text-red-300 font-medium">Ataque</span>
                 </div>
-                <p className="text-red-200 text-lg font-bold">+{selectedItem.atk_bonus}</p>
+                <p className="text-red-200 text-lg font-bold">
+                  +{selectedItem.equipment.atk_bonus}
+                </p>
               </div>
             )}
 
-            {selectedItem.def_bonus > 0 && (
+            {selectedItem.equipment.def_bonus > 0 && (
               <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-blue-400" />
                   <span className="text-blue-300 font-medium">Defesa</span>
                 </div>
-                <p className="text-blue-200 text-lg font-bold">+{selectedItem.def_bonus}</p>
+                <p className="text-blue-200 text-lg font-bold">
+                  +{selectedItem.equipment.def_bonus}
+                </p>
               </div>
             )}
 
-            {selectedItem.mana_bonus > 0 && (
+            {selectedItem.equipment.mana_bonus > 0 && (
               <div className="bg-purple-900/30 border border-purple-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-purple-400" />
                   <span className="text-purple-300 font-medium">Mana</span>
                 </div>
-                <p className="text-purple-200 text-lg font-bold">+{selectedItem.mana_bonus}</p>
+                <p className="text-purple-200 text-lg font-bold">
+                  +{selectedItem.equipment.mana_bonus}
+                </p>
               </div>
             )}
 
-            {selectedItem.speed_bonus && selectedItem.speed_bonus > 0 && (
+            {selectedItem.equipment.speed_bonus && selectedItem.equipment.speed_bonus > 0 && (
               <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-yellow-400" />
                   <span className="text-yellow-300 font-medium">Velocidade</span>
                 </div>
-                <p className="text-yellow-200 text-lg font-bold">+{selectedItem.speed_bonus}</p>
+                <p className="text-yellow-200 text-lg font-bold">
+                  +{selectedItem.equipment.speed_bonus}
+                </p>
               </div>
             )}
           </div>
         </div>
 
         {/* Requisitos */}
-        {selectedItem.level_requirement && selectedItem.level_requirement > 1 && (
-          <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-3">
-            <h4 className="text-sm font-medium text-slate-300 mb-2">Requisitos</h4>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Nível mínimo:</span>
-              <span className={`font-bold ${canEquip ? 'text-green-400' : 'text-red-400'}`}>
-                {selectedItem.level_requirement}
-              </span>
+        {selectedItem.equipment.level_requirement &&
+          selectedItem.equipment.level_requirement > 1 && (
+            <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-slate-300 mb-2">Requisitos</h4>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Nível mínimo:</span>
+                <span className={`font-bold ${canEquip ? 'text-green-400' : 'text-red-400'}`}>
+                  {selectedItem.equipment.level_requirement}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Tipo de Arma */}
-        {selectedItem.weapon_subtype && (
+        {selectedItem.equipment.weapon_subtype && (
           <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-3">
             <h4 className="text-sm font-medium text-slate-300 mb-2">Tipo de Arma</h4>
-            <p className="text-slate-400 capitalize">{selectedItem.weapon_subtype}</p>
+            <p className="text-slate-400 capitalize">{selectedItem.equipment.weapon_subtype}</p>
           </div>
         )}
 
         {/* Ações */}
         <div className="pt-4 border-t border-slate-700/50">
           <Button
-            onClick={() => handleEquipItem(selectedItem)}
+            onClick={() => handleEquipItem(selectedItem.equipment)}
             disabled={!canEquip || equiping}
             className={`w-full ${
               canEquip
@@ -420,7 +456,7 @@ function EquipmentSelectPage() {
             ) : canEquip ? (
               `Equipar em ${getSlotDisplayName(slotType)}`
             ) : (
-              `Nível ${selectedItem.level_requirement} necessário`
+              `Nível ${selectedItem.equipment.level_requirement} necessário`
             )}
           </Button>
         </div>

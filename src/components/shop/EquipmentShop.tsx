@@ -19,50 +19,77 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
   const [loading, setLoading] = useState(true);
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
+  const loadShopItems = React.useCallback(
+    async (preserveScroll: boolean = false) => {
+      try {
+        // Salvar posição do scroll antes de recarregar se necessário
+        let scrollTop = 0;
+        if (preserveScroll) {
+          scrollTop = window.scrollY || document.documentElement.scrollTop;
+        } else {
+          setLoading(true);
+        }
+
+        // Carregar equipamentos
+        const equipment = await EquipmentService.getAvailableEquipment(character.level);
+        setAvailableEquipment(equipment);
+
+        // ✅ Carregar consumíveis disponíveis na loja
+        const consumablesRes = await ConsumableService.getAvailableConsumables();
+        console.log('[GameShop] Consumíveis brutos retornados:', {
+          success: consumablesRes.success,
+          count: consumablesRes.data?.length || 0,
+          data:
+            consumablesRes.data?.map(c => ({
+              id: c.id,
+              name: c.name,
+              type: c.type,
+              price: c.price,
+            })) || [],
+        });
+
+        if (consumablesRes.success && consumablesRes.data) {
+          // ✅ Filtrar consumíveis vendáveis na loja (price > 0)
+          // Incluir: poções, antídotos, buffs COM PREÇO
+          // Excluir: pergaminhos de desbloqueio (craftáveis com price=0)
+          const shopConsumables = consumablesRes.data.filter(c => {
+            const isShopItem = c.price > 0; // Vendável
+            const isNotPergaminho = !c.name.includes('Pergaminho'); // Não é desbloqueio
+            return isShopItem && isNotPergaminho;
+          });
+
+          console.log('[GameShop] Consumíveis para a loja (após filtro):', {
+            total: shopConsumables.length,
+            items: shopConsumables.map(c => ({ name: c.name, type: c.type, price: c.price })),
+          });
+
+          setAvailableConsumables(shopConsumables);
+        } else {
+          console.warn('[GameShop] Falha ao buscar consumíveis:', consumablesRes.error);
+        }
+
+        // Restaurar posição do scroll se necessário
+        if (preserveScroll) {
+          // Usar requestAnimationFrame para garantir que o DOM foi atualizado
+          requestAnimationFrame(() => {
+            window.scrollTo(0, scrollTop);
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar itens da loja:', error);
+        toast.error('Erro ao carregar itens da loja');
+      } finally {
+        if (!preserveScroll) {
+          setLoading(false);
+        }
+      }
+    },
+    [character.level]
+  );
+
   useEffect(() => {
     loadShopItems();
-  }, [character.level]);
-
-  const loadShopItems = async (preserveScroll: boolean = false) => {
-    try {
-      // Salvar posição do scroll antes de recarregar se necessário
-      let scrollTop = 0;
-      if (preserveScroll) {
-        scrollTop = window.scrollY || document.documentElement.scrollTop;
-      } else {
-        setLoading(true);
-      }
-
-      // Carregar equipamentos
-      const equipment = await EquipmentService.getAvailableEquipment(character.level);
-      setAvailableEquipment(equipment);
-
-      // Carregar consumíveis disponíveis na loja (exceto craftáveis que não são vendidos)
-      const consumablesRes = await ConsumableService.getAvailableConsumables();
-      if (consumablesRes.success && consumablesRes.data) {
-        // Filtrar apenas consumíveis que podem ser comprados (price > 0)
-        const shopConsumables = consumablesRes.data.filter(
-          c => c.price > 0 && !c.name.includes('Elixir')
-        );
-        setAvailableConsumables(shopConsumables);
-      }
-
-      // Restaurar posição do scroll se necessário
-      if (preserveScroll) {
-        // Usar requestAnimationFrame para garantir que o DOM foi atualizado
-        requestAnimationFrame(() => {
-          window.scrollTo(0, scrollTop);
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao carregar itens da loja:', error);
-      toast.error('Erro ao carregar itens da loja');
-    } finally {
-      if (!preserveScroll) {
-        setLoading(false);
-      }
-    }
-  };
+  }, [loadShopItems]);
 
   const handleEquipmentPurchase = async (equipment: Equipment) => {
     if (character.gold < equipment.price) {
