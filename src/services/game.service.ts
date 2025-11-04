@@ -13,7 +13,6 @@ import { BattleService } from './battle.service';
 import { CacheService } from './cache.service';
 import { RewardService } from './reward.service';
 import { GameStateService } from './game-state.service';
-import { FloorService } from './floor.service';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -211,13 +210,6 @@ export class GameService {
    */
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
     return GameStateService.advanceToNextFloor(gameState);
-  }
-
-  /**
-   * Processar interação com evento especial
-   */
-  static async processSpecialEventInteraction(gameState: GameState): Promise<GameState> {
-    return FloorService.processSpecialEventInteraction(gameState);
   }
 
   /**

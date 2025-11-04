@@ -1,7 +1,5 @@
-import { type Floor, type FloorType, type SpecialEvent, type GameState } from '@/models/game.model';
+import { type Floor, type FloorType } from '@/models/game.model';
 import { supabase } from '@/lib/supabase';
-import { MonsterService } from './monster.service';
-import { CharacterService } from './character.service';
 
 export class FloorService {
   private static floorCache: Map<number, Floor> = new Map();
@@ -99,8 +97,6 @@ export class FloorService {
       floorType = 'boss'; // Bosses principais
     } else if (floorNumber % 5 === 0 && floorNumber > 5) {
       floorType = 'elite'; // Elites (exceto andar 5 que é boss)
-    } else if (floorNumber % 7 === 0) {
-      floorType = 'event'; // Eventos especiais
     }
 
     // ✅ CHECKPOINTS PADRONIZADOS:
@@ -125,9 +121,6 @@ export class FloorService {
         break;
       case 'elite':
         description = `Domínio de Elite - Andar ${floorNumber}`;
-        break;
-      case 'event':
-        description = `Câmara de Eventos - Andar ${floorNumber}`;
         break;
       default:
         if (floorNumber === 1) {
@@ -160,7 +153,6 @@ export class FloorService {
     const multipliers = {
       boss: 2.5,
       elite: 1.8,
-      event: 1.2,
       common: 1,
     };
 
@@ -170,126 +162,5 @@ export class FloorService {
       xp: Math.floor(baseXP * multiplier),
       gold: Math.floor(baseGold * multiplier),
     };
-  }
-
-  /**
-   * Verificar evento especial (chance muito baixa)
-   */
-  static async checkForSpecialEvent(floorNumber: number): Promise<SpecialEvent | null> {
-    try {
-      const { data, error } = await supabase.rpc('get_special_event_for_floor', {
-        p_floor: floorNumber,
-      });
-
-      if (error || !data) {
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('[FloorService] Erro ao verificar eventos:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Processar evento especial
-   */
-  static async processSpecialEventInteraction(gameState: GameState): Promise<GameState> {
-    const { currentSpecialEvent, player } = gameState;
-
-    if (!currentSpecialEvent) {
-      return gameState;
-    }
-
-    let newHp = player.hp;
-    let newMana = player.mana;
-    let newGold = player.gold;
-    let message = '';
-
-    switch (currentSpecialEvent.type) {
-      case 'magic_fountain':
-        newHp = player.max_hp;
-        newMana = player.max_mana;
-        message = 'Fonte mágica! HP e Mana restaurados.';
-        break;
-
-      case 'treasure_chest': {
-        const goldGain = Math.floor(Math.random() * 50) + 25;
-        newGold += goldGain;
-        message = `Baú do tesouro! Ganhou ${goldGain} de ouro.`;
-        break;
-      }
-
-      case 'bonfire': {
-        const hpRestore = Math.floor(player.max_hp * 0.5);
-        newHp = Math.min(player.max_hp, player.hp + hpRestore);
-        message = `Fogueira! Recuperou ${hpRestore} HP.`;
-        break;
-      }
-
-      default:
-        message = `Evento ${currentSpecialEvent.name} processado.`;
-    }
-
-    // Gerar inimigo após evento
-    try {
-      const enemyResult = await MonsterService.getEnemyForFloor(player.floor);
-
-      if (!enemyResult.success || !enemyResult.data) {
-        throw new Error('Falha ao gerar inimigo após evento');
-      }
-
-      const enemy = enemyResult.data;
-
-      // Atualizar stats no banco se necessário
-      if (newHp !== player.hp || newMana !== player.mana || newGold !== player.gold) {
-        try {
-          if (newHp !== player.hp || newMana !== player.mana) {
-            await CharacterService.updateCharacterHpMana(player.id, newHp, newMana);
-          }
-          if (newGold !== player.gold) {
-            await CharacterService.grantSecureGold(player.id, newGold - player.gold);
-          }
-        } catch (error) {
-          console.error('[FloorService] Erro ao atualizar stats após evento:', error);
-        }
-      }
-
-      return {
-        ...gameState,
-        player: {
-          ...player,
-          hp: newHp,
-          mana: newMana,
-          gold: newGold,
-          isPlayerTurn: true,
-          isDefending: false,
-        },
-        currentEnemy: enemy,
-        gameMessage: `${message} ${enemy.name} apareceu!`,
-        currentSpecialEvent: null,
-        mode: 'battle',
-        isPlayerTurn: true,
-      };
-    } catch (error) {
-      console.error('[FloorService] Erro ao processar evento:', error);
-      return {
-        ...gameState,
-        player: {
-          ...player,
-          hp: newHp,
-          mana: newMana,
-          gold: newGold,
-          isPlayerTurn: true,
-          isDefending: false,
-        },
-        gameMessage: `${message} Preparando próximo desafio...`,
-        currentSpecialEvent: null,
-        currentEnemy: null,
-        mode: 'battle',
-        isPlayerTurn: true,
-      };
-    }
   }
 }

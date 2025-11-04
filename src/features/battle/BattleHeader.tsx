@@ -20,8 +20,6 @@ export function BattleHeader({ currentFloor, playerLevel }: BattleHeaderProps) {
         return '👑';
       case 'elite':
         return '⭐';
-      case 'event':
-        return '❓';
       default:
         return '🗺️';
     }

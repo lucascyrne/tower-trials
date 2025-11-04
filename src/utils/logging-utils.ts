@@ -422,40 +422,6 @@ export class LoggingUtils {
   }
 
   /**
-   * EVENTO ESPECIAL: Log para eventos especiais do jogo
-   */
-  static logSpecialEvent(
-    eventType:
-      | 'flee_success'
-      | 'flee_failure'
-      | 'critical_hit'
-      | 'level_checkpoint'
-      | 'rare_drop'
-      | 'boss_encounter',
-    message: string,
-    details?: BattleEventDetails
-  ): void {
-    const importanceMap = {
-      flee_success: 'normal' as const,
-      flee_failure: 'normal' as const,
-      critical_hit: 'high' as const,
-      level_checkpoint: 'high' as const,
-      rare_drop: 'critical' as const,
-      boss_encounter: 'critical' as const,
-    };
-
-    this.logGameEvent(
-      {
-        message,
-        type: 'system',
-        importance: importanceMap[eventType],
-        metadata: { eventType },
-      },
-      details
-    );
-  }
-
-  /**
    * ERRO DE BATALHA: Log para erros durante batalhas
    */
   static logBattleError(error: string, context?: string, details?: BattleEventDetails): void {

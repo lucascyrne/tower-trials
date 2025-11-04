@@ -105,7 +105,6 @@ export class BattleInitializationService {
         },
         currentFloor: floorData,
         currentEnemy: enemy,
-        currentSpecialEvent: null,
         isPlayerTurn: true,
         gameMessage: `Andar ${floorData.floorNumber}: ${enemy.name} apareceu!`,
         highestFloor: Math.max(gamePlayer.floor, floorData.floorNumber),

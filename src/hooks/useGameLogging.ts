@@ -92,19 +92,6 @@ export interface UseGameLoggingReturn {
     details?: BattleEventDetails
   ) => void;
 
-  // Logs de eventos especiais
-  logSpecialEvent: (
-    eventType:
-      | 'flee_success'
-      | 'flee_failure'
-      | 'critical_hit'
-      | 'level_checkpoint'
-      | 'rare_drop'
-      | 'boss_encounter',
-    message: string,
-    details?: BattleEventDetails
-  ) => void;
-
   // Logs de erro
   logBattleError: (error: string, context?: string, details?: BattleEventDetails) => void;
 
@@ -271,24 +258,6 @@ export function useGameLogging(): UseGameLoggingReturn {
     []
   );
 
-  // ✅ EVENTOS ESPECIAIS
-  const logSpecialEvent = useCallback(
-    (
-      eventType:
-        | 'flee_success'
-        | 'flee_failure'
-        | 'critical_hit'
-        | 'level_checkpoint'
-        | 'rare_drop'
-        | 'boss_encounter',
-      message: string,
-      details?: BattleEventDetails
-    ) => {
-      LoggingUtils.logSpecialEvent(eventType, message, details);
-    },
-    []
-  );
-
   // ✅ ERROS
   const logBattleError = useCallback(
     (error: string, context?: string, details?: BattleEventDetails) => {
@@ -335,9 +304,6 @@ export function useGameLogging(): UseGameLoggingReturn {
     // Batalha
     logBattleStart,
     logBattleEnd,
-
-    // Eventos especiais
-    logSpecialEvent,
 
     // Erros
     logBattleError,

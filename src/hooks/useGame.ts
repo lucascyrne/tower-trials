@@ -1,5 +1,4 @@
 import { useGameStateStore } from '@/stores/useGameStateStore';
-import { useEvent } from '@/hooks/useEvent';
 import { useGameLog } from '@/stores/useLogStore';
 import { useCharacterManagement } from '@/stores/useCharacterStore';
 import type { CharacterConsumable } from '@/models/consumable.model';
@@ -8,7 +7,6 @@ export function useGame() {
   const gameState = useGameStateStore();
   const gameLog = useGameLog();
   const character = useCharacterManagement();
-  const event = useEvent();
 
   return {
     // GameState provider
@@ -32,9 +30,6 @@ export function useGame() {
     createCharacter: character.createCharacter,
     selectCharacter: character.selectCharacter,
     reloadCharacters: character.reloadCharacters,
-
-    // Event provider
-    interactWithEvent: event.interactWithEvent,
 
     // Legacy methods for compatibility
     startGame: character.createCharacter,
@@ -122,4 +117,3 @@ export function useGame() {
 export { useGameState } from '@/stores/useGameStateStore';
 export { useGameLog } from '@/stores/useLogStore';
 export { useCharacterManagement } from '@/stores/useCharacterStore';
-export { useEvent } from '@/hooks/useEvent';

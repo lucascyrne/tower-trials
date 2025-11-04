@@ -153,7 +153,6 @@ export interface GameState {
   player: GamePlayer;
   currentEnemy: Enemy | null;
   currentFloor: Floor | null;
-  currentSpecialEvent: null; // Removed as per edit hint
   isPlayerTurn: boolean;
   gameMessage: string;
   highestFloor: number;
