@@ -89,7 +89,6 @@ export function useGame() {
         },
         currentEnemy: null,
         currentFloor: null,
-        currentSpecialEvent: null,
         isPlayerTurn: true,
         gameMessage: '',
         highestFloor: 1,

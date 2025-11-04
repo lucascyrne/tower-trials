@@ -57,6 +57,13 @@ export class CharacterCheckpointService {
   }
 
   /**
+   * ✅ Validar se um andar é um checkpoint válido
+   */
+  private static isValidCheckpointFloor(floor: number): boolean {
+    return floor === 1 || floor === 5 || (floor >= 20 && floor % 10 === 0);
+  }
+
+  /**
    * Obter checkpoints desbloqueados pelo personagem
    */
   static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<Checkpoint[]>> {
@@ -82,32 +89,23 @@ export class CharacterCheckpointService {
           : character.floor) || character.floor
       );
 
-      // ✅ CORRIGIDO: Gerar checkpoints usando nova lógica padronizada
+      // ✅ CORRIGIDO: Gerar checkpoints baseado em progressão clara
       const checkpoints: Checkpoint[] = [];
 
-      // Sempre incluir o andar 1
+      // Sempre incluir andar 1
       checkpoints.push({ floor: 1, description: 'Andar 1 - Início da Torre' });
 
-      // ✅ NOVO: Checkpoint especial no andar 5 (se alcançado)
+      // Checkpoint de introdução no andar 5
       if (highestFloor >= 5) {
         checkpoints.push({ floor: 5, description: 'Andar 5 - Primeiro Desafio' });
       }
 
-      // ✅ CORRIGIDO: Checkpoints pós-boss até andar 1000: 11, 21, 31, 41, 51, etc.
-      for (let i = 1; i <= 100; i++) {
-        // Até 100 bosses = andar 1000 máximo
-        const bossFloor = i * 10;
-        const checkpointFloor = bossFloor + 1;
-
-        if (highestFloor >= checkpointFloor && checkpointFloor <= 1001) {
-          // Limite de 1001 (checkpoint após boss 1000)
-          checkpoints.push({
-            floor: checkpointFloor,
-            description: `Andar ${checkpointFloor} - Checkpoint Pós-Boss`,
-          });
-        } else {
-          break;
-        }
+      // Checkpoints pós-boss: 20, 30, 40, 50... (múltiplos de 10 a partir de 20)
+      for (let bossFloor = 20; bossFloor <= highestFloor; bossFloor += 10) {
+        checkpoints.push({
+          floor: bossFloor,
+          description: `Andar ${bossFloor} - Checkpoint Pós-Boss`,
+        });
       }
 
       return { data: checkpoints, error: null, success: true };
@@ -129,13 +127,8 @@ export class CharacterCheckpointService {
     checkpointFloor: number
   ): Promise<ServiceResponse<null>> {
     try {
-      // ✅ CORRIGIDO: Verificar se o checkpoint é válido usando nova lógica
-      const isValidCheckpoint =
-        checkpointFloor === 1 ||
-        checkpointFloor === 5 ||
-        (checkpointFloor > 10 && (checkpointFloor - 1) % 10 === 0);
-
-      if (!isValidCheckpoint) {
+      // ✅ Validar se o checkpoint é válido
+      if (!this.isValidCheckpointFloor(checkpointFloor)) {
         return { data: null, error: 'Checkpoint inválido', success: false };
       }
 

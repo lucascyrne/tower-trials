@@ -74,29 +74,22 @@ export class GameStateService {
         throw new Error(updateResult.error || 'Erro ao atualizar andar');
       }
 
-      // Obter dados do próximo andar
+      // Carregar dados do andar
       const nextFloorData = await FloorService.getFloorData(nextFloor);
       if (!nextFloorData) {
         throw new Error(`Erro ao carregar andar ${nextFloor}`);
       }
 
-      // Verificar evento especial (chance muito baixa - 1%)
-      const specialEvent =
-        Math.random() < 0.01 ? await FloorService.checkForSpecialEvent(nextFloor) : null;
-
-      // Gerar inimigo se não há evento
-      let enemy = null;
-      if (!specialEvent) {
-        const enemyResult = await MonsterService.getEnemyForFloor(nextFloor, true);  // ✅ forceRefresh=true para garantir drops
-        if (!enemyResult.success || !enemyResult.data) {
-          throw new Error(`Falha ao gerar inimigo para andar ${nextFloor}`);
-        }
-        enemy = enemyResult.data;
+      // Gerar inimigo para o andar
+      const enemyResult = await MonsterService.getEnemyForFloor(nextFloor, true);  // ✅ forceRefresh=true para garantir drops
+      if (!enemyResult.success || !enemyResult.data) {
+        throw new Error(`Falha ao gerar inimigo para andar ${nextFloor}`);
       }
+      const enemy = enemyResult.data;
 
       const newGameState = {
         ...gameState,
-        mode: specialEvent ? 'special_event' : 'battle',
+        mode: 'battle',
         player: {
           ...player,
           floor: nextFloor,
@@ -107,10 +100,8 @@ export class GameStateService {
         },
         currentFloor: nextFloorData,
         currentEnemy: enemy,
-        currentSpecialEvent: specialEvent,
-        gameMessage: specialEvent
-          ? `Evento especial: ${specialEvent.name}!`
-          : `Andar ${nextFloor}: ${enemy?.name} apareceu!`,
+        currentSpecialEvent: null,
+        gameMessage: `Andar ${nextFloor}: ${enemy.name} apareceu!`,
         isPlayerTurn: true,
         battleRewards: null,
         selectedSpell: null,

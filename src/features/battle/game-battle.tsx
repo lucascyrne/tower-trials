@@ -727,18 +727,6 @@ export default function GameBattle() {
     const currentPlayer = useGameStateStore.getState().gameState.player;
     if (currentPlayer?.id) {
       // ✅ CRÍTICO: Finalizar logs da batalha ao voltar ao hub
-      const { LoggingUtils } = await import('@/utils/logging-utils');
-      LoggingUtils.logSpecialEvent(
-        'level_checkpoint',
-        `${currentPlayer.name} retornou ao hub após vitória`,
-        {
-          playerId: currentPlayer.id,
-          playerName: currentPlayer.name,
-          floorNumber: currentPlayer.floor,
-        }
-      );
-
-      // Finalizar sessão de batalha no BattleLoggerService
       const { BattleLoggerService } = await import('@/services/battle-logger.service');
       BattleLoggerService.endBattle('victory', {
         reason: 'Retorno ao hub',
@@ -776,18 +764,6 @@ export default function GameBattle() {
     if (fleeSuccess && currentPlayer?.id) {
       // ✅ CRÍTICO: Finalizar logs da batalha em caso de fuga bem-sucedida
       console.log('[GameBattle] Finalizando logs da batalha - fuga bem-sucedida');
-      const { LoggingUtils } = await import('@/utils/logging-utils');
-      LoggingUtils.logSpecialEvent(
-        'flee_success',
-        `${currentPlayer.name} fugiu da batalha com sucesso`,
-        {
-          playerId: currentPlayer.id,
-          playerName: currentPlayer.name,
-          floorNumber: currentPlayer.floor,
-        }
-      );
-
-      // Finalizar sessão de batalha no BattleLoggerService
       const { BattleLoggerService } = await import('@/services/battle-logger.service');
       BattleLoggerService.endBattle('flee', {
         reason: 'Fuga bem-sucedida',
@@ -808,20 +784,7 @@ export default function GameBattle() {
 
       navigate({ to: '/game/play/hub', search: { character: currentPlayer.id } });
     } else {
-      // ✅ LOG: Registrar falha na fuga
-      if (currentPlayer?.id) {
-        const { LoggingUtils } = await import('@/utils/logging-utils');
-        LoggingUtils.logSpecialEvent(
-          'flee_failure',
-          `${currentPlayer.name} falhou ao tentar fugir`,
-          {
-            playerId: currentPlayer.id,
-            playerName: currentPlayer.name,
-            floorNumber: currentPlayer.floor,
-          }
-        );
-      }
-
+      // ✅ LOG: Fuga falhou
       toast.warning('Fuga falhou!', {
         description: 'Prepare-se para o contra-ataque...',
         duration: 3000,
@@ -908,7 +871,7 @@ export default function GameBattle() {
   }
 
   // 🔧 NOVA VALIDAÇÃO: Se não tem inimigo mas deveria ter, mostrar erro
-  if (isInitialized && (mode === 'battle' || mode === 'special_event') && !currentEnemy) {
+  if (isInitialized && mode === 'battle' && !currentEnemy) {
     return (
       <div className="min-h-svh flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className={`text-center ${isBattleLandscape ? 'max-w-md' : 'max-w-lg'}`}>

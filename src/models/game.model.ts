@@ -4,7 +4,7 @@ import { type MonsterDropChance } from './monster.model';
 import { type CharacterConsumable } from './consumable.model';
 import { type BattleSession, type TurnControl } from './game-battle.model';
 
-export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'special_event' | 'fled';
+export type GameMode = 'menu' | 'battle' | 'gameover' | 'hub' | 'fled';
 export type ActionType =
   | 'attack'
   | 'defend'
@@ -12,10 +12,8 @@ export type ActionType =
   | 'spell'
   | 'flee'
   | 'consumable'
-  | 'continue'
-  | 'interact_event';
-export type FloorType = 'common' | 'elite' | 'event' | 'boss';
-export type SpecialEventType = 'bonfire' | 'treasure_chest' | 'magic_fountain';
+  | 'continue';
+export type FloorType = 'common' | 'elite' | 'boss';
 
 export interface Floor {
   floorNumber: number;
@@ -23,27 +21,6 @@ export interface Floor {
   isCheckpoint: boolean;
   minLevel: number;
   description: string;
-}
-
-export interface SpecialEvent {
-  id: string;
-  name: string;
-  type: SpecialEventType;
-  description: string;
-  hp_restore_percent: number;
-  mana_restore_percent: number;
-  gold_reward_min: number;
-  gold_reward_max: number;
-  chance_weight: number;
-  min_floor: number;
-}
-
-export interface SpecialEventResult {
-  success: boolean;
-  message: string;
-  hp_restored: number;
-  mana_restored: number;
-  gold_gained: number;
 }
 
 export interface Enemy {
@@ -176,7 +153,7 @@ export interface GameState {
   player: GamePlayer;
   currentEnemy: Enemy | null;
   currentFloor: Floor | null;
-  currentSpecialEvent: SpecialEvent | null;
+  currentSpecialEvent: null; // Removed as per edit hint
   isPlayerTurn: boolean;
   gameMessage: string;
   highestFloor: number;

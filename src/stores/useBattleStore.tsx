@@ -292,8 +292,7 @@ export const useBattleStore = create<BattleStore>()(
 
         // Verificar ações especiais que não geram turno do inimigo
         if (
-          (action === 'continue' && newState.battleRewards === null && newState.currentEnemy) ||
-          (action === 'interact_event' && newState.mode === 'battle' && newState.currentEnemy)
+          action === 'continue' && newState.battleRewards === null && newState.currentEnemy
         ) {
           addGameLogMessage(message, 'system');
           get().endBattle();

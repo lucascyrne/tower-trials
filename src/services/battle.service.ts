@@ -13,7 +13,6 @@ import { useGameStateStore } from '../stores/useGameStateStore';
 import { useBattleStore } from '../stores/useBattleStore';
 import { useLogStore } from '../stores/useLogStore';
 import { BattleLoggerService } from './battle-logger.service';
-import { LoggingUtils } from '@/utils/logging-utils';
 import { CharacterStatsService } from './character-stats.service';
 
 export class BattleService {
@@ -509,19 +508,6 @@ export class BattleService {
 
                 message = slotResult.data.message;
 
-                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de consumível
-                LoggingUtils.logConsumableUse(
-                  newState.player.name,
-                  'Poção',
-                  slotResult.data.message.replace(`${newState.player.name} `, ''),
-                  slotPosition,
-                  {
-                    playerId: newState.player.id,
-                    playerName: newState.player.name,
-                    floorNumber: newState.player.floor,
-                  }
-                );
-
                 skipTurn = false;
               } else {
                 message = slotResult.error || 'Erro ao usar poção do slot.';
@@ -553,20 +539,6 @@ export class BattleService {
 
                 message = useResult.data.message;
 
-                // ✅ FONTE ÚNICA: Usar LoggingUtils para log de consumível direto
-                LoggingUtils.logConsumableUse(
-                  newState.player.name,
-                  'Consumível',
-                  useResult.data.message.replace(`${newState.player.name} `, ''),
-                  undefined,
-                  {
-                    playerId: newState.player.id,
-                    playerName: newState.player.name,
-                    consumableId: consumableId,
-                    floorNumber: newState.player.floor,
-                  }
-                );
-
                 skipTurn = false;
               } else {
                 message = useResult.error || 'Erro ao usar item consumível.';
@@ -584,12 +556,6 @@ export class BattleService {
         }
         break;
 
-      case 'special':
-        // Ação especial do personagem (se implementada)
-        message = 'Habilidade especial ainda não implementada.';
-        skipTurn = true;
-        break;
-
       case 'continue':
         // Avançar para o próximo andar
         try {
@@ -603,25 +569,6 @@ export class BattleService {
         } catch (error) {
           console.error('[BattleService] Erro ao avançar para próximo andar:', error);
           message = 'Erro ao avançar para o próximo andar';
-          skipTurn = true;
-        }
-        break;
-
-      case 'interact_event':
-        // Processar evento especial
-        try {
-          const updatedState = await GameService.processSpecialEventInteraction(newState);
-
-          // CRÍTICO: Atualizar o estado com o resultado do evento
-          Object.assign(newState, updatedState);
-
-          message = updatedState.gameMessage || 'Evento especial processado com sucesso!';
-
-          // Se o evento foi processado com sucesso, não pular turno para continuar o fluxo
-          skipTurn = false;
-        } catch (error) {
-          console.error('[BattleService] Erro ao processar evento especial:', error);
-          message = 'Erro ao processar evento especial';
           skipTurn = true;
         }
         break;
@@ -805,12 +752,6 @@ export class BattleService {
 
     if (fleeSuccess) {
       // ✅ CRÍTICO: Finalizar logs da batalha em caso de fuga bem-sucedida
-      LoggingUtils.logSpecialEvent('flee_success', `${player.name} fugiu da batalha com sucesso!`, {
-        playerId: player.id,
-        playerName: player.name,
-        floorNumber: player.floor,
-      });
-
       BattleLoggerService.endBattle('flee', {
         reason: 'Fuga bem-sucedida pelo sistema',
         playerName: player.name,
@@ -937,14 +878,6 @@ export class BattleService {
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(damage * 0.15);
 
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de ataque do inimigo defendido
-          LoggingUtils.logEnemyAttack(enemy.name, player.name, actualDamage, true, false, {
-            enemyName: enemy.name,
-            playerName: player.name,
-            damage: actualDamage,
-            floorNumber: player.floor,
-          });
-
           let defenseMessage = `${enemy.name} atacou`;
           if (enemyDamageResult.isCritical) defenseMessage += ` com golpe crítico`;
           if (enemyDamageResult.isDoubleAttack)
@@ -961,14 +894,6 @@ export class BattleService {
           }
         } else {
           actualDamage = damage;
-
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de ataque do inimigo normal
-          LoggingUtils.logEnemyAttack(enemy.name, player.name, actualDamage, false, false, {
-            enemyName: enemy.name,
-            playerName: player.name,
-            damage: actualDamage,
-            floorNumber: player.floor,
-          });
 
           let attackMessage = `${enemy.name} atacou`;
           if (enemyDamageResult.isCritical) attackMessage += ` com golpe crítico`;
@@ -1026,14 +951,6 @@ export class BattleService {
         if (player.isDefending || playerDefendAction) {
           actualDamage = Math.floor(spellDamage * 0.15);
 
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia do inimigo defendida
-          LoggingUtils.logSpellCast(enemy.name, 'Magia', player.name, actualDamage, 'damage', {
-            enemyName: enemy.name,
-            playerName: player.name,
-            damage: actualDamage,
-            floorNumber: player.floor,
-          });
-
           message = `${enemy.name} lançou uma magia, mas você reduziu o dano de ${spellDamage} para ${actualDamage} com sua defesa!`;
 
           try {
@@ -1051,14 +968,6 @@ export class BattleService {
           }
         } else {
           actualDamage = spellDamage;
-
-          // ✅ FONTE ÚNICA: Usar LoggingUtils para log de magia do inimigo normal
-          LoggingUtils.logSpellCast(enemy.name, 'Magia', player.name, actualDamage, 'damage', {
-            enemyName: enemy.name,
-            playerName: player.name,
-            damage: actualDamage,
-            floorNumber: player.floor,
-          });
 
           message = `${enemy.name} lançou uma magia e causou ${actualDamage} de dano mágico!`;
         }

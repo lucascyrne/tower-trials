@@ -72,12 +72,7 @@ export class BattleInitializationService {
         throw new Error(`Falha ao carregar andar ${gamePlayer.floor}`);
       }
 
-      onProgress?.({ step: 'event', progress: 70, message: 'Verificando eventos...' });
-
-      // 3. Verificar evento especial (chance muito baixa)
-      const specialEvent = await FloorService.checkForSpecialEvent(gamePlayer.floor);
-
-      // 4. 🔧 CRÍTICO: Carregar inimigo DO BANCO - sem fallbacks
+      // 3. 🔧 CRÍTICO: Carregar inimigo DO BANCO - sem fallbacks
       onProgress?.({ step: 'enemy', progress: 85, message: 'Carregando inimigo...' });
       const enemyResult = await MonsterService.getEnemyForFloor(gamePlayer.floor, true); // ✅ forceRefresh=true para garantir drops
 
@@ -98,10 +93,9 @@ export class BattleInitializationService {
 
       onProgress?.({ step: 'complete', progress: 100, message: 'Batalha pronta!' });
 
-      // 5. 🔧 CORREÇÃO: Construir estado com modo correto baseado no contexto
-      const isBattleMode = !specialEvent || gamePlayer.floor % 5 === 0; // Boss sempre é batalha
+      // 4. 🔧 Construir estado com modo batalha
       const gameState: GameState = {
-        mode: isBattleMode ? 'battle' : 'special_event',
+        mode: 'battle',
         player: {
           ...gamePlayer,
           isPlayerTurn: true,
@@ -110,12 +104,10 @@ export class BattleInitializationService {
           defenseCooldown: Math.max(0, (gamePlayer.defenseCooldown || 0) - 1),
         },
         currentFloor: floorData,
-        currentEnemy: enemy, // 🔧 SEMPRE definir inimigo
-        currentSpecialEvent: isBattleMode ? null : specialEvent, // Só ter evento se não for batalha
+        currentEnemy: enemy,
+        currentSpecialEvent: null,
         isPlayerTurn: true,
-        gameMessage: isBattleMode
-          ? `Andar ${floorData.floorNumber}: ${enemy.name} apareceu!`
-          : `Evento especial: ${specialEvent?.name}! Mas ${enemy.name} também está presente!`,
+        gameMessage: `Andar ${floorData.floorNumber}: ${enemy.name} apareceu!`,
         highestFloor: Math.max(gamePlayer.floor, floorData.floorNumber),
         selectedSpell: null,
         battleRewards: null,

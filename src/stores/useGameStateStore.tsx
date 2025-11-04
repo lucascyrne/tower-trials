@@ -9,7 +9,6 @@ const initialGameState: GameState = {
   player: null!,
   currentEnemy: null,
   currentFloor: null,
-  currentSpecialEvent: null,
   isPlayerTurn: true,
   gameMessage: '',
   highestFloor: 1,

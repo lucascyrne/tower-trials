@@ -10,10 +10,8 @@ import { toast } from 'sonner';
  * Hook para operações de carregamento no hub
  */
 export function useCharacterHubOperations() {
-  // Usar seletores diretos para evitar recriações
   const setGameState = useGameStateStore(state => state.setGameState);
   const selectCharacter = useCharacterStore(state => state.selectCharacter);
-  const { addGameLogMessage } = useGameLog();
 
   const loadingRef = useRef(false);
 
@@ -26,7 +24,6 @@ export function useCharacterHubOperations() {
       try {
         loadingRef.current = true;
 
-        // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal integrado (fonte única de verdade)
         const gamePlayerResponse = await CharacterService.getCharacterForGame(
           character.id,
           false,
@@ -38,8 +35,6 @@ export function useCharacterHubOperations() {
         }
 
         const gamePlayer = gamePlayerResponse.data;
-
-        // Atualizar seleção no contexto específico
         selectCharacter(character.id, character.name);
 
         const newGameState = {
@@ -68,7 +63,7 @@ export function useCharacterHubOperations() {
         loadingRef.current = false;
       }
     },
-    [setGameState, selectCharacter, addGameLogMessage]
+    [setGameState, selectCharacter]
   );
 
   return { loadCharacterForHub };
@@ -78,7 +73,6 @@ export function useCharacterHubOperations() {
  * Hook para operações de batalha
  */
 export function useCharacterBattleOperations() {
-  // Usar seletores diretos para evitar recriações
   const setGameState = useGameStateStore(state => state.setGameState);
   const selectCharacter = useCharacterStore(state => state.selectCharacter);
   const { addGameLogMessage } = useGameLog();
@@ -96,12 +90,10 @@ export function useCharacterBattleOperations() {
       lastBattleKeyRef.current = battleKey;
 
       try {
-        // ✅ CORREÇÃO CRÍTICA: Garantir dados frescos e consistentes antes da batalha
-
         // Invalidar cache para forçar dados atualizados
         CharacterService.invalidateCharacterCache(character.id);
 
-        // Carregar dados atualizados do personagem com auto-heal aplicado
+        // Carregar dados atualizados com auto-heal
         const freshCharacterResponse = await CharacterService.getCharacterForGame(
           character.id,
           true,
@@ -116,14 +108,13 @@ export function useCharacterBattleOperations() {
 
         const freshGamePlayer = freshCharacterResponse.data;
 
-        // Criar character object atualizado para o BattleInitializationService
+        // Criar character atualizado para BattleInitializationService
         const updatedCharacter: Character = {
           ...character,
           hp: freshGamePlayer.hp,
           max_hp: freshGamePlayer.max_hp,
           mana: freshGamePlayer.mana,
           max_mana: freshGamePlayer.max_mana,
-          // Outros campos que podem ter sido atualizados
           gold: freshGamePlayer.gold,
           xp: freshGamePlayer.xp,
           level: freshGamePlayer.level,
@@ -142,7 +133,7 @@ export function useCharacterBattleOperations() {
           throw new Error('Estado de jogo não foi gerado');
         }
 
-        // ✅ CORREÇÃO: Garantir que o player no gameState tenha os dados atualizados
+        // Garantir que player tenha dados atualizados
         result.gameState.player = {
           ...result.gameState.player,
           hp: freshGamePlayer.hp,
@@ -151,27 +142,16 @@ export function useCharacterBattleOperations() {
           max_mana: freshGamePlayer.max_mana,
         };
 
-        // Validar se o resultado tem inimigo quando necessário
-        const hasRequiredEnemy = Boolean(result.gameState.currentEnemy);
-        const shouldHaveEnemy =
-          result.gameState.mode === 'battle' || result.gameState.mode === 'special_event';
-
-        if (shouldHaveEnemy && !hasRequiredEnemy) {
-          console.error(
-            `🚨 [useCharacterBattleOperations] ERRO CRÍTICO: Estado sem inimigo quando deveria ter!`
-          );
+        // Validar se há inimigo quando necessário
+        if (result.gameState.mode === 'battle' && !result.gameState.currentEnemy) {
+          console.error('[useCharacterBattleOperations] ERRO: Estado sem inimigo em modo battle');
           throw new Error('Estado de jogo inválido: sem inimigo quando necessário');
         }
 
-        // Atualizar seleção no contexto específico
         selectCharacter(character.id, character.name);
-
         setGameState(result.gameState);
 
-        const logMessage = result.gameState.currentSpecialEvent
-          ? `Evento especial: ${result.gameState.currentSpecialEvent.name}`
-          : `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado! HP: ${result.gameState.player.hp}/${result.gameState.player.max_hp}`;
-
+        const logMessage = `Andar ${result.gameState.player.floor} - ${result.gameState.currentEnemy?.name || 'Combate'} iniciado!`;
         addGameLogMessage(logMessage, 'system');
       } catch (error) {
         console.error('[useCharacterBattleOperations] Erro na inicialização:', error);
@@ -192,128 +172,9 @@ export function useCharacterBattleOperations() {
 }
 
 /**
- * Hook para operações de eventos especiais
- */
-export function useCharacterEventOperations() {
-  // Usar seletores diretos para evitar recriações
-  const gameState = useGameStateStore(state => state.gameState);
-  const setGameState = useGameStateStore(state => state.setGameState);
-  const selectCharacter = useCharacterStore(state => state.selectCharacter);
-  const { addGameLogMessage } = useGameLog();
-
-  const initializingRef = useRef(false);
-  const lastEventKeyRef = useRef<string | null>(null);
-
-  const initializeSpecialEvent = useCallback(
-    async (character: Character, eventKey: string) => {
-      if (initializingRef.current && lastEventKeyRef.current === eventKey) {
-        return;
-      }
-
-      initializingRef.current = true;
-      lastEventKeyRef.current = eventKey;
-
-      try {
-        // Verificar se o andar é elegível para evento especial
-        const floor = character.floor;
-        if (floor % 5 === 0 || floor % 10 === 0) {
-          throw new Error('Andar não elegível para eventos especiais');
-        }
-
-        // Carregar evento especial
-        const { SpecialEventService } = await import('@/services/event.service');
-        const eventResponse = await SpecialEventService.getSpecialEventForFloor(floor);
-
-        if (!eventResponse.success || !eventResponse.data) {
-          console.log(`[useCharacterEventOperations] Nenhum evento encontrado para andar ${floor}`);
-          throw new Error(eventResponse.error || 'Nenhum evento especial disponível');
-        }
-
-        const specialEvent = eventResponse.data;
-
-        // ✅ CORREÇÃO CRÍTICA: Carregar dados do personagem atualizados com auto-heal
-        const gamePlayerResponse = await CharacterService.getCharacterForGame(
-          character.id,
-          false,
-          true
-        );
-
-        if (!gamePlayerResponse.success || !gamePlayerResponse.data) {
-          throw new Error(gamePlayerResponse.error || 'Erro ao carregar dados do personagem');
-        }
-
-        const gamePlayer = gamePlayerResponse.data;
-
-        // Atualizar seleção no contexto específico
-        selectCharacter(character.id, character.name);
-
-        // Carregar dados do andar
-        const { FloorService } = await import('@/services/floor.service');
-        const currentFloor = await FloorService.getFloorData(floor);
-
-        const newGameState = {
-          mode: 'special_event' as const,
-          player: gamePlayer,
-          currentFloor,
-          currentEnemy: null,
-          currentSpecialEvent: specialEvent,
-          isPlayerTurn: true,
-          gameMessage: `${specialEvent.name}: ${specialEvent.description}`,
-          highestFloor: Math.max(gamePlayer.floor, gameState.highestFloor || 1),
-          selectedSpell: null,
-          battleRewards: null,
-          fleeSuccessful: false,
-          characterDeleted: false,
-        };
-
-        setGameState(newGameState);
-        addGameLogMessage(`Evento especial: ${specialEvent.name}`, 'system');
-        console.log(
-          `[useCharacterEventOperations] Evento especial inicializado: ${specialEvent.name}`
-        );
-      } catch (error) {
-        console.error('[useCharacterEventOperations] Erro na inicialização do evento:', error);
-
-        // Fallback: usar BattleInitializationService diretamente
-        console.log(
-          '[useCharacterEventOperations] Fallback: inicializando batalha via serviço direto'
-        );
-        try {
-          const { BattleInitializationService } = await import(
-            '@/services/battle-initialization.service'
-          );
-          const result = await BattleInitializationService.initializeBattle(character);
-
-          if (result.success && result.gameState) {
-            setGameState(result.gameState);
-            addGameLogMessage(`Andar ${character.floor} - Batalha inicializada!`, 'system');
-          } else {
-            throw new Error(result.error || 'Falha no fallback de batalha');
-          }
-        } catch (fallbackError) {
-          console.error(
-            '[useCharacterEventOperations] Falha no fallback de batalha:',
-            fallbackError
-          );
-          addGameLogMessage('Erro ao carregar batalha após evento especial', 'system');
-        }
-
-        lastEventKeyRef.current = null;
-      } finally {
-        initializingRef.current = false;
-      }
-    },
-    [gameState, setGameState, addGameLogMessage, selectCharacter]
-  );
-
-  return { initializeSpecialEvent };
-}
-
-/**
  * Hook para operações básicas de personagem
  */
 export function useCharacterBasicOperations() {
-  // Usar seletores diretos para evitar recriações
   const gameState = useGameStateStore(state => state.gameState);
   const setGameState = useGameStateStore(state => state.setGameState);
   const selectCharacter = useCharacterStore(state => state.selectCharacter);
@@ -325,7 +186,7 @@ export function useCharacterBasicOperations() {
         console.log(
           `[useCharacterBasicOperations] Carregando stats derivados para ${character.name}...`
         );
-        // ✅ CORREÇÃO CRÍTICA: Carregar dados com auto-heal aplicado
+
         const gamePlayerResponse = await CharacterService.getCharacterForGame(
           character.id,
           false,
@@ -337,8 +198,6 @@ export function useCharacterBasicOperations() {
         }
 
         const gamePlayer = gamePlayerResponse.data;
-
-        // Atualizar seleção no contexto específico
         selectCharacter(character.id, character.name);
 
         setGameState({
