@@ -138,6 +138,14 @@ function EquipmentSelectPage() {
     equipment: Equipment,
     slot: EquipmentSlotType
   ): boolean => {
+    // Verificar se é arma two-handed
+    const isTwoHanded = equipment.type === 'weapon' && equipment.is_two_handed;
+
+    // Armas two-handed só podem ser equipadas em main_hand
+    if (isTwoHanded && slot !== 'main_hand') {
+      return false;
+    }
+
     // Mapeamento de slots para tipos de equipamento compatíveis
     const slotTypeMap: Record<EquipmentSlotType, EquipmentType[]> = {
       main_hand: ['weapon'],
@@ -280,6 +288,9 @@ function EquipmentSelectPage() {
                     <Badge variant="outline" className="text-xs">
                       Nv. {equipment.level_requirement}
                     </Badge>
+                  )}
+                  {equipment.is_two_handed && (
+                    <Badge className="bg-orange-700 text-orange-100 text-xs">⚔️ Two-Handed</Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
@@ -434,6 +445,29 @@ function EquipmentSelectPage() {
           <div className="bg-slate-700/30 border border-slate-600/50 rounded-lg p-3">
             <h4 className="text-sm font-medium text-slate-300 mb-2">Tipo de Arma</h4>
             <p className="text-slate-400 capitalize">{selectedItem.equipment.weapon_subtype}</p>
+          </div>
+        )}
+
+        {/* Two-Handed Flag */}
+        {selectedItem.equipment.is_two_handed && (
+          <div className="bg-orange-900/40 border-2 border-orange-600/60 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl flex-shrink-0">⚔️</div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-orange-300 mb-2">Arma Two-Handed</h4>
+                <ul className="text-orange-200 text-sm space-y-1">
+                  <li className="flex items-center gap-2">
+                    <span className="text-orange-400">✓</span> Ocupa ambas as mãos
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-orange-400">✗</span> Escudo bloqueado
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-orange-400">✗</span> Sem dual-wield
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
         )}
 

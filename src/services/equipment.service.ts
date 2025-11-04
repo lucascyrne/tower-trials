@@ -1,12 +1,6 @@
 /**
  * Service para gerenciamento de equipamentos
  *
- * ✅ REFATORADO (P1 - Fase 2): Service puro - não acessa stores diretamente
- * - Todos os métodos retornam apenas dados
- * - Hook useEquipmentOperations gerencia stores
- * - Testável sem mocks de stores
- *
- * Progresso: 13/13 ocorrências refatoradas ✅
  */
 
 import {
@@ -159,7 +153,7 @@ export class EquipmentService {
       // Se um personagem tem 2x "Machado de Batalha", criar 2 entries na UI
       const expandedEquipment: CharacterEquipment[] = [];
       for (const item of allEquipment) {
-        const quantity = (item as any).quantity || 1;
+        const quantity = (item as CharacterEquipment & { quantity?: number }).quantity || 1;
         for (let i = 0; i < quantity; i++) {
           expandedEquipment.push({
             ...item,
@@ -171,7 +165,7 @@ export class EquipmentService {
       allEquipment = expandedEquipment;
 
       // ✅ CORRIGIDO: Determinar slot baseado em equipment.type (não há slot_type na tabela)
-      allEquipment.forEach((item) => {
+      allEquipment.forEach(item => {
         if (item.is_equipped && item.equipment) {
           const equipmentType = item.equipment.type;
 
@@ -598,6 +592,19 @@ export class EquipmentService {
             reason = 'Pode substituir equipamento existente';
             suggestedSlot = 'main_hand';
           }
+
+          // ✅ NOVO: Armas two-handed têm restrições especiais
+          if (equipment.is_two_handed) {
+            if (currentSlots.main_hand || currentSlots.off_hand) {
+              canEquip = true;
+              reason = 'Arma two-handed substituirá os equipamentos em ambas as mãos';
+              suggestedSlot = 'main_hand';
+            } else {
+              canEquip = true;
+              reason = 'Arma two-handed ocupará ambas as mãos';
+              suggestedSlot = 'main_hand';
+            }
+          }
           break;
 
         case 'armor':
@@ -808,6 +815,12 @@ export class EquipmentService {
   static determineEquipmentSlot(equipment: Equipment, currentSlots: EquipmentSlots): string | null {
     switch (equipment.type) {
       case 'weapon':
+        // Se a arma é two-handed, SEMPRE vai para main_hand
+        if (equipment.is_two_handed) {
+          return 'main_hand';
+        }
+
+        // Armas one-handed: escolher slot vazio
         if (!currentSlots.main_hand) return 'main_hand';
         if (!currentSlots.off_hand) return 'off_hand';
         return 'main_hand'; // Substituir mão principal

@@ -17,6 +17,7 @@ export interface Equipment {
   description: string;
   type: EquipmentType;
   weapon_subtype?: WeaponSubtype;
+  is_two_handed?: boolean;
   rarity: EquipmentRarity;
   level_requirement: number;
   atk_bonus: number;
@@ -107,6 +108,20 @@ export function isDualWielding(slots: EquipmentSlots): boolean {
  */
 export function hasShield(slots: EquipmentSlots): boolean {
   return !!(slots.off_hand?.type === 'armor' && !slots.off_hand?.weapon_subtype);
+}
+
+/**
+ * Verifica se uma arma é two-handed (ocupa ambas as mãos)
+ */
+export function isTwoHandedWeapon(equipment: Equipment): boolean {
+  return !!(equipment.type === 'weapon' && equipment.is_two_handed);
+}
+
+/**
+ * Verifica se um slot tem uma arma two-handed equipada
+ */
+export function hasTwoHandedWeapon(slots: EquipmentSlots): boolean {
+  return isTwoHandedWeapon(slots.main_hand || ({} as Equipment));
 }
 
 /**

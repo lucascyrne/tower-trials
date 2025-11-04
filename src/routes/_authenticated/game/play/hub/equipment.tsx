@@ -102,6 +102,9 @@ function EquipmentPage() {
     });
   };
 
+  // ✅ NOVO: Verificar se há uma arma two-handed equipada
+  const isTwoHandedActive = equippedSlots.main_hand?.type === 'weapon' && equippedSlots.main_hand?.is_two_handed;
+
   // Função específica para recarregar consumíveis
   const refreshConsumables = async () => {
     if (!characterId) return;
@@ -182,6 +185,24 @@ function EquipmentPage() {
               onSlotClick={handleSlotClick}
               onSlotLongPress={handleSlotLongPress}
             />
+
+            {/* ✅ NOVO: Aviso de Arma Two-Handed */}
+            {isTwoHandedActive && (
+              <Card className="bg-orange-900/30 border-2 border-orange-600/50">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl">⚔️</div>
+                    <div>
+                      <h3 className="font-semibold text-orange-300 mb-1">Arma Two-Handed Ativa</h3>
+                      <p className="text-sm text-orange-200">
+                        <strong>{equippedSlots.main_hand?.name}</strong> ocupa ambas as mãos. A mão
+                        secundária está bloqueada.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Slots de Poção */}
             <Card className="bg-slate-800/50 border-slate-700/50">

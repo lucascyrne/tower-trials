@@ -46,92 +46,195 @@ VALUES
 -- =====================================
 
 -- Inserir equipamentos iniciais (com is_unlocked configurado adequadamente)
-INSERT INTO equipment (name, description, type, weapon_subtype, rarity, level_requirement, atk_bonus, def_bonus, mana_bonus, speed_bonus, price, is_unlocked) VALUES
+INSERT INTO equipment (name, description, type, weapon_subtype, rarity, level_requirement, atk_bonus, def_bonus, mana_bonus, speed_bonus, price, is_unlocked, is_two_handed) VALUES
     -- Equipamentos Básicos (Nível 1) - TODOS DESBLOQUEADOS e mais baratos
-    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'sword', 'common', 1, 5, 0, 0, 1, 100, true),   -- Era 150, agora 100
-    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'dagger', 'common', 1, 3, 0, 0, 3, 80, true),    -- Era 120, agora 80
-    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'staff', 'common', 1, 2, 0, 5, 0, 90, true),          -- Era 140, agora 90
-    ('Armadura de Couro', 'Proteção básica de couro resistente', 'armor', NULL, 'common', 1, 0, 5, 0, 2, 100, true),   -- Era 150, agora 100
-    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'armor', NULL, 'common', 1, 0, 3, 5, 1, 85, true),     -- Era 130, agora 85
-    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'armor', NULL, 'common', 1, 0, 2, 0, 5, 80, true),     -- Era 120, agora 80
-    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'accessory', NULL, 'common', 1, 0, 0, 10, 0, 110, true),     -- Era 160, agora 110
-    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'accessory', NULL, 'common', 1, 0, 3, 3, 0, 100, true),  -- Era 150, agora 100
-    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'accessory', NULL, 'common', 1, 0, 0, 0, 5, 90, true),  -- Era 140, agora 90
+    ('Espada de Ferro', 'Uma espada básica mas confiável', 'weapon', 'sword', 'common', 1, 5, 0, 0, 1, 100, true, false),   -- Era 150, agora 100
+    ('Adaga de Bronze', 'Pequena e rápida, boa para iniciantes', 'weapon', 'dagger', 'common', 1, 3, 0, 0, 3, 80, true, false),    -- Era 120, agora 80
+    ('Varinha de Madeira', 'Canaliza magia básica', 'weapon', 'staff', 'common', 1, 2, 0, 5, 0, 90, true, false),          -- Era 140, agora 90
+    ('Armadura de Couro', 'Proteção básica de couro resistente', 'chest', NULL, 'common', 1, 0, 5, 0, 2, 100, true, false),   -- Era 150, agora 100
+    ('Túnica de Aprendiz', 'Vestimenta leve com encantamentos básicos', 'chest', NULL, 'common', 1, 0, 3, 5, 1, 85, true, false),     -- Era 130, agora 85
+    ('Vestes Leves', 'Roupas leves que não atrapalham movimentos', 'chest', NULL, 'common', 1, 0, 2, 0, 5, 80, true, false),     -- Era 120, agora 80
+    ('Anel de Mana', 'Um anel que aumenta o poder mágico', 'ring', NULL, 'common', 1, 0, 0, 10, 0, 110, true, false),     -- Era 160, agora 110
+    ('Amuleto de Proteção', 'Oferece uma leve proteção mágica', 'necklace', NULL, 'common', 1, 0, 3, 3, 0, 100, true, false),  -- Era 150, agora 100
+    ('Botas Velozes', 'Botas que melhoram levemente a agilidade', 'boots', NULL, 'common', 1, 0, 0, 0, 5, 90, true, false),  -- Era 140, agora 90
 
     -- Equipamentos Incomuns (Nível 5-8) - TODOS DESBLOQUEADOS PARA EARLY-MID GAME
-    ('Espada de Aço', 'Uma espada bem forjada', 'weapon', 'sword', 'uncommon', 5, 12, 0, 0, 2, 350, true),
-    ('Machado de Batalha', 'Arma pesada com boa capacidade de dano', 'weapon', 'axe', 'uncommon', 5, 15, 0, 0, -1, 380, true),
-    ('Cajado de Carvalho', 'Canaliza magia com eficiência', 'weapon', 'staff', 'uncommon', 5, 8, 0, 10, 0, 360, true),
-    ('Armadura de Malha', 'Armadura reforçada com anéis de metal', 'armor', NULL, 'uncommon', 5, 0, 12, 0, 0, 350, true),
-    ('Manto do Ocultista', 'Manto tecido com fios especiais para magia', 'armor', NULL, 'uncommon', 5, 0, 8, 12, 0, 370, true),
-    ('Armadura de Escamas', 'Proteção feita de escamas de répteis', 'armor', NULL, 'uncommon', 5, 0, 10, 0, 3, 330, true),
-    ('Amuleto Arcano', 'Amplifica o poder mágico', 'accessory', NULL, 'uncommon', 5, 0, 0, 20, 0, 390, true),
-    ('Anel de Força', 'Aumenta o poder físico do usuário', 'accessory', NULL, 'uncommon', 5, 8, 0, 0, 0, 380, true),
-    ('Braceletes de Defesa', 'Oferecem proteção adicional', 'accessory', NULL, 'uncommon', 5, 0, 8, 0, 3, 360, true),
+    ('Espada de Aço', 'Uma espada bem forjada', 'weapon', 'sword', 'uncommon', 5, 12, 0, 0, 2, 350, true, false),
+    ('Machado de Batalha', 'Arma pesada com boa capacidade de dano', 'weapon', 'axe', 'uncommon', 5, 15, 0, 0, -1, 380, true, true),
+    ('Cajado de Carvalho', 'Canaliza magia com eficiência', 'weapon', 'staff', 'uncommon', 5, 8, 0, 10, 0, 360, true, false),
+    ('Armadura de Malha', 'Armadura reforçada com anéis de metal', 'chest', NULL, 'uncommon', 5, 0, 12, 0, 0, 350, true, false),
+    ('Manto do Ocultista', 'Manto tecido com fios especiais para magia', 'chest', NULL, 'uncommon', 5, 0, 8, 12, 0, 370, true, false),
+    ('Armadura de Escamas', 'Proteção feita de escamas de répteis', 'chest', NULL, 'uncommon', 5, 0, 10, 0, 3, 330, true, false),
+    ('Amuleto Arcano', 'Amplifica o poder mágico', 'necklace', NULL, 'uncommon', 5, 0, 0, 20, 0, 390, true, false),
+    ('Anel de Força', 'Aumenta o poder físico do usuário', 'ring', NULL, 'uncommon', 5, 8, 0, 0, 0, 380, true, false),
+    ('Braceletes de Defesa', 'Oferecem proteção adicional', 'accessory', NULL, 'uncommon', 5, 0, 8, 0, 3, 360, true, false),
 
     -- Equipamentos Raros (Nível 10-13) - ALGUNS DESBLOQUEADOS PARA MID-GAME
-    ('Lâmina do Dragão', 'Forjada com escamas de dragão', 'weapon', 'sword', 'rare', 10, 25, 0, 0, 3, 800, true),
-    ('Adaga Élfica', 'Adaga élfica com lâmina encantada', 'weapon', 'dagger', 'rare', 10, 20, 0, 5, 10, 780, true),
-    ('Cetro Arcano', 'Poderosa arma mágica', 'weapon', 'staff', 'rare', 10, 15, 0, 25, 0, 850, true),
-    ('Armadura de Placas', 'Proteção completa de metal', 'armor', NULL, 'rare', 10, 0, 25, 0, -2, 800, true),
-    ('Manto Elemental', 'Manto imbuído com magia elemental', 'armor', NULL, 'rare', 10, 5, 15, 15, 0, 830, true),
-    ('Armadura Dracônica', 'Feita de escamas de dragão', 'armor', NULL, 'rare', 10, 5, 20, 0, 5, 850, false), -- Bloqueado
-    ('Coroa da Sabedoria', 'Aumenta significativamente o poder mágico', 'accessory', NULL, 'rare', 10, 5, 5, 30, 0, 900, true),
-    ('Amuleto do Guardião', 'Oferece grande proteção', 'accessory', NULL, 'rare', 10, 0, 20, 10, 0, 880, true),
-    ('Botas Aladas', 'Botas encantadas que aumentam a velocidade', 'accessory', NULL, 'rare', 10, 0, 0, 0, 25, 850, false), -- Bloqueado
+    ('Lâmina do Dragão', 'Forjada com escamas de dragão', 'weapon', 'sword', 'rare', 10, 25, 0, 0, 3, 800, true, false),
+    ('Adaga Élfica', 'Adaga élfica com lâmina encantada', 'weapon', 'dagger', 'rare', 10, 20, 0, 5, 10, 780, true, false),
+    ('Cetro Arcano', 'Poderosa arma mágica', 'weapon', 'staff', 'rare', 10, 15, 0, 25, 0, 850, true, false),
+    ('Armadura de Placas', 'Proteção completa de metal', 'chest', NULL, 'rare', 10, 0, 25, 0, -2, 800, true, false),
+    ('Manto Elemental', 'Manto imbuído com magia elemental', 'chest', NULL, 'rare', 10, 5, 15, 15, 0, 830, true, false),
+    ('Armadura Dracônica', 'Feita de escamas de dragão', 'chest', NULL, 'rare', 10, 5, 20, 0, 5, 850, false, false), -- Bloqueado
+    ('Coroa da Sabedoria', 'Aumenta significativamente o poder mágico', 'accessory', NULL, 'rare', 10, 5, 5, 30, 0, 900, true, false),
+    ('Amuleto do Guardião', 'Oferece grande proteção', 'necklace', NULL, 'rare', 10, 0, 20, 10, 0, 880, true, false),
+    ('Botas Aladas', 'Botas encantadas que aumentam a velocidade', 'boots', NULL, 'rare', 10, 0, 0, 0, 25, 850, false, false), -- Bloqueado
 
     -- Equipamentos Épicos (Nível 15-18) - MAIORIA BLOQUEADA
-    ('Espada do Abismo', 'Lâmina forjada nas profundezas do abismo', 'weapon', 'sword', 'epic', 15, 40, 0, 10, 5, 1800, false),
-    ('Martelo de Titã', 'Arma massiva com poder devastador', 'weapon', 'blunt', 'epic', 15, 50, 0, 0, -5, 1900, false),
-    ('Bastão de Necromante', 'Capaz de canalizar energia necrótica', 'weapon', 'staff', 'epic', 15, 30, 0, 40, 0, 2000, false),
-    ('Armadura de Mithril', 'Forjada com o raro metal mithril', 'armor', NULL, 'epic', 15, 5, 40, 0, 5, 1800, false),
-    ('Vestes do Arquimago', 'Vestes imbuídas com magia arcana', 'armor', NULL, 'epic', 15, 10, 25, 35, 0, 1900, false),
-    ('Pele de Behemoth', 'Armadura feita da pele de uma criatura lendária', 'armor', NULL, 'epic', 15, 10, 35, 0, 10, 2000, false),
-    ('Olho de Observador', 'Amuleto feito do olho de uma criatura mística', 'accessory', NULL, 'epic', 15, 15, 15, 25, 5, 2100, false),
-    ('Coração Petrificado', 'Concede resistência sobrenatural', 'accessory', NULL, 'epic', 15, 0, 35, 15, 0, 2000, false),
-    ('Asas Fantasmagóricas', 'Aumentam drasticamente a mobilidade', 'accessory', NULL, 'epic', 15, 10, 0, 10, 35, 1900, false),
+    ('Espada do Abismo', 'Lâmina forjada nas profundezas do abismo', 'weapon', 'sword', 'epic', 15, 40, 0, 10, 5, 1800, false, false),
+    ('Martelo de Titã', 'Arma massiva com poder devastador', 'weapon', 'blunt', 'epic', 15, 50, 0, 0, -5, 1900, false, true),
+    ('Bastão de Necromante', 'Capaz de canalizar energia necrótica', 'weapon', 'staff', 'epic', 15, 30, 0, 40, 0, 2000, false, true),
+    ('Armadura de Mithril', 'Forjada com o raro metal mithril', 'chest', NULL, 'epic', 15, 5, 40, 0, 5, 1800, false, false),
+    ('Vestes do Arquimago', 'Vestes imbuídas com magia arcana', 'chest', NULL, 'epic', 15, 10, 25, 35, 0, 1900, false, false),
+    ('Pele de Behemoth', 'Armadura feita da pele de uma criatura lendária', 'chest', NULL, 'epic', 15, 10, 35, 0, 10, 2000, false, false),
+    ('Olho de Observador', 'Amuleto feito do olho de uma criatura mística', 'accessory', NULL, 'epic', 15, 15, 15, 25, 5, 2100, false, false),
+    ('Coração Petrificado', 'Concede resistência sobrenatural', 'accessory', NULL, 'epic', 15, 0, 35, 15, 0, 2000, false, false),
+    ('Asas Fantasmagóricas', 'Aumentam drasticamente a mobilidade', 'accessory', NULL, 'epic', 15, 10, 0, 10, 35, 1900, false, false),
 
     -- Equipamentos Lendários (Nível 20) - TODOS BLOQUEADOS
-    ('Excalibur', 'A lendária espada do rei', 'weapon', 'sword', 'legendary', 20, 80, 20, 20, 20, 5000, false),
-    ('Mjolnir', 'Martelo forjado por deuses', 'weapon', 'blunt', 'legendary', 20, 100, 0, 0, 10, 5000, false),
-    ('Cajado de Merlin', 'O lendário cajado do maior mago', 'weapon', 'staff', 'legendary', 20, 50, 10, 80, 10, 5000, false),
-    ('Armadura Divina', 'Forjada nos céus, esta armadura é quase impenetrável', 'armor', NULL, 'legendary', 20, 20, 80, 20, 0, 5000, false),
-    ('Manto Celestial', 'Manto tecido com a própria luz das estrelas', 'armor', NULL, 'legendary', 20, 20, 50, 70, 10, 5000, false),
-    ('Pele de Leviatã', 'Armadura feita da pele do lendário leviatã', 'armor', NULL, 'legendary', 20, 30, 70, 0, 30, 5000, false),
-    ('Anel do Poder Supremo', 'Um anel para todos dominar', 'accessory', NULL, 'legendary', 20, 40, 40, 40, 0, 5000, false),
-    ('Amuleto do Tempo', 'Permite manipular o fluxo do tempo', 'accessory', NULL, 'legendary', 20, 20, 20, 20, 60, 5000, false),
-    ('Coração de Fênix', 'Concede poder de regeneração lendário', 'accessory', NULL, 'legendary', 20, 30, 30, 50, 20, 5000, false),
+    ('Excalibur', 'A lendária espada do rei', 'weapon', 'sword', 'legendary', 20, 80, 20, 20, 20, 5000, false, false),
+    ('Mjolnir', 'Martelo forjado por deuses', 'weapon', 'blunt', 'legendary', 20, 100, 0, 0, 10, 5000, false, true),
+    ('Cajado de Merlin', 'O lendário cajado do maior mago', 'weapon', 'staff', 'legendary', 20, 50, 10, 80, 10, 5000, false, true),
+    ('Armadura Divina', 'Forjada nos céus, esta armadura é quase impenetrável', 'chest', NULL, 'legendary', 20, 20, 80, 20, 0, 5000, false, false),
+    ('Manto Celestial', 'Manto tecido com a própria luz das estrelas', 'chest', NULL, 'legendary', 20, 20, 50, 70, 10, 5000, false, false),
+    ('Pele de Leviatã', 'Armadura feita da pele do lendário leviatã', 'chest', NULL, 'legendary', 20, 30, 70, 0, 30, 5000, false, false),
+    ('Anel do Poder Supremo', 'Um anel para todos dominar', 'ring', NULL, 'legendary', 20, 40, 40, 40, 0, 5000, false, false),
+    ('Amuleto do Tempo', 'Permite manipular o fluxo do tempo', 'necklace', NULL, 'legendary', 20, 20, 20, 20, 60, 5000, false, false),
+    ('Coração de Fênix', 'Concede poder de regeneração lendário', 'accessory', NULL, 'legendary', 20, 30, 30, 50, 20, 5000, false, false),
 
     -- =====================================
     -- ARMAS ADICIONAIS PARA PROGRESSÃO BALANCEADA
     -- =====================================
 
     -- MACHADOS - Completando a progressão
-    ('Machado de Ferro', 'Um machado simples mas eficaz', 'weapon', 'axe', 'common', 1, 6, 0, 0, 0, 110, true),
-    ('Machado de Guerra', 'Machado pesado usado em batalhas', 'weapon', 'axe', 'rare', 10, 28, 0, 0, 2, 820, true),
-    ('Machado Devastador', 'Machado gigante com poder destrutivo', 'weapon', 'axe', 'epic', 15, 45, 0, 0, -3, 1850, false),
-    ('Machado dos Berserkers', 'Lendário machado que aumenta a fúria em combate', 'weapon', 'axe', 'legendary', 20, 85, 10, 0, 15, 5000, false),
+    ('Machado de Ferro', 'Um machado simples mas eficaz', 'weapon', 'axe', 'common', 1, 6, 0, 0, 0, 110, true, false),
+    ('Machado de Guerra', 'Machado pesado usado em batalhas', 'weapon', 'axe', 'rare', 10, 28, 0, 0, 2, 820, true, true),
+    ('Machado Devastador', 'Machado gigante com poder destrutivo', 'weapon', 'axe', 'epic', 15, 45, 0, 0, -3, 1850, false, true),
+    ('Machado dos Berserkers', 'Lendário machado que aumenta a fúria em combate', 'weapon', 'axe', 'legendary', 20, 85, 10, 0, 15, 5000, false, true),
 
     -- ARMAS DE CONCUSSÃO (MAÇAS/MARTELOS) - Completando a progressão
-    ('Clava de Madeira', 'Uma clava simples mas pesada', 'weapon', 'blunt', 'common', 1, 7, 0, 0, -1, 95, true),
-    ('Maça de Ferro', 'Maça sólida com cabeça de ferro', 'weapon', 'blunt', 'uncommon', 5, 14, 0, 0, -1, 370, true),
-    ('Martelo de Guerra', 'Martelo pesado usado por guerreiros', 'weapon', 'blunt', 'rare', 10, 30, 0, 0, -2, 850, true),
-    ('Maça Divina', 'Maça abençoada pelos deuses', 'weapon', 'blunt', 'legendary', 20, 90, 15, 10, 5, 5000, false),
+    ('Clava de Madeira', 'Uma clava simples mas pesada', 'weapon', 'blunt', 'common', 1, 7, 0, 0, -1, 95, true, false),
+    ('Maça de Ferro', 'Maça sólida com cabeça de ferro', 'weapon', 'blunt', 'uncommon', 5, 14, 0, 0, -1, 370, true, false),
+    ('Martelo de Guerra', 'Martelo pesado usado por guerreiros', 'weapon', 'blunt', 'rare', 10, 30, 0, 0, -2, 850, true, true),
+    ('Maça Divina', 'Maça abençoada pelos deuses', 'weapon', 'blunt', 'legendary', 20, 90, 15, 10, 5, 5000, false, true),
 
     -- ADAGAS - Completando a progressão  
-    ('Punhal Afiado', 'Punhal pequeno mas mortal', 'weapon', 'dagger', 'uncommon', 5, 10, 0, 0, 8, 340, true),
-    ('Lâmina Sombria', 'Adaga forjada nas sombras', 'weapon', 'dagger', 'epic', 15, 35, 0, 5, 15, 1750, false),
-    ('Fang Lunar', 'Adaga lendária que brilha com luz da lua', 'weapon', 'dagger', 'legendary', 20, 65, 10, 15, 35, 5000, false),
+    ('Punhal Afiado', 'Punhal pequeno mas mortal', 'weapon', 'dagger', 'uncommon', 5, 10, 0, 0, 8, 340, true, false),
+    ('Lâmina Sombria', 'Adaga forjada nas sombras', 'weapon', 'dagger', 'epic', 15, 35, 0, 5, 15, 1750, false, false),
+    ('Fang Lunar', 'Adaga lendária que brilha com luz da lua', 'weapon', 'dagger', 'legendary', 20, 65, 10, 15, 35, 5000, false, false),
 
     -- ESPADAS ADICIONAIS - Mais variedade
-    ('Espada Curta', 'Espada ágil e manobrável', 'weapon', 'sword', 'uncommon', 5, 11, 0, 0, 5, 345, true),
-    ('Espada Élfica', 'Espada élfica com lâmina prateada', 'weapon', 'sword', 'rare', 10, 24, 0, 5, 8, 790, true),
-    ('Espada Flamejante', 'Espada imbuída com fogo eterno', 'weapon', 'sword', 'epic', 15, 42, 0, 8, 10, 1820, false),
+    ('Espada Curta', 'Espada ágil e manobrável', 'weapon', 'sword', 'uncommon', 5, 11, 0, 0, 5, 345, true, false),
+    ('Espada Élfica', 'Espada élfica com lâmina prateada', 'weapon', 'sword', 'rare', 10, 24, 0, 5, 8, 790, true, false),
+    ('Espada Flamejante', 'Espada imbuída com fogo eterno', 'weapon', 'sword', 'epic', 15, 42, 0, 8, 10, 1820, false, false),
 
     -- CAJADOS/VARINHAS ADICIONAIS - Mais variedade mágica
-    ('Varinha de Cristal', 'Varinha que amplifica magia básica', 'weapon', 'staff', 'uncommon', 5, 6, 0, 15, 2, 355, true),
-    ('Bastão Élfico', 'Bastão feito de madeira sagrada élfica', 'weapon', 'staff', 'rare', 10, 12, 0, 30, 3, 870, true),
-    ('Cajado das Tempestades', 'Cajado que controla o poder dos raios', 'weapon', 'staff', 'epic', 15, 28, 0, 45, 5, 2050, false);
+    ('Varinha de Cristal', 'Varinha que amplifica magia básica', 'weapon', 'staff', 'uncommon', 5, 6, 0, 15, 2, 355, true, false),
+    ('Bastão Élfico', 'Bastão feito de madeira sagrada élfica', 'weapon', 'staff', 'rare', 10, 12, 0, 30, 3, 870, true, false),
+    ('Cajado das Tempestades', 'Cajado que controla o poder dos raios', 'weapon', 'staff', 'epic', 15, 28, 0, 45, 5, 2050, false, true),
+
+    -- =============================
+    -- CAPACETES (HELMETS)
+    -- =============================
+    -- Common (Nível 1)
+    ('Capacete de Couro', 'Proteção básica para a cabeça', 'helmet', NULL, 'common', 1, 0, 3, 0, 0, 90, true, false),
+    ('Chapéu de Pano', 'Chapéu simples de tecido', 'helmet', NULL, 'common', 1, 0, 1, 3, 0, 75, true, false),
+    
+    -- Uncommon (Nível 5)
+    ('Elmo de Ferro', 'Proteção sólida de ferro forjado', 'helmet', NULL, 'uncommon', 5, 0, 8, 0, -1, 320, true, false),
+    ('Capuz Místico', 'Capuz que amplifica poder mágico', 'helmet', NULL, 'uncommon', 5, 0, 5, 8, 0, 340, true, false),
+    ('Capacete Alado', 'Capacete leve com detalhes de asas', 'helmet', NULL, 'uncommon', 5, 0, 6, 0, 2, 310, true, false),
+    
+    -- Rare (Nível 10)
+    ('Elmo de Placas', 'Elmo pesado de metal completo', 'helmet', NULL, 'rare', 10, 0, 15, 0, -2, 750, true, false),
+    ('Coroa Arcana', 'Coroa imbuída com poder mágico', 'helmet', NULL, 'rare', 10, 3, 10, 15, 0, 800, true, false),
+    ('Capacete Dracônico', 'Feito de escamas de dragão', 'helmet', NULL, 'rare', 10, 3, 12, 0, 3, 820, false, false),
+    
+    -- Epic (Nível 15)
+    ('Elmo de Mithril', 'Elmo lendário de mithril', 'helmet', NULL, 'epic', 15, 3, 25, 0, 3, 1700, false, false),
+    ('Diadema do Arquimago', 'Amplifica drasticamente o poder mágico', 'helmet', NULL, 'epic', 15, 5, 15, 25, 0, 1800, false, false),
+    ('Máscara do Vazio', 'Máscara que oculta a existência', 'helmet', NULL, 'epic', 15, 8, 20, 10, 8, 1850, false, false),
+    
+    -- Legendary (Nível 20)
+    ('Coroa dos Deuses', 'Coroa divina dos céus', 'helmet', NULL, 'legendary', 20, 15, 50, 40, 10, 5000, false, false),
+    ('Elmo do Leviatã', 'Elmo feito da carapaça do leviatã', 'helmet', NULL, 'legendary', 20, 20, 60, 0, 20, 5000, false, false),
+    ('Capuz Celestial', 'Capuz tecido com luz estelar', 'helmet', NULL, 'legendary', 20, 10, 30, 60, 15, 5000, false, false),
+
+    -- =============================
+    -- PERNEIRAS (LEGS)
+    -- =============================
+    -- Common (Nível 1)
+    ('Calças de Couro', 'Proteção básica para as pernas', 'legs', NULL, 'common', 1, 0, 3, 0, 1, 85, true, false),
+    ('Calças de Pano', 'Calças leves e confortáveis', 'legs', NULL, 'common', 1, 0, 1, 3, 2, 70, true, false),
+    
+    -- Uncommon (Nível 5)
+    ('Perneiras de Malha', 'Proteção de anéis metálicos entrelaçados', 'legs', NULL, 'uncommon', 5, 0, 8, 0, 0, 310, true, false),
+    ('Calças Reforçadas', 'Calças com reforços de couro', 'legs', NULL, 'uncommon', 5, 0, 6, 5, 1, 320, true, false),
+    ('Perneiras de Escamas', 'Feitas de escamas resistentes', 'legs', NULL, 'uncommon', 5, 0, 7, 0, 2, 300, true, false),
+    
+    -- Rare (Nível 10)
+    ('Perneiras de Placas', 'Proteção pesada de metal', 'legs', NULL, 'rare', 10, 0, 15, 0, -1, 730, true, false),
+    ('Calças Elementais', 'Imbuídas com magia elemental', 'legs', NULL, 'rare', 10, 3, 10, 12, 0, 780, true, false),
+    ('Perneiras Dracônicas', 'Feitas de escamas de dragão', 'legs', NULL, 'rare', 10, 3, 13, 0, 4, 800, false, false),
+    
+    -- Epic (Nível 15)
+    ('Perneiras de Mithril', 'Leves mas extremamente resistentes', 'legs', NULL, 'epic', 15, 3, 25, 0, 4, 1650, false, false),
+    ('Calças do Arquimago', 'Calças imbuídas com poder arcano', 'legs', NULL, 'epic', 15, 5, 15, 20, 0, 1750, false, false),
+    ('Perneiras Sombrias', 'Aumentam mobilidade nas sombras', 'legs', NULL, 'epic', 15, 8, 18, 8, 12, 1800, false, false),
+    
+    -- Legendary (Nível 20)
+    ('Perneiras Divinas', 'Forjadas nos céus pelos deuses', 'legs', NULL, 'legendary', 20, 15, 50, 15, 15, 5000, false, false),
+    ('Calças do Leviatã', 'Feitas da pele do lendário leviatã', 'legs', NULL, 'legendary', 20, 20, 55, 0, 25, 5000, false, false),
+    ('Perneiras Celestiais', 'Brilham com luz das estrelas', 'legs', NULL, 'legendary', 20, 10, 35, 50, 20, 5000, false, false),
+
+    -- =============================
+    -- ESCUDOS (SHIELDS)
+    -- =============================
+    -- Common (Nível 1)
+    ('Escudo de Madeira', 'Escudo simples mas funcional', 'shield', NULL, 'common', 1, 0, 4, 0, -1, 95, true, false),
+    ('Broquel de Bronze', 'Pequeno escudo de bronze', 'shield', NULL, 'common', 1, 1, 3, 0, 1, 85, true, false),
+    
+    -- Uncommon (Nível 5)
+    ('Escudo de Ferro', 'Escudo resistente de ferro', 'shield', NULL, 'uncommon', 5, 0, 10, 0, -1, 330, true, false),
+    ('Escudo Místico', 'Escudo com runas protetoras', 'shield', NULL, 'uncommon', 5, 0, 8, 5, 0, 350, true, false),
+    ('Escudo de Escamas', 'Feito de escamas de répteis', 'shield', NULL, 'uncommon', 5, 0, 9, 0, 1, 320, true, false),
+    
+    -- Rare (Nível 10)
+    ('Escudo de Torre', 'Grande escudo que cobre o corpo todo', 'shield', NULL, 'rare', 10, 0, 20, 0, -3, 770, true, false),
+    ('Égide Arcana', 'Escudo mágico que deflecte feitiços', 'shield', NULL, 'rare', 10, 0, 15, 10, 0, 820, true, false),
+    ('Escudo Dracônico', 'Forjado com escamas de dragão', 'shield', NULL, 'rare', 10, 2, 18, 0, 2, 850, false, false),
+    
+    -- Epic (Nível 15)
+    ('Escudo de Mithril', 'Leve mas incrivelmente resistente', 'shield', NULL, 'epic', 15, 0, 30, 0, 2, 1700, false, false),
+    ('Escudo Rúnico', 'Coberto com runas antigas de poder', 'shield', NULL, 'epic', 15, 3, 25, 15, 0, 1800, false, false),
+    ('Égide do Guardião', 'Protege contra todos os tipos de dano', 'shield', NULL, 'epic', 15, 5, 28, 10, 3, 1850, false, false),
+    
+    -- Legendary (Nível 20)
+    ('Escudo Divino', 'Abençoado pelos deuses', 'shield', NULL, 'legendary', 20, 10, 60, 20, 5, 5000, false, false),
+    ('Égide de Atena', 'Lendário escudo da deusa da guerra', 'shield', NULL, 'legendary', 20, 15, 65, 25, 10, 5000, false, false),
+    ('Escudo do Leviatã', 'Indestrutível como o próprio leviatã', 'shield', NULL, 'legendary', 20, 20, 70, 0, 15, 5000, false, false),
+
+    -- =============================
+    -- BOTAS ADICIONAIS
+    -- =============================
+    -- Common (Nível 1)
+    ('Sandálias de Couro', 'Calçado básico e leve', 'boots', NULL, 'common', 1, 0, 1, 0, 3, 75, true, false),
+    
+    -- Uncommon (Nível 5)
+    ('Botas de Couro Reforçado', 'Botas resistentes para combate', 'boots', NULL, 'uncommon', 5, 0, 5, 0, 5, 300, true, false),
+    ('Botas Élficas', 'Botas leves que silenciam os passos', 'boots', NULL, 'uncommon', 5, 0, 3, 3, 8, 330, true, false),
+    
+    -- Rare (Nível 10)
+    ('Botas de Ferro', 'Botas pesadas mas protetoras', 'boots', NULL, 'rare', 10, 0, 12, 0, -1, 700, true, false),
+    ('Botas do Vento', 'Concedem velocidade sobrenatural', 'boots', NULL, 'rare', 10, 0, 5, 5, 15, 850, true, false),
+    
+    -- Epic (Nível 15)
+    ('Botas de Mithril', 'Leves e extremamente duráveis', 'boots', NULL, 'epic', 15, 0, 20, 0, 12, 1600, false, false),
+    ('Botas do Viajante', 'Permitem atravessar qualquer terreno', 'boots', NULL, 'epic', 15, 3, 15, 8, 18, 1750, false, false),
+    
+    -- Legendary (Nível 20)
+    ('Botas Divinas', 'Concedem mobilidade divina', 'boots', NULL, 'legendary', 20, 10, 40, 20, 40, 5000, false, false),
+    ('Botas de Hermes', 'As lendárias botas aladas', 'boots', NULL, 'legendary', 20, 15, 35, 30, 50, 5000, false, false);
 
 -- =====================================
 -- MONSTROS

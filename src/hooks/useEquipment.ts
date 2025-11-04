@@ -39,24 +39,12 @@ export function useEquipment(characterId: string | undefined): UseEquipmentResul
     setError(null);
 
     try {
-      console.log(`[useEquipment] Carregando equipamentos para: ${characterId}`);
-
       // Carregar dados completos do equipamento
       const result = await EquipmentService.getCharacterEquipmentComplete(characterId);
 
       if (!result) {
         throw new Error('Falha ao carregar equipamentos');
       }
-
-      console.log(`[useEquipment] ✅ Equipamentos carregados:`, {
-        totalEquipment: result.allEquipment.length,
-        equippedCount: Object.keys(result.equippedSlots).length,
-        equippedSlots: Object.entries(result.equippedSlots).map(([slot, item]) => ({
-          slot,
-          name: item?.name,
-          type: item?.type,
-        })),
-      });
 
       setAllEquipment(result.allEquipment);
       setEquippedSlots(result.equippedSlots);
