@@ -85,6 +85,20 @@ async function networkFirst(request) {
     const networkResponse = await fetch(request);
 
     if (networkResponse.ok) {
+      // Verificar se o MIME type é válido para o tipo de requisição
+      const contentType = networkResponse.headers.get('content-type') || '';
+
+      // Se for um JS/CSS e recebeu HTML, algo errou (rota reescrita incorretamente)
+      const isJsRequest = request.url.includes('.js');
+      const isCssRequest = request.url.includes('.css');
+
+      if ((isJsRequest || isCssRequest) && contentType.includes('text/html')) {
+        console.warn('[SW] ⚠️ Recebido HTML para requisição de asset:', request.url);
+        // Tenta cache ou retorna erro
+        const cachedResponse = await caches.match(request);
+        return cachedResponse || new Response('Asset not available', { status: 404 });
+      }
+
       // Cache a resposta válida
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       cache.put(request, networkResponse.clone());
@@ -138,6 +152,15 @@ async function staleWhileRevalidate(request) {
 
   // Buscar versão atualizada em background
   const fetchPromise = fetch(request).then(response => {
+    // Validar MIME type para assets
+    const contentType = response.headers.get('content-type') || '';
+    const url = new URL(request.url).pathname;
+
+    if ((url.includes('.js') || url.includes('.css')) && contentType.includes('text/html')) {
+      console.warn('[SW] ⚠️ MIME type inválido em background sync:', url);
+      return response;
+    }
+
     if (response.ok) {
       cache.put(request, response.clone());
     }

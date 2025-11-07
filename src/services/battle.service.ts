@@ -672,7 +672,24 @@ export class BattleService {
   }
 
   /**
-   * Processar morte do jogador
+   * Processar morte do jogador (Permadeath System)
+   * 
+   * ✅ FLUXO DE PERMADEATH:
+   * 1. Batalha: Jogador perde todos os HP
+   *    → processPlayerDeath() é chamado
+   *    → CemeteryService.killCharacter() cria entrada em dead_characters
+   *    → GameState atualizado com mode='gameover', characterDeleted=true
+   * 
+   * 2. Tela Game-Over: Jogador confirma ("Aceitar Derrota")
+   *    → handleGameOver() chama CharacterService.markCharacterDead()
+   *    → mark_character_dead() RPC:
+   *       a) save_ranking_entry_on_death() - salva entrada no game_rankings
+   *       b) UPDATE characters SET is_alive=FALSE - marca como morto
+   * 
+   * 3. Resultado: Personagem persiste no BD para:
+   *    - Exibição no cemitério (dead_characters)
+   *    - Histórico no ranking (game_rankings com alive=FALSE)
+   *    - Nunca é deletado do banco
    */
   static async processPlayerDeath(
     gameState: GameState,

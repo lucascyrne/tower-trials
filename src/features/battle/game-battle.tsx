@@ -1028,7 +1028,6 @@ export default function GameBattle() {
         gameMessage={`${player?.name || 'Personagem'} foi derrotado no Andar ${player?.floor || 1}...`}
         highestFloor={player?.floor || 1}
         isCharacterDeleted={characterDeleted}
-        userId={user?.id}
         onReturnToCharacterSelect={handleReturnToCharacterSelect}
         onViewCemetery={handleViewCemetery}
       />

@@ -525,36 +525,29 @@ export class CharacterService {
   }
 
   /**
-   * OTIMIZADO: Deletar um personagem com integração Zustand
+   * OTIMIZADO: Marcar personagem como morto (Permadeath) sem deletar
+   * O personagem persiste para exibição no cemitério e ranking
    */
-  static async deleteCharacter(characterId: string): Promise<{ error: string | null }> {
+  static async markCharacterDead(characterId: string): Promise<{ error: string | null }> {
     try {
       const character = await this.getCharacter(characterId);
       let userId: string | null = null;
 
-      // Salvar no ranking histórico se tem progresso
-      if (character.success && character.data && character.data.floor > 0) {
+      if (character.success && character.data) {
         userId = character.data.user_id;
 
-        try {
-          const { error: rankingError } = await supabase.rpc('save_ranking_entry_on_death', {
-            p_character_id: characterId,
-          });
+        // Marcar como morto e salvar no ranking via função RPC
+        const { error: deathError } = await supabase.rpc('mark_character_dead', {
+          p_character_id: characterId,
+        });
 
-          if (rankingError) {
-            console.error('Erro ao salvar no ranking histórico:', rankingError);
-          }
-        } catch (rankingError) {
-          console.error('Erro ao salvar no ranking histórico:', rankingError);
+        if (deathError) {
+          console.error('[CharacterService] Erro ao marcar personagem como morto:', deathError);
+          throw deathError;
         }
+
+        console.log(`[CharacterService] Personagem ${characterId} marcado como morto`);
       }
-
-      // Deletar personagem
-      const { error } = await supabase.rpc('delete_character', {
-        p_character_id: characterId,
-      });
-
-      if (error) throw error;
 
       // Invalidar caches
       cache.invalidateCharacterCache(characterId);
@@ -562,13 +555,16 @@ export class CharacterService {
       if (userId) {
         cache.invalidateUserCache(userId);
       }
+
       return { error: null };
     } catch (error) {
       console.error(
-        '[CharacterService] Erro ao deletar personagem:',
+        '[CharacterService] Erro ao marcar personagem como morto:',
         error instanceof Error ? error.message : error
       );
-      return { error: error instanceof Error ? error.message : 'Erro ao deletar personagem' };
+      return {
+        error: error instanceof Error ? error.message : 'Erro ao marcar personagem como morto',
+      };
     }
   }
 

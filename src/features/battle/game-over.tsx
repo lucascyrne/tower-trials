@@ -3,8 +3,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Trophy, Skull, Eye, AlertTriangle } from 'lucide-react';
 import { useGame } from '@/hooks/useGame';
-import { useAuth } from '@/resources/auth/auth-hook';
-import { RankingService } from '@/services/ranking.service';
 import { CharacterService } from '@/services/character.service';
 import { toast } from 'sonner';
 import { formatLargeNumber } from '@/utils/number-utils';
@@ -15,7 +13,6 @@ export default function GameOver() {
   const { gameState } = useGame();
   const navigate = useNavigate();
   const { player, highestFloor, gameMessage } = gameState;
-  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -24,37 +21,27 @@ export default function GameOver() {
     '(max-width: 768px) and (orientation: landscape) and (max-height: 600px)'
   );
 
-  // Função para salvar a pontuação no ranking e deletar o personagem
+  // Função para marcar personagem como morto e salvar no ranking
   const handleGameOver = async () => {
     try {
       setIsSaving(true);
       setIsDeleting(true);
 
-      // Salvar pontuação no ranking com informações completas
-      const rankingResponse = await RankingService.saveScore({
-        player_name: player.name,
-        floor: player.floor - 1, // -1 porque o jogador morreu no andar atual
-        user_id: user?.id || '',
-        character_level: player.level,
-        character_gold: player.gold,
-        character_alive: false, // Personagem morreu
-      });
+      // ✅ PERMADEATH: Marcar personagem como morto
+      // Isso encapsula: salvamento no ranking + marcação no BD + invalidação de caches
+      const { error: deathError } = await CharacterService.markCharacterDead(player.id);
 
-      if (rankingResponse.error) {
-        throw new Error(rankingResponse.error);
-      }
-
-      // Deletar personagem (permadeath)
-      const { error: deleteError } = await CharacterService.deleteCharacter(player.id);
-      if (deleteError) {
-        throw new Error(deleteError);
+      if (deathError) {
+        throw new Error(deathError);
       }
 
       toast.success('Fim de jogo', {
-        description: 'Pontuação salva e personagem deletado permanentemente.',
+        description:
+          'Personagem perdido permanentemente. Suas estatísticas foram salvas no ranking.',
       });
 
-      navigate({ to: '/game/play', search: { character: player.id } });
+      // Redirecionar para seleção de personagem
+      navigate({ to: '/game/play' });
     } catch (error: unknown) {
       toast.error('Erro ao finalizar jogo', {
         description: error instanceof Error ? error.message : 'Erro desconhecido',
