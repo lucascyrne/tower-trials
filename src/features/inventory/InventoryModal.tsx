@@ -157,22 +157,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     if (!item.consumable) return;
 
     try {
-      const priceResponse = await ConsumableService.calculateConsumableSellPrice(
-        character.id,
-        item.consumable_id,
-        1
-      );
-
-      if (!priceResponse.success || !priceResponse.data?.canSell) {
-        toast.error('Este item não pode ser vendido');
-        return;
-      }
+      // ✅ Calcular preço localmente: 40% do preço de compra
+      const unitSellPrice = Math.floor(item.consumable.price * 0.4);
 
       setSellModal({
         isOpen: true,
         type: 'consumable',
         item,
-        sellPrice: priceResponse.data,
+        sellPrice: {
+          canSell: true,
+          availableQuantity: item.quantity,
+          unitSellPrice,
+          originalPrice: item.consumable.price,
+        },
       });
     } catch (error) {
       console.error('Erro ao calcular preço de venda:', error);
@@ -185,22 +182,19 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     if (!item.drop) return;
 
     try {
-      const priceResponse = await ConsumableService.calculateDropSellPrice(
-        character.id,
-        item.drop_id,
-        1
-      );
-
-      if (!priceResponse.success || !priceResponse.data?.canSell) {
-        toast.error('Este material não pode ser vendido');
-        return;
-      }
+      // ✅ Calcular preço localmente: valor direto do drop
+      const unitSellPrice = item.drop.value;
 
       setSellModal({
         isOpen: true,
         type: 'drop',
         item,
-        sellPrice: priceResponse.data,
+        sellPrice: {
+          canSell: true,
+          availableQuantity: item.quantity,
+          unitSellPrice,
+          originalPrice: item.drop.value,
+        },
       });
     } catch (error) {
       console.error('Erro ao calcular preço de venda:', error);

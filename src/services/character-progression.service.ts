@@ -272,4 +272,47 @@ export class CharacterProgressionService {
       };
     }
   }
+
+  /**
+   * ✅ NOVO: Recarregar progressão com cache invalidado
+   * Útil quando personagens morrem ou são criados
+   */
+  static async reloadUserProgression(
+    userId: string
+  ): Promise<ServiceResponse<CharacterProgressionInfo>> {
+    try {
+      // Chamar a RPC que agora filtra apenas personagens vivos
+      const { data, error } = await supabase
+        .rpc('get_user_character_progression', {
+          p_user_id: userId,
+        })
+        .single();
+
+      if (error) throw error;
+
+      const progressionData = data as CharacterProgressionInfo;
+
+      console.log('[CharacterProgressionService] Progressão recarregada:', {
+        total_level: progressionData.total_character_level,
+        character_count: progressionData.current_character_count,
+        max_slots: progressionData.max_character_slots,
+      });
+
+      return {
+        data: progressionData,
+        error: null,
+        success: true,
+      };
+    } catch (error) {
+      console.error(
+        '[CharacterProgressionService] Erro ao recarregar progressão:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao recarregar progressão',
+        success: false,
+      };
+    }
+  }
 }

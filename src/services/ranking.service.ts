@@ -81,6 +81,87 @@ export class RankingService {
   }
 
   /**
+   * ✅ NOVO: Salvar personagem vivo no ranking
+   * Usa a função save_alive_character_to_ranking que atualiza ou cria entrada
+   *
+   * @param characterId - ID do personagem
+   * @returns ID da entrada no ranking
+   */
+  static async saveAliveCharacterToRanking(characterId: string): Promise<ServiceResponse<string>> {
+    try {
+      if (!characterId) {
+        return {
+          data: '',
+          error: 'ID do personagem é obrigatório',
+        };
+      }
+
+      console.log('[RankingService] Salvando personagem vivo no ranking:', characterId);
+
+      const { data: result, error } = await supabase.rpc('save_alive_character_to_ranking', {
+        p_character_id: characterId,
+      });
+
+      if (error) throw error;
+
+      // Invalidar caches
+      this.invalidateGlobalCaches();
+
+      console.log('[RankingService] Personagem vivo salvo no ranking');
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Erro ao salvar personagem vivo no ranking:', error);
+      return {
+        data: '',
+        error: error instanceof Error ? error.message : 'Erro ao salvar no ranking',
+      };
+    }
+  }
+
+  /**
+   * ✅ NOVO: Salvar snapshot de personagem no ranking
+   * Cria sempre uma nova entrada (for snapshotting game sessions)
+   *
+   * @param characterId - ID do personagem
+   * @param isAlive - Se o personagem está vivo (true) ou morto (false)
+   * @returns ID da entrada no ranking
+   */
+  static async saveCharacterSnapshotToRanking(
+    characterId: string,
+    isAlive: boolean = true
+  ): Promise<ServiceResponse<string>> {
+    try {
+      if (!characterId) {
+        return {
+          data: '',
+          error: 'ID do personagem é obrigatório',
+        };
+      }
+
+      console.log('[RankingService] Salvando snapshot do personagem:', { characterId, isAlive });
+
+      const { data: result, error } = await supabase.rpc('save_character_snapshot_to_ranking', {
+        p_character_id: characterId,
+        p_is_alive: isAlive,
+      });
+
+      if (error) throw error;
+
+      // Invalidar caches
+      this.invalidateGlobalCaches();
+
+      console.log('[RankingService] Snapshot salvo no ranking');
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Erro ao salvar snapshot no ranking:', error);
+      return {
+        data: '',
+        error: error instanceof Error ? error.message : 'Erro ao salvar no ranking',
+      };
+    }
+  }
+
+  /**
    * Salvar entrada no ranking
    * @param data - Dados do ranking. Se não fornecido, retorna erro (use hook para obter do store)
    */

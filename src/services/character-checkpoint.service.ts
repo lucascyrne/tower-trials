@@ -128,7 +128,7 @@ export class CharacterCheckpointService {
   ): Promise<ServiceResponse<null>> {
     try {
       // ✅ Validar se o checkpoint é válido
-      if (!this.isValidCheckpointFloor(checkpointFloor)) {
+      if (!CharacterCheckpointService.isValidCheckpointFloor(checkpointFloor)) {
         return { data: null, error: 'Checkpoint inválido', success: false };
       }
 

@@ -19,7 +19,6 @@ import {
   User,
   Gem,
   Play,
-  TrendingUp,
   Eye,
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
@@ -601,19 +600,6 @@ export const CharacterInfoCard = memo(function CharacterInfoCard({
                 );
               })}
             </div>
-
-            {/* Pontos de atributo disponíveis */}
-            {Boolean(player.attribute_points && player.attribute_points > 0) && (
-              <div className="bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-medium text-yellow-300">Pontos Disponíveis</span>
-                  </div>
-                  <p className="text-lg font-bold text-yellow-400">{player.attribute_points}</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

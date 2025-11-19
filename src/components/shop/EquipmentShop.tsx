@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { type Equipment } from '@/models/equipment.model';
-import { type Consumable } from '@/models/consumable.model';
+import { type Equipment, type CharacterEquipment } from '@/models/equipment.model';
+import { type Consumable, type CharacterConsumable } from '@/models/consumable.model';
+import { type CharacterDrop } from '@/models/monster.model';
 import { EquipmentService } from '@/services/equipment.service';
 import { ConsumableService } from '@/services/consumable.service';
 import { type Character } from '@/models/character.model';
@@ -18,6 +19,11 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
   const [availableConsumables, setAvailableConsumables] = useState<Consumable[]>([]);
   const [loading, setLoading] = useState(true);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  
+  // Estados para itens vendáveis
+  const [characterEquipment, setCharacterEquipment] = useState<CharacterEquipment[]>([]);
+  const [characterConsumables, setCharacterConsumables] = useState<CharacterConsumable[]>([]);
+  const [characterDrops, setCharacterDrops] = useState<CharacterDrop[]>([]);
 
   const loadShopItems = React.useCallback(
     async (preserveScroll: boolean = false) => {
@@ -87,9 +93,26 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
     [character.level]
   );
 
+  const loadPlayerInventory = React.useCallback(async () => {
+    try {
+      const [equipmentData, consumablesRes, dropsRes] = await Promise.all([
+        EquipmentService.getCharacterEquipment(character.id),
+        ConsumableService.getCharacterConsumables(character.id),
+        ConsumableService.getCharacterDrops(character.id),
+      ]);
+
+      setCharacterEquipment(equipmentData || []);
+      setCharacterConsumables(consumablesRes.success ? consumablesRes.data || [] : []);
+      setCharacterDrops(dropsRes.success ? dropsRes.data || [] : []);
+    } catch (error) {
+      console.error('Erro ao carregar inventário do jogador:', error);
+    }
+  }, [character.id]);
+
   useEffect(() => {
     loadShopItems();
-  }, [loadShopItems]);
+    loadPlayerInventory();
+  }, [loadShopItems, loadPlayerInventory]);
 
   const handleEquipmentPurchase = async (equipment: Equipment) => {
     if (character.gold < equipment.price) {
@@ -140,6 +163,74 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
     // não afeta os itens disponíveis na loja
   };
 
+  const handleSellEquipment = async (item: CharacterEquipment) => {
+    if (!item.equipment) return;
+
+    try {
+      const result = await EquipmentService.sellEquipment(character.id, item.equipment.id);
+
+      if (result.success && result.data?.newGold !== undefined) {
+        toast.success(`${item.equipment.name} vendido com sucesso!`);
+        onPurchase(result.data.newGold);
+        // Recarregar inventário para atualizar a lista
+        await loadPlayerInventory();
+      } else {
+        toast.error(result.error || 'Erro ao vender equipamento');
+      }
+    } catch (error) {
+      console.error('Erro ao vender equipamento:', error);
+      toast.error('Erro ao vender equipamento');
+    }
+  };
+
+  const handleSellConsumable = async (item: CharacterConsumable, quantity: number) => {
+    if (!item.consumable) return;
+
+    try {
+      const result = await ConsumableService.sellConsumablesBatch(character.id, [
+        { consumable_id: item.consumable_id, quantity },
+      ]);
+
+      if (result.success && result.data) {
+        toast.success(
+          `Vendido ${quantity}x ${item.consumable.name} por ${result.data.totalGoldEarned} gold!`
+        );
+        onPurchase(result.data.newGold);
+        // Recarregar inventário para atualizar a lista
+        await loadPlayerInventory();
+      } else {
+        toast.error(result.error || 'Erro ao vender consumível');
+      }
+    } catch (error) {
+      console.error('Erro ao vender consumível:', error);
+      toast.error('Erro ao vender consumível');
+    }
+  };
+
+  const handleSellDrop = async (item: CharacterDrop, quantity: number) => {
+    if (!item.drop) return;
+
+    try {
+      const result = await ConsumableService.sellDropsBatch(character.id, [
+        { drop_id: item.drop_id, quantity },
+      ]);
+
+      if (result.success && result.data) {
+        toast.success(
+          `Vendido ${quantity}x ${item.drop.name} por ${result.data.totalGoldEarned} gold!`
+        );
+        onPurchase(result.data.newGold);
+        // Recarregar inventário para atualizar a lista
+        await loadPlayerInventory();
+      } else {
+        toast.error(result.error || 'Erro ao vender material');
+      }
+    } catch (error) {
+      console.error('Erro ao vender material:', error);
+      toast.error('Erro ao vender material');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -158,6 +249,12 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         onEquipmentPurchase={handleEquipmentPurchase}
         onConsumablePurchase={handleConsumablePurchase}
         onOpenInventory={() => setInventoryOpen(true)}
+        characterEquipment={characterEquipment}
+        characterConsumables={characterConsumables}
+        characterDrops={characterDrops}
+        onSellEquipment={handleSellEquipment}
+        onSellConsumable={handleSellConsumable}
+        onSellDrop={handleSellDrop}
       />
 
       <InventoryModal

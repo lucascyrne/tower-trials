@@ -115,6 +115,20 @@ export const useCharacterStore = create<CharacterStore>()(
             return;
           }
 
+          // ✅ CRÍTICO: Se o personagem selecionado está morto, limpá-lo antes de recarregar
+          if (state.selectedCharacter?.is_alive === false) {
+            console.log(
+              `[CharacterStore] Personagem selecionado está morto, limpando seleção`
+            );
+            set(
+              produce(draft => {
+                draft.selectedCharacterId = null;
+                draft.selectedCharacterName = null;
+                draft.selectedCharacter = null;
+              })
+            );
+          }
+
           try {
             set(
               produce(draft => {

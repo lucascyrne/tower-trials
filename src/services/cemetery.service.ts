@@ -81,6 +81,15 @@ export class CemeteryService {
         // Limpar personagem selecionado após um delay para permitir visualização
         setTimeout(() => {
           characterStore.setSelectedCharacter(null);
+          characterStore.clearSelection();
+          
+          // ✅ CRÍTICO: Invalidar caches de progressão para atualizar contagem de slots
+          const userId = characterStore.selectedCharacter?.user_id || characterStore.currentUserId;
+          if (userId) {
+            characterStore.invalidateUserListCache();
+            characterStore.invalidateCharacterCache(targetCharacterId);
+          }
+          
           CacheService.clearStoresOnly();
         }, 3000);
       }

@@ -134,14 +134,18 @@ interface CharacterFullStatsRPC {
 
 export class CharacterService {
   /**
-   * OTIMIZADO: Buscar todos os personagens do usuário com integração Zustand
+   * OTIMIZADO: Buscar apenas personagens VIVOS do usuário
+   * ✅ CORREÇÃO: Filtrar personagens mortos (is_alive = FALSE)
+   * Personagens mortos devem aparecer apenas no cemitério, não na seleção ativa
    */
   static async getUserCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
     try {
       // Verificar cache interno
       const cachedResult = cache.getCachedUserCharacters(userId);
       if (cachedResult.isValid) {
-        return { data: cachedResult.characters, error: null, success: true };
+        // Filtrar apenas personagens VIVOS do cache
+        const aliveCharacters = cachedResult.characters.filter(c => c.is_alive !== false);
+        return { data: aliveCharacters, error: null, success: true };
       }
 
       const { data, error } = await supabase.rpc('get_user_characters', {
@@ -150,10 +154,18 @@ export class CharacterService {
 
       if (error) throw error;
 
-      const characters = data as Character[];
+      let characters = data as Character[];
 
-      // Atualizar cache interno
+      // ✅ CRÍTICO: Filtrar APENAS personagens vivos (is_alive = TRUE ou undefined para compatibilidade)
+      // Personagens com is_alive = FALSE não devem aparecer na seleção de personagens ativa
+      characters = characters.filter(c => c.is_alive !== false);
+
+      // Atualizar cache interno com personagens filtrados
       cache.setCachedUserCharacters(userId, characters);
+
+      console.log(
+        `[CharacterService] Carregados ${characters.length} personagens vivos para ${userId}`
+      );
 
       return { data: characters, error: null, success: true };
     } catch (error) {
@@ -525,6 +537,41 @@ export class CharacterService {
   }
 
   /**
+   * ✅ NOVO: Buscar personagens MORTOS do usuário para exibição no cemitério
+   * Apenas personagens com is_alive = FALSE são retornados
+   */
+  static async getDeadCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_alive', false)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+
+      const characters = (data || []) as Character[];
+
+      console.log(
+        `[CharacterService] Carregados ${characters.length} personagens mortos para ${userId}`
+      );
+
+      return { data: characters, error: null, success: true };
+    } catch (error) {
+      console.error(
+        '[CharacterService] Erro ao buscar personagens mortos:',
+        error instanceof Error ? error.message : error
+      );
+      return {
+        data: null,
+        error: error instanceof Error ? error.message : 'Erro ao buscar personagens mortos',
+        success: false,
+      };
+    }
+  }
+
+  /**
    * OTIMIZADO: Marcar personagem como morto (Permadeath) sem deletar
    * O personagem persiste para exibição no cemitério e ranking
    */
@@ -804,6 +851,7 @@ export class CharacterService {
   static updateLastActivity = CharacterHealingService.updateLastActivity;
   static getUserCharacterProgression = CharacterProgressionService.getUserCharacterProgression;
   static checkCharacterLimit = CharacterProgressionService.checkCharacterLimit;
+  static reloadUserProgression = CharacterProgressionService.reloadUserProgression;
   static grantSecureXP = CharacterProgressionService.grantSecureXP;
   static grantSecureGold = CharacterProgressionService.grantSecureGold;
   static addSkillXp = CharacterProgressionService.addSkillXp;

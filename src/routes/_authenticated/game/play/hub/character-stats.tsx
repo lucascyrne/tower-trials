@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -356,16 +355,6 @@ function CharacterStatsPage() {
               <p className="text-sm text-muted-foreground">Gerencie os stats do seu personagem</p>
             </div>
           </div>
-
-          {characterStats.attribute_points > 0 && (
-            <Badge
-              variant="outline"
-              className="bg-yellow-500/10 border-yellow-500/30 text-yellow-400 px-3 py-1"
-            >
-              <Star className="h-4 w-4 mr-2" />
-              {availablePoints} pontos disponíveis
-            </Badge>
-          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-visible">

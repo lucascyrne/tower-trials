@@ -39,6 +39,12 @@ export function CharacterSelect() {
 
   useEffect(() => {
     if (user?.id) {
+      // ✅ CRÍTICO: Sempre recarregar ao retornar ao componente
+      // Garante que personagens mortos sejam removidos da seleção
+      setCharacters([]);
+      setProgression(null);
+      setSelectedCharacter(null);
+      
       loadCharacters();
       loadProgression();
     }

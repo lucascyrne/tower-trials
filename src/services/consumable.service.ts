@@ -671,31 +671,89 @@ export class ConsumableService {
         `[ConsumableService] Vendendo ${consumableSales.length} tipos de consumíveis em lote para: ${characterId}`
       );
 
-      const { data, error } = await supabase
-        .rpc('sell_character_consumables_batch', {
-          p_character_id: characterId,
-          p_consumable_sales: consumableSales,
-        })
+      // Passo 1: Buscar informações dos consumíveis
+      const consumableIds = consumableSales.map(cs => cs.consumable_id);
+      const { data: consumablesData, error: consumablesError } = await supabase
+        .from('consumables')
+        .select('id, price')
+        .in('id', consumableIds);
+
+      if (consumablesError) throw consumablesError;
+
+      // Criar mapa de preços
+      const consumablePricesMap = new Map(consumablesData?.map(c => [c.id, c.price]) || []);
+
+      // Passo 2: Calcular total a ganhar (40% do preço de compra)
+      let totalGoldEarned = 0;
+      for (const sale of consumableSales) {
+        const consumablePrice = consumablePricesMap.get(sale.consumable_id) || 0;
+        const sellPrice = Math.floor(consumablePrice * 0.4);
+        totalGoldEarned += sellPrice * sale.quantity;
+      }
+
+      // Passo 3: Buscar personagem atual
+      const { data: character, error: charError } = await supabase
+        .from('characters')
+        .select('id, gold')
+        .eq('id', characterId)
         .single();
 
-      if (error) throw error;
+      if (charError) throw charError;
 
-      const result = data as {
-        total_gold_earned: number;
-        items_sold: number;
-        new_character_gold: number;
-      };
+      const newGold = (character?.gold || 0) + totalGoldEarned;
+
+      // Passo 4: Atualizar gold do personagem
+      const { error: updateError } = await supabase
+        .from('characters')
+        .update({ gold: newGold })
+        .eq('id', characterId);
+
+      if (updateError) throw updateError;
+
+      // Passo 5: Atualizar quantidade de consumíveis no inventário
+      for (const sale of consumableSales) {
+        // Buscar quantidade atual
+        const { data: currentConsumable, error: fetchError } = await supabase
+          .from('character_consumables')
+          .select('quantity')
+          .eq('character_id', characterId)
+          .eq('consumable_id', sale.consumable_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const newQuantity = (currentConsumable?.quantity || 0) - sale.quantity;
+
+        if (newQuantity <= 0) {
+          // Deletar se quantidade ficar zero ou negativa
+          const { error: deleteError } = await supabase
+            .from('character_consumables')
+            .delete()
+            .eq('character_id', characterId)
+            .eq('consumable_id', sale.consumable_id);
+
+          if (deleteError) throw deleteError;
+        } else {
+          // Atualizar quantidade
+          const { error: updateQtyError } = await supabase
+            .from('character_consumables')
+            .update({ quantity: newQuantity })
+            .eq('character_id', characterId)
+            .eq('consumable_id', sale.consumable_id);
+
+          if (updateQtyError) throw updateQtyError;
+        }
+      }
 
       console.log(
-        `[ConsumableService] Venda em lote concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
+        `[ConsumableService] Venda em lote concluída: ${consumableSales.length} tipos vendidos por ${totalGoldEarned} gold`
       );
 
-      // ✅ REFATORADO: Service retorna dados, hook atualiza stores
       return {
         data: {
-          totalGoldEarned: result.total_gold_earned,
-          itemsSold: result.items_sold,
-          newGold: result.new_character_gold,
+          totalGoldEarned,
+          itemsSold: consumableSales.length,
+          newGold,
         },
         error: null,
         success: true,
@@ -712,6 +770,7 @@ export class ConsumableService {
 
   /**
    * ✅ NOVO: Vender materiais (drops) em lote
+   * Implementação local sem RPC para vender drops
    */
   static async sellDropsBatch(
     characterId: string,
@@ -722,31 +781,88 @@ export class ConsumableService {
         `[ConsumableService] Vendendo ${dropSales.length} tipos de materiais em lote para: ${characterId}`
       );
 
-      const { data, error } = await supabase
-        .rpc('sell_character_drops_batch', {
-          p_character_id: characterId,
-          p_drop_sales: dropSales,
-        })
+      // Passo 1: Buscar informações dos drops
+      const dropIds = dropSales.map(ds => ds.drop_id);
+      const { data: dropsData, error: dropsError } = await supabase
+        .from('monster_drops')
+        .select('id, value')
+        .in('id', dropIds);
+
+      if (dropsError) throw dropsError;
+
+      // Criar mapa de valores
+      const dropValuesMap = new Map(dropsData?.map(d => [d.id, d.value]) || []);
+
+      // Passo 2: Calcular total a ganhar
+      let totalGoldEarned = 0;
+      for (const sale of dropSales) {
+        const dropValue = dropValuesMap.get(sale.drop_id) || 0;
+        totalGoldEarned += dropValue * sale.quantity;
+      }
+
+      // Passo 3: Buscar personagem atual
+      const { data: character, error: charError } = await supabase
+        .from('characters')
+        .select('id, gold')
+        .eq('id', characterId)
         .single();
 
-      if (error) throw error;
+      if (charError) throw charError;
 
-      const result = data as {
-        total_gold_earned: number;
-        items_sold: number;
-        new_character_gold: number;
-      };
+      const newGold = (character?.gold || 0) + totalGoldEarned;
+
+      // Passo 4: Atualizar gold do personagem
+      const { error: updateError } = await supabase
+        .from('characters')
+        .update({ gold: newGold })
+        .eq('id', characterId);
+
+      if (updateError) throw updateError;
+
+      // Passo 5: Atualizar quantidade de drops no inventário
+      for (const sale of dropSales) {
+        // Buscar quantidade atual
+        const { data: currentDrop, error: fetchError } = await supabase
+          .from('character_drops')
+          .select('quantity')
+          .eq('character_id', characterId)
+          .eq('drop_id', sale.drop_id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const newQuantity = (currentDrop?.quantity || 0) - sale.quantity;
+
+        if (newQuantity <= 0) {
+          // Deletar se quantidade ficar zero ou negativa
+          const { error: deleteError } = await supabase
+            .from('character_drops')
+            .delete()
+            .eq('character_id', characterId)
+            .eq('drop_id', sale.drop_id);
+
+          if (deleteError) throw deleteError;
+        } else {
+          // Atualizar quantidade
+          const { error: updateError } = await supabase
+            .from('character_drops')
+            .update({ quantity: newQuantity })
+            .eq('character_id', characterId)
+            .eq('drop_id', sale.drop_id);
+
+          if (updateError) throw updateError;
+        }
+      }
 
       console.log(
-        `[ConsumableService] Venda de materiais concluída: ${result.items_sold} itens vendidos por ${result.total_gold_earned} gold`
+        `[ConsumableService] Venda de materiais concluída: ${dropSales.length} tipos vendidos por ${totalGoldEarned} gold`
       );
 
-      // ✅ REFATORADO: Service retorna dados, hook atualiza stores
       return {
         data: {
-          totalGoldEarned: result.total_gold_earned,
-          itemsSold: result.items_sold,
-          newGold: result.new_character_gold,
+          totalGoldEarned,
+          itemsSold: dropSales.length,
+          newGold,
         },
         error: null,
         success: true,
@@ -756,120 +872,6 @@ export class ConsumableService {
       return {
         data: null,
         error: extractErrorMessage(error, 'Erro ao vender materiais'),
-        success: false,
-      };
-    }
-  }
-
-  /**
-   * ✅ NOVO: Calcular preço de venda de consumível
-   */
-  static async calculateConsumableSellPrice(
-    characterId: string,
-    consumableId: string,
-    quantity: number = 1
-  ): Promise<
-    ServiceResponse<{
-      canSell: boolean;
-      availableQuantity: number;
-      unitSellPrice: number;
-      totalSellPrice: number;
-      originalPrice: number;
-    }>
-  > {
-    try {
-      const { data, error } = await supabase
-        .rpc('calculate_sell_prices', {
-          p_character_id: characterId,
-          p_item_type: 'consumable',
-          p_item_id: consumableId,
-          p_quantity: quantity,
-        })
-        .single();
-
-      if (error) throw error;
-
-      const result = data as {
-        can_sell: boolean;
-        available_quantity: number;
-        unit_sell_price: number;
-        total_sell_price: number;
-        original_price: number;
-      };
-
-      return {
-        data: {
-          canSell: result.can_sell,
-          availableQuantity: result.available_quantity,
-          unitSellPrice: result.unit_sell_price,
-          totalSellPrice: result.total_sell_price,
-          originalPrice: result.original_price,
-        },
-        error: null,
-        success: true,
-      };
-    } catch (error) {
-      console.error('[ConsumableService] Erro ao calcular preço de venda:', error);
-      return {
-        data: null,
-        error: extractErrorMessage(error, 'Erro ao calcular preço'),
-        success: false,
-      };
-    }
-  }
-
-  /**
-   * ✅ NOVO: Calcular preço de venda de material
-   */
-  static async calculateDropSellPrice(
-    characterId: string,
-    dropId: string,
-    quantity: number = 1
-  ): Promise<
-    ServiceResponse<{
-      canSell: boolean;
-      availableQuantity: number;
-      unitSellPrice: number;
-      totalSellPrice: number;
-      originalPrice: number;
-    }>
-  > {
-    try {
-      const { data, error } = await supabase
-        .rpc('calculate_sell_prices', {
-          p_character_id: characterId,
-          p_item_type: 'drop',
-          p_item_id: dropId,
-          p_quantity: quantity,
-        })
-        .single();
-
-      if (error) throw error;
-
-      const result = data as {
-        can_sell: boolean;
-        available_quantity: number;
-        unit_sell_price: number;
-        total_sell_price: number;
-        original_price: number;
-      };
-
-      return {
-        data: {
-          canSell: result.can_sell,
-          availableQuantity: result.available_quantity,
-          unitSellPrice: result.unit_sell_price,
-          totalSellPrice: result.total_sell_price,
-          originalPrice: result.original_price,
-        },
-        error: null,
-        success: true,
-      };
-    } catch (error) {
-      console.error('[ConsumableService] Erro ao calcular preço de venda:', error);
-      return {
-        data: null,
-        error: extractErrorMessage(error, 'Erro ao calcular preço'),
         success: false,
       };
     }

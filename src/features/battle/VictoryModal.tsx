@@ -207,7 +207,7 @@ export function VictoryModal({
                 </div>
 
                 {/* Level Up Section */}
-                {leveledUp && newLevel && hasAttributePoints && (
+                {leveledUp && newLevel && (
                   <motion.div
                     className={`rounded-lg bg-gradient-to-r from-primary/20 to-primary/30 text-center ${
                       isMobileLandscape ? 'p-2 mt-2' : 'p-4 mt-2'
@@ -262,6 +262,40 @@ export function VictoryModal({
                       >
                         Defesa +1
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ✅ NOVO: Seção de Pontos de Atributo Pendentes */}
+                {hasAttributePoints && !leveledUp && (
+                  <motion.div
+                    className={`rounded-lg bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-center border border-purple-500/30 ${
+                      isMobileLandscape ? 'p-2 mt-2' : 'p-4 mt-2'
+                    }`}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.9, type: 'spring' }}
+                  >
+                    <div
+                      className={`flex items-center gap-2 ${
+                        isMobileLandscape ? 'justify-start mb-1' : 'justify-center mb-2'
+                      }`}
+                    >
+                      <TrendingUp
+                        className={`text-purple-400 ${isMobileLandscape ? 'h-4 w-4' : 'h-5 w-5'}`}
+                      />
+                      <div className={`font-bold ${isMobileLandscape ? 'text-sm' : 'text-lg'}`}>
+                        Pontos de Atributo Disponíveis
+                      </div>
+                    </div>
+
+                    <div
+                      className={`opacity-90 ${
+                        isMobileLandscape ? 'text-xs mb-2' : 'text-sm mb-2'
+                      }`}
+                    >
+                      Você tem pontos para distribuir! Clique em "Distribuir Pontos" para fortalecer
+                      seu personagem.
                     </div>
                   </motion.div>
                 )}

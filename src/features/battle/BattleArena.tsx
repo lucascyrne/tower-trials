@@ -498,16 +498,9 @@ export function BattleArena({
                       {player.hp}/{player.max_hp}
                     </span>
                   </div>
-                  <div className="relative">
-                    <Progress
-                      value={playerHpPercentage}
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)',
-                      }}
-                    />
+                  <div className="relative h-2 md:h-3 bg-black/20 rounded-full overflow-hidden">
                     <div
-                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                      className={`h-full transition-all duration-300 ${
                         playerHpPercentage >= 70
                           ? 'bg-green-500'
                           : playerHpPercentage >= 40
@@ -531,16 +524,9 @@ export function BattleArena({
                       {player.mana}/{player.max_mana}
                     </span>
                   </div>
-                  <div className="relative">
-                    <Progress
-                      value={playerManaPercentage}
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)',
-                      }}
-                    />
+                  <div className="relative h-2 md:h-3 bg-black/20 rounded-full overflow-hidden">
                     <div
-                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                      className={`h-full transition-all duration-300 ${
                         playerManaPercentage >= 70
                           ? 'bg-blue-500'
                           : playerManaPercentage >= 40
@@ -1041,16 +1027,9 @@ export function BattleArena({
                       {currentEnemy.hp}/{currentEnemy.maxHp}
                     </span>
                   </div>
-                  <div className="relative">
-                    <Progress
-                      value={enemyHpPercentage}
-                      className="h-2 md:h-3"
-                      style={{
-                        background: 'rgba(0,0,0,0.2)',
-                      }}
-                    />
+                  <div className="relative h-2 md:h-3 bg-black/20 rounded-full overflow-hidden">
                     <div
-                      className={`absolute top-0 left-0 h-2 md:h-3 rounded-full transition-all duration-300 ${
+                      className={`h-full transition-all duration-300 ${
                         enemyHpPercentage >= 70
                           ? 'bg-green-500'
                           : enemyHpPercentage >= 40

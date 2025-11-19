@@ -748,6 +748,9 @@ export default function GameBattle() {
   }, [navigate]);
 
   const handleReturnToCharacterSelect = useCallback(() => {
+    // ✅ PERMADEATH: Ao retornar para seleção de personagens, o personagem morto
+    // foi marcado com is_alive=FALSE e não aparecerá mais na seleção ativa.
+    // Ele pode ser visualizado no Cemitério via CemeteryService.
     navigate({ to: '/game/play' });
   }, [navigate]);
 
@@ -776,6 +779,10 @@ export default function GameBattle() {
       });
 
       try {
+        // ✅ NOVO: Salvar snapshot do personagem vivo no ranking
+        const { RankingService } = await import('@/services/ranking.service');
+        await RankingService.saveAliveCharacterToRanking(currentPlayer.id);
+
         await CharacterService.updateCharacterFloor(currentPlayer.id, 1);
         console.log('[GameBattle] Andar resetado para 1');
       } catch (updateError) {
