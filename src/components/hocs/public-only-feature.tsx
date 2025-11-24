@@ -84,7 +84,16 @@ function PublicOnlyFeature({ children }: Props): React.ReactNode {
       return;
     }
 
-    // Redirecionar usuários autenticados para área protegida
+    // Permitir acesso às páginas públicas (home, guide) mesmo quando autenticado
+    if (
+      location.pathname === '/home' ||
+      location.pathname === '/guide' ||
+      location.pathname === '/guide/'
+    ) {
+      return;
+    }
+
+    // Redirecionar usuários autenticados para área protegida (apenas nas páginas de auth)
     if (user && !redirectAttempted.current && !alreadyLoggedOut.current) {
       redirectAttempted.current = true;
 

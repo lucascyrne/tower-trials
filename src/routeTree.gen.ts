@@ -15,11 +15,13 @@ import { Route as PublicImport } from './routes/_public';
 import { Route as AuthenticatedImport } from './routes/_authenticated';
 import { Route as IndexImport } from './routes/index';
 import { Route as PublicLogoutImport } from './routes/_public/logout';
+import { Route as PublicHomeImport } from './routes/_public/home';
 import { Route as PublicAuthImport } from './routes/_public/auth';
 import { Route as AuthenticatedUsersImport } from './routes/_authenticated/users';
 import { Route as AuthenticatedProfileImport } from './routes/_authenticated/profile';
 import { Route as AuthenticatedGameImport } from './routes/_authenticated/game';
 import { Route as Authenticated403Import } from './routes/_authenticated/403';
+import { Route as PublicGuideIndexImport } from './routes/_public/guide/index';
 import { Route as PublicAuthVerifyEmailImport } from './routes/_public/auth/verify-email';
 import { Route as AuthenticatedUsersIdImport } from './routes/_authenticated/users/$id';
 import { Route as AuthenticatedGameRankingImport } from './routes/_authenticated/game/ranking';
@@ -60,6 +62,12 @@ const PublicLogoutRoute = PublicLogoutImport.update({
   getParentRoute: () => PublicRoute,
 } as any);
 
+const PublicHomeRoute = PublicHomeImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => PublicRoute,
+} as any);
+
 const PublicAuthRoute = PublicAuthImport.update({
   id: '/auth',
   path: '/auth',
@@ -88,6 +96,12 @@ const Authenticated403Route = Authenticated403Import.update({
   id: '/403',
   path: '/403',
   getParentRoute: () => AuthenticatedRoute,
+} as any);
+
+const PublicGuideIndexRoute = PublicGuideIndexImport.update({
+  id: '/guide/',
+  path: '/guide/',
+  getParentRoute: () => PublicRoute,
 } as any);
 
 const PublicAuthVerifyEmailRoute = PublicAuthVerifyEmailImport.update({
@@ -243,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicAuthImport;
       parentRoute: typeof PublicImport;
     };
+    '/_public/home': {
+      id: '/_public/home';
+      path: '/home';
+      fullPath: '/home';
+      preLoaderRoute: typeof PublicHomeImport;
+      parentRoute: typeof PublicImport;
+    };
     '/_public/logout': {
       id: '/_public/logout';
       path: '/logout';
@@ -284,6 +305,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/verify-email';
       preLoaderRoute: typeof PublicAuthVerifyEmailImport;
       parentRoute: typeof PublicAuthImport;
+    };
+    '/_public/guide/': {
+      id: '/_public/guide/';
+      path: '/guide';
+      fullPath: '/guide';
+      preLoaderRoute: typeof PublicGuideIndexImport;
+      parentRoute: typeof PublicImport;
     };
     '/_authenticated/game/play/hub': {
       id: '/_authenticated/game/play/hub';
@@ -470,12 +498,16 @@ const PublicAuthRouteWithChildren = PublicAuthRoute._addFileChildren(PublicAuthR
 
 interface PublicRouteChildren {
   PublicAuthRoute: typeof PublicAuthRouteWithChildren;
+  PublicHomeRoute: typeof PublicHomeRoute;
   PublicLogoutRoute: typeof PublicLogoutRoute;
+  PublicGuideIndexRoute: typeof PublicGuideIndexRoute;
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicAuthRoute: PublicAuthRouteWithChildren,
+  PublicHomeRoute: PublicHomeRoute,
   PublicLogoutRoute: PublicLogoutRoute,
+  PublicGuideIndexRoute: PublicGuideIndexRoute,
 };
 
 const PublicRouteWithChildren = PublicRoute._addFileChildren(PublicRouteChildren);
@@ -488,12 +520,14 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute;
   '/users': typeof AuthenticatedUsersRouteWithChildren;
   '/auth': typeof PublicAuthRouteWithChildren;
+  '/home': typeof PublicHomeRoute;
   '/logout': typeof PublicLogoutRoute;
   '/game/guide': typeof AuthenticatedGameGuideRoute;
   '/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
   '/game/ranking': typeof AuthenticatedGameRankingRoute;
   '/users/$id': typeof AuthenticatedUsersIdRoute;
   '/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/guide': typeof PublicGuideIndexRoute;
   '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
   '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
   '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
@@ -514,12 +548,14 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute;
   '/users': typeof AuthenticatedUsersRouteWithChildren;
   '/auth': typeof PublicAuthRouteWithChildren;
+  '/home': typeof PublicHomeRoute;
   '/logout': typeof PublicLogoutRoute;
   '/game/guide': typeof AuthenticatedGameGuideRoute;
   '/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
   '/game/ranking': typeof AuthenticatedGameRankingRoute;
   '/users/$id': typeof AuthenticatedUsersIdRoute;
   '/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/guide': typeof PublicGuideIndexRoute;
   '/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
   '/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
   '/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
@@ -542,12 +578,14 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute;
   '/_authenticated/users': typeof AuthenticatedUsersRouteWithChildren;
   '/_public/auth': typeof PublicAuthRouteWithChildren;
+  '/_public/home': typeof PublicHomeRoute;
   '/_public/logout': typeof PublicLogoutRoute;
   '/_authenticated/game/guide': typeof AuthenticatedGameGuideRoute;
   '/_authenticated/game/play': typeof AuthenticatedGamePlayRouteWithChildren;
   '/_authenticated/game/ranking': typeof AuthenticatedGameRankingRoute;
   '/_authenticated/users/$id': typeof AuthenticatedUsersIdRoute;
   '/_public/auth/verify-email': typeof PublicAuthVerifyEmailRoute;
+  '/_public/guide/': typeof PublicGuideIndexRoute;
   '/_authenticated/game/play/hub': typeof AuthenticatedGamePlayHubRouteWithChildren;
   '/_authenticated/game/play/hub/cemetery': typeof AuthenticatedGamePlayHubCemeteryRoute;
   '/_authenticated/game/play/hub/character-stats': typeof AuthenticatedGamePlayHubCharacterStatsRoute;
@@ -570,12 +608,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/users'
     | '/auth'
+    | '/home'
     | '/logout'
     | '/game/guide'
     | '/game/play'
     | '/game/ranking'
     | '/users/$id'
     | '/auth/verify-email'
+    | '/guide'
     | '/game/play/hub'
     | '/game/play/hub/cemetery'
     | '/game/play/hub/character-stats'
@@ -595,12 +635,14 @@ export interface FileRouteTypes {
     | '/profile'
     | '/users'
     | '/auth'
+    | '/home'
     | '/logout'
     | '/game/guide'
     | '/game/play'
     | '/game/ranking'
     | '/users/$id'
     | '/auth/verify-email'
+    | '/guide'
     | '/game/play/hub'
     | '/game/play/hub/cemetery'
     | '/game/play/hub/character-stats'
@@ -621,12 +663,14 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/users'
     | '/_public/auth'
+    | '/_public/home'
     | '/_public/logout'
     | '/_authenticated/game/guide'
     | '/_authenticated/game/play'
     | '/_authenticated/game/ranking'
     | '/_authenticated/users/$id'
     | '/_public/auth/verify-email'
+    | '/_public/guide/'
     | '/_authenticated/game/play/hub'
     | '/_authenticated/game/play/hub/cemetery'
     | '/_authenticated/game/play/hub/character-stats'
@@ -683,7 +727,9 @@ export const routeTree = rootRoute
       "filePath": "_public.tsx",
       "children": [
         "/_public/auth",
-        "/_public/logout"
+        "/_public/home",
+        "/_public/logout",
+        "/_public/guide/"
       ]
     },
     "/_authenticated/403": {
@@ -717,6 +763,10 @@ export const routeTree = rootRoute
         "/_public/auth/verify-email"
       ]
     },
+    "/_public/home": {
+      "filePath": "_public/home.tsx",
+      "parent": "/_public"
+    },
     "/_public/logout": {
       "filePath": "_public/logout.tsx",
       "parent": "/_public"
@@ -743,6 +793,10 @@ export const routeTree = rootRoute
     "/_public/auth/verify-email": {
       "filePath": "_public/auth/verify-email.tsx",
       "parent": "/_public/auth"
+    },
+    "/_public/guide/": {
+      "filePath": "_public/guide/index.tsx",
+      "parent": "/_public"
     },
     "/_authenticated/game/play/hub": {
       "filePath": "_authenticated/game/play/hub.tsx",

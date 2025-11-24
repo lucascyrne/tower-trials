@@ -1,11 +1,10 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
+import RootRedirectWrapper from '@/components/hocs/root-redirect';
 
 export const Route = createFileRoute('/')({
-  beforeLoad: () => {
-    // Esta verificação será feita no contexto de autenticação
-    // Por enquanto, vamos redirecionar para o jogo (se autenticado) ou auth (se não)
-    throw redirect({
-      to: '/game',
-    });
-  },
+  component: RootComponent,
 });
+
+function RootComponent() {
+  return <RootRedirectWrapper />;
+}
