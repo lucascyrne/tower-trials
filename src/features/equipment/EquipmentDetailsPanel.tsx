@@ -5,11 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { type Character } from '@/models/character.model';
 import { type Equipment } from '@/models/equipment.model';
 import { EquipmentService } from '@/services/equipment.service';
+import { EquipmentImage } from '@/components/ui/equipment-image';
 import {
   Sword,
   Shield,
-  Shirt,
-  Gem,
   Star,
   Zap,
   Package,
@@ -33,31 +32,6 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
   character,
   onEquipmentChange,
 }) => {
-  const getEquipmentIcon = (item: Equipment) => {
-    switch (item.type) {
-      case 'weapon':
-        return <Sword className="h-12 w-12 text-red-400" />;
-      case 'armor':
-        return <Shield className="h-12 w-12 text-blue-400" />;
-      case 'chest':
-        return <Shirt className="h-12 w-12 text-emerald-400" />;
-      case 'helmet':
-        return <Shield className="h-12 w-12 text-yellow-400" />;
-      case 'legs':
-        return <Shield className="h-12 w-12 text-cyan-400" />;
-      case 'boots':
-        return <Shield className="h-12 w-12 text-orange-400" />;
-      case 'ring':
-        return <Gem className="h-12 w-12 text-purple-400" />;
-      case 'necklace':
-        return <Gem className="h-12 w-12 text-pink-400" />;
-      case 'amulet':
-        return <Gem className="h-12 w-12 text-indigo-400" />;
-      default:
-        return <Shield className="h-12 w-12 text-slate-400" />;
-    }
-  };
-
   const getRarityColor = (rarity: string) => {
     const colors = {
       common: 'bg-slate-800/80 text-slate-300 border-slate-600',
@@ -154,7 +128,7 @@ export const EquipmentDetailsPanel: React.FC<EquipmentDetailsPanelProps> = ({
         {/* Header do Item */}
         <div className="flex items-start gap-4">
           <div className={`p-4 rounded-lg border-2 ${getRarityColor(selectedItem.rarity)}`}>
-            {getEquipmentIcon(selectedItem)}
+            <EquipmentImage equipment={selectedItem} size="lg" className="rounded" />
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-slate-100 mb-2">{selectedItem.name}</h2>

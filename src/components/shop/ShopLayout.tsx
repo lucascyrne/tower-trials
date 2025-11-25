@@ -6,7 +6,6 @@ import { Separator } from '@/components/ui/separator';
 import {
   Sword,
   Shield,
-  Shirt,
   Gem,
   Coins,
   Package,
@@ -15,8 +14,6 @@ import {
   Filter,
   ShoppingCart,
   ShoppingBag,
-  Crown,
-  Footprints,
   DollarSign,
   Star,
 } from 'lucide-react';
@@ -32,6 +29,7 @@ import {
 } from '@/components/equipment/EquipmentFilters';
 import { SellItemModal } from '@/components/ui/sell-item-modal';
 import { ConsumableImage } from '@/components/ui/consumable-image';
+import { EquipmentImage } from '@/components/ui/equipment-image';
 
 interface ShopLayoutProps {
   character: Character;
@@ -209,44 +207,6 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
-  const getEquipmentTypeIcon = (type: string) => {
-    switch (type) {
-      case 'weapon':
-        return <Sword className="h-4 w-4 text-red-400" />;
-      case 'armor':
-        return <Shield className="h-4 w-4 text-blue-400" />;
-      case 'chest':
-        return <Shirt className="h-4 w-4 text-green-400" />;
-      case 'helmet':
-        return <Crown className="h-4 w-4 text-yellow-400" />;
-      case 'legs':
-        return <Shield className="h-4 w-4 text-cyan-400" />;
-      case 'boots':
-        return <Footprints className="h-4 w-4 text-orange-400" />;
-      case 'ring':
-        return <Gem className="h-4 w-4 text-purple-400" />;
-      case 'necklace':
-        return <Gem className="h-4 w-4 text-pink-400" />;
-      case 'amulet':
-        return <Gem className="h-4 w-4 text-indigo-400" />;
-      default:
-        return <Package className="h-4 w-4 text-slate-400" />;
-    }
-  };
-
-  const getConsumableTypeIcon = (type: string) => {
-    switch (type) {
-      case 'potion':
-        return <Sparkles className="h-4 w-4 text-blue-500" />;
-      case 'antidote':
-        return <Shield className="h-4 w-4 text-green-500" />;
-      case 'buff':
-        return <Zap className="h-4 w-4 text-purple-500" />;
-      default:
-        return <Package className="h-4 w-4" />;
-    }
-  };
-
   const renderEquipmentCard = (equipment: Equipment) => {
     const canAfford = character.gold >= equipment.price;
     const hasLevel = character.level >= equipment.level_requirement;
@@ -264,7 +224,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         <CardContent className="p-1.5">
           <div className="flex flex-col items-center text-center gap-1">
             <div className="p-1.5 rounded bg-slate-700/50">
-              {getEquipmentTypeIcon(equipment.type)}
+              <EquipmentImage equipment={equipment} size="xl" />
             </div>
             <div className="w-full">
               <h3 className="font-medium text-xs truncate text-slate-100" title={equipment.name}>
@@ -316,7 +276,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
-              {getConsumableTypeIcon(consumable.type)}
+              <ConsumableImage consumable={consumable} size="md" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm truncate text-slate-100">{consumable.name}</h3>
@@ -369,7 +329,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
-              {getEquipmentTypeIcon(item.equipment.type)}
+              <EquipmentImage equipment={item.equipment} size="xl" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm truncate text-slate-100">{item.equipment.name}</h3>
@@ -411,7 +371,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
-              {getConsumableTypeIcon(item.consumable.type)}
+              <ConsumableImage consumable={item.consumable} size="md" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm truncate text-slate-100">
@@ -557,7 +517,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
-                  {getEquipmentTypeIcon(equipment.type)}
+                  <EquipmentImage equipment={equipment} size="xl" />
                 </div>
                 <h2 className="text-xl font-bold text-slate-100">{equipment.name}</h2>
               </div>
@@ -651,7 +611,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
-                  {getConsumableTypeIcon(consumable.type)}
+                  <ConsumableImage consumable={consumable} size="xl" />
                 </div>
                 <h2 className="text-xl font-bold text-slate-100">{consumable.name}</h2>
               </div>
@@ -757,7 +717,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
-                {getEquipmentTypeIcon(equipment.type)}
+                <EquipmentImage equipment={equipment} size="xl" />
               </div>
               <h2 className="text-xl font-bold text-slate-100">{equipment.name}</h2>
             </div>
@@ -882,7 +842,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
-                {getConsumableTypeIcon(consumable.type)}
+                <ConsumableImage consumable={consumable} size="md" />
               </div>
               <h2 className="text-xl font-bold text-slate-100">{consumable.name}</h2>
             </div>
@@ -1124,12 +1084,12 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             )
           ) : selectedCategory === 'consumables' ? (
             filteredConsumables.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhum consumível encontrado</p>
-            </div>
-          ) : (
-            <div className="space-y-2">{filteredConsumables.map(renderConsumableCard)}</div>
+              <div className="text-center py-8 text-slate-500">
+                <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Nenhum consumível encontrado</p>
+              </div>
+            ) : (
+              <div className="space-y-2">{filteredConsumables.map(renderConsumableCard)}</div>
             )
           ) : (
             renderSellTab()

@@ -285,3 +285,4 @@ Divididas em 6 tipos:
 **Status:** Documentação Completa ✅
 
 
+

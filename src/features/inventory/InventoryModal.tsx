@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { type Equipment, type CharacterEquipment } from '@/models/equipment.model';
 import { type CharacterConsumable, type MonsterDrop } from '@/models/consumable.model';
 import { EquipmentService } from '@/services/equipment.service';
@@ -8,23 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Sword,
-  Shield,
-  Gem,
-  Package,
-  Sparkles,
-  Coins,
-  Heart,
-  Zap,
-  Star,
-  DollarSign,
-} from 'lucide-react';
+import { Package, Sparkles, Coins, Heart, Zap, Star, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { EquipmentComparison } from '@/features/equipment/EquipmentComparison';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
 import { SellItemModal } from '@/components/ui/sell-item-modal';
 import { ConsumableImage } from '@/components/ui/consumable-image';
+import { EquipmentImage } from '@/components/ui/equipment-image';
 
 interface InventoryModalProps {
   character: Character;
@@ -70,13 +60,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     sellPrice: null,
   });
 
-  useEffect(() => {
-    if (isOpen && character.id) {
-      loadInventory();
-    }
-  }, [isOpen, character.id]);
-
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     setLoading(true);
     try {
       const [equipmentData, consumablesRes, dropsRes] = await Promise.all([
@@ -94,7 +78,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [character.id]);
+
+  useEffect(() => {
+    if (isOpen && character.id) {
+      loadInventory();
+    }
+  }, [isOpen, character.id, loadInventory]);
 
   const handleEquipmentAction = async (item: CharacterEquipment, action: 'toggle' | 'sell') => {
     if (!item.equipment) return;
@@ -257,14 +247,6 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
     return colors[rarity as keyof typeof colors] || colors.common;
   };
 
-  const getItemIcon = (type: string) => {
-    if (type === 'weapon') return <Sword className="h-4 w-4" />;
-    if (type === 'armor') return <Shield className="h-4 w-4" />;
-    if (type === 'accessory') return <Gem className="h-4 w-4" />;
-    if (type === 'potion') return <Heart className="h-4 w-4" />;
-    return <Package className="h-4 w-4" />;
-  };
-
   const getSellPrice = (item: Equipment) => {
     const rarityMultiplier = {
       common: 0.3,
@@ -304,7 +286,9 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
           } ${isActive ? 'ring-2 ring-primary/50' : ''}`}
           onClick={() => setShowActions(isActive ? null : item.id)}
         >
-          <div className="flex-shrink-0">{getItemIcon(item.equipment.type)}</div>
+          <div className="flex-shrink-0">
+            <EquipmentImage equipment={item.equipment} size="sm" />
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">

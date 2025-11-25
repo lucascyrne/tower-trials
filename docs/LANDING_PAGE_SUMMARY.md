@@ -246,3 +246,4 @@ Venda Equipment = Raridade × 30-50%
 
 
 
+

@@ -25,12 +25,22 @@ export type EquipmentAssetType =
   | 'wooden-sword'
   | 'iron-sword'
   | 'steel-sword'
-  | 'basic-staff'
-  | 'magic-staff'
-  | 'wooden-bow'
+  | 'oak-staff'
+  | 'wooden-staff'
   | 'leather-armor'
-  | 'iron-armor'
-  | 'steel-armor';
+  | 'chainmail-armor'
+  | 'scale-armor'
+  | 'apprentice-robe'
+  | 'occultist-cloak'
+  | 'light-vestments'
+  | 'bronze-dagger'
+  | 'battle-axe'
+  | 'swift-boots'
+  | 'strength-ring'
+  | 'mana-ring'
+  | 'protection-amulet'
+  | 'arcane-amulet'
+  | 'defensive-bracers';
 
 export type MonsterAssetType = 'goblin' | 'wolf' | 'skeleton' | 'orc' | 'troll' | 'dragon';
 
@@ -57,16 +67,51 @@ const CONSUMABLE_ASSET_MAP: Record<string, string> = {
   'pequena poção de vida': 'small_health_potion.png',
   'small health potion': 'small_health_potion.png',
   'poção de hp pequena': 'small_health_potion.png',
+  
+  'poção de vida média': 'medium_health_potion.png',
+  'média poção de vida': 'medium_health_potion.png',
+  'medium health potion': 'medium_health_potion.png',
+  'poção de hp média': 'medium_health_potion.png',
+  
+  'poção de vida grande': 'large_mana_potion.png',
+  'grande poção de vida': 'large_mana_potion.png',
+  'large health potion': 'large_mana_potion.png',
+  'poção de hp grande': 'large_mana_potion.png',
 
   // Poções de mana (por nome)
   'poção de mana pequena': 'small_mana_potion.png',
   'pequena poção de mana': 'small_mana_potion.png',
   'small mana potion': 'small_mana_potion.png',
   'poção de mp pequena': 'small_mana_potion.png',
+  
+  'poção de mana média': 'medium_mana_potion.png',
+  'média poção de mana': 'medium_mana_potion.png',
+  'medium mana potion': 'medium_mana_potion.png',
+  'poção de mp média': 'medium_mana_potion.png',
+  
+  'poção de mana grande': 'large_mana_potion.png',
+  'grande poção de mana': 'large_mana_potion.png',
+  'large mana potion': 'large_mana_potion.png',
+  'poção de mp grande': 'large_mana_potion.png',
+
+  // Elixires
+  'elixir de força': 'strength_elixir.png',
+  'strength elixir': 'strength_elixir.png',
+  
+  'elixir de defesa': 'defense_elixir.png',
+  'defense elixir': 'defense_elixir.png',
+
+  // Antídoto
+  'antídoto': 'antidote.png',
+  'antidote': 'antidote.png',
 
   // Fallbacks por tipo e valor de efeito
   potion_hp_small: 'small_health_potion.png',
+  potion_hp_medium: 'medium_health_potion.png',
+  potion_hp_large: 'large_mana_potion.png',
   potion_mana_small: 'small_mana_potion.png',
+  potion_mana_medium: 'medium_mana_potion.png',
+  potion_mana_large: 'large_mana_potion.png',
 };
 
 // Cache para imagens pré-carregadas de animações
@@ -121,29 +166,29 @@ export class AssetManager {
         if (consumable.effect_value <= 30) {
           return `${basePath}/small_health_potion.png`;
         } else if (consumable.effect_value <= 60) {
-          return `${basePath}/health-potion-medium.png`;
+          return `${basePath}/medium_health_potion.png`;
         } else {
-          return `${basePath}/health-potion-large.png`;
+          return `${basePath}/large_mana_potion.png`;
         }
       } else if (consumable.description.includes('Mana')) {
         // Mapear por valor do efeito
         if (consumable.effect_value <= 15) {
           return `${basePath}/small_mana_potion.png`;
         } else if (consumable.effect_value <= 30) {
-          return `${basePath}/mana-potion-medium.png`;
+          return `${basePath}/medium_mana_potion.png`;
         } else {
-          return `${basePath}/mana-potion-large.png`;
+          return `${basePath}/large_mana_potion.png`;
         }
       } else {
         return `${basePath}/small_health_potion.png`;
       }
     } else if (consumable.type === 'buff' || consumable.type === 'elixir') {
       if (consumable.description.includes('Força') || consumable.description.includes('ataque')) {
-        return `${basePath}/strength-elixir.png`;
+        return `${basePath}/strength_elixir.png`;
       } else if (consumable.description.includes('Defesa')) {
-        return `${basePath}/defense-elixir.png`;
+        return `${basePath}/defense_elixir.png`;
       } else {
-        return `${basePath}/strength-elixir.png`;
+        return `${basePath}/strength_elixir.png`;
       }
     } else if (consumable.type === 'antidote') {
       return `${basePath}/antidote.png`;
@@ -304,7 +349,7 @@ export class AssetManager {
     }
 
     let iconPath: string;
-    const basePath = `${ASSET_BASE_PATH}/icons/equipment`;
+    const basePath = `${ASSET_BASE_PATH}/icons`;
 
     switch (equipment.type) {
       case 'weapon':
@@ -313,54 +358,77 @@ export class AssetManager {
           equipment.name.toLowerCase().includes('sword')
         ) {
           if (equipment.level_requirement <= 5) {
-            iconPath = `${basePath}/weapons/swords/wooden-sword.png`;
+            iconPath = `${basePath}/weapons/iron_sword.png`;
           } else if (equipment.level_requirement <= 15) {
-            iconPath = `${basePath}/weapons/swords/iron-sword.png`;
+            iconPath = `${basePath}/weapons/steel_sword.png`;
           } else {
-            iconPath = `${basePath}/weapons/swords/steel-sword.png`;
+            iconPath = `${basePath}/weapons/steel_sword.png`;
           }
         } else if (
           equipment.name.toLowerCase().includes('cajado') ||
+          equipment.name.toLowerCase().includes('varinha') ||
           equipment.name.toLowerCase().includes('staff')
         ) {
           iconPath =
             equipment.level_requirement <= 10
-              ? `${basePath}/weapons/staffs/basic-staff.png`
-              : `${basePath}/weapons/staffs/magic-staff.png`;
+              ? `${basePath}/weapons/wooden_staff.png`
+              : `${basePath}/weapons/oak_staff.png`;
         } else if (
           equipment.name.toLowerCase().includes('arco') ||
           equipment.name.toLowerCase().includes('bow')
         ) {
-          iconPath = `${basePath}/weapons/bows/wooden-bow.png`;
+          iconPath = `${basePath}/weapons/wooden_staff.png`;
+        } else if (
+          equipment.name.toLowerCase().includes('adaga') ||
+          equipment.name.toLowerCase().includes('dagger')
+        ) {
+          iconPath = `${basePath}/weapons/bronze_dagger.png`;
+        } else if (
+          equipment.name.toLowerCase().includes('machado') ||
+          equipment.name.toLowerCase().includes('axe')
+        ) {
+          iconPath = `${basePath}/weapons/battle_axe.png`;
         } else {
-          iconPath = `${basePath}/weapons/swords/iron-sword.png`;
+          iconPath = `${basePath}/weapons/iron_sword.png`;
         }
         break;
 
+      case 'chest':
       case 'armor':
         if (equipment.level_requirement <= 5) {
-          iconPath = `${basePath}/armor/chest/leather-armor.png`;
+          iconPath = `${basePath}/armors/leather_armor.png`;
         } else if (equipment.level_requirement <= 15) {
-          iconPath = `${basePath}/armor/chest/iron-armor.png`;
+          iconPath = `${basePath}/armors/chainmail_armor.png`;
         } else {
-          iconPath = `${basePath}/armor/chest/steel-armor.png`;
+          iconPath = `${basePath}/armors/scale_armor.png`;
         }
         break;
 
       case 'ring':
+        iconPath = equipment.name.toLowerCase().includes('força')
+          ? `${basePath}/accessories/strength_ring.png`
+          : `${basePath}/accessories/mana_ring.png`;
+        break;
+
       case 'necklace':
+        iconPath = `${basePath}/accessories/protection_amulet.png`;
+        break;
+
       case 'amulet':
-        if (equipment.type === 'ring') {
-          iconPath = `${basePath}/accessories/rings/basic-ring.png`;
-        } else if (equipment.type === 'necklace') {
-          iconPath = `${basePath}/accessories/necklaces/basic-necklace.png`;
-        } else {
-          iconPath = `${basePath}/accessories/amulets/basic-amulet.png`;
-        }
+        iconPath = `${basePath}/accessories/arcane_amulet.png`;
+        break;
+
+      case 'boots':
+        iconPath = `${basePath}/armors/swift_boots.png`;
+        break;
+
+      case 'helmet':
+      case 'legs':
+        iconPath = `${basePath}/accessories/defensive_bracers.png`;
         break;
 
       default:
-        iconPath = `${basePath}/weapons/swords/iron-sword.png`;
+        iconPath = `${basePath}/weapons/iron_sword.png`;
     }
 
     this.iconCache.set(cacheKey, iconPath);
@@ -463,17 +531,20 @@ export class AssetManager {
    */
   static async preloadCriticalAssets(): Promise<void> {
     const criticalAssets = [
-      // Poções básicas (usando as novas imagens)
+      // Poções básicas
       `${ASSET_BASE_PATH}/icons/consumables/small_health_potion.png`,
       `${ASSET_BASE_PATH}/icons/consumables/small_mana_potion.png`,
+      `${ASSET_BASE_PATH}/icons/consumables/medium_health_potion.png`,
+      `${ASSET_BASE_PATH}/icons/consumables/medium_mana_potion.png`,
 
       // Equipamentos básicos
-      `${ASSET_BASE_PATH}/icons/equipment/weapons/swords/wooden-sword.png`,
-      `${ASSET_BASE_PATH}/icons/equipment/armor/chest/leather-armor.png`,
+      `${ASSET_BASE_PATH}/icons/weapons/iron_sword.png`,
+      `${ASSET_BASE_PATH}/icons/armors/leather_armor.png`,
+      `${ASSET_BASE_PATH}/icons/weapons/wooden_staff.png`,
 
-      // UI essencial
-      `${ASSET_BASE_PATH}/icons/ui/buttons/primary-button.png`,
-      `${ASSET_BASE_PATH}/icons/ui/frames/inventory-frame.png`,
+      // Acessórios básicos
+      `${ASSET_BASE_PATH}/icons/accessories/strength_ring.png`,
+      `${ASSET_BASE_PATH}/icons/accessories/protection_amulet.png`,
     ];
 
     const loadPromises = criticalAssets.map(assetPath => {

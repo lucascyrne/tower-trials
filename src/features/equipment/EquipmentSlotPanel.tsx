@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { EquipmentImage } from '@/components/ui/equipment-image';
 
 import {
   type EquipmentSlots,
@@ -154,7 +155,11 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className={`p-3 rounded-lg ${isEmpty ? 'bg-slate-700/30' : 'bg-black/20'}`}>
-                {getSlotIcon(slotType, item ?? null)}
+                {item ? (
+                  <EquipmentImage equipment={item} size="lg" />
+                ) : (
+                  getSlotIcon(slotType, null)
+                )}
               </div>
               {item ? (
                 <div className="text-center space-y-1">
