@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
-import { type AttributeModification } from '@/models/spell.model';
+import { type AttributeModification } from '@/resources/spell/spell.model';
 
 interface StatDisplayProps {
   value: number;

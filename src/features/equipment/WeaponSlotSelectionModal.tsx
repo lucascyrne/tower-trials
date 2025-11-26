@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Sword, Shield } from 'lucide-react';
-import { type Equipment } from '@/models/equipment.model';
+import { type Equipment } from '@/resources/equipment/equipment.model';
 
 interface WeaponSlotSelectionModalProps {
   isOpen: boolean;

@@ -3,11 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { RankingService, type RankingEntry, type RankingMode } from '@/services/ranking.service';
+import {
+  RankingService,
+  type RankingEntry,
+  type RankingMode,
+} from '@/resources/ranking/ranking.service';
 import { useAuth } from '@/resources/auth/auth-hook';
-import RankingFilters, { type CharacterStatusFilter } from '@/components/ranking/ranking-filters';
-import RankingTable from '@/components/ranking/ranking-table';
-import UserStats from '@/components/ranking/user-stats';
+import RankingFilters, { type CharacterStatusFilter } from '@/features/ranking/ranking-filters';
+import RankingTable from '@/features/ranking/ranking-table';
+import UserStats from '@/features/ranking/user-stats';
 
 const ITEMS_PER_PAGE = 20;
 

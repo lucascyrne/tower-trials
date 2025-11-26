@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useGame } from '@/hooks/useGame';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { type CharacterConsumable } from '@/models/consumable.model';
+import { type CharacterConsumable } from '@/resources/consumable/consumable.model';
 import { toast } from 'sonner';
-import { ConsumableService } from '@/services/consumable.service';
+import { ConsumableService } from '@/resources/consumable/consumable.service';
 
 interface ConsumableItemProps {
   item: CharacterConsumable;
@@ -176,7 +176,9 @@ export function ConsumablesPanel() {
 
   // Filtrar consumíveis com quantidade > 0
   const availableConsumables =
-    gameState.player.consumables?.filter((c: CharacterConsumable) => c.quantity > 0 && c.consumable) || [];
+    gameState.player.consumables?.filter(
+      (c: CharacterConsumable) => c.quantity > 0 && c.consumable
+    ) || [];
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>

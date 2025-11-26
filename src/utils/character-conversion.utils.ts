@@ -1,8 +1,8 @@
-import { type Character } from '@/models/character.model';
-import { type GamePlayer } from '@/models/game.model';
-import { CharacterStatsService } from '@/services/character-stats.service';
-import { EquipmentService } from '@/services/equipment.service';
-import { SpellService } from '@/services/spell.service';
+import { type Character } from '@/resources/character/character.model';
+import { type GamePlayer } from '@/resources/game/game.model';
+import { CharacterStatsService } from '@/resources/character/character-stats.service';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import { SpellService } from '@/resources/spell/spell.service';
 
 interface EquipmentBonuses {
   total_atk_bonus: number;

@@ -1,4 +1,4 @@
-import type { Consumable } from '@/models/consumable.model';
+import type { Consumable } from '@/resources/consumable/consumable.model';
 import { AssetManager } from './asset-utils';
 
 /**

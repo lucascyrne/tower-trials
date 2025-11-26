@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
 import { useEffect } from 'react';
-import { type ActionType } from '@/models/game.model';
+import { type ActionType } from '@/resources/game/game.model';
 import { useGameStateStore } from './useGameStateStore';
 import { useLogStore } from './useLogStore';
 
-import { GameService } from '../services/game.service';
-import { CharacterService } from '../services/character.service';
+import { GameService } from '../resources/game/game.service';
+import { CharacterService } from '../resources/character/character.service';
 
 interface BattleState {
   // Estados de controle de ação
@@ -217,7 +217,7 @@ export const useBattleStore = create<BattleStore>()(
         if (skillXpGains?.length && initialGameState.player?.id) {
           try {
             const { messages: skillMessages, skillLevelUps } = await import(
-              '../services/skill-xp.service'
+              '../resources/character/skill-xp.service'
             ).then(m => m.SkillXpService.applySkillXp(initialGameState.player.id, skillXpGains));
 
             // ✅ REGISTRAR MENSAGENS DE SKILL XP NO LOG
@@ -231,8 +231,8 @@ export const useBattleStore = create<BattleStore>()(
 
             // ✅ REGISTRAR LEVEL UPS DE SKILLS
             for (const levelUp of skillLevelUps) {
-              const skillDisplayName = await import('../services/skill-xp.service').then(m =>
-                m.SkillXpService.getSkillDisplayName(levelUp.skill)
+              const skillDisplayName = await import('../resources/character/skill-xp.service').then(
+                m => m.SkillXpService.getSkillDisplayName(levelUp.skill)
               );
               addGameLogMessage(
                 `🎉 ${skillDisplayName} subiu para nível ${levelUp.newLevel}!`,
@@ -291,9 +291,7 @@ export const useBattleStore = create<BattleStore>()(
         }
 
         // Verificar ações especiais que não geram turno do inimigo
-        if (
-          action === 'continue' && newState.battleRewards === null && newState.currentEnemy
-        ) {
+        if (action === 'continue' && newState.battleRewards === null && newState.currentEnemy) {
           addGameLogMessage(message, 'system');
           get().endBattle();
           return;
@@ -368,7 +366,7 @@ export const useBattleStore = create<BattleStore>()(
         if (enemySkillXpGains?.length && initialGameState.player?.id) {
           try {
             const { messages: skillMessages, skillLevelUps } = await import(
-              '../services/skill-xp.service'
+              '../resources/character/skill-xp.service'
             ).then(m =>
               m.SkillXpService.applySkillXp(initialGameState.player.id, enemySkillXpGains)
             );
@@ -384,8 +382,8 @@ export const useBattleStore = create<BattleStore>()(
 
             // ✅ REGISTRAR LEVEL UPS DE SKILLS
             for (const levelUp of skillLevelUps) {
-              const skillDisplayName = await import('../services/skill-xp.service').then(m =>
-                m.SkillXpService.getSkillDisplayName(levelUp.skill)
+              const skillDisplayName = await import('../resources/character/skill-xp.service').then(
+                m => m.SkillXpService.getSkillDisplayName(levelUp.skill)
               );
               addGameLogMessage(
                 `🎉 ${skillDisplayName} subiu para nível ${levelUp.newLevel}!`,

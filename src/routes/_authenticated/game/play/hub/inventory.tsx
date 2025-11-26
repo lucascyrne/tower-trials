@@ -2,10 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CharacterService } from '@/services/character.service';
+import { CharacterService } from '@/resources/character/character.service';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
-import type { Character } from '@/models/character.model';
+import type { Character } from '@/resources/character/character.model';
 import { InventoryPanel } from '@/features/inventory/InventoryPanel';
 import { useCharacterHubOperations } from '@/hooks/useCharacterOperations';
 

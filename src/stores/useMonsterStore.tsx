@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
-import { type Enemy } from '../models/game.model';
+import { type Enemy } from '../resources/game/game.model';
 import { toast } from 'sonner';
 
 interface MonsterCache {

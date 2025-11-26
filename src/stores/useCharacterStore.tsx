@@ -3,8 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { produce } from 'immer';
 import { useEffect, useCallback } from 'react';
-import { type Character } from '../models/character.model';
-import { CharacterService } from '../services/character.service';
+import { type Character } from '../resources/character/character.model';
+import { CharacterService } from '../resources/character/character.service';
 import { toast } from 'sonner';
 import { useAuth } from '../resources/auth/auth-hook';
 import { useGameLog } from './useLogStore';
@@ -117,9 +117,7 @@ export const useCharacterStore = create<CharacterStore>()(
 
           // ✅ CRÍTICO: Se o personagem selecionado está morto, limpá-lo antes de recarregar
           if (state.selectedCharacter?.is_alive === false) {
-            console.log(
-              `[CharacterStore] Personagem selecionado está morto, limpando seleção`
-            );
+            console.log(`[CharacterStore] Personagem selecionado está morto, limpando seleção`);
             set(
               produce(draft => {
                 draft.selectedCharacterId = null;

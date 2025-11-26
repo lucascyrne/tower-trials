@@ -1,4 +1,4 @@
-import { type FloorType } from '@/models/game.model';
+import { type FloorType } from '@/resources/game/game.model';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Target, Star, Building } from 'lucide-react';
 

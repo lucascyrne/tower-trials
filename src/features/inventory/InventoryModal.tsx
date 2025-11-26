@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { type Equipment, type CharacterEquipment } from '@/models/equipment.model';
-import { type CharacterConsumable, type MonsterDrop } from '@/models/consumable.model';
-import { EquipmentService } from '@/services/equipment.service';
-import { ConsumableService } from '@/services/consumable.service';
-import { type Character } from '@/models/character.model';
+import { type Equipment, type CharacterEquipment } from '@/resources/equipment/equipment.model';
+import {
+  type CharacterConsumable,
+  type MonsterDrop,
+} from '@/resources/consumable/consumable.model';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import { ConsumableService } from '@/resources/consumable/consumable.service';
+import { type Character } from '@/resources/character/character.model';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';

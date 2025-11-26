@@ -4,9 +4,9 @@ import {
   type CharacterEquipment,
   type EquipmentSlots,
   type EquipmentSlotType,
-} from '@/models/equipment.model';
-import { EquipmentService } from '@/services/equipment.service';
-import { type Character } from '@/models/character.model';
+} from '@/resources/equipment/equipment.model';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import { type Character } from '@/resources/character/character.model';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -192,7 +192,7 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({ character, onEqu
         className={`p-4 border-2 transition-all duration-200 ${
           equipment
             ? 'bg-card/95 border-primary/50 hover:border-primary/70'
-              : 'bg-card/95 border-primary/20'
+            : 'bg-card/95 border-primary/20'
         }`}
       >
         <div className="flex items-center gap-2 mb-2">

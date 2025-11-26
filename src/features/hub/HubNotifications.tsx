@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { type GamePlayer } from '@/models/game.model';
+import { type GamePlayer } from '@/resources/game/game.model';
 import { X, Heart, Star, AlertCircle } from 'lucide-react';
 
 interface HubNotificationsProps {

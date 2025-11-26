@@ -1,5 +1,5 @@
-import type { Consumable } from '@/models/consumable.model';
-import type { Equipment } from '@/models/equipment.model';
+import type { Consumable } from '@/resources/consumable/consumable.model';
+import type { Equipment } from '@/resources/equipment/equipment.model';
 
 // Tipos para organização de assets
 export type AssetCategory =
@@ -67,12 +67,12 @@ const CONSUMABLE_ASSET_MAP: Record<string, string> = {
   'pequena poção de vida': 'small_health_potion.png',
   'small health potion': 'small_health_potion.png',
   'poção de hp pequena': 'small_health_potion.png',
-  
+
   'poção de vida média': 'medium_health_potion.png',
   'média poção de vida': 'medium_health_potion.png',
   'medium health potion': 'medium_health_potion.png',
   'poção de hp média': 'medium_health_potion.png',
-  
+
   'poção de vida grande': 'large_mana_potion.png',
   'grande poção de vida': 'large_mana_potion.png',
   'large health potion': 'large_mana_potion.png',
@@ -83,12 +83,12 @@ const CONSUMABLE_ASSET_MAP: Record<string, string> = {
   'pequena poção de mana': 'small_mana_potion.png',
   'small mana potion': 'small_mana_potion.png',
   'poção de mp pequena': 'small_mana_potion.png',
-  
+
   'poção de mana média': 'medium_mana_potion.png',
   'média poção de mana': 'medium_mana_potion.png',
   'medium mana potion': 'medium_mana_potion.png',
   'poção de mp média': 'medium_mana_potion.png',
-  
+
   'poção de mana grande': 'large_mana_potion.png',
   'grande poção de mana': 'large_mana_potion.png',
   'large mana potion': 'large_mana_potion.png',
@@ -97,13 +97,13 @@ const CONSUMABLE_ASSET_MAP: Record<string, string> = {
   // Elixires
   'elixir de força': 'strength_elixir.png',
   'strength elixir': 'strength_elixir.png',
-  
+
   'elixir de defesa': 'defense_elixir.png',
   'defense elixir': 'defense_elixir.png',
 
   // Antídoto
-  'antídoto': 'antidote.png',
-  'antidote': 'antidote.png',
+  antídoto: 'antidote.png',
+  antidote: 'antidote.png',
 
   // Fallbacks por tipo e valor de efeito
   potion_hp_small: 'small_health_potion.png',

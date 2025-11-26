@@ -1,1 +1,1 @@
-export { CharacterHealingService } from '@/services/character-healing.service';
+export { CharacterHealingService } from '@/resources/character/character-healing.service';

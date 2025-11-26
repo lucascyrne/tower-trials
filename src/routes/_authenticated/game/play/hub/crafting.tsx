@@ -12,14 +12,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ConsumableService } from '@/services/consumable.service';
-import { EquipmentService } from '@/services/equipment.service';
-import type { CharacterConsumable, CraftingRecipe, MonsterDrop } from '@/models/consumable.model';
+import { ConsumableService } from '@/resources/consumable/consumable.service';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import type {
+  CharacterConsumable,
+  CraftingRecipe,
+  MonsterDrop,
+} from '@/resources/consumable/consumable.model';
 import type {
   CharacterEquipment,
   Equipment,
   EquipmentCraftingRecipe,
-} from '@/models/equipment.model';
+} from '@/resources/equipment/equipment.model';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -40,7 +44,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EquipmentComparison } from '@/features/equipment/EquipmentComparison';
-import type { Character } from '@/models/character.model';
+import type { Character } from '@/resources/character/character.model';
 
 // Tipos auxiliares para o processamento de receitas
 interface ProcessedIngredient {

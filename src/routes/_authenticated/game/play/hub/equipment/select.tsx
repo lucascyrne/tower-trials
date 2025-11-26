@@ -1,36 +1,25 @@
-import type { ReactElement } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { CharacterService } from '@/services/character.service';
-import { EquipmentService } from '@/services/equipment.service';
-import type { Character } from '@/models/character.model';
+import { CharacterService } from '@/resources/character/character.service';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import type { Character } from '@/resources/character/character.model';
 import type {
   Equipment,
   CharacterEquipment,
   EquipmentType,
   EquipmentSlotType,
-} from '@/models/equipment.model';
+} from '@/resources/equipment/equipment.model';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  ArrowLeft,
-  Sword,
-  Shield,
-  Shirt,
-  Gem,
-  Star,
-  Zap,
-  Package,
-  Crown,
-  Footprints,
-} from 'lucide-react';
+import { ArrowLeft, Sword, Shield, Star, Zap, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   EquipmentFilters,
   type EquipmentFilterType,
   type SortType,
-} from '@/components/equipment/EquipmentFilters';
+} from '@/features/equipment/EquipmentFilters';
+import { EquipmentImage } from '@/components/ui/equipment-image';
 
 export const Route = createFileRoute('/_authenticated/game/play/hub/equipment/select')({
   component: EquipmentSelectPage,
@@ -182,21 +171,6 @@ function EquipmentSelectPage() {
     return slotNames[slot] || slot;
   };
 
-  const getEquipmentIcon = (equipment: Equipment) => {
-    const iconMap: Record<EquipmentType, ReactElement> = {
-      weapon: <Sword className="h-6 w-6 text-red-400" />,
-      armor: <Shield className="h-6 w-6 text-blue-400" />,
-      chest: <Shirt className="h-6 w-6 text-green-400" />,
-      helmet: <Crown className="h-6 w-6 text-yellow-400" />,
-      legs: <Shield className="h-6 w-6 text-cyan-400" />,
-      boots: <Footprints className="h-6 w-6 text-orange-400" />,
-      ring: <Gem className="h-6 w-6 text-purple-400" />,
-      necklace: <Gem className="h-6 w-6 text-pink-400" />,
-      amulet: <Gem className="h-6 w-6 text-indigo-400" />,
-    };
-    return iconMap[equipment.type] || <Shield className="h-6 w-6 text-slate-400" />;
-  };
-
   const getRarityColor = (rarity: string) => {
     const colors = {
       common: 'border-slate-600 bg-slate-800/30 text-slate-300',
@@ -266,7 +240,7 @@ function EquipmentSelectPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${getRarityColor(equipment.rarity)}`}>
-                {getEquipmentIcon(equipment)}
+                <EquipmentImage equipment={equipment} size="xl" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-slate-200 truncate">{equipment.name}</h3>
@@ -347,7 +321,7 @@ function EquipmentSelectPage() {
           <div
             className={`p-4 rounded-lg border-2 ${getRarityColor(selectedItem.equipment.rarity)}`}
           >
-            {getEquipmentIcon(selectedItem.equipment)}
+            <EquipmentImage equipment={selectedItem.equipment} size="xl" />
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-slate-100 mb-2">

@@ -8,7 +8,7 @@ import {
   type EquipmentSlots,
   type Equipment,
   type EquipmentSlotType,
-} from '@/models/equipment.model';
+} from '@/resources/equipment/equipment.model';
 import { Sword, Shield, Shirt, Gem, Plus, Crown, Footprints, Heart, Zap } from 'lucide-react';
 
 interface EquipmentSlotPanelProps {
@@ -155,11 +155,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
           >
             <div className="flex flex-col items-center justify-center gap-3 h-full">
               <div className={`p-3 rounded-lg ${isEmpty ? 'bg-slate-700/30' : 'bg-black/20'}`}>
-                {item ? (
-                  <EquipmentImage equipment={item} size="lg" />
-                ) : (
-                  getSlotIcon(slotType, null)
-                )}
+                {item ? <EquipmentImage equipment={item} size="lg" /> : getSlotIcon(slotType, null)}
               </div>
               {item ? (
                 <div className="text-center space-y-1">
@@ -203,7 +199,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     if (!slot) return null;
 
     // Todos os slots de armadura estão habilitados
-      return renderEquipmentSlot(slot.slotType, slot.label);
+    return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   const renderAccessorySlot = (index: number) => {
@@ -219,7 +215,7 @@ export const EquipmentSlotPanel: React.FC<EquipmentSlotPanelProps> = ({
     if (!slot) return null;
 
     // Todos os slots de acessórios estão habilitados
-      return renderEquipmentSlot(slot.slotType, slot.label);
+    return renderEquipmentSlot(slot.slotType, slot.label);
   };
 
   return (

@@ -1,6 +1,6 @@
-import { type Character } from '@/models/character.model';
-import { CharacterService } from '@/services/character.service';
-import { NameValidationService } from '@/services/name-validation.service';
+import { type Character } from '@/resources/character/character.model';
+import { CharacterService } from '@/resources/character/character.service';
+import { NameValidationService } from '@/resources/character/name-validation.service';
 
 interface NameSimilarityValidationResult {
   isValid: boolean;

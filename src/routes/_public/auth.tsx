@@ -7,7 +7,7 @@ import {
   type RegisterFormValues,
   type SignUpDTO,
 } from '@/resources/auth/auth-model';
-import { LoginForm, RegisterForm } from '@/components/auth/auth-forms';
+import { LoginForm, RegisterForm } from '@/features/auth/auth-forms';
 import { AuthCard } from '@/components/ui/auth-card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';

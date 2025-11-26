@@ -18,12 +18,13 @@ import {
   Plus,
   Star,
 } from 'lucide-react';
-import { type ActionType, type GamePlayer } from '@/models/game.model';
-import { type PlayerSpell } from '@/models/spell.model';
-import { type ConsumableType } from '@/models/consumable.model';
-import { type PotionSlot } from '@/services/slot.service';
+import { type ActionType, type GamePlayer } from '@/resources/game/game.model';
+import { type PlayerSpell } from '@/resources/spell/spell.model';
+import { type ConsumableType } from '@/resources/consumable/consumable.model';
+import { type PotionSlot } from '@/resources/equipment/slot.service';
 import { ConsumableImage } from '@/components/ui/consumable-image';
 import { toast } from 'sonner';
+import { useGameStateStore } from '@/stores/useGameStateStore';
 // ✅ CORREÇÃO: Removido useBattleStore - usando handleAction das props
 interface CombinedBattleInterfaceProps {
   handleAction: (action: ActionType, spellId?: string) => Promise<void>;
@@ -252,7 +253,7 @@ export function CombinedBattleInterface({
         });
 
         // ✅ CORREÇÃO: Não invalidar cache ANTES da requisição - deixar o cache funcionar
-        const { SlotService } = await import('@/services/slot.service');
+        const { SlotService } = await import('@/resources/equipment/slot.service');
         const response = await SlotService.consumePotionFromSlot(currentPlayer.id, slotPosition);
 
         console.log('[CombinedBattleInterface] Resposta do SlotService:', {
@@ -268,9 +269,12 @@ export function CombinedBattleInterface({
           // ✅ CORREÇÃO: Atualizar stats do player imediatamente
           onPlayerStatsUpdate(new_hp, new_mana);
 
-          if (currentPlayer) {
-            currentPlayer.potionUsedThisTurn = true;
-          }
+          // ✅ CORREÇÃO: Atualizar potionUsedThisTurn através da store (não modificar objeto diretamente)
+          useGameStateStore.getState().updateGameState(draft => {
+            if (draft.player) {
+              draft.player.potionUsedThisTurn = true;
+            }
+          });
 
           // ✅ CORREÇÃO: Animação de feedback visual
           setUsedPotionAnimation(slotPosition);

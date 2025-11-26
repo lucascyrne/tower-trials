@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { EquipmentService } from '@/services/equipment.service';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
 import { useCharacterStore } from '@/stores/useCharacterStore';
 import { useGameStateStore } from '@/stores/useGameStateStore';
 import { toast } from 'sonner';

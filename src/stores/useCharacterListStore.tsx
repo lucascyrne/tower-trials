@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
 import { useEffect } from 'react';
-import { type Character } from '../models/character.model';
-import { CharacterService } from '../services/character.service';
+import { type Character } from '../resources/character/character.model';
+import { CharacterService } from '../resources/character/character.service';
 import { toast } from 'sonner';
 import { useAuth } from '../resources/auth/auth-hook';
 import { useGameLog } from './useLogStore';
@@ -74,10 +74,7 @@ export const useCharacterListStore = create<CharacterListStore>()(
       ),
 
     // Ação para carregar personagens
-    loadCharacters: async (
-      userId: string,
-      setGameMessage?: (message: string) => void
-    ) => {
+    loadCharacters: async (userId: string, setGameMessage?: (message: string) => void) => {
       const state = get();
 
       // Verificar se usuário mudou

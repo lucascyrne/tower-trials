@@ -2,10 +2,10 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
 import { useEffect } from 'react';
-import { type Character } from '../models/character.model';
+import { type Character } from '../resources/character/character.model';
 import { useGameStateStore } from './useGameStateStore';
-import { GameStateService } from '../services/game-state.service';
-import { CharacterService } from '../services/character.service';
+import { GameStateService } from '../resources/game/game-state.service';
+import { CharacterService } from '../resources/character/character.service';
 import { toast } from 'sonner';
 
 interface GameStoreState {

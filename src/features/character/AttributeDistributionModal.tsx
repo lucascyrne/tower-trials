@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { type GamePlayer } from '@/models/game.model';
-import { CharacterService } from '@/services/character.service';
+import { type GamePlayer } from '@/resources/game/game.model';
+import { CharacterService } from '@/resources/character/character.service';
 import { toast } from 'sonner';
 import { useMobileLandscape } from '@/hooks/useMediaQuery';
 

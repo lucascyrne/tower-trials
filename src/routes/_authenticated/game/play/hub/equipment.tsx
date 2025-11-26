@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { CharacterService } from '@/services/character.service';
-import { ConsumableService } from '@/services/consumable.service';
-import type { Character } from '@/models/character.model';
-import type { CharacterConsumable } from '@/models/consumable.model';
-import type { Equipment } from '@/models/equipment.model';
+import { CharacterService } from '@/resources/character/character.service';
+import { ConsumableService } from '@/resources/consumable/consumable.service';
+import type { Character } from '@/resources/character/character.model';
+import type { CharacterConsumable } from '@/resources/consumable/consumable.model';
+import type { Equipment } from '@/resources/equipment/equipment.model';
 import { useEquipment } from '@/hooks/useEquipment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -103,7 +103,8 @@ function EquipmentPage() {
   };
 
   // ✅ NOVO: Verificar se há uma arma two-handed equipada
-  const isTwoHandedActive = equippedSlots.main_hand?.type === 'weapon' && equippedSlots.main_hand?.is_two_handed;
+  const isTwoHandedActive =
+    equippedSlots.main_hand?.type === 'weapon' && equippedSlots.main_hand?.is_two_handed;
 
   // Função específica para recarregar consumíveis
   const refreshConsumables = async () => {

@@ -3,12 +3,12 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { User, Sword, Shield, ShirtIcon, Gem, Crown, Zap, Footprints, Heart } from 'lucide-react';
-import { type Character } from '@/models/character.model';
+import { type Character } from '@/resources/character/character.model';
 import {
   type EquipmentSlots,
   type Equipment,
   type EquipmentSlotType,
-} from '@/models/equipment.model';
+} from '@/resources/equipment/equipment.model';
 
 interface CharacterPaperDollProps {
   character: Character;
@@ -121,7 +121,7 @@ export const CharacterPaperDoll: React.FC<CharacterPaperDollProps> = ({
               className={`p-3 border-2 transition-all duration-200 backdrop-blur-sm ${
                 equipment
                   ? 'bg-slate-800/60 border-primary/50 hover:border-primary/70 shadow-lg shadow-primary/10'
-                    : 'bg-slate-800/30 border-dashed border-slate-600/50 hover:border-slate-500/70'
+                  : 'bg-slate-800/30 border-dashed border-slate-600/50 hover:border-slate-500/70'
               }`}
             >
               <div className="flex items-center gap-3">

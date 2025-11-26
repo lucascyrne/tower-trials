@@ -2,9 +2,9 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { type Character } from '@/models/character.model';
-import { type Equipment } from '@/models/equipment.model';
-import { EquipmentService } from '@/services/equipment.service';
+import { type Character } from '@/resources/character/character.model';
+import { type Equipment } from '@/resources/equipment/equipment.model';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
 import { EquipmentImage } from '@/components/ui/equipment-image';
 import {
   Sword,

@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CharacterService } from '@/services/character.service';
-import { type Character } from '@/models/character.model';
+import { CharacterService } from '@/resources/character/character.service';
+import { type Character } from '@/resources/character/character.model';
 import { toast } from 'sonner';
 import { Map, Play, Crown, Check } from 'lucide-react';
 
@@ -39,7 +39,7 @@ export const MapModal: React.FC<MapModalProps> = ({
     if (isOpen) {
       loadCheckpoints();
     }
-  }, [isOpen, character.id]);
+  }, [isOpen, character.id, character.floor]);
 
   const loadCheckpoints = async () => {
     setLoading(true);

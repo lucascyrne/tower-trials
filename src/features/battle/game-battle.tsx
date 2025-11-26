@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { type ActionType, type GamePlayer } from '@/models/game.model';
+import { type ActionType, type GamePlayer } from '@/resources/game/game.model';
 import { BattleArena } from './BattleArena';
 import { CombinedBattleInterface } from './CombinedBattleInterface';
 import { VictoryModal } from './VictoryModal';
@@ -13,11 +13,11 @@ import { useLogStore } from '@/stores/useLogStore';
 
 import { BattleHeader } from './BattleHeader';
 import { GameLog } from './GameLog';
-import { CharacterService } from '@/services/character.service';
+import { CharacterService } from '@/resources/character/character.service';
 import { FleeOverlay } from './FleeOverlay';
-import { type PotionSlot } from '@/services/slot.service';
+import { type PotionSlot } from '@/resources/equipment/slot.service';
 import { Button } from '@/components/ui/button';
-import { BattleInitializationService } from '@/services/battle-initialization.service';
+import { BattleInitializationService } from '@/resources/battle/battle-initialization.service';
 import { QuickActionPanel } from '../character/QuickActionPanel';
 import AttributeDistributionModal from '../character/AttributeDistributionModal';
 import { useBattleLandscape } from '@/hooks/useMediaQuery';
@@ -199,7 +199,7 @@ function usePotionSlots(playerId: string | undefined) {
 
     try {
       setLoadingSlots(true);
-      const { SlotService } = await import('@/services/slot.service');
+      const { SlotService } = await import('@/resources/equipment/slot.service');
       const result = await SlotService.getCharacterPotionSlots(currentPlayerId);
 
       if (result.success && result.data) {
@@ -280,7 +280,7 @@ function usePotionSlots(playerId: string | undefined) {
   const reloadSlots = useCallback(async () => {
     const currentPlayerId = playerIdRef.current;
     if (currentPlayerId) {
-      const { SlotService } = await import('@/services/slot.service');
+      const { SlotService } = await import('@/resources/equipment/slot.service');
       SlotService.invalidateCache(currentPlayerId);
 
       await loadPotionSlots();
@@ -727,7 +727,7 @@ export default function GameBattle() {
     const currentPlayer = useGameStateStore.getState().gameState.player;
     if (currentPlayer?.id) {
       // ✅ CRÍTICO: Finalizar logs da batalha ao voltar ao hub
-      const { BattleLoggerService } = await import('@/services/battle-logger.service');
+      const { BattleLoggerService } = await import('@/resources/battle/battle-logger.service');
       BattleLoggerService.endBattle('victory', {
         reason: 'Retorno ao hub',
         playerName: currentPlayer.name,
@@ -767,7 +767,7 @@ export default function GameBattle() {
     if (fleeSuccess && currentPlayer?.id) {
       // ✅ CRÍTICO: Finalizar logs da batalha em caso de fuga bem-sucedida
       console.log('[GameBattle] Finalizando logs da batalha - fuga bem-sucedida');
-      const { BattleLoggerService } = await import('@/services/battle-logger.service');
+      const { BattleLoggerService } = await import('@/resources/battle/battle-logger.service');
       BattleLoggerService.endBattle('flee', {
         reason: 'Fuga bem-sucedida',
         playerName: currentPlayer.name,
@@ -780,7 +780,7 @@ export default function GameBattle() {
 
       try {
         // ✅ NOVO: Salvar snapshot do personagem vivo no ranking
-        const { RankingService } = await import('@/services/ranking.service');
+        const { RankingService } = await import('@/resources/ranking/ranking.service');
         await RankingService.saveAliveCharacterToRanking(currentPlayer.id);
 
         await CharacterService.updateCharacterFloor(currentPlayer.id, 1);

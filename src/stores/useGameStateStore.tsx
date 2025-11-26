@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { produce } from 'immer';
-import { type GameState, type GameLoadingState } from '../models/game.model';
+import { type GameState, type GameLoadingState } from '../resources/game/game.model';
 import { toast } from 'sonner';
 
 const initialGameState: GameState = {

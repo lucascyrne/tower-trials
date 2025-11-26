@@ -22,8 +22,8 @@ import {
   Eye,
 } from 'lucide-react';
 import { StatDisplay } from '@/components/ui/stat-display';
-import { type GamePlayer } from '@/models/game.model';
-import { CharacterService } from '@/services/character.service';
+import { type GamePlayer } from '@/resources/game/game.model';
+import { CharacterService } from '@/resources/character/character.service';
 import { useNavigate } from '@tanstack/react-router';
 
 interface CharacterInfoCardProps {

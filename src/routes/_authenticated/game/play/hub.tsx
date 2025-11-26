@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate, Outlet, useLocation } from '@tanstack/rea
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useGameStateStore } from '@/stores/useGameStateStore';
 import { useCharacterHubOperations } from '@/hooks/useCharacterOperations';
-import { CharacterService } from '@/services/character.service';
-import type { Character } from '@/models/character.model';
+import { CharacterService } from '@/resources/character/character.service';
+import type { Character } from '@/resources/character/character.model';
 import { toast } from 'sonner';
 import { MapModal } from '@/features/hub/MapModal';
 import { CharacterInfoCard } from '@/features/character/CharacterInfoCard';
@@ -445,7 +445,7 @@ function GameHubMainPage({ characterId }: { characterId: string }) {
         <MapModal
           isOpen={showMapModal}
           onClose={() => setShowMapModal(false)}
-          character={{ id: player.id, floor: player.floor } as Character}
+          character={{ id: player.id, floor: player.floor, name: player.name || '' } as Character}
           onStartFromCheckpoint={handleStartFromCheckpoint}
         />
       </div>

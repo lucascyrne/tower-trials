@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Trophy, Skull, Eye, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMobileLandscape } from '@/hooks/useMediaQuery';
-import { CharacterService } from '@/services/character.service';
+import { CharacterService } from '@/resources/character/character.service';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { useNavigate } from '@tanstack/react-router';
 

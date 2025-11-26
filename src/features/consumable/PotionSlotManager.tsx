@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SlotService, type PotionSlot } from '@/services/slot.service';
-import { type CharacterConsumable } from '@/models/consumable.model';
+import { SlotService, type PotionSlot } from '@/resources/equipment/slot.service';
+import { type CharacterConsumable } from '@/resources/consumable/consumable.model';
 import { toast } from 'sonner';
 import { Beaker, Plus, X, Heart, Zap, ChevronDown } from 'lucide-react';
 import { formatPotionSlotEffect, formatConsumableEffect } from '@/utils/consumable-utils';

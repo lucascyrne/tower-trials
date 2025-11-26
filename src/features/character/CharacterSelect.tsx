@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { type Character, type CharacterProgressionInfo } from '@/models/character.model';
+import {
+  type Character,
+  type CharacterProgressionInfo,
+} from '@/resources/character/character.model';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { CharacterService } from '@/services/character.service';
-import { NameValidationService } from '@/services/name-validation.service';
+import { CharacterService } from '@/resources/character/character.service';
+import { NameValidationService } from '@/resources/character/name-validation.service';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +47,7 @@ export function CharacterSelect() {
       setCharacters([]);
       setProgression(null);
       setSelectedCharacter(null);
-      
+
       loadCharacters();
       loadProgression();
     }

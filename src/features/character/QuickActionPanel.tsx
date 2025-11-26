@@ -1,9 +1,9 @@
 import { Button } from '@/components/ui/button';
-import { type ActionType } from '@/models/game.model';
-import { type GamePlayer } from '@/models/game.model';
-import { type PlayerSpell } from '@/models/spell.model';
+import { type ActionType } from '@/resources/game/game.model';
+import { type GamePlayer } from '@/resources/game/game.model';
+import { type PlayerSpell } from '@/resources/spell/spell.model';
 import { ConsumableImage } from '@/components/ui/consumable-image';
-import { type ConsumableType } from '@/models/consumable.model';
+import { type ConsumableType } from '@/resources/consumable/consumable.model';
 import {
   Sword,
   Shield,
@@ -15,7 +15,7 @@ import {
   Snowflake,
   Plus,
 } from 'lucide-react';
-import type { PotionSlot } from '@/services/slot.service';
+import type { PotionSlot } from '@/resources/equipment/slot.service';
 
 interface QuickActionPanelProps {
   handleAction: (action: ActionType, spellId?: string) => Promise<void>;

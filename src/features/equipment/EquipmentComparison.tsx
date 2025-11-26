@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   type Equipment,
   type EquipmentComparison as EquipmentComparisonType,
-} from '@/models/equipment.model';
-import { CharacterService } from '@/services/character.service';
+} from '@/resources/equipment/equipment.model';
+import { CharacterService } from '@/resources/character/character.service';
 import {
   TrendingUp,
   TrendingDown,

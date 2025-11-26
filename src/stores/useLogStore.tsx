@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { produce } from 'immer';
-import type { GameLogEntry, GameLogType } from '../models/game.model';
+import type { GameLogEntry, GameLogType } from '../resources/game/game.model';
 import { useCallback } from 'react';
 
 // Tipos estendidos para o sistema avançado de logs

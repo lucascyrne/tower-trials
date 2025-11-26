@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Star, Coins, Sparkles } from 'lucide-react';
-import type { MonsterDrop } from '@/models/consumable.model';
+import type { MonsterDrop } from '@/resources/consumable/consumable.model';
 
 interface CharacterDrop {
   id: string;

@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { EquipmentService } from '@/services/equipment.service';
-import type { CharacterEquipment, EquipmentSlots } from '@/models/equipment.model';
+import { EquipmentService } from '@/resources/equipment/equipment.service';
+import type { CharacterEquipment, EquipmentSlots } from '@/resources/equipment/equipment.model';
 
 interface UseEquipmentResult {
   allEquipment: CharacterEquipment[];

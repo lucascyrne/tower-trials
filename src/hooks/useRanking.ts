@@ -5,7 +5,7 @@ import {
   type SaveRankingData,
   type RankingMode,
   type ServiceResponse,
-} from '@/services/ranking.service';
+} from '@/resources/ranking/ranking.service';
 import { AuthService } from '@/resources/auth/auth.service';
 
 /**

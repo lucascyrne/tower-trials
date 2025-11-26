@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/table';
 import AdministratorOnlyFeature from '@/components/hocs/administrator-only-feature';
 import { userService } from '@/resources/user/user.service';
-import { RankingService, type RankingEntry } from '@/services/ranking.service';
+import { RankingService, type RankingEntry } from '@/resources/ranking/ranking.service';
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Administrador',

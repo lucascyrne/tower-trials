@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Consumable } from '@/models/consumable.model';
+import { type Consumable } from '@/resources/consumable/consumable.model';
 import { getConsumableImagePath, getConsumableIcon } from '@/utils/consumable-utils';
 
 // Import direto das imagens de consumíveis para garantir que funcionem em produção
@@ -20,10 +20,10 @@ interface ConsumableImageProps {
 }
 
 const sizeClasses = {
-  sm: 'h-6 w-6',      // 24px
-  md: 'h-8 w-8',      // 32px
-  lg: 'h-12 w-12',    // 48px
-  xl: 'h-16 w-16',    // 64px
+  sm: 'h-6 w-6', // 24px
+  md: 'h-8 w-8', // 32px
+  lg: 'h-12 w-12', // 48px
+  xl: 'h-16 w-16', // 64px
 };
 
 export function ConsumableImage({
@@ -49,12 +49,12 @@ export function ConsumableImage({
       'pequena poção de vida': smallHealthPotion,
       'small health potion': smallHealthPotion,
       'poção de hp pequena': smallHealthPotion,
-      
+
       'poção de vida média': mediumHealthPotion,
       'média poção de vida': mediumHealthPotion,
       'medium health potion': mediumHealthPotion,
       'poção de hp média': mediumHealthPotion,
-      
+
       'poção de vida grande': largeManaPotion, // Nota: usa large_mana_potion.png (único arquivo grande)
       'grande poção de vida': largeManaPotion,
       'large health potion': largeManaPotion,
@@ -65,12 +65,12 @@ export function ConsumableImage({
       'pequena poção de mana': smallManaPotion,
       'small mana potion': smallManaPotion,
       'poção de mp pequena': smallManaPotion,
-      
+
       'poção de mana média': mediumManaPotion,
       'média poção de mana': mediumManaPotion,
       'medium mana potion': mediumManaPotion,
       'poção de mp média': mediumManaPotion,
-      
+
       'poção de mana grande': largeManaPotion,
       'grande poção de mana': largeManaPotion,
       'large mana potion': largeManaPotion,
@@ -79,13 +79,13 @@ export function ConsumableImage({
       // ⚡ Elixires (2 tipos, cada um com sua imagem)
       'elixir de força': strengthElixir,
       'strength elixir': strengthElixir,
-      
+
       'elixir de defesa': defenseElixir,
       'defense elixir': defenseElixir,
 
       // 🧪 Antídoto (1 tipo)
-      'antídoto': antidote,
-      'antidote': antidote,
+      antídoto: antidote,
+      antidote: antidote,
     };
 
     // Se encontrar match exato, usar
@@ -108,7 +108,11 @@ export function ConsumableImage({
     }
 
     // Poções de Vida
-    if (normalizedName.includes('vida') || normalizedName.includes('health') || normalizedName.includes('hp')) {
+    if (
+      normalizedName.includes('vida') ||
+      normalizedName.includes('health') ||
+      normalizedName.includes('hp')
+    ) {
       if (normalizedName.includes('grande') || normalizedName.includes('large')) {
         return largeManaPotion;
       }

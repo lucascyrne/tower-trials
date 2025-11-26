@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Trophy, Skull, Eye, AlertTriangle } from 'lucide-react';
 import { useGame } from '@/hooks/useGame';
-import { CharacterService } from '@/services/character.service';
+import { CharacterService } from '@/resources/character/character.service';
 import { toast } from 'sonner';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';

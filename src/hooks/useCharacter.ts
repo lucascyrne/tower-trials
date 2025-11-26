@@ -4,8 +4,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { CharacterService } from '@/services/character.service';
-import type { Character } from '@/models/character.model';
+import { CharacterService } from '@/resources/character/character.service';
+import type { Character } from '@/resources/character/character.model';
 import { toast } from 'sonner';
 
 interface UseCharacterResult {

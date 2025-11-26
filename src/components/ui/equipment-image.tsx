@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Equipment } from '@/models/equipment.model';
+import type { Equipment } from '@/resources/equipment/equipment.model';
 import { AssetManager } from '@/utils/asset-utils';
 
 // Import direto de ícones de equipamentos para garantir funcionamento em produção

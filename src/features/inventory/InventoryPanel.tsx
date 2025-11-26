@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { type CharacterConsumable } from '@/models/consumable.model';
-import { ConsumableService } from '@/services/consumable.service';
-import { type Character } from '@/models/character.model';
+import { type CharacterConsumable } from '@/resources/consumable/consumable.model';
+import { ConsumableService } from '@/resources/consumable/consumable.service';
+import { type Character } from '@/resources/character/character.model';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Coins, Sparkles, Star, Package, DollarSign } from 'lucide-react';
@@ -11,7 +11,7 @@ import { PotionSlotManager } from '@/features/consumable/PotionSlotManager';
 import { formatConsumableEffect } from '@/utils/consumable-utils';
 import { ConsumableImage } from '@/components/ui/consumable-image';
 import { SellItemModal } from '@/components/ui/sell-item-modal';
-import type { CharacterDrop } from '@/models/monster.model';
+import type { CharacterDrop } from '@/resources/monster/monster.model';
 
 interface InventoryPanelProps {
   character: Character;

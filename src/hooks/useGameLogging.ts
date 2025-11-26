@@ -5,7 +5,7 @@
 
 import { useCallback } from 'react';
 import { LoggingUtils } from '@/utils/logging-utils';
-import { type BattleEventDetails } from '@/models/game.model';
+import { type BattleEventDetails } from '@/resources/game/game.model';
 
 export interface UseGameLoggingReturn {
   // Logs de ações do jogador

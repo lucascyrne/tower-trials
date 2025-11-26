@@ -19,8 +19,8 @@ import {
   Timer,
   Coins,
 } from 'lucide-react';
-import { type DeadCharacter, type CemeteryStats } from '@/models/cemetery.model';
-import { CemeteryService } from '@/services/cemetery.service';
+import { type DeadCharacter, type CemeteryStats } from '@/resources/cemetery/cemetery.model';
+import { CemeteryService } from '@/resources/cemetery/cemetery.service';
 import { useAuth } from '@/resources/auth/auth-hook';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { toast } from 'sonner';

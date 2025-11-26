@@ -12,10 +12,10 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import type { Character, CharacterProgressionInfo } from '@/models/character.model';
+import type { Character, CharacterProgressionInfo } from '@/resources/character/character.model';
 import { useAuth } from '@/resources/auth/auth-hook';
-import { CharacterService } from '@/services/character.service';
-import { NameValidationService } from '@/services/name-validation.service';
+import { CharacterService } from '@/resources/character/character.service';
+import { NameValidationService } from '@/resources/character/name-validation.service';
 import {
   Dialog,
   DialogContent,

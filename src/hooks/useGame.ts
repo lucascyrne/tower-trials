@@ -1,7 +1,7 @@
 import { useGameStateStore } from '@/stores/useGameStateStore';
 import { useGameLog } from '@/stores/useLogStore';
 import { useCharacterManagement } from '@/stores/useCharacterStore';
-import type { CharacterConsumable } from '@/models/consumable.model';
+import type { CharacterConsumable } from '@/resources/consumable/consumable.model';
 
 export function useGame() {
   const gameState = useGameStateStore();

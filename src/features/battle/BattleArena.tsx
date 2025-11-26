@@ -27,7 +27,7 @@ import {
   HelpCircle,
   MessageCircle,
 } from 'lucide-react';
-import { type GamePlayer, type Enemy } from '@/models/game.model';
+import { type GamePlayer, type Enemy } from '@/resources/game/game.model';
 import { formatLargeNumber } from '@/utils/number-utils';
 import { ThiefIdleAnimation } from '@/features/character/ThiefIdleAnimation';
 import { StatDisplay } from '@/components/ui/stat-display';

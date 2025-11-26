@@ -4,8 +4,8 @@
  * Garante que todos os eventos importantes sejam capturados adequadamente
  */
 
-import { type GameLogType, type BattleEventDetails } from '@/models/game.model';
-import { BattleLoggerService } from '@/services/battle-logger.service';
+import { type GameLogType, type BattleEventDetails } from '@/resources/game/game.model';
+import { BattleLoggerService } from '@/resources/battle/battle-logger.service';
 import { useLogStore } from '@/stores/useLogStore';
 
 export interface GameEventLog {

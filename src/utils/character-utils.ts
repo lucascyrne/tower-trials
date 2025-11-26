@@ -1,7 +1,7 @@
-import { type Character } from '@/models/character.model';
-import { type GamePlayer } from '@/models/game.model';
-import { type CharacterStats } from '@/models/character.model';
-import { CharacterStatsService } from '@/services/character-stats.service';
+import { type Character } from '@/resources/character/character.model';
+import { type GamePlayer } from '@/resources/game/game.model';
+import { type CharacterStats } from '@/resources/character/character.model';
+import { CharacterStatsService } from '@/resources/character/character-stats.service';
 
 // =====================================
 // INTERFACES INTERNAS

@@ -4,9 +4,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Heart, Zap, Loader2 } from 'lucide-react';
-import { type Character } from '@/models/character.model';
-import { type PotionSlot } from '@/services/slot.service';
-import { SlotService } from '@/services/slot.service';
+import { type Character } from '@/resources/character/character.model';
+import { type PotionSlot } from '@/resources/equipment/slot.service';
+import { SlotService } from '@/resources/equipment/slot.service';
 import { isHealthPotion, isManaPotion } from '@/utils/consumable-utils';
 
 interface QuickPotionBarProps {

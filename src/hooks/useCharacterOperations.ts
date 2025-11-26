@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
-import { type Character } from '@/models/character.model';
-import { CharacterService } from '@/services/character.service';
+import { type Character } from '@/resources/character/character.model';
+import { CharacterService } from '@/resources/character/character.service';
 import { useGameStateStore } from '@/stores/useGameStateStore';
 import { useGameLog } from '@/stores/useLogStore';
 import { useCharacterStore } from '@/stores/useCharacterStore';
@@ -120,7 +120,7 @@ export function useCharacterBattleOperations() {
         };
 
         const { BattleInitializationService } = await import(
-          '@/services/battle-initialization.service'
+          '@/resources/battle/battle-initialization.service'
         );
         const result = await BattleInitializationService.initializeBattle(updatedCharacter);
 

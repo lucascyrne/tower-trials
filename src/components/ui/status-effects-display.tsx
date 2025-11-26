@@ -5,7 +5,7 @@ import {
   getAttributeIcon,
   type SpellEffectType,
   type ActiveEffects,
-} from '@/models/spell.model';
+} from '@/resources/spell/spell.model';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Clock } from 'lucide-react';
 import { useMemo, useCallback } from 'react';

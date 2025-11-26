@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award, Heart, Brain, Sword, Sparkles, Shield, Zap, Star, Target } from 'lucide-react';
-import { type CharacterStats } from '@/models/character.model';
+import { type CharacterStats } from '@/resources/character/character.model';
 import { StatCardWithTooltip } from './StatCardWithTooltip';
 import { CharacterUtils } from '@/utils/character-utils';
 
@@ -10,8 +10,6 @@ interface DerivedStatsSectionProps {
 }
 
 export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps) {
-
-
   // ✅ CRÍTICO: Obter breakdown detalhado usando fonte única
   const [statsBreakdown, setStatsBreakdown] = React.useState<{
     hp: { base: number; fromAttributes: number; fromMasteries: number };
