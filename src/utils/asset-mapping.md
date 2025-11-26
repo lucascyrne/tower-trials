@@ -141,3 +141,5 @@ export function InventoryItem({ item }: InventoryItemProps) {
 - **Desenvolvimento**: Vite resolve imports de `src/assets` automaticamente
 - **Imports Diretos**: Componentes importam assets diretamente para máxima compatibilidade
 
+
+

@@ -202,3 +202,5 @@ A integração de imagens de equipamentos está **100% completa** em todas as p�
 **Responsável:** Assistente IA
 **Versão:** 1.0
 
+
+

@@ -270,3 +270,5 @@ Nenhum item usa mais imagens de outro item. Cada um tem sua própria ou usa fall
 **Data:** 25 de Novembro, 2025  
 **Versão:** 1.1 (Correção crítica)
 
+
+

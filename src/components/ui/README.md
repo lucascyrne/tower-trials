@@ -262,3 +262,5 @@ export function InventorySlot({ item, quantity }: InventorySlotProps) {
 - [Modelos de Dados](../../models/consumable.model.ts)
 - [Modelos de Dados](../../models/equipment.model.ts)
 
+
+

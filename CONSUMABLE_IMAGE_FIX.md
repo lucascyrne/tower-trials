@@ -257,3 +257,5 @@ O problema de consumíveis não carregarem imagens em `shop.tsx` foi **completam
 **Versão:** 1.0  
 **Status:** ✅ COMPLETO
 
+
+

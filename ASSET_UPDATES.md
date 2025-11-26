@@ -141,3 +141,5 @@ import { EquipmentImage } from '@/components/ui/equipment-image';
 **Status**: ✅ Completo e testado
 **Data**: 25 de Novembro, 2025
 
+
+

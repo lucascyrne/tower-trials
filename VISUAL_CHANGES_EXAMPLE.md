@@ -328,3 +328,5 @@ Todas as imagens mantêm responsividade:
 
 **Resultado Final:** Interface visualmente coerente, moderna e intuitiva com imagens reais de todos os equipamentos em todas as páginas do hub! 🎮✨
 
+
+

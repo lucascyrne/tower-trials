@@ -28,11 +28,8 @@ function RootRedirectFeature(): React.ReactNode {
       return;
     }
 
-    // Se não autenticado: ir para /home
-    if (!user) {
-      navigate({ to: '/home', replace: true });
-      return;
-    }
+    // Se não autenticado: ir para /home (SEMPRE quando user é null/undefined)
+    navigate({ to: '/home', replace: true });
   }, [user, loading.onAuthUserChanged, navigate]);
 
   // Mostrar loading durante a verificação

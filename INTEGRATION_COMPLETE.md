@@ -279,3 +279,5 @@ A integração de imagens de equipamentos e consumíveis foi **100% concluída**
 **Versão:** 1.0  
 **Status:** ✅ COMPLETO
 
+
+

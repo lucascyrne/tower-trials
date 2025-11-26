@@ -195,3 +195,5 @@ A mudança de tamanho de ícones resultará em:
 **Data:** 25 de Novembro, 2025  
 **Versão:** 1.0
 
+
+
