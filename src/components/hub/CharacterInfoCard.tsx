@@ -46,7 +46,6 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
       const checkpointsResponse = await CharacterService.getUnlockedCheckpoints(player.id);
       
       if (!checkpointsResponse.success || !checkpointsResponse.data || checkpointsResponse.data.length === 0) {
-        console.error('Nenhum checkpoint encontrado');
         return;
       }
       
@@ -54,22 +53,17 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
       const checkpoints = checkpointsResponse.data.sort((a, b) => b.floor - a.floor);
       const lastCheckpoint = checkpoints[0];
       
-      console.log(`[QuickPlay] Iniciando do checkpoint: Andar ${lastCheckpoint.floor} - ${lastCheckpoint.description}`);
-      
       // Iniciar do último checkpoint
       const startResponse = await CharacterService.startFromCheckpoint(player.id, lastCheckpoint.floor);
       
       if (!startResponse.success) {
-        console.error('Erro ao iniciar do checkpoint:', startResponse.error);
         return;
       }
       
-      console.log(`[QuickPlay] Checkpoint configurado com sucesso. Redirecionando para batalha...`);
-      
-      // CORRIGIDO: Redirecionar para a página de batalha com o ID do personagem
+      // Redirecionar para a página de batalha com o ID do personagem
       router.push(`/game/play/battle?character=${player.id}`);
-    } catch (error) {
-      console.error('Erro no início rápido:', error);
+    } catch {
+      // Erro no início rápido
     } finally {
       setIsLoadingQuickPlay(false);
     }
@@ -186,72 +180,62 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
   ].filter(skill => skill.level > 1 || skill.xp > 0); // Só mostrar habilidades com progresso
 
   return (
-    <Card className="w-full bg-slate-900/80 border-slate-700 shadow-xl">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <Card className="relative w-full overflow-hidden border-slate-800/80 bg-slate-900/65 shadow-2xl shadow-black/30 backdrop-blur-sm">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(120,53,15,0.15),transparent_42%),radial-gradient(circle_at_top_right,rgba(30,41,59,0.25),transparent_48%)]"
+        aria-hidden="true"
+      />
+
+      <CardHeader className="relative border-b border-slate-800/80 pb-4">
+        <CardTitle className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-700 rounded-lg">
-              <User className="h-5 w-5 text-slate-300" />
+            <div className="rounded-xl border border-slate-700 bg-slate-800/80 p-2.5">
+              <User className="h-5 w-5 text-slate-200" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-100">{player.name}</h2>
+              <h2 className="text-xl font-bold tracking-tight text-slate-100">{player.name}</h2>
               <p className="text-sm text-slate-400">Aventureiro</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <Button
               onClick={handleQuickPlay}
               disabled={isLoadingQuickPlay}
               size="sm"
-              className="quick-play-button relative overflow-hidden bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:via-purple-500 hover:to-indigo-500 text-white border border-violet-500/20 shadow-lg transition-all duration-300 hover:shadow-violet-500/25 hover:shadow-xl hover:-translate-y-0.5 flex-shrink-0 group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:transform-none"
+              className="group relative overflow-hidden border border-violet-500/30 bg-gradient-to-r from-violet-700 via-purple-700 to-indigo-700 text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:from-violet-600 hover:via-purple-600 hover:to-indigo-600 hover:shadow-violet-500/25"
             >
-              {/* Overlay gradiente hover */}
               <div className="absolute inset-0 bg-gradient-to-r from-violet-600/50 via-purple-600/50 to-indigo-600/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* Indicador de início rápido - pequeno ícone */}
               {!isLoadingQuickPlay && (
                 <div className="quick-start-indicator absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full shadow-sm shadow-amber-400/50" />
               )}
-              
-              {/* Ícone principal */}
-              <Play className={`h-3 w-3 mr-1.5 relative z-10 transition-transform duration-300 ${isLoadingQuickPlay ? 'animate-spin' : 'group-hover:scale-110 group-hover:drop-shadow-lg'}`} />
-              
-              {/* Texto */}
+              <Play className={`relative z-10 mr-1.5 h-3 w-3 transition-transform duration-300 ${isLoadingQuickPlay ? 'animate-spin' : 'group-hover:scale-110'}`} />
               <span className="relative z-10 font-medium tracking-wide">
                 {isLoadingQuickPlay ? 'Iniciando...' : 'Jogar'}
               </span>
-              
-              {/* Shimmer effect on hover */}
-              {!isLoadingQuickPlay && (
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 group-hover:animate-pulse" />
-                </div>
-              )}
             </Button>
-            <Badge variant="outline" className="border-amber-500 text-amber-400 bg-amber-500/10 flex-shrink-0">
+
+            <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-300">
               <Star className="h-3 w-3 mr-1" />
               Nível {player.level}
             </Badge>
+
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowDetails(!showDetails)}
-              className="text-slate-400 hover:text-slate-200 flex-shrink-0"
+              className="border border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/70 hover:text-white"
             >
               {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      
-      <CardContent className="space-y-4">
-        {/* Layout principal horizontal */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lado esquerdo: Barras de status */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Status</h3>
-            
-            {/* HP */}
+
+      <CardContent className="relative space-y-5 pt-5">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-12">
+          <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4 xl:col-span-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Status</h3>
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
@@ -271,8 +255,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 />
               </div>
             </div>
-            
-            {/* Mana */}
+
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
@@ -289,8 +272,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 />
               </div>
             </div>
-            
-            {/* XP */}
+
             <div className="space-y-1">
               <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 font-medium text-slate-300">
@@ -309,11 +291,8 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
             </div>
           </div>
 
-          {/* Centro: Stats básicos e importantes */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Combat Stats</h3>
-            
-            {/* Stats principais em grid */}
+          <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4 xl:col-span-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Combat Stats</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -332,8 +311,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                     />
                   </span>
                 </div>
-                
-                {/* Magic Attack - Novo sistema */}
+
                 {player.magic_attack && player.magic_attack > 0 && (
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1">
@@ -393,9 +371,8 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 </div>
               </div>
             </div>
-            
-            {/* Gold */}
-            <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+
+            <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Gem className="h-4 w-4 text-yellow-400" />
@@ -408,17 +385,15 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
             </div>
           </div>
 
-          {/* Direita: Atributos compactos */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Atributos</h3>
-            
+          <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4 xl:col-span-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Atributos</h3>
             <div className="grid grid-cols-3 gap-2">
               {primaryAttributes.map((attr) => {
                 const Icon = attr.icon;
                 return (
-                  <div 
+                  <div
                     key={attr.name}
-                    className="bg-slate-800/50 p-2 rounded-lg border border-slate-700 hover:bg-slate-700/50 transition-colors"
+                    className="rounded-lg border border-slate-700 bg-slate-800/50 p-2 transition-colors hover:bg-slate-700/50"
                     title={attr.fullName}
                   >
                     <div className="flex flex-col items-center gap-1">
@@ -433,11 +408,10 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
               })}
             </div>
 
-            {/* Stats derivados se disponíveis */}
             {Boolean(player.critical_chance || player.critical_damage) && (
               <div className="space-y-2">
                 {Boolean(player.critical_chance) && (
-                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Star className="h-4 w-4 text-orange-400" />
@@ -448,7 +422,7 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                   </div>
                 )}
                 {player.critical_damage && (
-                  <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Target className="h-4 w-4 text-red-400" />
@@ -463,14 +437,11 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
           </div>
         </div>
 
-        {/* Seção expansível com habilidades */}
         {showDetails && (
-          <div className="border-t border-slate-700 pt-4 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Habilidades de Combate</h3>
-            
+          <div className="space-y-3 border-t border-slate-800 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Habilidades de Combate</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {characterSkills.map((skill) => {
-                // Calcular XP necessário para o próximo nível (fórmula simples)
                 const nextLevelXp = skill.level * 100;
                 const currentLevelXp = (skill.level - 1) * 100;
                 const skillXpProgress = skill.xp - currentLevelXp;
@@ -478,9 +449,9 @@ export function CharacterInfoCard({ player }: CharacterInfoCardProps) {
                 const skillXpPercentage = Math.max(0, Math.min(100, (skillXpProgress / skillXpNeeded) * 100));
 
                 return (
-                  <div 
+                  <div
                     key={skill.key}
-                    className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors"
+                    className="rounded-lg border border-slate-700 bg-slate-800/60 p-3 transition-colors hover:border-slate-500"
                   >
                     <div className="flex flex-col items-center gap-2">
                       <div className="flex items-center justify-center">

@@ -2,6 +2,11 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useGame } from '@/resources/game/game-hook';
 
+const isDev = process.env.NODE_ENV === 'development';
+function logFloorTransition(...args: unknown[]) {
+  if (isDev) console.log(...args);
+}
+
 interface FloorTransitionProps {
   children?: React.ReactNode;
 }
@@ -15,76 +20,67 @@ export function withFloorTransition<T>(Component: React.ComponentType<T>) {
       targetFloor: number;
       description: string | null;
     } | null>(null);
-    
+
     const lastPlayerFloorRef = useRef<number | null>(null);
     const isTransitioningRef = useRef(false);
     const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
-    
-    // Inicializar o andar de referência na primeira renderização
+
     useEffect(() => {
       if (lastPlayerFloorRef.current === null) {
         lastPlayerFloorRef.current = gameState.player.floor;
-        console.log(`[FloorTransition] Andar inicial: ${gameState.player.floor}`);
+        logFloorTransition(`[FloorTransition] Andar inicial: ${gameState.player.floor}`);
       }
     }, [gameState.player.floor]);
-    
-    // Memoizar função de pular transição
+
     const skipTransition = useCallback(() => {
       if (transitionTimerRef.current) {
         clearTimeout(transitionTimerRef.current);
       }
       setShowTransition(false);
       isTransitioningRef.current = false;
-      console.log('[FloorTransition] Transição pulada pelo usuário');
+      logFloorTransition('[FloorTransition] Transição pulada pelo usuário');
     }, []);
-    
-    // Monitorar mudanças de andar - simplificado e otimizado
+
     useEffect(() => {
       const currentFloor = gameState.player.floor;
       const lastFloor = lastPlayerFloorRef.current;
-      
-      // Debug log para rastrear mudanças
-      console.log(`[FloorTransition] Verificando mudança: último=${lastFloor}, atual=${currentFloor}, inTransição=${isTransitioningRef.current}`);
-      
-      // Ignorar se ainda não temos referência ou se não houve mudança real
+
+      logFloorTransition(
+        `[FloorTransition] Verificando mudança: último=${lastFloor}, atual=${currentFloor}, inTransição=${isTransitioningRef.current}`,
+      );
+
       if (lastFloor === null || currentFloor === lastFloor) {
         return;
       }
-      
-      // Ignorar retrocessos ou se já estamos em transição
+
       if (currentFloor <= lastFloor || isTransitioningRef.current) {
-        console.log(`[FloorTransition] Ignorando mudança: retrocesso=${currentFloor <= lastFloor}, emTransição=${isTransitioningRef.current}`);
+        logFloorTransition(
+          `[FloorTransition] Ignorando mudança: retrocesso=${currentFloor <= lastFloor}, emTransição=${isTransitioningRef.current}`,
+        );
         return;
       }
-      
-      console.log(`[FloorTransition] Detectada mudança válida de andar: ${lastFloor} → ${currentFloor}`);
-      
-      // Iniciar transição
+
+      logFloorTransition(`[FloorTransition] Detectada mudança válida de andar: ${lastFloor} → ${currentFloor}`);
+
       isTransitioningRef.current = true;
-      
-      // Configurar dados da transição
+
       setTransitionData({
         sourceFloor: lastFloor,
         targetFloor: currentFloor,
-        description: gameState.currentFloor?.description || `Andar ${currentFloor}`
+        description: gameState.currentFloor?.description || `Andar ${currentFloor}`,
       });
-      
-      // Mostrar transição
+
       setShowTransition(true);
-      
-      // Timer para ocultar transição automaticamente
+
       transitionTimerRef.current = setTimeout(() => {
         setShowTransition(false);
         isTransitioningRef.current = false;
-        console.log(`[FloorTransition] Transição automática concluída para andar ${currentFloor}`);
+        logFloorTransition(`[FloorTransition] Transição automática concluída para andar ${currentFloor}`);
       }, 3000);
-      
-      // Atualizar referência
+
       lastPlayerFloorRef.current = currentFloor;
-      
     }, [gameState.player.floor, gameState.currentFloor?.description]);
-    
-    // Cleanup
+
     useEffect(() => {
       return () => {
         if (transitionTimerRef.current) {
@@ -92,7 +88,7 @@ export function withFloorTransition<T>(Component: React.ComponentType<T>) {
         }
       };
     }, []);
-    
+
     return (
       <>
         {showTransition && transitionData ? (
@@ -100,7 +96,7 @@ export function withFloorTransition<T>(Component: React.ComponentType<T>) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center z-50 bg-background/95"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95"
           >
             <motion.div
               initial={{ y: -20, opacity: 0 }}
@@ -109,15 +105,11 @@ export function withFloorTransition<T>(Component: React.ComponentType<T>) {
               transition={{ delay: 0.3 }}
               className="text-center"
             >
-              <h1 className="text-4xl font-bold mb-4">
-                Andar {transitionData.targetFloor}
-              </h1>
-              <p className="text-xl text-muted-foreground mb-6">
-                {transitionData.description}
-              </p>
-              
+              <h1 className="mb-4 text-4xl font-bold">Andar {transitionData.targetFloor}</h1>
+              <p className="mb-6 text-xl text-muted-foreground">{transitionData.description}</p>
+
               <motion.button
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                className="rounded-md bg-primary px-6 py-3 text-primary-foreground transition-colors hover:bg-primary/90"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.0 }}
@@ -133,4 +125,4 @@ export function withFloorTransition<T>(Component: React.ComponentType<T>) {
       </>
     );
   };
-} 
+}

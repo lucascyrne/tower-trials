@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "check:architecture": "npm run check:boundaries",
     "# Gerenciamento de Ambientes": "",
     "env:local": "bash ./scripts/setup-local-env.sh",
     "env:dev": "bash ./scripts/setup-dev-env.sh",

@@ -8,7 +8,6 @@ import {
 } from './auth-model';
 
 const initialLoadingState: AuthLoadingState = {
-  onAuthUserChanged: false,
   signIn: false,
   signUp: false,
   signOut: false,

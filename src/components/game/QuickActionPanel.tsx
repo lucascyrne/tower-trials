@@ -82,59 +82,10 @@ export function QuickActionPanel({
   // Top 3 spells para os atalhos 1-3
   const quickSpells = player.spells?.slice(0, 3) || [];
 
-  // Suporte a teclas de atalho
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (!isPlayerTurn || loading.performAction) return;
-      
-      const key = event.key.toLowerCase();
-      
-      switch (key) {
-        // Ações de combate: A S D
-        case 'a':
-          event.preventDefault();
-          handleAction('attack');
-          break;
-        case 's':
-          event.preventDefault();
-          handleAction('defend');
-          break;
-        case 'd':
-          event.preventDefault();
-          handleAction('flee');
-          break;
-        // Magias: 1 2 3
-        case '1':
-          event.preventDefault();
-          if (quickSpells[0]) handleAction('spell', quickSpells[0].id);
-          break;
-        case '2':
-          event.preventDefault();
-          if (quickSpells[1]) handleAction('spell', quickSpells[1].id);
-          break;
-        case '3':
-          event.preventDefault();
-          if (quickSpells[2]) handleAction('spell', quickSpells[2].id);
-          break;
-        // Poções: Q W E
-        case 'q':
-          event.preventDefault();
-          if (potionSlots[0]) handlePotionUse(potionSlots[0]);
-          break;
-        case 'w':
-          event.preventDefault();
-          if (potionSlots[1]) handlePotionUse(potionSlots[1]);
-          break;
-        case 'e':
-          event.preventDefault();
-          if (potionSlots[2]) handlePotionUse(potionSlots[2]);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isPlayerTurn, loading.performAction, handleAction, quickSpells, potionSlots]);
+  // REMOVIDO: Captura de teclas de atalho para evitar duplo processamento
+  // O CombinedBattleInterface já possui sistema completo de captura de teclas 
+  // com debounce e proteção contra ações duplicadas
+  // O QuickActionPanel serve apenas para interface visual (cliques)
 
   // Carregar slots de poção
   useEffect(() => {

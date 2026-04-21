@@ -7,6 +7,49 @@ interface ServiceResponse<T> {
   success: boolean;
 }
 
+function coerceIntStat(
+  value: unknown,
+  fallback: number,
+  min: number
+): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return Math.max(min, Math.floor(fallback));
+  return Math.max(min, Math.floor(parsed));
+}
+
+function formatRpcError(error: unknown): string {
+  if (!error || typeof error !== 'object') return 'Erro RPC desconhecido';
+  const e = error as {
+    message?: string;
+    code?: string;
+    details?: string | null;
+    hint?: string | null;
+  };
+  const parts = [e.message || 'Erro RPC'];
+  if (e.code) parts.push(`code=${e.code}`);
+  if (e.details) parts.push(`details=${e.details}`);
+  if (e.hint) parts.push(`hint=${e.hint}`);
+  return parts.join(' | ');
+}
+
+function coerceMonsterRewards(
+  rewardXp: unknown,
+  rewardGold: unknown,
+  level: number,
+  tier: number
+): { reward_xp: number; reward_gold: number } {
+  const lv = Math.max(1, level);
+  const ti = Math.max(1, tier);
+  const fallbackXp = Math.floor(5 + lv * 2 + ti * 2);
+  const fallbackGold = Math.floor(3 + lv + ti);
+  const x = Number(rewardXp);
+  const g = Number(rewardGold);
+  return {
+    reward_xp: Number.isFinite(x) && x > 0 ? Math.floor(x) : fallbackXp,
+    reward_gold: Number.isFinite(g) && g > 0 ? Math.floor(g) : fallbackGold,
+  };
+}
+
 export class MonsterService {
   private static monsterCache: Map<number, Monster> = new Map();
   private static cacheExpiry: Map<number, number> = new Map();
@@ -32,40 +75,15 @@ export class MonsterService {
 
       console.log(`[MonsterService] === INÍCIO BUSCA MONSTRO ANDAR ${floor} ===`);
 
-      // CORRIGIDO: Limpar todo o cache para evitar conflitos de estado
-      this.clearCache();
-
       // Buscar monstro do servidor usando get_monster_for_floor_with_initiative para stats escalados
       console.log(`[MonsterService] Buscando monstro DIRETAMENTE do servidor para andar ${floor}`);
       
       // Tentar primeiro a função padrão get_monster_for_floor
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .rpc('get_monster_for_floor', {
           p_floor: floor
         });
         
-      // Se a função padrão falhar, verificar se há uma função com iniciativa disponível
-      if (error && error.message?.includes('function') && error.message?.includes('does not exist')) {
-        console.log(`[MonsterService] Função get_monster_for_floor não existe, tentando fallback...`);
-        
-        // Fallback: buscar monstro diretamente da tabela usando lógica básica
-        const { data: monsterResult, error: monsterError } = await supabase
-          .from('monsters')
-          .select('*')
-          .lte('min_floor', floor)
-          .order('min_floor', { ascending: false })
-          .limit(1);
-          
-        if (monsterError) {
-          data = null;
-          error = monsterError;
-        } else {
-          // Simular o formato esperado da RPC
-          data = monsterResult && monsterResult.length > 0 ? monsterResult[0] : null;
-          error = null;
-        }
-      }
-
       console.log(`[MonsterService] Resposta da RPC get_monster_for_floor:`, {
         hasData: !!data,
         hasError: !!error,
@@ -77,51 +95,13 @@ export class MonsterService {
       });
 
       if (error) {
-        console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, error);
-        
-        // Tratar erro específico de incompatibilidade de tipos (42804)
-        if (error.code === '42804' || error.message?.includes('does not match function result type')) {
-          console.log(`[MonsterService] Erro de tipo detectado, tentando buscar diretamente da tabela...`);
-          
-          // Fallback: buscar diretamente da tabela monsters
-          try {
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('monsters')
-              .select('*')
-              .lte('min_floor', floor)
-              .order('min_floor', { ascending: false })
-              .limit(1);
-              
-            if (fallbackError) {
-              throw fallbackError;
-            }
-            
-            if (fallbackData && fallbackData.length > 0) {
-              console.log(`[MonsterService] Fallback bem-sucedido, usando monstro da tabela`);
-              data = fallbackData[0];
-              error = null;
-            } else {
-              return { 
-                data: null, 
-                error: 'Nenhum monstro encontrado na tabela para este andar', 
-                success: false 
-              };
-            }
-          } catch (fallbackError) {
-            console.error(`[MonsterService] Fallback também falhou:`, fallbackError);
-                         return { 
-               data: null, 
-               error: `Erro na função RPC e no fallback: ${error?.message || 'Erro desconhecido'}`, 
-               success: false 
-             };
-          }
-        } else {
-          return { 
-            data: null, 
-            error: error.message, 
-            success: false 
-          };
-        }
+        const formattedError = formatRpcError(error);
+        console.error(`[MonsterService] Erro na API ao buscar monstro para andar ${floor}:`, formattedError);
+        return {
+          data: null,
+          error: `Falha no RPC get_monster_for_floor: ${formattedError}`,
+          success: false,
+        };
       }
       
       if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -145,27 +125,52 @@ export class MonsterService {
         };
       }
 
-      // Garantir que stats básicos existem (fallback para valores calculados se necessário)
-      if (!monsterData.hp || !monsterData.atk || !monsterData.def) {
-        console.log(`[MonsterService] Calculando stats básicos para ${monsterData.name} (andar ${floor})`);
-        
-        // Calcular stats básicos se não existirem
-        const level = monsterData.level || Math.max(1, Math.floor(floor / 5) + 1);
-        const tier = monsterData.tier || Math.max(1, Math.floor(floor / 20) + 1);
-        
-        monsterData.hp = monsterData.hp || Math.floor(50 + (level * 15) + (tier * 25));
-        monsterData.atk = monsterData.atk || Math.floor(10 + (level * 3) + (tier * 5));
-        monsterData.def = monsterData.def || Math.floor(5 + (level * 2) + (tier * 3));
-        monsterData.reward_xp = monsterData.reward_xp || Math.floor(5 + (level * 2) + (tier * 2));
-        monsterData.reward_gold = monsterData.reward_gold || Math.floor(3 + (level * 1) + (tier * 1));
+      const fallbackLevel = Math.max(1, Math.floor(floor / 5) + 1);
+      const fallbackTier = Math.max(1, Math.floor(floor / 20) + 1);
+      const level = coerceIntStat(monsterData.level, fallbackLevel, 1);
+      const tier = coerceIntStat(monsterData.tier, fallbackTier, 1);
+
+      // Sanitizar números vindos da RPC antes de montar o objeto de domínio
+      const hp = coerceIntStat(monsterData.hp, 50 + (level * 15) + (tier * 25), 1);
+      const atk = coerceIntStat(monsterData.atk, 10 + (level * 3) + (tier * 5), 1);
+      const def = coerceIntStat(monsterData.def, 5 + (level * 2) + (tier * 3), 0);
+      const mana = coerceIntStat(monsterData.mana, 0, 0);
+      const speed = coerceIntStat(monsterData.speed, 10, 1);
+
+      const fb = coerceMonsterRewards(monsterData.reward_xp, monsterData.reward_gold, level, tier);
+
+      // Não mascarar payload inconsistente: sinalizar erro para retry/control flow no serviço de jogo.
+      const hasInvalidPayload =
+        !Number.isFinite(Number(monsterData.hp)) ||
+        !Number.isFinite(Number(monsterData.atk)) ||
+        !Number.isFinite(Number(monsterData.def)) ||
+        Number(monsterData.hp) <= 0 ||
+        Number(monsterData.atk) <= 0 ||
+        Number(monsterData.def) < 0;
+      if (hasInvalidPayload) {
+        const payloadInfo = JSON.stringify({
+          id: monsterData.id,
+          floor,
+          hp: monsterData.hp,
+          atk: monsterData.atk,
+          def: monsterData.def,
+          level: monsterData.level,
+          tier: monsterData.tier,
+        });
+        console.error(`[MonsterService] Payload inválido de get_monster_for_floor: ${payloadInfo}`);
+        return {
+          data: null,
+          error: 'Payload inválido retornado por get_monster_for_floor (hp/atk/def inconsistentes)',
+          success: false,
+        };
       }
 
       console.log(`[MonsterService] === MONSTRO ENCONTRADO ===`);
       console.log(`[MonsterService] ID: ${monsterData.id}`);
       console.log(`[MonsterService] Nome: ${monsterData.name}`);
-      console.log(`[MonsterService] HP: ${monsterData.hp}, ATK: ${monsterData.atk}, DEF: ${monsterData.def}`);
-      console.log(`[MonsterService] Tier: ${monsterData.tier || 1}, Ciclo: ${monsterData.cycle_position || 'N/A'}, Boss: ${monsterData.is_boss || false}`);
-      console.log(`[MonsterService] Level: ${monsterData.level}, XP: ${monsterData.reward_xp}, Gold: ${monsterData.reward_gold}`);
+      console.log(`[MonsterService] HP: ${hp}, ATK: ${atk}, DEF: ${def}`);
+      console.log(`[MonsterService] Tier: ${tier}, Ciclo: ${monsterData.cycle_position || 'N/A'}, Boss: ${monsterData.is_boss || false}`);
+      console.log(`[MonsterService] Level: ${level}, XP: ${fb.reward_xp}, Gold: ${fb.reward_gold}`);
 
       // NOVO: Buscar os possible_drops do monstro
       console.log(`[MonsterService] Buscando possible_drops para monstro ${monsterData.id}...`);
@@ -211,20 +216,20 @@ export class MonsterService {
       const monster: Monster = {
         id: monsterData.id,
         name: monsterData.name,
-        hp: monsterData.hp,
-        atk: monsterData.atk,
-        def: monsterData.def,
-        mana: monsterData.mana || 0,
-        speed: monsterData.speed || 10,
+        hp,
+        atk,
+        def,
+        mana,
+        speed,
         behavior: monsterData.behavior,
         min_floor: monsterData.min_floor,
-        reward_xp: monsterData.reward_xp,
-        reward_gold: monsterData.reward_gold,
-        level: monsterData.level || Math.max(1, Math.floor(floor / 5) + 1),
+        reward_xp: fb.reward_xp,
+        reward_gold: fb.reward_gold,
+        level,
         // CRÍTICO: Incluir possible_drops
         possible_drops: possibleDrops,
         // Novos campos do sistema cíclico
-        tier: monsterData.tier || 1,
+        tier,
         base_tier: monsterData.base_tier || 1,
         cycle_position: monsterData.cycle_position || ((floor - 1) % 20) + 1,
         is_boss: monsterData.is_boss || false,
@@ -247,6 +252,15 @@ export class MonsterService {
         secondary_trait: monsterData.secondary_trait,
         special_abilities: monsterData.special_abilities || []
       };
+
+      const rewards = coerceMonsterRewards(
+        monster.reward_xp,
+        monster.reward_gold,
+        monster.level ?? 1,
+        monster.tier ?? 1
+      );
+      monster.reward_xp = rewards.reward_xp;
+      monster.reward_gold = rewards.reward_gold;
 
       console.log(`[MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===`);
       console.log(`[MonsterService] Retornando: ${monster.name} (HP: ${monster.hp}, ATK: ${monster.atk}, DEF: ${monster.def})`);

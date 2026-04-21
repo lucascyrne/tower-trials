@@ -107,9 +107,9 @@ mastery_bonus = magic_mastery × 4% × (1 - magic_mastery/150)
 ## 🛠 **Arquivos Modificados**
 
 ### **Banco de Dados:**
-1. `supabase/migrations/20241203000008_rebalance_magic_damage_scaling.sql`
-   - Nova função `calculate_scaled_spell_damage`
-   - Nova função `calculate_scaled_spell_healing`
+1. Schema consolidado em `supabase/migrations/20260421000000_squashed_schema.sql` (inclui a rebalance de dano mágico que antes estava em migrações incrementais) e patch de XP em `20260421000001_secure_grant_xp_hardening.sql`.
+   - Função `calculate_scaled_spell_damage`
+   - Função `calculate_scaled_spell_healing`
    - Função `calculate_derived_stats` atualizada
 
 ### **Cliente (TypeScript):**

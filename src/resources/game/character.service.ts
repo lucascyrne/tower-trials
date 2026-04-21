@@ -1,7 +1,6 @@
 import { 
   Character, 
   CreateCharacterDTO, 
-  calculateBaseStats, 
   CharacterProgressionInfo, 
   CharacterLimitInfo, 
   UpdateCharacterStatsResult,
@@ -15,6 +14,26 @@ import { EquipmentService } from './equipment.service';
 import { NameValidationService } from './name-validation.service';
 import { supabase } from '@/lib/supabase';
 import { GamePlayer } from './game-model';
+import { SupabaseAdminGameRepository } from './infrastructure/supabase/supabase-admin-game.repository';
+import { GrantSecureXpUseCase } from './application/use-cases/grant-secure-xp.use-case';
+import { GrantSecureGoldUseCase } from './application/use-cases/grant-secure-gold.use-case';
+import { AdvanceFloorUseCase } from './application/use-cases/advance-floor.use-case';
+
+/** Stats base persistidos em `characters` (sem bônus de equipamento). */
+export interface PersistedCombatDerivedStats {
+  hp: number;
+  max_hp: number;
+  mana: number;
+  max_mana: number;
+  atk: number;
+  def: number;
+  speed: number;
+  magic_attack: number;
+  critical_chance: number;
+  critical_damage: number;
+  magic_damage_bonus: number;
+  double_attack_chance: number;
+}
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -31,11 +50,121 @@ export interface UpdateCharacterStatsDTO {
   floor?: number;
 }
 
+interface CharacterFullStatsRpc {
+  character_id: string;
+  name: string;
+  level: number;
+  xp: number;
+  xp_next_level: number;
+  gold: number;
+  hp: number;
+  max_hp: number;
+  mana: number;
+  max_mana: number;
+  atk: number;
+  def: number;
+  speed: number;
+  strength: number;
+  dexterity: number;
+  intelligence: number;
+  wisdom: number;
+  vitality: number;
+  luck: number;
+  attribute_points: number;
+  critical_chance: number;
+  critical_damage: number;
+  sword_mastery: number;
+  axe_mastery: number;
+  blunt_mastery: number;
+  defense_mastery: number;
+  magic_mastery: number;
+  sword_mastery_xp: number;
+  axe_mastery_xp: number;
+  blunt_mastery_xp: number;
+  defense_mastery_xp: number;
+  magic_mastery_xp: number;
+}
+
+interface BasicCharacterRpc {
+  user_id: string;
+  floor: number;
+  highest_floor?: number;
+  created_at: string;
+  updated_at: string;
+  last_activity?: string;
+}
+
 export class CharacterService {
+  private static readonly adminGameRepository = new SupabaseAdminGameRepository();
+  private static readonly grantSecureXpUseCase = new GrantSecureXpUseCase(
+    CharacterService.adminGameRepository
+  );
+  private static readonly grantSecureGoldUseCase = new GrantSecureGoldUseCase(
+    CharacterService.adminGameRepository
+  );
+  private static readonly advanceFloorUseCase = new AdvanceFloorUseCase(
+    CharacterService.adminGameRepository
+  );
   private static characterCache: Map<string, Character> = new Map();
   private static lastFetchTimestamp: Map<string, number> = new Map();
   private static pendingRequests: Map<string, Promise<ServiceResponse<Character>>> = new Map();
+  private static pendingUserCharactersRequests: Map<string, Promise<ServiceResponse<Character[]>>> = new Map();
   private static CACHE_DURATION = 30000; // 30 segundos de cache
+
+  private static num(v: unknown, fallback: number): number {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  /** Espelha `get_unlocked_checkpoints` no SQL (fallback offline / RPC antiga). */
+  private static checkpointsFallbackFromHighestFloor(highestFloor: number): { floor: number; description: string }[] {
+    const checkpoints: { floor: number; description: string }[] = [
+      { floor: 1, description: 'Andar 1 - Início da Torre' },
+    ];
+    if (highestFloor >= 5) {
+      checkpoints.push({ floor: 5, description: 'Andar 5 - Checkpoint' });
+    }
+    for (let i = 1; i <= 100; i++) {
+      const cp = 10 * i + 1;
+      if (cp > highestFloor) break;
+      checkpoints.push({
+        floor: cp,
+        description: `Andar ${cp} - Checkpoint Pós-Boss`,
+      });
+    }
+    return checkpoints;
+  }
+
+  /**
+   * `calculateDamage` espera `critical_damage` em percentual (ex.: 110).
+   * Valores &lt; 20 são tratados como multiplicador legado (ex.: 1.5 → 150).
+   */
+  private static normalizePlayerCritDamage(raw: number): number {
+    if (raw > 0 && raw < 20) return Math.round(raw * 100);
+    return raw;
+  }
+
+  /**
+   * Fonte única alinhada ao Postgres: colunas já recalculadas por `calculate_derived_stats` / RPCs.
+   */
+  static combatDerivedFromPersistedRow(row: Character): PersistedCombatDerivedStats {
+    return {
+      hp: CharacterService.num(row.hp, 0),
+      max_hp: CharacterService.num(row.max_hp, 0),
+      mana: CharacterService.num(row.mana, 0),
+      max_mana: CharacterService.num(row.max_mana, 0),
+      atk: CharacterService.num(row.atk, 0),
+      def: CharacterService.num(row.def, 0),
+      speed: CharacterService.num(row.speed, 0),
+      magic_attack: CharacterService.num(row.magic_attack, 0),
+      critical_chance: CharacterService.num(row.critical_chance, 0),
+      critical_damage: CharacterService.normalizePlayerCritDamage(
+        CharacterService.num(row.critical_damage, 110)
+      ),
+      magic_damage_bonus: CharacterService.num(row.magic_damage_bonus, 0),
+      double_attack_chance: CharacterService.num(row.double_attack_chance, 0),
+    };
+  }
   
   // OTIMIZADO: Throttling para invalidação de cache
   private static cacheInvalidationQueue: Set<string> = new Set();
@@ -63,7 +192,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao buscar progressão de personagens:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao buscar progressão', 
@@ -93,7 +221,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao verificar limite de personagens:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao verificar limite', 
@@ -108,39 +235,51 @@ export class CharacterService {
    * @returns Lista de personagens
    */
   static async getUserCharacters(userId: string): Promise<ServiceResponse<Character[]>> {
-    try {
-      // Verificar se já buscamos recentemente
-      const now = Date.now();
-      const userCacheKey = `user_${userId}`;
-      const lastFetch = this.lastFetchTimestamp.get(userCacheKey) || 0;
-      
-      if (now - lastFetch < this.CACHE_DURATION) {
-        const cachedCharacters = Array.from(this.characterCache.values()).filter(char => char.user_id === userId);
-        if (cachedCharacters.length > 0) {
-          console.log(`[CharacterService] Usando lista de personagens em cache para usuário ${userId}`);
-          return { data: cachedCharacters, error: null, success: true };
-        }
-      }
+    const now = Date.now();
+    const userCacheKey = `user_${userId}`;
+    const lastFetch = this.lastFetchTimestamp.get(userCacheKey) || 0;
 
-      const { data, error } = await supabase
-        .rpc('get_user_characters', {
-          p_user_id: userId
+    if (now - lastFetch < this.CACHE_DURATION) {
+      const cachedCharacters = Array.from(this.characterCache.values()).filter(char => char.user_id === userId);
+      if (cachedCharacters.length > 0) {
+        return { data: cachedCharacters, error: null, success: true };
+      }
+    }
+
+    const inflight = this.pendingUserCharactersRequests.get(userId);
+    if (inflight) {
+      return inflight;
+    }
+
+    const request = (async (): Promise<ServiceResponse<Character[]>> => {
+      try {
+        const { data, error } = await supabase.rpc('get_user_characters', {
+          p_user_id: userId,
         });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Atualizar cache
-      this.characterCache.clear();
-      (data as Character[]).forEach(char => {
-        this.characterCache.set(char.id, char);
-      });
-      this.lastFetchTimestamp.set(userCacheKey, now);
+        const fetchedAt = Date.now();
+        this.characterCache.clear();
+        (data as Character[]).forEach(char => {
+          this.characterCache.set(char.id, char);
+        });
+        this.lastFetchTimestamp.set(userCacheKey, fetchedAt);
 
-      return { data: data as Character[], error: null, success: true };
-    } catch (error) {
-      console.error('Erro ao buscar personagens:', error instanceof Error ? error.message : error);
-      return { data: null, error: error instanceof Error ? error.message : 'Erro ao buscar personagens', success: false };
-    }
+        return { data: data as Character[], error: null, success: true };
+      } catch (error) {
+        return {
+          data: null,
+          error: error instanceof Error ? error.message : 'Erro ao buscar personagens',
+          success: false,
+        };
+      } finally {
+        this.pendingUserCharactersRequests.delete(userId);
+      }
+    })();
+
+    this.pendingUserCharactersRequests.set(userId, request);
+    return request;
   }
 
   /**
@@ -157,13 +296,10 @@ export class CharacterService {
       
       // Usar cache somente se estiver dentro do tempo de validade
       if (cachedCharacter && now - lastFetch < this.CACHE_DURATION) {
-        console.log(`[CharacterService] Usando personagem em cache: ${cachedCharacter.name} (andar: ${cachedCharacter.floor})`);
         return { data: cachedCharacter, error: null, success: true };
       }
 
-      // Verificar se já existe uma requisição pendente para este personagem
       if (this.pendingRequests.has(characterId)) {
-        console.log(`[CharacterService] Reutilizando requisição pendente para personagem ${characterId}`);
         return this.pendingRequests.get(characterId)!;
       }
 
@@ -178,30 +314,16 @@ export class CharacterService {
 
       const result = await request;
       
-      // Aplicar cura automática se o personagem foi carregado com sucesso
       if (result.success && result.data) {
-        console.log(`[CharacterService] Aplicando cura automática para ${result.data.name}`);
         const healResult = await this.applyAutoHeal(characterId);
         
         if (healResult.success && healResult.data && healResult.data.healed) {
-          console.log(`[CharacterService] ${result.data.name} curado: ${healResult.data.oldHp} -> ${healResult.data.newHp} HP`);
-          
-          // Mostrar notificação de cura se significativa (mais de 5% do HP máximo)
-          const healAmount = healResult.data.newHp - healResult.data.oldHp;
-          const healPercent = (healAmount / result.data.max_hp) * 100;
-          
-          if (healPercent >= 5) {
-            // A notificação será mostrada pelo componente que chama esta função
-            console.log(`[CharacterService] Cura significativa detectada: +${healAmount} HP (${healPercent.toFixed(1)}%)`);
-          }
-          
           return { data: healResult.data.character, error: null, success: true };
         }
       }
 
       return result;
     } catch (error) {
-      console.error('Erro ao buscar personagem:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao buscar personagem', 
@@ -216,7 +338,6 @@ export class CharacterService {
    */
   private static async fetchCharacterFromServer(characterId: string): Promise<ServiceResponse<Character>> {
     try {
-      console.log(`[CharacterService] Buscando personagem ${characterId} do servidor`);
       const { data, error } = await supabase
         .rpc('get_character_full_stats', {
           p_character_id: characterId
@@ -234,8 +355,7 @@ export class CharacterService {
       }
 
       // Converter os dados da função RPC para o formato Character
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fullStatsData = data as any; // Dados da função get_character_full_stats
+      const fullStatsData = data as CharacterFullStatsRpc;
       const character: Character = {
         id: fullStatsData.character_id,
         user_id: '', // Será preenchido pela função RPC se necessário
@@ -285,16 +405,18 @@ export class CharacterService {
         .single();
 
       if (!basicError && basicData) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const basicCharacterData = basicData as any;
+        const basicCharacterData = basicData as BasicCharacterRpc;
         character.user_id = basicCharacterData.user_id;
         character.floor = basicCharacterData.floor;
+        character.highest_floor = CharacterService.num(
+          basicCharacterData.highest_floor,
+          basicCharacterData.floor
+        );
         character.created_at = basicCharacterData.created_at;
         character.updated_at = basicCharacterData.updated_at;
         character.last_activity = basicCharacterData.last_activity;
       }
 
-      console.log(`[CharacterService] Personagem carregado do servidor: ${character.name} (andar: ${character.floor}) com crítico: ${character.critical_chance}`);
       this.characterCache.set(characterId, character);
       this.lastFetchTimestamp.set(characterId, Date.now());
 
@@ -304,7 +426,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao buscar personagem do servidor:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao buscar personagem',
@@ -395,7 +516,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao criar personagem:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao criar personagem', 
@@ -425,13 +545,9 @@ export class CharacterService {
       ? equipmentSlotsData 
       : Object.values(equipmentSlotsData || {});
 
-    // Calcular stats com bônus de equipamento
-    const baseStats = calculateBaseStats(character.level, undefined);
-
     return {
       ...character,
       equipment_slots: equipmentSlots,
-      ...baseStats
     };
   }
 
@@ -449,17 +565,11 @@ export class CharacterService {
   ): Promise<ServiceResponse<UpdateCharacterStatsResult>> {
     try {
       // Importar o cliente admin apenas quando necessário
-      const { supabaseAdmin } = await import('@/lib/supabase');
-      
-      const { data, error } = await supabaseAdmin
-        .rpc('secure_grant_xp', {
-          p_character_id: characterId,
-          p_xp_amount: xpAmount,
-          p_source: source
-        })
-        .single();
-
-      if (error) throw error;
+      const data = await this.grantSecureXpUseCase.execute({
+        characterId,
+        xpAmount,
+        source,
+      });
 
       // Invalidar cache do personagem específico
       this.invalidateCharacterCache(characterId);
@@ -479,7 +589,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao conceder XP:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao conceder XP', 
@@ -502,17 +611,11 @@ export class CharacterService {
   ): Promise<ServiceResponse<number>> {
     try {
       // Importar o cliente admin apenas quando necessário
-      const { supabaseAdmin } = await import('@/lib/supabase');
-      
-      const { data, error } = await supabaseAdmin
-        .rpc('secure_grant_gold', {
-          p_character_id: characterId,
-          p_gold_amount: goldAmount,
-          p_source: source
-        })
-        .single();
-
-      if (error) throw error;
+      const data = await this.grantSecureGoldUseCase.execute({
+        characterId,
+        goldAmount,
+        source,
+      });
 
       // Invalidar cache do personagem específico
       this.invalidateCharacterCache(characterId);
@@ -523,7 +626,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao conceder gold:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao conceder gold', 
@@ -565,7 +667,6 @@ export class CharacterService {
       });
 
       if (error) {
-        console.error('Erro ao atualizar HP/Mana:', error);
         return { success: false, error: `Erro ao atualizar stats: ${error.message}`, data: null };
       }
 
@@ -574,7 +675,6 @@ export class CharacterService {
 
       return { success: true, error: null, data: null };
     } catch (error) {
-      console.error('Erro ao atualizar HP/Mana do personagem:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Erro desconhecido ao atualizar HP/Mana', 
@@ -588,31 +688,17 @@ export class CharacterService {
    */
   static async updateCharacterFloor(characterId: string, newFloor: number): Promise<ServiceResponse<null>> {
     try {
-      console.log(`[CharacterService] Atualizando andar seguramente - ID: ${characterId}, Andar: ${newFloor}`);
-      
       // Importar o cliente admin apenas quando necessário
-      const { supabaseAdmin } = await import('@/lib/supabase');
-      
-      const { error } = await supabaseAdmin
-        .rpc('secure_advance_floor', {
-          p_character_id: characterId,
-          p_new_floor: newFloor
-        });
+      await this.advanceFloorUseCase.execute({
+        characterId,
+        newFloor,
+      });
 
-      if (error) {
-        console.error('[CharacterService] Erro na função secure_advance_floor:', error.message);
-        throw error;
-      }
-
-      // OTIMIZADO: Invalidar cache usando sistema com throttling
       this.invalidateCharacterCache(characterId);
 
-      console.log(`[CharacterService] Andar atualizado com segurança para ${newFloor}`);
-      
       return { data: null, error: null, success: true };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('[CharacterService] Erro ao atualizar andar:', errorMsg);
       return { 
         data: null, 
         error: errorMsg, 
@@ -645,8 +731,6 @@ export class CharacterService {
       
       // Se o personagem existe e tem progresso, salvar no ranking histórico primeiro
       if (character.success && character.data && character.data.floor > 0) {
-        console.log(`[CharacterService] Salvando personagem ${character.data.name} no ranking histórico antes de deletar`);
-        
         try {
           // Usar a nova função para salvar no ranking histórico
           const { error: rankingError } = await supabase
@@ -655,13 +739,9 @@ export class CharacterService {
             });
           
           if (rankingError) {
-            console.error('Erro ao salvar no ranking histórico:', rankingError);
             // Continua com a deleção mesmo se falhar o ranking
-          } else {
-            console.log(`[CharacterService] Personagem ${character.data.name} salvo no ranking histórico com sucesso`);
           }
-        } catch (rankingError) {
-          console.error('Erro ao salvar no ranking histórico:', rankingError);
+        } catch {
           // Continua com a deleção mesmo se falhar o ranking
         }
       }
@@ -682,10 +762,8 @@ export class CharacterService {
         this.invalidateUserCache(character.data.user_id);
       }
 
-      console.log(`[CharacterService] Personagem deletado com sucesso: ${characterId}`);
       return { error: null };
     } catch (error) {
-      console.error('Erro ao deletar personagem:', error instanceof Error ? error.message : error);
       return { error: error instanceof Error ? error.message : 'Erro ao deletar personagem' };
     }
   }
@@ -712,10 +790,6 @@ export class CharacterService {
         this.characterCache.delete(id);
         this.lastFetchTimestamp.delete(id);
       });
-      
-      if (idsToInvalidate.length > 0) {
-        console.log(`[CharacterService] Cache invalidado para ${idsToInvalidate.length} personagens: ${idsToInvalidate.join(', ')}`);
-      }
     }, this.CACHE_INVALIDATION_DELAY);
   }
 
@@ -736,8 +810,6 @@ export class CharacterService {
     
     // Usar o sistema de throttling para invalidar todos os personagens do usuário
     userCharacterIds.forEach(id => this.invalidateCharacterCache(id));
-    
-    console.log(`[CharacterService] Cache de usuário ${userId} invalidado (${userCharacterIds.length} personagens)`);
   }
 
   /**
@@ -747,7 +819,6 @@ export class CharacterService {
     this.characterCache.clear();
     this.lastFetchTimestamp.clear();
     this.pendingRequests.clear();
-    console.log('[CharacterService] Todo o cache foi limpo');
   }
 
   /**
@@ -757,8 +828,6 @@ export class CharacterService {
    */
   static async getUnlockedCheckpoints(characterId: string): Promise<ServiceResponse<{ floor: number; description: string }[]>> {
     try {
-      console.log(`[CharacterService] Obtendo checkpoints para personagem ${characterId}`);
-      
       try {
         // Tentar usar a nova função RPC específica para personagens
         const { data, error } = await supabase
@@ -771,19 +840,15 @@ export class CharacterService {
             floor: row.floor_number,
             description: row.description
           }));
-          
-          console.log(`[CharacterService] Checkpoints obtidos via RPC:`, checkpoints);
           return { data: checkpoints, error: null, success: true };
         } else if (error) {
-          console.warn(`[CharacterService] Erro na RPC get_character_unlocked_checkpoints:`, error);
           // Continuar para fallback
         }
-      } catch (rpcError) {
-        console.warn('[CharacterService] Função RPC não disponível, usando fallback:', rpcError);
+      } catch {
+        // Fallback
       }
 
       // Fallback: obter o personagem e calcular checkpoints manualmente
-      console.log(`[CharacterService] Usando fallback para calcular checkpoints`);
       
       const characterResponse = await this.getCharacter(characterId);
       if (!characterResponse.success || !characterResponse.data) {
@@ -791,44 +856,18 @@ export class CharacterService {
       }
       
       const character = characterResponse.data;
-      
-      // Usar highest_floor se disponível, senão usar floor atual
-      const highestFloor = Math.max(
-        character.floor, 
-        ('highest_floor' in character ? (character as unknown as { highest_floor: number }).highest_floor : character.floor) || character.floor
-      );
-      
-      console.log(`[CharacterService] Andar atual: ${character.floor}, Highest floor: ${highestFloor}`);
-      
-      // Gerar checkpoints manualmente com nova lógica
-      const checkpoints: { floor: number; description: string }[] = [];
-      
-      // Sempre incluir o andar 1
-      checkpoints.push({ floor: 1, description: 'Andar 1 - Início da Torre' });
-      
-      // Adicionar checkpoints pós-boss: 11, 21, 31, 41, 51, etc.
-      // Só incluir se o jogador passou do boss correspondente
-      for (let i = 1; i <= 100; i++) { // Até 100 bosses (andar 1000)
-        const bossFloor = i * 10;
-        const checkpointFloor = bossFloor + 1;
-        
-        // Se o jogador passou do boss (está no andar do checkpoint ou além)
-        if (highestFloor >= checkpointFloor) {
-          checkpoints.push({
-            floor: checkpointFloor,
-            description: `Andar ${checkpointFloor} - Checkpoint Pós-Boss`
-          });
-          console.log(`[CharacterService] Checkpoint ${checkpointFloor} desbloqueado (passou do boss ${bossFloor})`);
-        } else {
-          // Se não passou deste boss, não há mais checkpoints
-          break;
-        }
-      }
 
-      console.log(`[CharacterService] Checkpoints finais calculados:`, checkpoints);
-      return { data: checkpoints, error: null, success: true };
+      const highestFloor = Math.max(
+        character.floor,
+        CharacterService.num(character.highest_floor, character.floor)
+      );
+
+      return {
+        data: CharacterService.checkpointsFallbackFromHighestFloor(highestFloor),
+        error: null,
+        success: true,
+      };
     } catch (error) {
-      console.error('Erro ao obter checkpoints:', error instanceof Error ? error.message : error);
       return { data: null, error: error instanceof Error ? error.message : 'Erro ao obter checkpoints', success: false };
     }
   }
@@ -841,9 +880,11 @@ export class CharacterService {
    */
   static async startFromCheckpoint(characterId: string, checkpointFloor: number): Promise<ServiceResponse<null>> {
     try {
-      // Verificar se o checkpoint é válido (andar 1 ou andares pós-boss: 11, 21, 31, etc.)
-      const isValidCheckpoint = checkpointFloor === 1 || 
-                               (checkpointFloor > 10 && (checkpointFloor - 1) % 10 === 0);
+      // Andar 1, 5 (mid), série pós-boss 11, 21, …
+      const isValidCheckpoint =
+        checkpointFloor === 1 ||
+        checkpointFloor === 5 ||
+        (checkpointFloor > 10 && (checkpointFloor - 1) % 10 === 0);
       
       if (!isValidCheckpoint) {
         return { data: null, error: 'Checkpoint inválido', success: false };
@@ -864,7 +905,6 @@ export class CharacterService {
       const updateResponse = await this.updateCharacterFloor(characterId, checkpointFloor);
       return updateResponse;
     } catch (error) {
-      console.error('Erro ao iniciar do checkpoint:', error instanceof Error ? error.message : error);
       return { data: null, error: error instanceof Error ? error.message : 'Erro ao iniciar do checkpoint', success: false };
     }
   }
@@ -942,11 +982,6 @@ export class CharacterService {
       newMana = Math.min(character.max_mana, adjustedCurrentMana + healAmount);
     }
     
-    // Log apenas se houve cura significativa
-    if (newHp > character.hp || newMana > character.mana) {
-      console.log(`[AutoHeal] ${character.name}: HP ${character.hp} -> ${newHp} (+${newHp - character.hp}), Mana ${character.mana} -> ${newMana} (+${newMana - character.mana}) após ${Math.floor(timeDiffSeconds / 60)}min`);
-    }
-    
     return { hp: newHp, mana: newMana };
   }
 
@@ -1005,7 +1040,6 @@ export class CharacterService {
         success: true
       };
     } catch (error) {
-      console.error('Erro ao aplicar cura automática:', error instanceof Error ? error.message : error);
       return {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao aplicar cura automática',
@@ -1033,7 +1067,6 @@ export class CharacterService {
 
       return { data: null, error: null, success: true };
     } catch (error) {
-      console.error('Erro ao atualizar última atividade:', error instanceof Error ? error.message : error);
       return {
         data: null,
         error: error instanceof Error ? error.message : 'Erro ao atualizar última atividade',
@@ -1119,18 +1152,12 @@ export class CharacterService {
         equipment_speed_bonus: gamePlayer.equipment_speed_bonus || 0
       };
 
-      console.log(`[CharacterService] Stats unificados para ${gamePlayer.name}:`, {
-        critical_damage: characterStats.critical_damage,
-        fonte: 'getCharacterForGame (única fonte da verdade)'
-      });
-
       return {
         success: true,
         error: null,
         data: characterStats
       };
     } catch (error) {
-      console.error('Erro ao buscar stats do personagem:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -1178,8 +1205,7 @@ export class CharacterService {
             total_magic_damage_bonus: 0
           };
 
-      // Calcular stats derivados usando a nova função
-      const derivedStats = await this.calculateDerivedStats(charData);
+      const derivedStats = CharacterService.combatDerivedFromPersistedRow(charData as Character);
       
       // Aplicar bônus de equipamentos aos stats derivados
       const finalStats = {
@@ -1283,21 +1309,12 @@ export class CharacterService {
         equipment_speed_bonus: equipmentBonuses.total_speed_bonus
       };
 
-      console.log(`[CharacterService] GamePlayer criado para ${gamePlayer.name}:`, {
-        level: gamePlayer.level,
-        base_atk: gamePlayer.base_atk,
-        equipment_atk_bonus: gamePlayer.equipment_atk_bonus,
-        final_atk: gamePlayer.atk,
-        final_critical_damage: gamePlayer.critical_damage
-      });
-
       return {
         success: true,
         error: null,
         data: gamePlayer
       };
     } catch (error) {
-      console.error('Erro ao buscar personagem para o jogo:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -1340,7 +1357,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao distribuir pontos de atributo:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao distribuir pontos', 
@@ -1383,7 +1399,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao adicionar XP de habilidade:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao adicionar XP', 
@@ -1415,7 +1430,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao recalcular stats:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao recalcular stats', 
@@ -1453,7 +1467,6 @@ export class CharacterService {
         success: true 
       };
     } catch (error) {
-      console.error('Erro ao resetar progresso do personagem:', error instanceof Error ? error.message : error);
       return { 
         data: null, 
         error: error instanceof Error ? error.message : 'Erro ao resetar progresso', 
@@ -1463,323 +1476,10 @@ export class CharacterService {
   }
 
   /**
-   * Calcular stats derivados usando a nova função que inclui habilidades
+   * Stats derivados persistidos (Postgres). Para combate com equipamentos, usar `getCharacterForGame`.
    */
-  static async calculateDerivedStats(character: Character): Promise<{
-    hp: number;
-    max_hp: number;
-    mana: number;
-    max_mana: number;
-    atk: number;
-    magic_attack: number;
-    def: number;
-    speed: number;
-    critical_chance: number;
-    critical_damage: number;
-    magic_damage_bonus: number;
-    double_attack_chance: number;
-  }> {
-    try {
-      console.log('[CharacterService] Calculando stats derivados para:', {
-        id: character.id,
-        level: character.level,
-        strength: character.strength,
-        dexterity: character.dexterity,
-        intelligence: character.intelligence,
-        wisdom: character.wisdom,
-        vitality: character.vitality,
-        luck: character.luck,
-        sword_mastery: character.sword_mastery,
-        axe_mastery: character.axe_mastery,
-        blunt_mastery: character.blunt_mastery,
-        defense_mastery: character.defense_mastery,
-        magic_mastery: character.magic_mastery
-      });
-
-      console.log('[CharacterService] Usando cálculo fallback para garantir consistência');
-      return await this.calculateDerivedStatsFallback(character);
-    } catch (error) {
-      console.error('[CharacterService] Erro no cálculo de stats derivados:', error);
-      return await this.calculateDerivedStatsFallback(character);
-    }
+  static calculateDerivedStats(character: Character): PersistedCombatDerivedStats {
+    return CharacterService.combatDerivedFromPersistedRow(character);
   }
 
-  /**
-   * Cálculo de fallback com sistema anti-mono-build balanceado
-   */
-  private static async calculateDerivedStatsFallback(character: Character): Promise<{
-    hp: number;
-    max_hp: number;
-    mana: number;
-    max_mana: number;
-    atk: number;
-    magic_attack: number;
-    def: number;
-    speed: number;
-    critical_chance: number;
-    critical_damage: number;
-    magic_damage_bonus: number;
-    double_attack_chance: number;
-  }> {
-    const level = character.level;
-    const str = character.strength || 10;
-    const dex = character.dexterity || 10;
-    const int = character.intelligence || 10;
-    const wis = character.wisdom || 10;
-    const vit = character.vitality || 10;
-    const luck = character.luck || 10;
-    
-    // =====================================
-    // SISTEMA ANTI-MONO-BUILD
-    // =====================================
-    
-    const totalAttributes = str + dex + int + wis + vit + luck;
-    
-    // Calcular diversidade de atributos (0-1, onde 1 = perfeitamente balanceado)
-    const attributeDiversity = 1.0 - (
-      Math.abs(str / totalAttributes - 1.0/6.0) +
-      Math.abs(dex / totalAttributes - 1.0/6.0) +
-      Math.abs(int / totalAttributes - 1.0/6.0) +
-      Math.abs(wis / totalAttributes - 1.0/6.0) +
-      Math.abs(vit / totalAttributes - 1.0/6.0) +
-      Math.abs(luck / totalAttributes - 1.0/6.0)
-    ) / 2.0;
-    
-    // Bônus por diversidade (builds balanceadas ganham até 20% de bônus)
-    const diversityBonus = 1.0 + (attributeDiversity * 0.2);
-    
-    // Penalidade para mono-builds (builds com 80%+ em um atributo perdem eficiência)
-    let monoPenalty = 1.0;
-    const maxAttributePercentage = Math.max(
-      str / totalAttributes,
-      dex / totalAttributes,
-      int / totalAttributes,
-      wis / totalAttributes,
-      vit / totalAttributes,
-      luck / totalAttributes
-    );
-    
-    if (maxAttributePercentage > 0.8) {
-      monoPenalty = 0.7; // Penalidade de 30%
-    }
-    
-    console.log(`[CharacterService] Build analysis - Diversidade: ${(attributeDiversity * 100).toFixed(1)}%, Mono-penalty: ${monoPenalty}`);
-    
-    // =====================================
-    // ESCALAMENTO LOGARÍTMICO COM SINERGIAS
-    // =====================================
-    
-    // Escalamento com diminishing returns mais agressivos
-    const strScaling = Math.pow(str, 1.2) * diversityBonus * monoPenalty;
-    const dexScaling = Math.pow(dex, 1.15) * diversityBonus * monoPenalty;
-    const intScaling = Math.pow(int, 1.25) * diversityBonus * monoPenalty;
-    const wisScaling = Math.pow(wis, 1.1) * diversityBonus * monoPenalty;
-    const vitScaling = Math.pow(vit, 1.3) * diversityBonus * monoPenalty;
-    const luckScaling = luck * diversityBonus * monoPenalty;
-    
-    // Habilidades também recebem bônus de diversidade
-    const swordMastery = character.sword_mastery || 1;
-    const axeMastery = character.axe_mastery || 1;
-    const bluntMastery = character.blunt_mastery || 1;
-    const defenseMastery = character.defense_mastery || 1;
-    const magicMastery = character.magic_mastery || 1;
-    
-    const weaponMasteryBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * diversityBonus;
-    const defMasteryBonus = Math.pow(defenseMastery, 1.2) * diversityBonus;
-    const magicMasteryBonus = Math.pow(magicMastery, 1.15) * diversityBonus;
-    
-    // =====================================
-    // BASES REBALANCEADAS
-    // =====================================
-    
-    const baseHp = 50 + (level * 2);
-    const baseMana = 20 + (level * 1);
-    const baseAtk = 2 + level;
-    const baseDef = 1 + level;
-    const baseSpeed = 3 + level;
-    
-    // =====================================
-    // NOVO: BÔNUS DE EQUIPAMENTOS COM DUAL WIELDING
-    // =====================================
-    
-    let equipmentBonus = {
-      hp: 0,
-      mana: 0,
-      atk: 0,
-      def: 0,
-      speed: 0,
-      critical_chance: 0,
-      critical_damage: 0,
-      magic_damage: 0,
-      double_attack_chance: 0
-    };
-
-    try {
-      // Buscar equipamentos do personagem
-      const { EquipmentService } = await import('./equipment.service');
-      const equipmentSlots = await EquipmentService.getEquippedItems(character.id);
-      
-      if (equipmentSlots) {
-        // Usar a nova função que considera dual wielding
-        const { calculateEquipmentBonus } = await import('./equipment.service');
-        equipmentBonus = calculateEquipmentBonus(equipmentSlots);
-        
-        console.log(`[CharacterService] Bônus de equipamentos calculado:`, {
-          atk: equipmentBonus.atk,
-          def: equipmentBonus.def,
-          speed: equipmentBonus.speed,
-          critical_chance: equipmentBonus.critical_chance,
-          magic_damage: equipmentBonus.magic_damage
-        });
-      }
-    } catch (error) {
-      console.error('[CharacterService] Erro ao calcular bônus de equipamentos:', error);
-    }
-    
-    // =====================================
-    // CÁLCULO DE STATS COM SINERGIAS
-    // =====================================
-    
-    // HP: Vitalidade + bônus de level + equipamentos
-    const hp = Math.floor(baseHp + (vitScaling * 3.5) + equipmentBonus.hp);
-    const max_hp = hp;
-    
-    // Mana: Inteligência/Sabedoria + bônus de level + equipamentos
-    const mana = Math.floor(baseMana + ((intScaling + wisScaling) * 1.5) + equipmentBonus.mana);
-    const max_mana = mana;
-    
-    // Ataque: Força + maestria de arma + equipamentos
-    const atk = Math.floor(baseAtk + (strScaling * 2.2) + weaponMasteryBonus + equipmentBonus.atk);
-    
-    // NOVO: Magic Attack separado (baseado em INT + maestria mágica)
-    const magic_attack = Math.floor((intScaling * 1.8) + magicMasteryBonus + equipmentBonus.magic_damage);
-    
-    // Defesa: Destreza + maestria defensiva + equipamentos
-    const def = Math.floor(baseDef + (dexScaling * 1.5) + defMasteryBonus + equipmentBonus.def);
-    
-    // Velocidade: Destreza + equipamentos
-    const speed = Math.floor(baseSpeed + (dexScaling * 1.8) + equipmentBonus.speed);
-    
-    // =====================================
-    // STATS DERIVADOS AVANÇADOS
-    // =====================================
-    
-    // Chance crítica: Destreza + Sorte + maestria + equipamentos
-    const critical_chance = Math.min(95, Math.floor(
-      5 + // Base 5%
-      (dexScaling * 0.3) + // Destreza contribui
-      (luckScaling * 0.5) + // Sorte contribui mais
-      (weaponMasteryBonus * 0.2) + // Maestria de arma
-      equipmentBonus.critical_chance
-    ));
-    
-    // Dano crítico: Força + maestria + equipamentos
-    const critical_damage = Math.floor(
-      150 + // Base 150%
-      (strScaling * 0.8) + // Força contribui
-      (weaponMasteryBonus * 1.2) + // Maestria contribui mais
-      equipmentBonus.critical_damage
-    );
-    
-    // Bônus de dano mágico: Inteligência + maestria mágica + equipamentos
-    const magic_damage_bonus = Math.floor(
-      (intScaling * 1.2) + 
-      (magicMasteryBonus * 1.5) +
-      equipmentBonus.magic_damage
-    );
-    
-    // NOVO: Chance de ataque duplo (dual wielding)
-    const double_attack_chance = Math.min(25, Math.floor(
-      (dexScaling * 0.2) + // Destreza base
-      (luckScaling * 0.3) + // Sorte contribui
-      equipmentBonus.double_attack_chance
-    ));
-
-    const stats = {
-      hp,
-      max_hp,
-      mana,
-      max_mana,
-      atk,
-      magic_attack,
-      def,
-      speed,
-      critical_chance,
-      critical_damage,
-      magic_damage_bonus,
-      double_attack_chance
-    };
-
-    console.log('[CharacterService] Stats derivados calculados:', {
-      level,
-      diversityBonus: (diversityBonus * 100 - 100).toFixed(1) + '%',
-      monoPenalty: (monoPenalty * 100).toFixed(1) + '%',
-      final_stats: stats
-    });
-
-    return stats;
-  }
-
-  /**
-   * Analisar diversidade de build do personagem
-   */
-  static analyzeBuildDiversity(character: Character): {
-    diversityScore: number;
-    diversityPercentage: number;
-    diversityBonus: number;
-    monoBuildPenalty: number;
-    dominantAttribute: string;
-    dominantPercentage: number;
-    isMonoBuild: boolean;
-    recommendation: string;
-  } {
-    const str = character.strength || 10;
-    const dex = character.dexterity || 10;
-    const int = character.intelligence || 10;
-    const wis = character.wisdom || 10;
-    const vit = character.vitality || 10;
-    const luck = character.luck || 10;
-    
-    const totalAttributes = str + dex + int + wis + vit + luck;
-    const attributes = [
-      { name: 'Força', value: str, percentage: str / totalAttributes },
-      { name: 'Destreza', value: dex, percentage: dex / totalAttributes },
-      { name: 'Inteligência', value: int, percentage: int / totalAttributes },
-      { name: 'Sabedoria', value: wis, percentage: wis / totalAttributes },
-      { name: 'Vitalidade', value: vit, percentage: vit / totalAttributes },
-      { name: 'Sorte', value: luck, percentage: luck / totalAttributes }
-    ];
-    
-    // Encontrar atributo dominante
-    const dominantAttr = attributes.reduce((max, attr) => attr.percentage > max.percentage ? attr : max);
-    const isMonoBuild = dominantAttr.percentage > 0.8;
-    
-    // Calcular diversidade (quanto mais próximo de 1/6 cada atributo, maior a diversidade)
-    const diversityScore = 1.0 - (
-      attributes.reduce((sum, attr) => sum + Math.abs(attr.percentage - 1.0/6.0), 0) / 2.0
-    );
-    
-    const diversityBonus = 1.0 + (diversityScore * 0.2);
-    const monoBuildPenalty = isMonoBuild ? 0.7 : 1.0;
-    
-    let recommendation = '';
-    if (isMonoBuild) {
-      recommendation = `Build muito especializada em ${dominantAttr.name}. Considere investir em outros atributos para melhor eficiência geral.`;
-    } else if (diversityScore > 0.7) {
-      recommendation = 'Build bem balanceada! Você está aproveitando as sinergias entre atributos.';
-    } else {
-      recommendation = 'Build moderadamente especializada. Há espaço para melhorar o equilíbrio.';
-    }
-    
-    return {
-      diversityScore,
-      diversityPercentage: diversityScore * 100,
-      diversityBonus,
-      monoBuildPenalty,
-      dominantAttribute: dominantAttr.name,
-      dominantPercentage: dominantAttr.percentage * 100,
-      isMonoBuild,
-      recommendation
-    };
-  }
 } 

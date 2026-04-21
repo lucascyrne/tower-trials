@@ -40,6 +40,7 @@ interface BattleArenaProps {
   playerManaPercentage: number;
   enemyHpPercentage: number;
   isPlayerTurn: boolean;
+  compactLandscape?: boolean;
   onDamageDealt?: (damage: number, isPlayer: boolean, isCritical?: boolean, damageType?: string) => void;
 }
 
@@ -59,6 +60,7 @@ export function BattleArena({
   playerManaPercentage, 
   enemyHpPercentage, 
   isPlayerTurn,
+  compactLandscape = false,
 }: BattleArenaProps) {
   // Log para debug das props recebidas
   useEffect(() => {
@@ -74,6 +76,10 @@ export function BattleArena({
   const [showEnemyDetails, setShowEnemyDetails] = useState(false);
   const [floatingDamages, setFloatingDamages] = useState<FloatingDamage[]>([]);
   const [showShortcutsTooltip, setShowShortcutsTooltip] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [playerHitPulse, setPlayerHitPulse] = useState(false);
+  const [enemyHitPulse, setEnemyHitPulse] = useState(false);
+  const [playerAttackPulse, setPlayerAttackPulse] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Hook para fechar tooltip ao clicar fora
@@ -94,6 +100,17 @@ export function BattleArena({
       document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [showShortcutsTooltip]);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      setIsMobileDevice(window.innerWidth <= 768 || coarsePointer);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Funções para controlar o tooltip
   const toggleShortcutsTooltip = () => {
@@ -133,6 +150,8 @@ export function BattleArena({
       const damage = lastBattleState.playerHp - player.hp;
       console.log(`[BattleArena] Jogador recebeu ${damage} de dano`);
       showFloatingDamage(damage, true, false, 'physical');
+      setPlayerHitPulse(true);
+      setTimeout(() => setPlayerHitPulse(false), 420);
       hasChanges = true;
     }
 
@@ -142,6 +161,10 @@ export function BattleArena({
       const isCritical = damage > (player.atk * 1.5);
       console.log(`[BattleArena] Inimigo recebeu ${damage} de dano ${isCritical ? '(CRÍTICO)' : ''}`);
       showFloatingDamage(damage, false, isCritical, 'physical');
+      setEnemyHitPulse(true);
+      setPlayerAttackPulse(true);
+      setTimeout(() => setEnemyHitPulse(false), 420);
+      setTimeout(() => setPlayerAttackPulse(false), 260);
       hasChanges = true;
     }
 
@@ -233,7 +256,7 @@ export function BattleArena({
       }`}>
         <CardContent className="p-3 md:p-6">
           {/* Battle Header - Compacto */}
-          <div className="text-center mb-3 md:mb-6">
+          <div className={`${compactLandscape ? 'hidden' : 'text-center mb-3 md:mb-6'}`}>
             <div className="flex items-center justify-center gap-2 md:gap-3 mb-2">
               <Badge variant="outline" className="px-2 py-1 text-xs bg-background/50">
                 <Sword className="h-3 w-3 mr-1" />
@@ -251,7 +274,7 @@ export function BattleArena({
                 >
                   {isPlayerTurn ? "Seu Turno" : "Turno do Inimigo"}
                 </Badge>
-                {isPlayerTurn && (
+                {isPlayerTurn && !isMobileDevice && (
                   <div className="relative" ref={tooltipRef}>
                     <button 
                       className="ml-1 text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
@@ -304,18 +327,19 @@ export function BattleArena({
           </div>
 
           {/* Main Battle Display - Layout Responsivo */}
-          <div className="grid grid-cols-2 gap-3 md:gap-8 items-start">
+          <div className={`grid grid-cols-2 items-start ${compactLandscape ? 'gap-2 md:gap-4' : 'gap-3 md:gap-8'}`}>
             
             {/* Player Side */}
             <div className="space-y-2 md:space-y-4">
               {/* Player Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
-                <div className="relative inline-block mb-2 md:mb-4">
+                <div className={`relative inline-block ${compactLandscape ? 'mb-1 md:mb-2' : 'mb-2 md:mb-4'}`}>
+                  <div className={`absolute inset-0 rounded-full ${playerHitPulse ? 'battle-ring-hit' : playerAttackPulse ? 'battle-ring-attack' : ''}`} />
                   <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-2 md:border-3 flex items-center justify-center transition-all duration-500 overflow-hidden ${
                     isPlayerTurn 
                       ? 'border-blue-500 shadow-xl md:shadow-2xl shadow-blue-500/40 scale-105 md:scale-110' 
                       : 'border-blue-500/30 scale-100'
-                  }`}>
+                  } ${playerHitPulse ? 'battle-avatar-hit' : ''} ${playerAttackPulse ? 'battle-avatar-attack' : ''}`}>
                     <ThiefIdleAnimation 
                       size={64} 
                       className="scale-75 md:scale-100 lg:scale-110" 
@@ -336,7 +360,7 @@ export function BattleArena({
                   )}
                 </div>
                 
-                <div className="space-y-1 md:space-y-2">
+                <div className={`${compactLandscape ? 'hidden' : 'space-y-1 md:space-y-2'}`}>
                   <h3 className="font-bold text-sm md:text-lg lg:text-xl flex items-center justify-center gap-1 md:gap-2">
                     <Crown className="h-3 w-3 md:h-5 md:w-5 text-yellow-500" />
                     <span className="truncate">{player.name}</span>
@@ -436,7 +460,7 @@ export function BattleArena({
               </div>
 
               {/* Player Combat Stats - Grid Adaptativo */}
-              <div className={`grid gap-1 md:gap-2 ${
+              {!compactLandscape && <div className={`grid gap-1 md:gap-2 ${
                 player.magic_attack && !isNaN(player.magic_attack) && player.magic_attack > 0 
                   ? 'grid-cols-4' 
                   : 'grid-cols-3'
@@ -501,10 +525,10 @@ export function BattleArena({
                     />
                   </div>
                 </div>
-              </div>
+              </div>}
 
               {/* Player Extended Stats Toggle - Apenas Desktop */}
-              <div className="hidden md:block">
+              {!compactLandscape && <div className="hidden md:block">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -749,19 +773,20 @@ export function BattleArena({
                     )}
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
 
             {/* Enemy Side */}
             <div className="space-y-2 md:space-y-4">
               {/* Enemy Avatar & Basic Info - Compacto */}
               <div className="text-center relative">
-                <div className="relative inline-block mb-2 md:mb-4">
+                <div className={`relative inline-block ${compactLandscape ? 'mb-1 md:mb-2' : 'mb-2 md:mb-4'}`}>
+                  <div className={`absolute inset-0 rounded-full ${enemyHitPulse ? 'battle-ring-hit' : ''}`} />
                   <div className={`w-16 h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 border-2 md:border-3 flex items-center justify-center text-2xl md:text-4xl lg:text-5xl transition-all duration-500 ${
                     !isPlayerTurn 
                       ? 'border-red-500 shadow-xl md:shadow-2xl shadow-red-500/40 scale-105 md:scale-110' 
                       : 'border-red-500/30 scale-100'
-                  }`}>
+                  } ${enemyHitPulse ? 'battle-avatar-hit' : ''}`}>
                     {currentEnemy.image || '👾'}
                   </div>
                   {!isPlayerTurn && (
@@ -772,7 +797,7 @@ export function BattleArena({
                   )}
                 </div>
                 
-                <div className="space-y-1 md:space-y-2">
+                <div className={`${compactLandscape ? 'hidden' : 'space-y-1 md:space-y-2'}`}>
                   <h3 className="font-bold text-sm md:text-lg lg:text-xl flex items-center justify-center gap-1 md:gap-2">
                     <Skull className="h-3 w-3 md:h-5 md:w-5 text-red-500" />
                     <span className="truncate">{currentEnemy.name}</span>
@@ -855,20 +880,20 @@ export function BattleArena({
                   </div>
                 </div>
 
-                {Boolean(currentEnemy.mana > 0) && (
+                {(compactLandscape || Boolean(currentEnemy.mana > 0)) && (
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <div className="flex items-center gap-1">
                         <Sparkles className="h-3 w-3 md:h-4 md:w-4 text-purple-500" />
                         <span className="font-medium text-xs md:text-sm">MP</span>
                       </div>
-                      <span className="text-xs md:text-sm font-bold">{currentEnemy.mana}</span>
+                      <span className="text-xs md:text-sm font-bold">{currentEnemy.mana || 0}</span>
                     </div>
                     <div className="relative">
                       <div className="h-2 md:h-3 bg-black/20 rounded-full"></div>
                       <div 
                         className="absolute top-0 left-0 h-2 md:h-3 bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(100, (currentEnemy.mana / Math.max(currentEnemy.mana, 100)) * 100)}%` }}
+                        style={{ width: `${Math.min(100, ((currentEnemy.mana || 0) / Math.max(currentEnemy.mana || 1, 100)) * 100)}%` }}
                       />
                     </div>
                   </div>
@@ -876,7 +901,7 @@ export function BattleArena({
               </div>
 
               {/* Enemy Combat Stats - Grid Compacto */}
-              <div className="grid grid-cols-3 gap-1 md:gap-2">
+              {!compactLandscape && <div className="grid grid-cols-3 gap-1 md:gap-2">
                 <div className="bg-red-500/10 border border-red-500/20 rounded p-1 md:p-2 text-center">
                   <Sword className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-red-400" />
                   <div className="text-xs font-bold text-red-400">{currentEnemy.attack}</div>
@@ -889,10 +914,10 @@ export function BattleArena({
                   <Zap className="h-3 w-3 md:h-4 md:w-4 mx-auto mb-1 text-yellow-400" />
                   <div className="text-xs font-bold text-yellow-400">{currentEnemy.speed}</div>
                 </div>
-              </div>
+              </div>}
 
               {/* Enemy Extended Stats Toggle - Apenas Desktop */}
-              <div className="hidden md:block">
+              {!compactLandscape && <div className="hidden md:block">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1064,7 +1089,7 @@ export function BattleArena({
                     )}
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
         </CardContent>

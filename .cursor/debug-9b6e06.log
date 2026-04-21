@@ -1,0 +1,91 @@
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub useEffect ran","data":{"effectRunCount":1,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97","renderCount":2},"timestamp":1773536901358,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:fetch","message":"Hub starting fetch + loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536901360,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub useEffect ran","data":{"effectRunCount":2,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97","renderCount":8},"timestamp":1773536903573,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub useEffect ran","data":{"effectRunCount":1,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97","renderCount":2},"timestamp":1773536906090,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:fetch","message":"Hub starting fetch + loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536906092,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":2},"timestamp":1773536906095,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:loadCharacterForHub","message":"Hub calling loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536906099,"hypothesisId":"H2"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":4},"timestamp":1773536906761,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub useEffect ran","data":{"effectRunCount":1,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97","renderCount":2},"timestamp":1773536914073,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:fetch","message":"Hub starting fetch + loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536914074,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:loadCharacterForHub","message":"Hub calling loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536914078,"hypothesisId":"H2"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":5},"timestamp":1773536920763,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":6},"timestamp":1773536920765,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub useEffect ran","data":{"effectRunCount":2,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97","renderCount":6},"timestamp":1773536920846,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":1},"timestamp":1773536934853,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":2},"timestamp":1773536934854,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:fetch","message":"Hub starting fetch + loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536934868,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:loadCharacterForHub","message":"Hub calling loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536935114,"hypothesisId":"H2"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":3},"timestamp":1773536935120,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":4},"timestamp":1773536935121,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":5},"timestamp":1773536935561,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":6},"timestamp":1773536935562,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":1},"timestamp":1773536940405,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":2},"timestamp":1773536940406,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:effect","message":"Hub load effect ran","data":{"effectRunCount":1,"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536940425,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:fetch","message":"Hub starting fetch + loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536940426,"hypothesisId":"H1"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:loadCharacterForHub","message":"Hub calling loadCharacterForHub","data":{"characterId":"e978d78f-7925-450e-81aa-ea8847cb6e97"},"timestamp":1773536940430,"hypothesisId":"H2"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":3},"timestamp":1773536940951,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":4},"timestamp":1773536940952,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":5},"timestamp":1773536944709,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":6},"timestamp":1773536944710,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":7},"timestamp":1773537099757,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":8},"timestamp":1773537099759,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":9},"timestamp":1773537100499,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":10},"timestamp":1773537100500,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":11},"timestamp":1773537101199,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":12},"timestamp":1773537101201,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":13},"timestamp":1773537101980,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":14},"timestamp":1773537101982,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":15},"timestamp":1773537105064,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":16},"timestamp":1773537105066,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":17},"timestamp":1773537105927,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":18},"timestamp":1773537105928,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":19},"timestamp":1773537117800,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":20},"timestamp":1773537117802,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":21},"timestamp":1773537119944,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":22},"timestamp":1773537119946,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":23},"timestamp":1773537122962,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":24},"timestamp":1773537122964,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":25},"timestamp":1773537124315,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":26},"timestamp":1773537124316,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":27},"timestamp":1773537125491,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":28},"timestamp":1773537125492,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":29},"timestamp":1773537127264,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":30},"timestamp":1773537127265,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":31},"timestamp":1773537138554,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":32},"timestamp":1773537138556,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":33},"timestamp":1773537139621,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":34},"timestamp":1773537139623,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":35},"timestamp":1773537141274,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":36},"timestamp":1773537141276,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":37},"timestamp":1773537142552,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":38},"timestamp":1773537142553,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":39},"timestamp":1773537144024,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":40},"timestamp":1773537144026,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":41},"timestamp":1773537148719,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":42},"timestamp":1773537148720,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":43},"timestamp":1773537152794,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":44},"timestamp":1773537152796,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":45},"timestamp":1773537153474,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":46},"timestamp":1773537153475,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":47},"timestamp":1773537154041,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":48},"timestamp":1773537154043,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":49},"timestamp":1773537154609,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":50},"timestamp":1773537154611,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":51},"timestamp":1773537162660,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":52},"timestamp":1773537162662,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":53},"timestamp":1773537163594,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":54},"timestamp":1773537163596,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":55},"timestamp":1773537164433,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":56},"timestamp":1773537164434,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":57},"timestamp":1773537172246,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":58},"timestamp":1773537172248,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":59},"timestamp":1773537172556,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":60},"timestamp":1773537172557,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":61},"timestamp":1773537172757,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":62},"timestamp":1773537172758,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":63},"timestamp":1773537297277,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":64},"timestamp":1773537297279,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":65},"timestamp":1773537297531,"hypothesisId":"H3"}
+{"sessionId":"9b6e06","location":"hub/page.tsx:render","message":"Hub render","data":{"renderCount":66},"timestamp":1773537297533,"hypothesisId":"H3"}

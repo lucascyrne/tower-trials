@@ -1,6 +1,15 @@
-import AnimatedModal from '@/components/core/animated-modal';
-import { Button } from '../ui/button';
 import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Loader2, ShieldAlert } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -38,27 +47,30 @@ const ConfirmationModal: React.FC<Props> = ({
   };
 
   return (
-    <AnimatedModal
-      isOpen={isOpen}
-      setIsOpen={setIsOpen}
-      size="sm"
-      title={title}
-      subTitle={description}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-            {cancelText}
-          </Button>
-          <Button
-            variant={variant === 'destructive' ? 'destructive' : 'default'}
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogContent className="border-border/80 bg-card/95 backdrop-blur">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            {variant === 'destructive' ? <ShieldAlert data-icon="inline-start" /> : null}
+            {title}
+          </AlertDialogTitle>
+          {description ? (
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          ) : null}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>
+          <AlertDialogAction
             onClick={handleConfirm}
+            className={variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+            disabled={isLoading}
           >
+            {isLoading ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
             {confirmText}
-          </Button>
-        </div>
-      </div>
-    </AnimatedModal>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

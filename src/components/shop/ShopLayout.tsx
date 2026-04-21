@@ -20,6 +20,7 @@ import { Equipment } from '@/resources/game/models/equipment.model';
 import { Consumable } from '@/resources/game/models/consumable.model';
 import { Character } from '@/resources/game/models/character.model';
 import { EquipmentComparison } from '@/components/equipment/EquipmentComparison';
+import { cn } from '@/lib/utils';
 
 interface ShopLayoutProps {
   character: Character;
@@ -33,6 +34,48 @@ interface ShopLayoutProps {
 type ShopCategory = 'equipment' | 'consumables';
 type EquipmentFilter = 'all' | 'weapon' | 'armor' | 'accessory';
 type ConsumableFilter = 'all' | 'potion' | 'antidote' | 'buff';
+
+const rarityToBadgeVariant: Record<string, string> = {
+  common: 'bg-muted text-muted-foreground border-border',
+  uncommon: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
+  rare: 'bg-sky-500/15 text-sky-300 border-sky-400/30',
+  epic: 'bg-violet-500/15 text-violet-300 border-violet-400/30',
+  legendary: 'bg-amber-500/15 text-amber-300 border-amber-400/30',
+};
+
+function RequirementRow({ label, value, isValid }: { label: string; value: React.ReactNode; isValid: boolean }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/35 px-3 py-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={cn('text-sm font-medium', isValid ? 'text-emerald-400' : 'text-destructive')}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function StatPill({
+  icon,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  value: number;
+  tone: 'danger' | 'info' | 'arcane' | 'gold';
+}) {
+  const tones = {
+    danger: 'border-red-400/30 bg-red-500/10 text-red-300',
+    info: 'border-sky-400/30 bg-sky-500/10 text-sky-300',
+    arcane: 'border-violet-400/30 bg-violet-500/10 text-violet-300',
+    gold: 'border-amber-400/30 bg-amber-500/10 text-amber-300',
+  } as const;
+  return (
+    <div className={cn('flex items-center gap-2 rounded-lg border px-3 py-2 shadow-sm', tones[tone])}>
+      {icon}
+      <span className="text-sm font-semibold">+{value}</span>
+    </div>
+  );
+}
 
 export const ShopLayout: React.FC<ShopLayoutProps> = ({
   character,
@@ -59,32 +102,23 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     return item.type === consumableFilter;
   });
 
-  const getRarityColor = (rarity: string) => {
-    const colors = {
-      common: 'bg-slate-800/80 text-slate-300 border-slate-600',
-      uncommon: 'bg-emerald-900/80 text-emerald-300 border-emerald-600',
-      rare: 'bg-blue-900/80 text-blue-300 border-blue-600',
-      epic: 'bg-purple-900/80 text-purple-300 border-purple-600',
-      legendary: 'bg-amber-900/80 text-amber-300 border-amber-600'
-    };
-    return colors[rarity as keyof typeof colors] || colors.common;
-  };
+  const getRarityColor = (rarity: string) => rarityToBadgeVariant[rarity] || rarityToBadgeVariant.common;
 
   const getEquipmentTypeIcon = (type: string) => {
     switch (type) {
-      case 'weapon': return <Sword className="h-4 w-4 text-red-400" />;
-      case 'armor': return <Shield className="h-4 w-4 text-blue-400" />;
-      case 'accessory': return <Gem className="h-4 w-4 text-purple-400" />;
-      default: return <Package className="h-4 w-4 text-slate-400" />;
+      case 'weapon': return <Sword className="h-4 w-4 text-red-300" />;
+      case 'armor': return <Shield className="h-4 w-4 text-sky-300" />;
+      case 'accessory': return <Gem className="h-4 w-4 text-violet-300" />;
+      default: return <Package className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getConsumableTypeIcon = (type: string) => {
     switch (type) {
-      case 'potion': return <Sparkles className="h-4 w-4 text-blue-500" />;
-      case 'antidote': return <Shield className="h-4 w-4 text-green-500" />;
-      case 'buff': return <Zap className="h-4 w-4 text-purple-500" />;
-      default: return <Package className="h-4 w-4" />;
+      case 'potion': return <Sparkles className="h-4 w-4 text-sky-300" />;
+      case 'antidote': return <Shield className="h-4 w-4 text-emerald-300" />;
+      case 'buff': return <Zap className="h-4 w-4 text-violet-300" />;
+      default: return <Package className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -97,27 +131,29 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     return (
       <Card 
         key={equipment.id}
-        className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 border-slate-700/50 bg-slate-800/50 backdrop-blur-sm ${
-          isSelected ? 'ring-2 ring-primary/60 shadow-lg shadow-primary/30' : ''
-        } ${!canBuy ? 'opacity-60 grayscale' : 'hover:bg-slate-800/70'}`}
+        className={cn(
+          'cursor-pointer border-border/70 bg-card/70 backdrop-blur-sm transition-all duration-200',
+          isSelected && 'ring-2 ring-primary/60 shadow-lg shadow-primary/25',
+          !canBuy ? 'opacity-60 grayscale' : 'hover:-translate-y-0.5 hover:bg-card hover:shadow-md'
+        )}
         onClick={() => setSelectedItem(equipment)}
       >
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
+            <div className="flex-shrink-0 rounded-lg border border-border/70 bg-muted/40 p-2">
               {getEquipmentTypeIcon(equipment.type)}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm truncate text-slate-100">{equipment.name}</h3>
+              <h3 className="truncate text-sm font-medium">{equipment.name}</h3>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="outline" className={`text-xs border ${getRarityColor(equipment.rarity)}`}>
+                <Badge variant="outline" className={cn('border text-xs', getRarityColor(equipment.rarity))}>
                   {equipment.rarity}
                 </Badge>
                 {equipment.rarity === 'legendary' && <Star className="h-3 w-3 text-amber-400 animate-pulse" />}
                 {equipment.rarity === 'epic' && <Sparkles className="h-3 w-3 text-purple-400" />}
               </div>
               <div className="flex items-center gap-1 mt-2">
-                <Coins className="h-3 w-3 text-amber-400" />
+                <Coins className="h-3 w-3 text-amber-300" />
                 <span className="text-xs font-medium text-amber-300">{equipment.price}</span>
               </div>
             </div>
@@ -136,25 +172,27 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
     return (
       <Card 
         key={consumable.id}
-        className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/20 border-slate-700/50 bg-slate-800/50 backdrop-blur-sm ${
-          isSelected ? 'ring-2 ring-primary/60 shadow-lg shadow-primary/30' : ''
-        } ${!canBuy ? 'opacity-60 grayscale' : 'hover:bg-slate-800/70'}`}
+        className={cn(
+          'cursor-pointer border-border/70 bg-card/70 backdrop-blur-sm transition-all duration-200',
+          isSelected && 'ring-2 ring-primary/60 shadow-lg shadow-primary/25',
+          !canBuy ? 'opacity-60 grayscale' : 'hover:-translate-y-0.5 hover:bg-card hover:shadow-md'
+        )}
         onClick={() => setSelectedItem(consumable)}
       >
         <CardContent className="p-3">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 p-2 rounded-lg bg-slate-700/50">
+            <div className="flex-shrink-0 rounded-lg border border-border/70 bg-muted/40 p-2">
               {getConsumableTypeIcon(consumable.type)}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm truncate text-slate-100">{consumable.name}</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="truncate text-sm font-medium">{consumable.name}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {consumable.type === 'potion' ? `+${consumable.effect_value}` : 
                  consumable.type === 'antidote' ? 'Remove debuffs' : 
                  `+${consumable.effect_value} por 3 turnos`}
               </p>
               <div className="flex items-center gap-1 mt-2">
-                <Coins className="h-3 w-3 text-amber-400" />
+                <Coins className="h-3 w-3 text-amber-300" />
                 <span className="text-xs font-medium text-amber-300">{consumable.price}</span>
               </div>
             </div>
@@ -167,11 +205,13 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
   const renderItemDetails = () => {
     if (!selectedItem) {
       return (
-        <div className="flex items-center justify-center h-full text-slate-500">
+        <div className="flex h-full items-center justify-center text-muted-foreground">
           <div className="text-center">
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg">Selecione um item para ver os detalhes</p>
-            <p className="text-sm mt-2 opacity-75">Clique em qualquer item da lista para visualizar suas informações completas</p>
+            <p className="text-lg font-semibold tracking-tight">Selecione um item para ver os detalhes</p>
+            <p className="mt-2 max-w-md text-sm leading-relaxed opacity-75">
+              Clique em qualquer item da lista para visualizar suas informações completas
+            </p>
           </div>
         </div>
       );
@@ -190,16 +230,16 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
+              <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
                 {getEquipmentTypeIcon(equipment.type)}
               </div>
-              <h2 className="text-xl font-bold text-slate-100">{equipment.name}</h2>
+              <h2 className="text-xl font-bold">{equipment.name}</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className={`border ${getRarityColor(equipment.rarity)}`}>
+              <Badge className={cn('border', getRarityColor(equipment.rarity))}>
                 {equipment.rarity}
               </Badge>
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-muted-foreground">
                 {equipment.type === 'weapon' ? 'Arma' : 
                  equipment.type === 'armor' ? 'Armadura' : 'Acessório'}
               </span>
@@ -209,42 +249,30 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           <Separator />
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Descrição</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">{equipment.description}</p>
+            <h3 className="mb-2 font-semibold">Descrição</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">{equipment.description}</p>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3 text-slate-200">Atributos</h3>
+            <h3 className="mb-3 font-semibold">Atributos</h3>
             <div className="grid grid-cols-2 gap-3">
               {equipment.atk_bonus > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-800/50 rounded-lg backdrop-blur-sm">
-                  <Sword className="h-4 w-4 text-red-400" />
-                  <span className="text-sm text-red-300 font-medium">+{equipment.atk_bonus}</span>
-                </div>
+                <StatPill icon={<Sword className="h-4 w-4 text-red-300" />} value={equipment.atk_bonus} tone="danger" />
               )}
               {equipment.def_bonus > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-blue-900/30 border border-blue-800/50 rounded-lg backdrop-blur-sm">
-                  <Shield className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm text-blue-300 font-medium">+{equipment.def_bonus}</span>
-                </div>
+                <StatPill icon={<Shield className="h-4 w-4 text-sky-300" />} value={equipment.def_bonus} tone="info" />
               )}
               {equipment.mana_bonus > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-purple-900/30 border border-purple-800/50 rounded-lg backdrop-blur-sm">
-                  <Gem className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm text-purple-300 font-medium">+{equipment.mana_bonus}</span>
-                </div>
+                <StatPill icon={<Gem className="h-4 w-4 text-violet-300" />} value={equipment.mana_bonus} tone="arcane" />
               )}
               {equipment.speed_bonus > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-amber-900/30 border border-amber-800/50 rounded-lg backdrop-blur-sm">
-                  <Zap className="h-4 w-4 text-amber-400" />
-                  <span className="text-sm text-amber-300 font-medium">+{equipment.speed_bonus}</span>
-                </div>
+                <StatPill icon={<Zap className="h-4 w-4 text-amber-300" />} value={equipment.speed_bonus} tone="gold" />
               )}
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Comparação com Equipamento Atual</h3>
+            <h3 className="mb-2 font-semibold">Comparação com Equipamento Atual</h3>
             <EquipmentComparison
               characterId={character.id}
               newEquipment={equipment}
@@ -255,32 +283,26 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Requisitos</h3>
+            <h3 className="mb-2 font-semibold">Requisitos</h3>
             <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 bg-slate-700/30 rounded border border-slate-600/30">
-                <span className="text-sm text-slate-300">Nível:</span>
-                <span className={`text-sm font-medium ${hasLevel ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {equipment.level_requirement}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-2 bg-slate-700/30 rounded border border-slate-600/30">
-                <span className="text-sm text-slate-300">Preço:</span>
-                <div className="flex items-center gap-1">
-                  <Coins className="h-3 w-3 text-amber-400" />
-                  <span className={`text-sm font-medium ${canAfford ? 'text-emerald-400' : 'text-red-400'}`}>
+              <RequirementRow label="Nível" value={equipment.level_requirement} isValid={hasLevel} />
+              <RequirementRow
+                label="Preço"
+                value={
+                  <span className="flex items-center gap-1">
+                    <Coins className="h-3 w-3 text-amber-300" />
                     {equipment.price}
                   </span>
-                </div>
-              </div>
+                }
+                isValid={canAfford}
+              />
             </div>
           </div>
 
           <Button 
             onClick={() => onEquipmentPurchase(equipment)}
             disabled={!canBuy}
-            className={`w-full font-semibold ${canBuy 
-              ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25' 
-              : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'}`}
+            className="w-full font-semibold shadow-md shadow-primary/20"
           >
             {!equipment.is_unlocked ? 'Item Bloqueado' :
              !hasLevel ? `Requer Nível ${equipment.level_requirement}` :
@@ -296,14 +318,14 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
 
       return (
         <div className="space-y-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 rounded-lg bg-slate-700/50 border border-slate-600/50">
+          <div className="space-y-1">
+            <div className="mb-2 flex items-center gap-3">
+              <div className="rounded-lg border border-border/70 bg-muted/40 p-3">
                 {getConsumableTypeIcon(consumable.type)}
               </div>
-              <h2 className="text-xl font-bold text-slate-100">{consumable.name}</h2>
+              <h2 className="text-xl font-bold tracking-tight">{consumable.name}</h2>
             </div>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted-foreground">
               {consumable.type === 'potion' ? 'Poção' :
                consumable.type === 'antidote' ? 'Antídoto' : 'Fortalecimento'}
             </span>
@@ -312,13 +334,13 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           <Separator />
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Descrição</h3>
-            <p className="text-sm text-slate-400 leading-relaxed">{consumable.description}</p>
+            <h3 className="mb-2 font-semibold">Descrição</h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">{consumable.description}</p>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Efeito</h3>
-            <div className="p-3 bg-emerald-900/30 border border-emerald-800/50 rounded-lg backdrop-blur-sm">
+            <h3 className="mb-2 font-semibold">Efeito</h3>
+            <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3">
               <span className="text-sm text-emerald-300">
                 {consumable.type === 'potion' ? `Restaura ${consumable.effect_value} pontos` : 
                  consumable.type === 'antidote' ? 'Remove todos os efeitos negativos' : 
@@ -328,9 +350,9 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           </div>
 
           <div>
-            <h3 className="font-semibold mb-2 text-slate-200">Preço</h3>
-            <div className="flex items-center gap-2 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-              <Coins className="h-4 w-4 text-amber-400" />
+            <h3 className="mb-2 font-semibold">Preço</h3>
+            <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/35 p-3">
+              <Coins className="h-4 w-4 text-amber-300" />
               <span className={`font-medium ${canAfford ? 'text-emerald-400' : 'text-red-400'}`}>
                 {consumable.price} gold cada
               </span>
@@ -338,15 +360,13 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-semibold text-slate-200">Comprar</h3>
+            <h3 className="font-semibold">Comprar</h3>
             <div className="grid grid-cols-3 gap-2">
               <Button
                 onClick={() => onConsumablePurchase(consumable, 1)}
                 disabled={!canBuy}
                 size="sm"
-                className={`${canBuy 
-                  ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20' 
-                  : 'bg-slate-700/50 text-slate-400 cursor-not-allowed'}`}
+                className="font-semibold shadow-sm shadow-primary/10"
               >
                 1x
               </Button>
@@ -355,9 +375,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 disabled={!canBuy || character.gold < consumable.price * 5}
                 size="sm"
                 variant="outline"
-                className={`border-slate-600 ${!canBuy || character.gold < consumable.price * 5
-                  ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'}`}
+                className="border-border/70"
               >
                 5x
               </Button>
@@ -366,9 +384,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
                 disabled={!canBuy || character.gold < consumable.price * 10}
                 size="sm"
                 variant="outline"
-                className={`border-slate-600 ${!canBuy || character.gold < consumable.price * 10
-                  ? 'bg-slate-700/50 text-slate-400 cursor-not-allowed border-slate-700' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'}`}
+                className="border-border/70"
               >
                 10x
               </Button>
@@ -380,20 +396,20 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+    <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Coluna Esquerda - Lista de Itens */}
-      <div className="lg:col-span-1 space-y-4">
+      <div className="space-y-4 lg:col-span-1">
         {/* Header com Gold e Inventário */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-gradient-to-r from-amber-900/50 to-amber-800/50 border border-amber-700/50 px-4 py-2 rounded-lg backdrop-blur-sm">
-            <Coins className="h-4 w-4 text-amber-400" />
+          <div className="flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-2">
+            <Coins className="h-4 w-4 text-amber-300" />
             <span className="font-semibold text-amber-300">{character.gold}</span>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={onOpenInventory}
-            className="border-slate-600 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-100"
+            className="border-border/70 bg-card/70 shadow-sm"
           >
             <Package className="h-4 w-4 mr-2" />
             Inventário
@@ -401,7 +417,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         </div>
 
         {/* Filtros de Categoria */}
-        <div className="flex gap-2 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+        <div className="flex gap-2 rounded-lg border border-border/70 bg-card/50 p-1">
           <Button
             variant={selectedCategory === 'equipment' ? 'default' : 'ghost'}
             size="sm"
@@ -409,9 +425,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               setSelectedCategory('equipment');
               setSelectedItem(null);
             }}
-            className={`flex-1 ${selectedCategory === 'equipment' 
-              ? 'bg-primary/20 text-primary border-primary/50' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+            className={cn('flex-1', selectedCategory === 'equipment' && 'shadow-sm shadow-primary/20')}
           >
             <ShoppingCart className="h-4 w-4" />
           </Button>
@@ -422,9 +436,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               setSelectedCategory('consumables');
               setSelectedItem(null);
             }}
-            className={`flex-1 ${selectedCategory === 'consumables' 
-              ? 'bg-primary/20 text-primary border-primary/50' 
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'}`}
+            className={cn('flex-1', selectedCategory === 'consumables' && 'shadow-sm shadow-primary/20')}
           >
             <ShoppingBag className="h-4 w-4" />
           </Button>
@@ -432,14 +444,12 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
 
         {/* Filtros Específicos */}
         {selectedCategory === 'equipment' && (
-          <div className="flex gap-1 flex-wrap p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
+          <div className="flex flex-wrap gap-1 rounded-lg border border-border/60 bg-card/40 p-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('all')}
-              className={`${equipmentFilter === 'all' 
-                ? 'bg-slate-600/50 text-slate-200' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'}`}
+              className={cn(equipmentFilter === 'all' && 'bg-secondary')}
             >
               <Filter className="h-3 w-3" />
             </Button>
@@ -447,9 +457,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('weapon')}
-              className={`${equipmentFilter === 'weapon' 
-                ? 'bg-red-900/30 text-red-400 border border-red-800/50' 
-                : 'text-slate-500 hover:text-red-400 hover:bg-red-900/20'}`}
+              className={cn(equipmentFilter === 'weapon' && 'bg-red-500/15 text-red-300')}
             >
               <Sword className="h-3 w-3" />
             </Button>
@@ -457,9 +465,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('armor')}
-              className={`${equipmentFilter === 'armor' 
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' 
-                : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'}`}
+              className={cn(equipmentFilter === 'armor' && 'bg-sky-500/15 text-sky-300')}
             >
               <Shield className="h-3 w-3" />
             </Button>
@@ -467,9 +473,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setEquipmentFilter('accessory')}
-              className={`${equipmentFilter === 'accessory' 
-                ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50' 
-                : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'}`}
+              className={cn(equipmentFilter === 'accessory' && 'bg-violet-500/15 text-violet-300')}
             >
               <Gem className="h-3 w-3" />
             </Button>
@@ -477,14 +481,12 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         )}
 
         {selectedCategory === 'consumables' && (
-          <div className="flex gap-1 flex-wrap p-1 bg-slate-800/30 rounded-lg border border-slate-700/30">
+          <div className="flex flex-wrap gap-1 rounded-lg border border-border/60 bg-card/40 p-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('all')}
-              className={`${consumableFilter === 'all' 
-                ? 'bg-slate-600/50 text-slate-200' 
-                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/30'}`}
+              className={cn(consumableFilter === 'all' && 'bg-secondary')}
             >
               <Filter className="h-3 w-3" />
             </Button>
@@ -492,9 +494,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('potion')}
-              className={`${consumableFilter === 'potion' 
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' 
-                : 'text-slate-500 hover:text-blue-400 hover:bg-blue-900/20'}`}
+              className={cn(consumableFilter === 'potion' && 'bg-sky-500/15 text-sky-300')}
             >
               <Sparkles className="h-3 w-3" />
             </Button>
@@ -502,9 +502,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('antidote')}
-              className={`${consumableFilter === 'antidote' 
-                ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50' 
-                : 'text-slate-500 hover:text-emerald-400 hover:bg-emerald-900/20'}`}
+              className={cn(consumableFilter === 'antidote' && 'bg-emerald-500/15 text-emerald-300')}
             >
               <Shield className="h-3 w-3" />
             </Button>
@@ -512,9 +510,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setConsumableFilter('buff')}
-              className={`${consumableFilter === 'buff' 
-                ? 'bg-purple-900/30 text-purple-400 border border-purple-800/50' 
-                : 'text-slate-500 hover:text-purple-400 hover:bg-purple-900/20'}`}
+              className={cn(consumableFilter === 'buff' && 'bg-violet-500/15 text-violet-300')}
             >
               <Zap className="h-3 w-3" />
             </Button>
@@ -522,10 +518,10 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
         )}
 
         {/* Lista de Itens */}
-        <div className="space-y-2 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-slate-800 scrollbar-thumb-slate-600">
+        <div className="scrollbar-thin scrollbar-track-transparent space-y-2 overflow-y-auto max-h-[60vh]">
           {selectedCategory === 'equipment' ? (
             filteredEquipment.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="py-8 text-center text-muted-foreground">
                 <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Nenhum equipamento encontrado</p>
               </div>
@@ -534,7 +530,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
             )
           ) : (
             filteredConsumables.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="py-8 text-center text-muted-foreground">
                 <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Nenhum consumível encontrado</p>
               </div>
@@ -547,7 +543,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({
 
       {/* Coluna Direita - Detalhes do Item */}
       <div className="lg:col-span-2">
-        <Card className="h-full border-slate-700/50 bg-slate-800/30 backdrop-blur-sm">
+        <Card className="h-full border-border/70 bg-card/70 shadow-lg shadow-black/10 backdrop-blur-sm">
           <CardContent className="p-6 h-full">
             {renderItemDetails()}
           </CardContent>

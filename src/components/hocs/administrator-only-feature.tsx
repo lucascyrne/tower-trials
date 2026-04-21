@@ -11,17 +11,17 @@ interface Props {
 }
 
 export default function AdministratorOnlyFeature({ children }: Props): JSX.Element {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading.onAuthUserChanged && user && user.role !== 'ADMIN') {
+    if (!isLoading && user && user.role !== 'ADMIN') {
       toast.error('Você não tem permissão para acessar esta página');
       router.push('/403');
     }
-  }, [user, loading.onAuthUserChanged]);
+  }, [user, isLoading, router]);
 
-  if (loading.onAuthUserChanged || !user) {
+  if (isLoading || !user) {
     return <LoadingSpin />;
   }
 

@@ -22,13 +22,13 @@ export const defaultPlayer: GamePlayer = {
   xp: 0,
   xp_next_level: GAME_CONSTANTS.BASE_XP_NEXT_LEVEL,
   gold: 0,
-  hp: GAME_CONSTANTS.BASE_STATS.hp,
-  max_hp: GAME_CONSTANTS.BASE_STATS.hp,
-  mana: GAME_CONSTANTS.BASE_STATS.mana,
-  max_mana: GAME_CONSTANTS.BASE_STATS.mana,
-  atk: GAME_CONSTANTS.BASE_STATS.atk,
-  def: GAME_CONSTANTS.BASE_STATS.def,
-  speed: GAME_CONSTANTS.BASE_STATS.speed,
+  hp: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.hp,
+  max_hp: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.hp,
+  mana: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.mana,
+  max_mana: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.mana,
+  atk: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.atk,
+  def: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.def,
+  speed: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.speed,
   created_at: '',
   updated_at: '',
   isPlayerTurn: true,
@@ -37,7 +37,23 @@ export const defaultPlayer: GamePlayer = {
   isDefending: false,
   floor: 0,
   spells: [],
-  active_effects: initialActiveEffects
+  consumables: [],
+  potionUsedThisTurn: false,
+  active_effects: initialActiveEffects,
+  // Atributos primários
+  strength: 10,
+  dexterity: 10,
+  intelligence: 10,
+  wisdom: 10,
+  vitality: 10,
+  luck: 10,
+  // Propriedades de combate avançadas (apenas as que existem no tipo GamePlayer)
+  critical_chance: 0,
+  critical_damage: 110,
+  double_attack_chance: 0,
+  magic_attack: 0,
+  magic_mastery: 1,
+  magic_damage_bonus: 0
 };
 
 // Estado inicial do jogo
@@ -52,7 +68,8 @@ export const initialGameState: GameState = {
   highestFloor: 0,
   selectedSpell: null,
   battleRewards: null,
-  fleeSuccessful: false
+  fleeSuccessful: false,
+  characterDeleted: false
 };
 
 // Tipo do contexto do jogo

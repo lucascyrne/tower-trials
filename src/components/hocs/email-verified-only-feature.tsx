@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/resources/auth/auth-hook';
+import LoadingSpin from '../ui/loading-sping';
 
 export function EmailVerifiedOnlyFeature({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -12,10 +13,10 @@ export function EmailVerifiedOnlyFeature({ children }: { children: React.ReactNo
     if (user && !user.email_confirmed_at) {
       router.push('/auth/verify-email');
     }
-  }, [user]);
+  }, [user, router]);
 
   if (!user || !user.email_confirmed_at) {
-    return null;
+    return <LoadingSpin />;
   }
 
   return <>{children}</>;

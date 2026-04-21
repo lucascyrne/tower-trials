@@ -31,6 +31,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const registerServiceWorker = process.env.NODE_ENV === "production";
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -44,19 +46,19 @@ export default function RootLayout({
         <meta name="msapplication-TileImage" content="/icons/icon-144x144.svg" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `
+            __html: registerServiceWorker
+              ? `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {
-                      console.log('SW registered: ', registration);
                     })
                     .catch(function(registrationError) {
-                      console.log('SW registration failed: ', registrationError);
                     });
                 });
               }
-            `,
+            `
+              : "",
           }}
         />
       </head>

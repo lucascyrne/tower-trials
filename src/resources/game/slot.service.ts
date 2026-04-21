@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { SupabaseAdminGameRepository } from './infrastructure/supabase/supabase-admin-game.repository';
+import { ConsumePotionSlotUseCase } from './application/use-cases/consume-potion-slot.use-case';
 
 interface ServiceResponse<T> {
   data: T | null;
@@ -31,7 +33,32 @@ export interface PotionUseResult {
   new_mana: number;
 }
 
+/** Payload JSON retornado por `consume_potion_from_slot` (Postgres). */
+type ConsumePotionRpcPayload = {
+  success: boolean;
+  message?: string;
+  error?: string;
+  new_hp?: unknown;
+  new_mana?: unknown;
+};
+
+function parseConsumePotionRpcPayload(raw: unknown): ConsumePotionRpcPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o.success !== 'boolean') return null;
+  return {
+    success: o.success,
+    message: typeof o.message === 'string' ? o.message : undefined,
+    error: typeof o.error === 'string' ? o.error : undefined,
+    new_hp: o.new_hp,
+    new_mana: o.new_mana,
+  };
+}
+
 export class SlotService {
+  private static readonly consumePotionSlotUseCase = new ConsumePotionSlotUseCase(
+    new SupabaseAdminGameRepository()
+  );
   /**
    * Obter slots de poção do personagem
    */
@@ -234,44 +261,49 @@ export class SlotService {
         return { success: false, error: 'Posição do slot inválida (1-3)', data: null };
       }
 
-      // Usar o cliente admin para chamar a função segura
-      const { supabaseAdmin } = await import('@/lib/supabase');
-      
-      const { data, error } = await supabaseAdmin
-        .rpc('consume_potion_from_slot', {
-          p_character_id: characterId,
-          p_slot_position: slotPosition
-        });
+      const raw = await this.consumePotionSlotUseCase.execute({
+        characterId,
+        slotPosition,
+      });
 
-      if (error) {
-        console.error('Erro ao consumir poção do slot:', error);
-        return { 
-          success: false, 
-          error: error.message || 'Erro ao usar poção', 
-          data: null 
+      const payload = parseConsumePotionRpcPayload(raw);
+      if (!payload) {
+        return {
+          success: false,
+          error: 'Resposta inválida do servidor',
+          data: null,
         };
       }
 
-      if (!data) {
-        return { 
-          success: false, 
-          error: 'Nenhum resultado retornado', 
-          data: null 
+      if (!payload.success) {
+        return {
+          success: false,
+          error: payload.error || payload.message || 'Não foi possível consumir a poção',
+          data: null,
         };
       }
 
-      // CRÍTICO: Garantir que os valores sejam sempre inteiros
+      const newHp = Math.floor(Number(payload.new_hp));
+      const newMana = Math.floor(Number(payload.new_mana));
+      if (!Number.isFinite(newHp) || !Number.isFinite(newMana)) {
+        return {
+          success: false,
+          error: 'Resposta inválida: HP ou Mana ausentes',
+          data: null,
+        };
+      }
+
       const result: PotionUseResult = {
-        success: data.success,
-        message: data.message,
-        new_hp: Math.floor(Number(data.new_hp)),
-        new_mana: Math.floor(Number(data.new_mana))
+        success: true,
+        message: payload.message || 'Poção consumida',
+        new_hp: newHp,
+        new_mana: newMana,
       };
 
-      return { 
-        success: true, 
-        error: null, 
-        data: result 
+      return {
+        success: true,
+        error: null,
+        data: result,
       };
     } catch (error) {
       console.error('Erro ao consumir poção do slot:', error);

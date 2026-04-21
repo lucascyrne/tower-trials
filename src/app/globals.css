@@ -7,42 +7,28 @@
 
 @layer base {
   :root {
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
-    /* Tema claro - Cores principais */
-    --background: 0 0% 100%;
-    --foreground: 220 45% 15%;
-
-    /* Cards e elementos de UI */
-    --card: 0 0% 98%;
-    --card-foreground: 220 45% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 45% 15%;
-
-    /* Primários */
-    --primary: 220 45% 50%;
-    --primary-foreground: 0 0% 98%;
-
-    /* Secundários */
-    --secondary: 220 10% 95%;
-    --secondary-foreground: 220 45% 15%;
-
-    /* Mutáveis */
-    --muted: 220 15% 85%;
-    --muted-foreground: 220 25% 45%;
-
-    /* Acentos */
-    --accent: 220 15% 90%;
-    --accent-foreground: 220 45% 15%;
-
-    /* Destrutivos */
-    --destructive: 0 70% 50%;
+    /* Light fantasy (premium parchment + steel accents) */
+    --background: 34 36% 96%;
+    --foreground: 244 20% 14%;
+    --card: 34 32% 98%;
+    --card-foreground: 244 20% 14%;
+    --popover: 34 32% 98%;
+    --popover-foreground: 244 20% 14%;
+    --primary: 262 43% 43%;
+    --primary-foreground: 36 33% 97%;
+    --secondary: 30 20% 91%;
+    --secondary-foreground: 244 18% 24%;
+    --muted: 30 22% 88%;
+    --muted-foreground: 244 12% 38%;
+    --accent: 39 62% 82%;
+    --accent-foreground: 249 22% 20%;
+    --destructive: 0 65% 52%;
     --destructive-foreground: 0 0% 98%;
-
-    /* Bordas e inputs */
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 45% 50%;
+    --border: 30 21% 81%;
+    --input: 30 21% 81%;
+    --ring: 262 48% 45%;
 
     /* Gradientes dinâmicos de vida */
     --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(21, 128, 61, 0.03) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.03) 80%, rgba(34, 197, 94, 0.08) 100%);
@@ -62,40 +48,26 @@
   }
 
   .dark {
-    /* Tema escuro - Cores principais */
-    --background: 220 45% 8%;
-    --foreground: 220 15% 92%;
-
-    /* Cards e elementos de UI */
-    --card: 220 40% 10%;
-    --card-foreground: 220 15% 92%;
-    --popover: 220 40% 10%;
-    --popover-foreground: 220 15% 92%;
-
-    /* Primários */
-    --primary: 220 60% 60%;
-    --primary-foreground: 220 45% 8%;
-
-    /* Secundários */
-    --secondary: 220 25% 15%;
-    --secondary-foreground: 220 15% 92%;
-
-    /* Mutáveis */
-    --muted: 220 25% 18%;
-    --muted-foreground: 220 15% 65%;
-
-    /* Acentos */
-    --accent: 220 25% 18%;
-    --accent-foreground: 220 15% 92%;
-
-    /* Destrutivos */
-    --destructive: 0 65% 60%;
+    /* Dark fantasy (obsidian + arcane violet + antique gold) */
+    --background: 252 25% 8%;
+    --foreground: 32 20% 91%;
+    --card: 250 20% 11%;
+    --card-foreground: 32 20% 91%;
+    --popover: 250 20% 11%;
+    --popover-foreground: 32 20% 91%;
+    --primary: 267 59% 62%;
+    --primary-foreground: 252 26% 10%;
+    --secondary: 250 18% 16%;
+    --secondary-foreground: 35 18% 86%;
+    --muted: 249 15% 19%;
+    --muted-foreground: 31 10% 67%;
+    --accent: 40 50% 44%;
+    --accent-foreground: 35 35% 95%;
+    --destructive: 0 62% 54%;
     --destructive-foreground: 0 0% 98%;
-
-    /* Bordas e inputs */
-    --border: 220 25% 20%;
-    --input: 220 25% 20%;
-    --ring: 220 60% 60%;
+    --border: 250 16% 22%;
+    --input: 250 16% 22%;
+    --ring: 267 59% 62%;
 
     /* Gradientes dinâmicos de vida - tema escuro */
     --battle-bg-healthy: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(21, 128, 61, 0.05) 20%, transparent 40%, transparent 60%, rgba(21, 128, 61, 0.05) 80%, rgba(34, 197, 94, 0.12) 100%);
@@ -517,6 +489,49 @@
   50% {
     box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
   }
+}
+
+@keyframes battle-ring-hit {
+  0% { transform: scale(0.92); opacity: 0.9; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  45% { transform: scale(1.14); opacity: 0.55; box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); opacity: 0; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes battle-ring-attack {
+  0% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  45% { transform: scale(1.1); opacity: 0.5; box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+  100% { transform: scale(1); opacity: 0; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+@keyframes battle-avatar-hit {
+  0% { transform: scale(1) translateX(0); filter: saturate(1); }
+  20% { transform: scale(1.07) translateX(-3px); filter: saturate(1.35); }
+  40% { transform: scale(0.98) translateX(3px); }
+  70% { transform: scale(1.03) translateX(-1px); }
+  100% { transform: scale(1) translateX(0); filter: saturate(1); }
+}
+
+@keyframes battle-avatar-attack {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.08) translateY(-2px); }
+  70% { transform: scale(0.98) translateY(1px); }
+  100% { transform: scale(1); }
+}
+
+.battle-ring-hit {
+  animation: battle-ring-hit 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.battle-ring-attack {
+  animation: battle-ring-attack 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.battle-avatar-hit {
+  animation: battle-avatar-hit 420ms cubic-bezier(0.25, 0.9, 0.2, 1);
+}
+
+.battle-avatar-attack {
+  animation: battle-avatar-attack 260ms cubic-bezier(0.25, 0.9, 0.2, 1);
 }
 
 /* Quick Play Button - Dark Fantasy Style */

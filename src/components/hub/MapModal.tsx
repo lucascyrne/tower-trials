@@ -40,32 +40,22 @@ export const MapModal: React.FC<MapModalProps> = ({
   const loadCheckpoints = async () => {
     setLoading(true);
     try {
-      console.log(`[MapModal] Carregando checkpoints para personagem ${character.name} (ID: ${character.id})`);
-      console.log(`[MapModal] Andar atual do personagem: ${character.floor}`);
-      
       const response = await CharacterService.getUnlockedCheckpoints(character.id);
       
-      console.log(`[MapModal] Resposta do CharacterService:`, response);
-      
       if (response.success && response.data) {
-        console.log(`[MapModal] Checkpoints carregados:`, response.data);
         setCheckpoints(response.data);
         
-        // Selecionar o checkpoint mais alto por padrão (normalmente o andar atual)
         if (response.data.length > 0) {
           const currentFloorCheckpoint = response.data.find(cp => cp.floor === character.floor);
           const defaultCheckpoint = currentFloorCheckpoint ? currentFloorCheckpoint.floor : response.data[response.data.length - 1].floor;
           setSelectedCheckpoint(defaultCheckpoint);
-          console.log(`[MapModal] Checkpoint selecionado por padrão: ${defaultCheckpoint}`);
         }
       } else {
-        console.error(`[MapModal] Erro ao carregar checkpoints:`, response.error);
         toast.error('Erro ao carregar checkpoints', {
           description: response.error
         });
       }
-    } catch (error) {
-      console.error('[MapModal] Erro ao carregar checkpoints:', error);
+    } catch {
       toast.error('Erro ao carregar checkpoints');
     } finally {
       setLoading(false);
@@ -82,8 +72,7 @@ export const MapModal: React.FC<MapModalProps> = ({
       setLoading(true);
       onStartFromCheckpoint(selectedCheckpoint);
       onClose();
-    } catch (error) {
-      console.error('Erro ao iniciar aventura:', error);
+    } catch {
       toast.error('Erro ao iniciar aventura');
     } finally {
       setLoading(false);

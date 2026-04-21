@@ -19,7 +19,6 @@ export interface User extends SupabaseUser {
 }
 
 export interface AuthLoadingState {
-  onAuthUserChanged: boolean;
   signIn: boolean;
   signUp: boolean;
   signOut: boolean;

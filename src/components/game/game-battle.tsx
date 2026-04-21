@@ -19,7 +19,6 @@ import { GameLog } from './GameLog';
 import { CharacterService } from '@/resources/game/character.service';
 import { QuickActionPanel } from './QuickActionPanel';
 import { FleeOverlay } from './FleeOverlay';
-import { TurnControlService } from '@/resources/game/turn-control.service';
 
 interface BattleRewards {
   xp: number;
@@ -44,35 +43,34 @@ export default function GameBattle() {
     gameLog
   } = useGame();
   const { player, currentEnemy, currentFloor, isPlayerTurn } = gameState;
+  const enemyHpValue = Number(currentEnemy?.hp);
+  const enemyIsAlive = !!currentEnemy && Number.isFinite(enemyHpValue) && enemyHpValue > 0;
+  const hasInvalidBattleEnemy =
+    gameState.mode === 'battle' &&
+    !!currentEnemy &&
+    !enemyIsAlive &&
+    !gameState.battleRewards;
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [showDeathModal, setShowDeathModal] = useState(false);
   const [showAttributeModal, setShowAttributeModal] = useState(false);
   const [showFleeOverlay, setShowFleeOverlay] = useState(false);
   const [fleeSuccess, setFleeSuccess] = useState(false);
-  const [showDebugUnlock, setShowDebugUnlock] = useState(false);
+      const [showDebugUnlock, setShowDebugUnlock] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(12);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
   
   // Sistema para prevenir ações duplicadas
   const actionProcessingRef = useRef(false);
   const lastActionTimeRef = useRef(0);
-  const ACTION_DEBOUNCE_MS = 800; // Aumentar debounce para 800ms
   const stuckDetectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // NOVO: Sistema de recuperação automática para turnos travados
+  // Sistema de recuperação automática para turnos travados
   const stuckTurnDetectionRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTurnCheckRef = useRef<{
-    isPlayerTurn: boolean;
-    enemyHp: number;
-    timestamp: number;
-  }>({
-    isPlayerTurn: true,
-    enemyHp: 0,
-    timestamp: Date.now()
-  });
   
-  // OTIMIZADO: Sistema mais robusto para evitar processamento duplicado
+  // Sistema para evitar processamento duplicado de recompensas
   const processedRewardsRef = useRef<Set<string>>(new Set());
   const characterLoadedRef = useRef(false);
   const lastBattleStateRef = useRef<{
@@ -97,88 +95,25 @@ export default function GameBattle() {
     console.log(`[GameBattle] Andar atual: ${player.floor}`);
   }, [player.floor]);
 
-  // NOVO: Sistema de detecção e recuperação de turnos travados
+  // Sistema simplificado de detecção de travamento
   useEffect(() => {
-    const currentCheck = {
-      isPlayerTurn,
-      enemyHp: currentEnemy?.hp || 0,
-      timestamp: Date.now()
-    };
-    
-    // Verificar se o estado mudou
-    const lastCheck = lastTurnCheckRef.current;
-    const hasStateChanged = (
-      lastCheck.isPlayerTurn !== currentCheck.isPlayerTurn ||
-      lastCheck.enemyHp !== currentCheck.enemyHp
-    );
-    
-    if (hasStateChanged) {
-      // Estado mudou, resetar timer
-      lastTurnCheckRef.current = currentCheck;
-      
-      if (stuckTurnDetectionRef.current) {
-        clearTimeout(stuckTurnDetectionRef.current);
-        stuckTurnDetectionRef.current = null;
-      }
-    }
-    
-    // CRÍTICO: Detectar turno travado no inimigo
     const isBattleActive = gameState.mode === 'battle' && currentEnemy && currentEnemy.hp > 0;
     const isEnemyTurnStuck = isBattleActive && !isPlayerTurn && !loading.performAction && !gameState.battleRewards;
     
     if (isEnemyTurnStuck && !stuckTurnDetectionRef.current) {
-      console.log(`[GameBattle] Iniciando detecção de turno travado para ${currentEnemy.name}`);
+      console.log(`[GameBattle] Iniciando detecção de turno travado`);
       
       stuckTurnDetectionRef.current = setTimeout(() => {
-        const timeSinceLastChange = Date.now() - lastTurnCheckRef.current.timestamp;
+        console.warn(`[GameBattle] Possível travamento detectado`);
+        setShowDebugUnlock(true);
         
-        if (timeSinceLastChange > 3000) { // 3 segundos sem mudança
-          console.error(`[GameBattle] 🚨 TURNO TRAVADO DETECTADO - ${timeSinceLastChange}ms sem atividade`);
-          console.error(`[GameBattle] Estado: inimigo ${currentEnemy?.name} (${currentEnemy?.hp}HP), turno do inimigo travado`);
-          
-          // Tentar recuperação automática
-          if (gameState.battleSession) {
-            console.log(`[GameBattle] Tentando recuperação automática...`);
-            
-            // Forçar desbloqueio do sistema de turnos
-            import('./../../resources/game/turn-control.service').then(({ TurnControlService }) => {
-              const debugStats = TurnControlService.getDebugStats();
-              console.log(`[GameBattle] Debug Stats antes da recuperação:`, debugStats);
-              
-              // Forçar desbloqueio
-              TurnControlService.forceUnlockAll();
-              
-              // Tentar forçar o turno do inimigo
-              console.log(`[GameBattle] Forçando processamento do turno do inimigo...`);
-              
-              // Simular ação do inimigo manualmente se necessário
-              setTimeout(() => {
-                if (!isPlayerTurn && currentEnemy && currentEnemy.hp > 0 && !loading.performAction) {
-                  console.log(`[GameBattle] Executando recuperação de emergência - forçar turno do jogador`);
-                  
-                                     // Como último recurso, forçar volta do turno para o jogador
-                   // Usar a função performAction para forçar um estado válido
-                   console.log(`[GameBattle] Executando recuperação de emergência - forçar turno do jogador`);
-                   addGameLogMessage(`Sistema de recuperação ativado - turno retornado ao jogador`, 'system');
-                }
-              }, 1000);
-            });
-          } else {
-            console.error(`[GameBattle] Sem sessão de batalha - não é possível recuperar automaticamente`);
-            
-                         // Recuperação manual: apenas registrar no log
-             console.log(`[GameBattle] Sem sessão de batalha - registrando problema`);
-             addGameLogMessage(`Sistema detectou travamento - turno restaurado`, 'system');
-          }
-          
-          toast.warning('Sistema de Recuperação', {
-            description: 'Travamento detectado e corrigido automaticamente',
-            duration: 4000
-          });
-        }
+        toast.warning('Sistema de Recuperação', {
+          description: 'Possível travamento detectado. Use o botão de emergência se necessário.',
+          duration: 4000
+        });
         
         stuckTurnDetectionRef.current = null;
-      }, 4000); // Verificar após 4 segundos
+      }, 5000); // Verificar após 5 segundos
     }
     
     // Limpar timeout se não for mais necessário
@@ -193,9 +128,9 @@ export default function GameBattle() {
         stuckTurnDetectionRef.current = null;
       }
     };
-  }, [isPlayerTurn, currentEnemy?.hp, loading.performAction, gameState.mode, gameState.battleRewards, gameState.battleSession]);
+  }, [isPlayerTurn, currentEnemy?.hp, loading.performAction, gameState.mode, gameState.battleRewards]);
 
-  // CORRIGIDO: Processamento de recompensas com controle rigoroso
+  // Processamento de recompensas com controle de duplicação
   useEffect(() => {
     if (!gameState.battleRewards) {
       return;
@@ -235,7 +170,7 @@ export default function GameBattle() {
       newLevel: battleRewards.newLevel
     });
     
-    // CRÍTICO: Só mostrar modal se não estiver já visível
+    // Só mostrar modal se não estiver já visível
     if (!showVictoryModal) {
       setShowVictoryModal(true);
     }
@@ -254,33 +189,58 @@ export default function GameBattle() {
       console.log('[GameBattle] Personagem morreu - exibindo modal de morte');
       setShowDeathModal(true);
       
-      // CRÍTICO: Se o personagem foi deletado, bloquear completamente a interface
+      // Se o personagem foi deletado, adicionar mensagem sobre permadeath
       if (gameState.characterDeleted) {
         console.log('[GameBattle] Personagem foi deletado permanentemente');
-        
-        // Adicionar mensagem ao log sobre permadeath
         addGameLogMessage(`${player.name} foi perdido permanentemente. O sistema de Permadeath está ativo.`, 'system');
       }
     }
   }, [gameState.mode, player.hp, gameState.characterDeleted, player.name]);
 
-  // Verificação de fuga
+  // SISTEMA IMEDIATO DE DETECÇÃO DE FUGA CORRIGIDO
   useEffect(() => {
-    if (gameState.mode === 'fled') {
-      console.log('[GameBattle] Fuga detectada - exibindo overlay');
-      setFleeSuccess(gameState.fleeSuccessful !== false); // true por padrão se não especificado
+    console.log('[GameBattle] 🔍 Verificando estado de fuga:', {
+      mode: gameState.mode,
+      fleeSuccessful: gameState.fleeSuccessful,
+      showFleeOverlay: showFleeOverlay,
+      hasEnemy: !!currentEnemy,
+      enemyName: currentEnemy?.name,
+      playerName: player.name
+    });
+    
+    const isFugaDetected = gameState.mode === 'fled' || gameState.fleeSuccessful === true;
+    
+    if (isFugaDetected && !showFleeOverlay) {
+      console.log('[GameBattle] 🏃‍♂️ FUGA DETECTADA - Ativando overlay IMEDIATAMENTE');
+      
+      // CORRIGIDO: A fuga é bem-sucedida se o modo for 'fled' OU fleeSuccessful for true
+      const isSuccess = gameState.mode === 'fled' || gameState.fleeSuccessful === true;
+      
+      console.log(`[GameBattle] ${isSuccess ? '✅ FUGA BEM-SUCEDIDA' : '❌ FUGA FALHOU'} - Preparando overlay`);
+      
+      setFleeSuccess(isSuccess);
       setShowFleeOverlay(true);
+      
+      // Bloquear outras ações durante fuga
+      actionProcessingRef.current = true;
+      
+      console.log('[GameBattle] 🎭 Overlay de fuga ativado com sucesso:', {
+        isSuccess: isSuccess,
+        overlayVisible: true
+      });
     }
-  }, [gameState.mode, gameState.fleeSuccessful]);
+  }, [gameState.mode, gameState.fleeSuccessful, currentEnemy, showFleeOverlay, player.name]);
 
 
 
   // Detectar orientação para escolher interface adequada
   useEffect(() => {
     const checkOrientation = () => {
-      const isMobile = window.innerWidth <= 768;
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const isMobile = window.innerWidth <= 1024 || coarsePointer;
       const isPortrait = window.innerHeight > window.innerWidth;
       setIsMobilePortrait(isMobile && isPortrait);
+      setIsMobileLandscape(isMobile && !isPortrait);
     };
 
     checkOrientation();
@@ -404,14 +364,30 @@ export default function GameBattle() {
     setShowVictoryModal(false);
   };
 
-  // Componente de carregamento
-  if (isLoading || loading.performAction) {
+  // Componente de carregamento - NUNCA mostrar durante fuga
+  const isFugaState = gameState.mode === 'fled' || gameState.fleeSuccessful === true || showFleeOverlay;
+  
+  useEffect(() => {
+    if (!isLoading || showVictoryModal) return;
+    const timer = setInterval(() => {
+      setLoadingProgress(prev => Math.min(92, prev + 7));
+    }, 180);
+    return () => clearInterval(timer);
+  }, [isLoading, showVictoryModal]);
+
+  if (!isFugaState && isLoading && !showVictoryModal) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
           <h2 className="text-2xl font-bold mb-2">Carregando...</h2>
           <p className="text-muted-foreground">Preparando sua aventura</p>
+          <div className="mt-4 w-64 max-w-full rounded-full bg-muted/40 h-2 overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-200"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -421,12 +397,20 @@ export default function GameBattle() {
     return <SpecialEventPanel />;
   }
 
-  // Verificação melhorada dos dados necessários
-  // CRÍTICO: Permitir exibir interface quando há battleRewards mesmo sem currentEnemy
-  // CRÍTICO: NÃO mostrar loading screen quando fuga foi bem-sucedida ou quando há recompensas
-  const shouldShowLoadingScreen = gameState.mode !== 'fled' && 
+  // Verificação dos dados necessários - não mostrar loading durante fuga
+  const isFugaActive = gameState.mode === 'fled' || gameState.fleeSuccessful === true;
+  const shouldShowLoadingScreen = !isFugaActive && 
     !gameState.battleRewards && 
-    (!currentFloor || !player.id || !currentEnemy);
+    !showVictoryModal &&
+    !showFleeOverlay &&
+    (!currentFloor || !player.id || ((!currentEnemy || !enemyIsAlive) && gameState.mode === 'battle'));
+  const hasEnemyGenerationFailure =
+    !isLoading &&
+    gameState.mode === 'battle' &&
+    !!currentFloor &&
+    !!player.id &&
+    !currentEnemy &&
+    !gameState.battleRewards;
   
   if (shouldShowLoadingScreen) {
     console.log('[GameBattle] Aguardando dados:', {
@@ -435,6 +419,8 @@ export default function GameBattle() {
       hasPlayerId: !!player.id,
       hasBattleRewards: !!gameState.battleRewards,
       gameMode: gameState.mode,
+      isFugaActive,
+      showFleeOverlay,
       shouldShowLoadingScreen
     });
     
@@ -444,12 +430,28 @@ export default function GameBattle() {
           <h2 className="text-2xl font-bold mb-2">Preparando Batalha...</h2>
           <p className="text-muted-foreground">
             {!currentFloor && 'Carregando dados do andar...'}
-            {!currentEnemy && currentFloor && !gameState.battleRewards && 'Gerando inimigo...'}
+            {!currentEnemy && currentFloor && !gameState.battleRewards && !hasEnemyGenerationFailure && 'Gerando inimigo...'}
+            {hasEnemyGenerationFailure && 'Falha ao gerar inimigo para este andar.'}
+            {currentEnemy && !enemyIsAlive && !gameState.battleRewards && 'Sincronizando estado da batalha...'}
             {!player.id && 'Carregando personagem...'}
           </p>
+          <div className="mt-4 w-64 max-w-full rounded-full bg-muted/40 h-2 overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-200"
+              style={{ width: `${loadingProgress}%` }}
+            />
+          </div>
+          {hasEnemyGenerationFailure && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
+            >
+              Tentar novamente
+            </button>
+          )}
           <div className="mt-4 text-sm text-muted-foreground">
             <div>Andar: {currentFloor ? '✓' : '❌'}</div>
-            <div>Inimigo: {currentEnemy ? '✓' : gameState.battleRewards ? '⚰️' : '❌'}</div>
+            <div>Inimigo: {currentEnemy ? (enemyIsAlive ? '✓' : (gameState.battleRewards ? '⚰️' : '⏳')) : gameState.battleRewards ? '⚰️' : '❌'}</div>
             <div>Personagem: {player.id ? '✓' : '❌'}</div>
           </div>
         </div>
@@ -457,7 +459,7 @@ export default function GameBattle() {
     );
   }
 
-  // CRÍTICO: Garantir que não haja divisão por zero ou valores NaN
+  // Calcular percentuais com proteção contra divisão por zero
   const enemyHpPercentage = currentEnemy && currentEnemy.maxHp > 0 
     ? Math.max(0, Math.min(100, (currentEnemy.hp / currentEnemy.maxHp) * 100)) 
     : 0;
@@ -468,121 +470,68 @@ export default function GameBattle() {
     ? Math.max(0, Math.min(100, (player.mana / player.max_mana) * 100)) 
     : 0;
 
-  // CORRIGIDO: Função para executar ações do jogador com proteção aprimorada
+  // FUNÇÃO SIMPLIFICADA PARA EXECUTAR AÇÕES SEM BLOQUEIOS DUPLICADOS
   const handleAction = async (action: ActionType, spellId?: string) => {
     const currentTime = Date.now();
     
-    // 1. Verificar se já está processando uma ação
-    if (actionProcessingRef.current) {
-      console.warn(`[GameBattle] Ação '${action}' BLOQUEADA - já processando ação`);
-      return;
-    }
+    console.log(`[GameBattle] === EXECUTANDO AÇÃO: ${action} ===`);
+    console.log(`[GameBattle] Estado atual:`, {
+      mode: gameState.mode,
+      isPlayerTurn: isPlayerTurn,
+      actionProcessing: actionProcessingRef.current,
+      loadingPerformAction: loading.performAction
+    });
     
-    // 2. Verificar debounce temporal
-    if (currentTime - lastActionTimeRef.current < ACTION_DEBOUNCE_MS) {
-      console.warn(`[GameBattle] Ação '${action}' BLOQUEADA - debounce (${currentTime - lastActionTimeRef.current}ms < ${ACTION_DEBOUNCE_MS}ms)`);
-      return;
-    }
+    // APENAS validações essenciais - sem bloqueios duplicados
     
-    // 3. Bloquear ações se personagem está morto
+    // 1. Bloquear se personagem está morto
     if (gameState.mode === 'gameover' || player.hp <= 0) {
-      console.warn('[GameBattle] Ação bloqueada - personagem está morto');
+      console.warn('[GameBattle] ❌ Ação bloqueada - personagem está morto');
+      return;
+    }
+
+    if (hasInvalidBattleEnemy && action !== 'continue') {
+      console.warn('[GameBattle] ❌ Ação bloqueada - inimigo inválido/derrotado em recuperação');
       return;
     }
     
-    // 4. Bloquear ações durante fuga
-    if (gameState.mode === 'fled') {
-      console.warn('[GameBattle] Ação bloqueada - processo de fuga em andamento');
-      return;
-    }
-    
-    // 5. NOVO: Bloquear ações se modal de vitória está visível (exceto continue)
-    if (showVictoryModal && action !== 'continue') {
-      console.warn('[GameBattle] Ação bloqueada - modal de vitória ativo');
-      return;
-    }
-    
-    // 6. Verificar se é o turno do jogador (exceto para continue)
-    if (!isPlayerTurn && action !== 'continue') {
-      console.warn('[GameBattle] Ação bloqueada - não é o turno do jogador');
-      return;
-    }
-    
-    // 7. NOVO: Log do sistema de controle de turnos (debug)
-    if (gameState.battleSession) {
-      console.log(`[GameBattle] Sistema de controle de turnos ativo:`, {
-        sessionId: gameState.battleSession.sessionId,
-        battleId: gameState.battleSession.battleId,
-        isProcessing: gameState.battleSession.isProcessing,
-        lastActionTimestamp: gameState.battleSession.lastActionTimestamp
-      });
-      
-      // Verificar se a sessão ainda existe no TurnControlService
-      const isValid = TurnControlService.isSessionValid(gameState.battleSession.sessionId);
-      if (!isValid) {
-        console.warn(`[GameBattle] ATENÇÃO: Sessão do gameState não é válida no TurnControlService!`);
-        
-        // Mostrar estatísticas para debug
-        const debugStats = TurnControlService.getDebugStats();
-        console.log(`[GameBattle] Debug Stats:`, debugStats);
+    // 2. Verificação específica para fuga - pode ser feita a qualquer momento
+    if (action === 'flee') {
+      if (gameState.mode === 'fled' || gameState.fleeSuccessful) {
+        console.warn('[GameBattle] ❌ FUGA BLOQUEADA - já há fuga bem-sucedida');
+        return;
       }
-    } else {
-      console.warn(`[GameBattle] ATENÇÃO: Nenhuma sessão de batalha no gameState para modo: ${gameState.mode}`);
+      
+      console.log(`[GameBattle] 🏃 FUGA APROVADA - Delegando para provider`);
     }
     
-    // 8. NOVO: Debug - mostrar estatísticas do TurnControl se está travado
-    if (actionProcessingRef.current) {
-      const debugStats = TurnControlService.getDebugStats();
-      console.log(`[GameBattle] TurnControl Debug Stats:`, debugStats);
-      
-      // Se há sessões travadas há mais de 3 segundos, mostrar aviso
-      const hasStuckSessions = debugStats.sessionsDetails.some(
-        s => s.isProcessing && s.timeSinceLastAction > 3000
-      );
-      
-      if (hasStuckSessions) {
-        console.warn(`[GameBattle] Sessões travadas detectadas!`, debugStats.sessionsDetails);
-      }
+    // 3. Para outras ações, verificar turno do jogador
+    if (action !== 'flee' && action !== 'continue' && !isPlayerTurn) {
+      console.warn(`[GameBattle] ❌ Ação '${action}' bloqueada - não é turno do jogador`);
+      return;
     }
     
-    // Marcar como processando
-    actionProcessingRef.current = true;
+    // 4. Verificar debounce básico apenas para evitar spam
+    if (currentTime - lastActionTimeRef.current < 300) {
+      console.warn(`[GameBattle] ⏱️ Debounce - aguardando ${300 - (currentTime - lastActionTimeRef.current)}ms`);
+      return;
+    }
+    
+    // Marcar timestamp (sem marcar como processando para evitar deadlock)
     lastActionTimeRef.current = currentTime;
     
-    // NOVO: Detectar travamento após 5 segundos
-    if (stuckDetectionTimeoutRef.current) {
-      clearTimeout(stuckDetectionTimeoutRef.current);
-    }
-    
-    stuckDetectionTimeoutRef.current = setTimeout(() => {
-      if (actionProcessingRef.current) {
-        console.warn('[GameBattle] Possível travamento detectado, mostrando botão de emergência...');
-        setShowDebugUnlock(true);
-      }
-    }, 5000);
-    
-    console.log(`[GameBattle] Executando ação '${action}' (timestamp: ${currentTime})`);
+    console.log(`[GameBattle] ✅ Delegando ação '${action}' para provider`);
     
     try {
+      // DELEGAR DIRETAMENTE para o provider sem validações duplicadas
       await performAction(action, spellId);
     } catch (error) {
-      console.error('[GameBattle] Erro ao executar ação:', error);
+      console.error(`[GameBattle] ❌ Erro ao executar ação '${action}':`, error);
       toast.error(`Erro ao executar ação: ${action}`);
-    } finally {
-      // Limpar estado de processamento após um delay
-      setTimeout(() => {
-        actionProcessingRef.current = false;
-        setShowDebugUnlock(false);
-        
-        if (stuckDetectionTimeoutRef.current) {
-          clearTimeout(stuckDetectionTimeoutRef.current);
-          stuckDetectionTimeoutRef.current = null;
-        }
-      }, 200);
     }
   };
 
-  // CORRIGIDO: Função para continuar a aventura com proteção aprimorada
+  // Função para continuar a aventura
   const handleContinueAdventure = async () => {
     // Verificar se já está processando uma ação
     if (actionProcessingRef.current || loading.performAction) {
@@ -620,36 +569,74 @@ export default function GameBattle() {
     router.push(`/game/play/hub?character=${gameState.player.id}`);
   };
 
-  // Handler para o fim do overlay de fuga
+  // HANDLER APRIMORADO PARA CONCLUSÃO DO OVERLAY DE FUGA
   const handleFleeOverlayComplete = async () => {
-    console.log('[GameBattle] Overlay de fuga concluído, sucesso:', fleeSuccess);
+    console.log('[GameBattle] 🏁 Overlay de fuga concluído, sucesso:', fleeSuccess);
     setShowFleeOverlay(false);
     
+    // Desbloquear ações
+    actionProcessingRef.current = false;
+    
     if (fleeSuccess) {
-      // Fuga bem-sucedida: redirecionar para o hub
+      console.log('[GameBattle] 🏠 Fuga bem-sucedida - iniciando redirecionamento');
+      
       try {
-        if (gameState.player.id) {
-          // Atualizar andar para 1 (volta ao início)
-          await CharacterService.updateCharacterFloor(gameState.player.id, 1);
-          console.log('[GameBattle] Andar do personagem atualizado para 1');
+        const playerId = gameState.player.id;
+        
+        // Toast de feedback imediato
+        toast.success('Fuga bem-sucedida!', {
+          description: 'Retornando ao hub...',
+          duration: 2000
+        });
+        
+        // IMPORTANTE: Resetar andar para 1 ANTES do redirecionamento
+        console.log('[GameBattle] 🔄 Resetando andar para 1 antes do redirecionamento');
+        
+        try {
+          await CharacterService.updateCharacterFloor(playerId, 1);
+          console.log('[GameBattle] ✅ Andar resetado para 1 com sucesso');
+        } catch (updateError) {
+          console.error('[GameBattle] ⚠️ Erro ao resetar andar (continuando mesmo assim):', updateError);
         }
         
-        // Redirecionar para o hub
-        router.push(`/game/play/hub?character=${gameState.player.id}`);
+        // Redirecionamento após reset do andar
+        console.log('[GameBattle] 🚀 Redirecionando para hub');
+        router.push(`/game/play/hub?character=${playerId}`);
+        
       } catch (error) {
-        console.error('[GameBattle] Erro ao processar fuga:', error);
-        toast.error('Erro ao processar fuga');
+        console.error('[GameBattle] ❌ Erro no redirecionamento:', error);
+        
+        // Fallback: tentar redirecionamento mesmo com erro
+        toast.error('Erro no redirecionamento', {
+          description: 'Tentando novamente...',
+          duration: 3000
+        });
+        
+        setTimeout(() => {
+          router.push(`/game/play/hub?character=${gameState.player.id}`);
+        }, 1000);
       }
     } else {
-      // Fuga falhada: o contexto já deve ter retornado ao modo battle
-      console.log('[GameBattle] Fuga falhou, retornando à batalha');
+      console.log('[GameBattle] ⚔️ Fuga falhou - retornando à batalha');
+      
+      // Toast de feedback para fuga falhada
+      toast.warning('Fuga falhou!', {
+        description: 'Prepare-se para o contra-ataque...',
+        duration: 3000
+      });
+      
+             // Garantir que está de volta ao modo battle
+       if (gameState.mode === 'fled') {
+         console.warn('[GameBattle] ⚠️ Modo corrigido automaticamente - o sistema deve retornar ao battle mode');
+         // O provider já deve estar gerenciando a transição de volta ao battle
+       }
     }
   };
 
   return (
     <>
-      <div className="w-full max-w-6xl">
-        <BattleHeader 
+      <div className={isMobileLandscape ? 'fixed inset-0 z-40 h-screen w-screen max-w-none overflow-hidden p-0' : 'w-full max-w-6xl'}>
+        {!isMobileLandscape && <BattleHeader 
           currentFloor={{
             floorNumber: player.floor,
             type: currentFloor?.type || 'common',
@@ -658,12 +645,12 @@ export default function GameBattle() {
             minLevel: currentFloor?.minLevel || 1
           }} 
           playerLevel={player.level} 
-        />
+        />}
 
-        {/* Arena de Batalha Unificada - SEMPRE VISÍVEL para evitar layout shift */}
-        <div className="mb-6 relative">
+        {/* Arena de Batalha - sempre visível para evitar layout shift */}
+        <div className={isMobileLandscape ? 'relative h-full w-full' : 'mb-6 relative'}>
           {/* Quick Action Panel - Desktop (ao lado esquerdo) */}
-          {!isMobilePortrait && (
+          {!isMobilePortrait && !isMobileLandscape && (
             <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-20 z-10 hidden lg:block">
               <QuickActionPanel
                 handleAction={handleAction}
@@ -677,7 +664,7 @@ export default function GameBattle() {
           )}
 
           {/* Quick Action Panel - Mobile Horizontal (canto inferior esquerdo) */}
-          {!isMobilePortrait && (
+          {!isMobilePortrait && !isMobileLandscape && (
             <div className="fixed bottom-4 left-4 z-20 block lg:hidden">
               <QuickActionPanel
                 handleAction={handleAction}
@@ -720,11 +707,28 @@ export default function GameBattle() {
             playerManaPercentage={playerManaPercentage}
             enemyHpPercentage={currentEnemy ? enemyHpPercentage : 0}
             isPlayerTurn={isPlayerTurn}
+            compactLandscape={isMobileLandscape}
           />
+
+          {isMobileLandscape && (
+            <div className="absolute inset-0 z-30">
+              <CombinedBattleInterface 
+                handleAction={handleAction}
+                isPlayerTurn={isPlayerTurn}
+                loading={loading}
+                player={player}
+                onPlayerStatsUpdate={handlePlayerStatsUpdate}
+                onPlayerConsumablesUpdate={handlePlayerConsumablesUpdate}
+                currentEnemy={currentEnemy}
+                battleRewards={gameState.battleRewards}
+                compactLandscape
+              />
+            </div>
+          )}
         </div>
 
         {/* Interface de Batalha - SEMPRE VISÍVEL para garantir botão de fallback */}
-        <div className="mb-6">
+        {!isMobileLandscape && <div className="mb-6">
           <CombinedBattleInterface 
             handleAction={handleAction}
             isPlayerTurn={isPlayerTurn}
@@ -735,51 +739,47 @@ export default function GameBattle() {
             currentEnemy={currentEnemy}
             battleRewards={gameState.battleRewards}
           />
-        </div>
+        </div>}
 
-        <GameLog gameLog={gameLog} />
+        {!isMobileLandscape && <GameLog gameLog={gameLog} />}
         
-        {/* Botão de Emergência para Desbloqueio */}
-        {showDebugUnlock && (
+        {/* Botão de Emergência Melhorado */}
+        {showDebugUnlock && !isMobileLandscape && (
           <div className="fixed bottom-4 right-4 z-50">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 backdrop-blur-sm animate-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4 backdrop-blur-sm animate-in slide-in-from-bottom-2 duration-300">
               <div className="text-center space-y-2">
-                <div className="text-red-400 font-medium text-sm">Sistema Travado Detectado</div>
+                <div className="text-orange-400 font-medium text-sm">Sistema Travado</div>
                 <div className="text-xs text-muted-foreground">
-                  A ação está demorando mais que o esperado
+                  Clique para desbloquear se as ações não funcionam
                 </div>
                 <button
                   onClick={() => {
                     console.log('[GameBattle] Botão de emergência acionado');
                     
-                    // Forçar desbloqueio do TurnControl
-                    TurnControlService.forceUnlockAll();
-                    
-                    // Limpar estado local
+                    // Limpar estados de processamento
                     actionProcessingRef.current = false;
-                    setShowDebugUnlock(false);
-                    
                     if (stuckDetectionTimeoutRef.current) {
                       clearTimeout(stuckDetectionTimeoutRef.current);
                       stuckDetectionTimeoutRef.current = null;
                     }
                     
-                    // Mostrar estatísticas para debug
-                    const stats = TurnControlService.getDebugStats();
-                    console.log('[GameBattle] Estado após desbloqueio:', stats);
+                    setShowDebugUnlock(false);
                     
-                    toast.success('Sistema desbloqueado! Tente sua ação novamente.', {
-                      description: 'O travamento foi corrigido automaticamente.',
-                      duration: 4000
+                    toast.success('Sistema Desbloqueado', {
+                      description: 'Estados de processamento limpos. Tente sua ação novamente.',
+                      duration: 3000
                     });
                   }}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3 py-2 rounded transition-colors"
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-3 py-2 rounded transition-colors"
                 >
-                  🚨 Desbloquear Sistema
+                  🔧 Desbloquear Sistema
                 </button>
-                <div className="text-xs text-red-300/70">
-                  Clique apenas se as ações não estão funcionando
-                </div>
+                <button
+                  onClick={() => setShowDebugUnlock(false)}
+                  className="w-full text-xs text-orange-300/70 hover:text-orange-300 transition-colors"
+                >
+                  Fechar
+                </button>
               </div>
             </div>
           </div>

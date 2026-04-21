@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useGame } from '@/resources/game/game-hook';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +67,60 @@ interface RecipeDetailsPanelProps {
   selectedCharacter: { id: string } | null; // Adicionar o personagem selecionado
 }
 
+const rarityToneByRecipe = {
+  legendary: 'text-amber-300 bg-amber-500/10 border-amber-400/25',
+  epic: 'text-violet-300 bg-violet-500/10 border-violet-400/25',
+  rare: 'text-sky-300 bg-sky-500/10 border-sky-400/25',
+  uncommon: 'text-emerald-300 bg-emerald-500/10 border-emerald-400/25',
+  common: 'text-muted-foreground bg-muted/30 border-border/70',
+} as const;
+
+const listToneByRecipe = {
+  legendary: 'border-l-amber-400/80 bg-amber-500/5',
+  epic: 'border-l-violet-400/80 bg-violet-500/5',
+  rare: 'border-l-sky-400/80 bg-sky-500/5',
+  uncommon: 'border-l-emerald-400/80 bg-emerald-500/5',
+  common: 'border-l-border bg-muted/20',
+} as const;
+
+function CraftEquipmentComparison({
+  recipe,
+  characterId,
+}: {
+  recipe: ProcessedEquipmentRecipe;
+  characterId: string;
+}) {
+  const equipmentForComparison = {
+    id: recipe.result_equipment_id,
+    name: recipe.result.name,
+    description: recipe.result.description,
+    type: recipe.result.type,
+    rarity: recipe.result.rarity,
+    weapon_subtype: recipe.result.weapon_subtype,
+    atk_bonus: recipe.result.atk_bonus || 0,
+    def_bonus: recipe.result.def_bonus || 0,
+    mana_bonus: recipe.result.mana_bonus || 0,
+    speed_bonus: recipe.result.speed_bonus || 0,
+    hp_bonus: recipe.result.hp_bonus || 0,
+    level_requirement: recipe.result.level_requirement || 1,
+    price: 0,
+    is_unlocked: true,
+  } as Equipment;
+
+  return (
+    <div className="shrink-0 border-b bg-muted/10 p-6">
+      <h3 className="mb-3 text-base font-semibold">Comparação com Equipamento Atual</h3>
+      <EquipmentComparison
+        characterId={characterId}
+        newEquipment={equipmentForComparison}
+        slotType={recipe.result.type}
+        showTitle={false}
+        compact={true}
+      />
+    </div>
+  );
+}
+
 const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft, isCrafting, selectedCharacter }) => {
   if (!recipe) {
     return (
@@ -100,19 +153,19 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
     if (recipe.craftType === 'equipment') {
       const equipmentRecipe = recipe as ProcessedEquipmentRecipe;
       switch (equipmentRecipe.result.rarity) {
-        case 'legendary': return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
-        case 'epic': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
-        case 'rare': return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
-        case 'uncommon': return 'text-green-400 bg-green-500/10 border-green-500/20';
-        default: return 'text-gray-400 bg-gray-500/10 border-gray-500/20';
+        case 'legendary': return rarityToneByRecipe.legendary;
+        case 'epic': return rarityToneByRecipe.epic;
+        case 'rare': return rarityToneByRecipe.rare;
+        case 'uncommon': return rarityToneByRecipe.uncommon;
+        default: return rarityToneByRecipe.common;
       }
     } else {
       const consumableRecipe = recipe as ProcessedConsumableRecipe;
       switch (consumableRecipe.result.type) {
-        case 'elixir': return 'text-purple-400 bg-purple-500/10 border-purple-500/20';
-        case 'potion': return 'text-red-400 bg-red-500/10 border-red-500/20';
-        case 'antidote': return 'text-green-400 bg-green-500/10 border-green-500/20';
-        default: return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+        case 'elixir': return rarityToneByRecipe.epic;
+        case 'potion': return 'text-rose-300 bg-rose-500/10 border-rose-400/25';
+        case 'antidote': return rarityToneByRecipe.uncommon;
+        default: return rarityToneByRecipe.rare;
       }
     }
   };
@@ -130,7 +183,8 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header do Item */}
-      <div className="flex items-start gap-4 p-6 border-b shrink-0">
+      <div className="shrink-0 border-b border-border/70 bg-card/70 p-6">
+        <div className="flex items-start gap-4">
         <div className={cn("p-3 rounded-lg border", getRarityColor())}>
           {getRecipeIcon()}
         </div>
@@ -184,6 +238,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Atributos do Equipamento */}
@@ -199,7 +254,7 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
         if (!hasAnyBonus) return null;
         
         return (
-          <div className="p-6 border-b bg-muted/20 shrink-0">
+          <div className="shrink-0 border-b border-border/70 bg-muted/20 p-6">
             <h3 className="text-base font-semibold mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Atributos do Equipamento
@@ -246,39 +301,12 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
       })()}
 
       {/* Comparação de Equipamento (apenas para receitas de equipamento) */}
-      {recipe.craftType === 'equipment' && (() => {
-        const equipmentRecipe = recipe as ProcessedEquipmentRecipe;
-        // Criar um objeto Equipment a partir da receita para usar no componente de comparação
-        const equipmentForComparison = {
-          id: equipmentRecipe.result_equipment_id,
-          name: equipmentRecipe.result.name,
-          description: equipmentRecipe.result.description,
-          type: equipmentRecipe.result.type,
-          rarity: equipmentRecipe.result.rarity,
-          weapon_subtype: equipmentRecipe.result.weapon_subtype,
-          atk_bonus: equipmentRecipe.result.atk_bonus || 0,
-          def_bonus: equipmentRecipe.result.def_bonus || 0,
-          mana_bonus: equipmentRecipe.result.mana_bonus || 0,
-          speed_bonus: equipmentRecipe.result.speed_bonus || 0,
-          hp_bonus: equipmentRecipe.result.hp_bonus || 0,
-          level_requirement: equipmentRecipe.result.level_requirement || 1,
-          price: 0, // Não aplicável para crafting
-          is_unlocked: true
-        };
-
-        return (
-          <div className="p-6 border-b bg-muted/10 shrink-0">
-            <h3 className="text-base font-semibold mb-3">Comparação com Equipamento Atual</h3>
-                         <EquipmentComparison
-               characterId={selectedCharacter?.id || ''}
-               newEquipment={equipmentForComparison as Equipment}
-               slotType={equipmentRecipe.result.type}
-               showTitle={false}
-               compact={true}
-             />
-          </div>
-        );
-      })()}
+      {recipe.craftType === 'equipment' ? (
+        <CraftEquipmentComparison
+          recipe={recipe as ProcessedEquipmentRecipe}
+          characterId={selectedCharacter?.id || ''}
+        />
+      ) : null}
 
       {/* Ingredientes */}
       <div className="flex-1 p-6 overflow-hidden">
@@ -330,14 +358,14 @@ const RecipeDetailsPanel: React.FC<RecipeDetailsPanelProps> = ({ recipe, onCraft
       </div>
 
       {/* Botão de Ação */}
-      <div className="p-6 border-t bg-card/50 shrink-0">
+      <div className="shrink-0 border-t border-border/70 bg-card/60 p-6">
         <Button 
           onClick={handleCraft}
           disabled={!recipe.canCraft || isCrafting}
           className={cn(
             "w-full h-12 text-base font-semibold transition-all",
             recipe.canCraft && !isCrafting
-              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+              ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
               : "bg-muted text-muted-foreground cursor-not-allowed"
           )}
         >
@@ -381,19 +409,19 @@ const RecipeListItem: React.FC<RecipeListItemProps> = ({ recipe, isSelected, onC
     if (recipe.craftType === 'equipment') {
       const equipmentRecipe = recipe as ProcessedEquipmentRecipe;
       switch (equipmentRecipe.result.rarity) {
-        case 'legendary': return 'border-l-orange-500 bg-orange-500/5';
-        case 'epic': return 'border-l-purple-500 bg-purple-500/5';
-        case 'rare': return 'border-l-blue-500 bg-blue-500/5';
-        case 'uncommon': return 'border-l-green-500 bg-green-500/5';
-        default: return 'border-l-gray-500 bg-gray-500/5';
+        case 'legendary': return listToneByRecipe.legendary;
+        case 'epic': return listToneByRecipe.epic;
+        case 'rare': return listToneByRecipe.rare;
+        case 'uncommon': return listToneByRecipe.uncommon;
+        default: return listToneByRecipe.common;
       }
     } else {
       const consumableRecipe = recipe as ProcessedConsumableRecipe;
       switch (consumableRecipe.result.type) {
-        case 'elixir': return 'border-l-purple-500 bg-purple-500/5';
-        case 'potion': return 'border-l-red-500 bg-red-500/5';
-        case 'antidote': return 'border-l-green-500 bg-green-500/5';
-        default: return 'border-l-blue-500 bg-blue-500/5';
+        case 'elixir': return listToneByRecipe.epic;
+        case 'potion': return 'border-l-rose-400/80 bg-rose-500/5';
+        case 'antidote': return listToneByRecipe.uncommon;
+        default: return listToneByRecipe.rare;
       }
     }
   };
@@ -402,11 +430,11 @@ const RecipeListItem: React.FC<RecipeListItemProps> = ({ recipe, isSelected, onC
     <div
       onClick={onClick}
       className={cn(
-        "p-4 border rounded-lg cursor-pointer transition-all border-l-4",
+        "cursor-pointer rounded-lg border border-l-4 p-4 transition-all",
         getRarityColor(),
         isSelected 
-          ? "ring-2 ring-primary border-primary bg-primary/5" 
-          : "hover:bg-accent/50 hover:border-accent"
+          ? "border-primary bg-primary/5 ring-2 ring-primary/60 shadow-md shadow-primary/20"
+          : "hover:-translate-y-0.5 hover:bg-accent/40 hover:border-accent"
       )}
     >
       <div className="flex items-start gap-3">
@@ -443,8 +471,6 @@ const RecipeListItem: React.FC<RecipeListItemProps> = ({ recipe, isSelected, onC
 };
 
 export default function CraftingPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const { characters, selectedCharacter, selectCharacter } = useGame();
   const [loading, setLoading] = useState(false);
   const [isCrafting, setIsCrafting] = useState(false);
@@ -481,19 +507,26 @@ export default function CraftingPage() {
     setMounted(true);
   }, []);
 
+  const selectedCharacterFromQuery = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('character');
+  }, [mounted]);
+
   useEffect(() => {
     if (!mounted) return;
     
-    const characterId = searchParams.get('character');
+    const characterId = selectedCharacterFromQuery;
     if (characterId && characters.length > 0) {
       const character = characters.find(char => char.id === characterId);
       if (character && (!selectedCharacter || selectedCharacter.id !== characterId)) {
         selectCharacter(character);
       }
     } else if (!characterId && characters.length > 0) {
-      router.push(`/game/crafting?character=${characters[0].id}`);
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `/game/crafting?character=${characters[0].id}`);
+      }
     }
-  }, [mounted, characters, selectedCharacter, searchParams]);
+  }, [mounted, characters, selectedCharacter, selectedCharacterFromQuery, selectCharacter]);
 
   // Carregar receitas e inventário
   useEffect(() => {
@@ -878,14 +911,18 @@ export default function CraftingPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-7xl">
+    <div className="container mx-auto max-w-7xl px-4 py-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-7">
         <div className="flex flex-col gap-4">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push(`/game/play/hub?character=${selectedCharacter.id}`)}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = `/game/play/hub?character=${selectedCharacter.id}`;
+              }
+            }}
             className="self-start"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -894,8 +931,8 @@ export default function CraftingPage() {
           </Button>
           
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Forja de Artefatos</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Forja de Artefatos</h1>
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
               Crie poções, elixires e forje equipamentos únicos com materiais raros
             </p>
           </div>
@@ -907,9 +944,9 @@ export default function CraftingPage() {
         
         {/* Coluna Esquerda - Lista de Receitas */}
         <div className="lg:col-span-5">
-          <Card className="h-full max-h-[calc(100vh-280px)]">
+          <Card className="h-full max-h-[calc(100vh-280px)] border-border/70 bg-card/80 shadow-lg shadow-black/10 backdrop-blur-sm">
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Hammer className="h-5 w-5" />
                   Receitas Disponíveis
@@ -1077,7 +1114,7 @@ export default function CraftingPage() {
 
         {/* Coluna Direita - Detalhes da Receita */}
         <div className="lg:col-span-7">
-          <Card className="h-full max-h-[calc(100vh-280px)]">
+          <Card className="h-full max-h-[calc(100vh-280px)] border-border/70 bg-card/80 shadow-lg shadow-black/10 backdrop-blur-sm">
             <RecipeDetailsPanel
               recipe={selectedRecipe}
               onCraft={handleCraftItem}

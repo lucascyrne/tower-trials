@@ -1,0 +1,433 @@
+INICIO DA BATALHA:
+
+[GameBattle] Andar atual: 1
+VM231 src_components_game_3b006306._.js:8828 [GameBattle] Iniciando carregamento do personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:2371 [CharacterService] Buscando personagem 25e43f78-6041-45ef-ae45-1a989e409fd0 do servidor
+VM233 src_components_a3fe876f._.js:1015 [FloorTransition] Andar inicial: 1
+VM233 src_components_a3fe876f._.js:1038 [FloorTransition] Verificando mudança: último=1, atual=1, inTransição=false
+VM231 src_components_game_3b006306._.js:8593 [GameBattle] Andar atual: 1
+VM231 src_components_game_3b006306._.js:8828 [GameBattle] Iniciando carregamento do personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:2325 [CharacterService] Reutilizando requisição pendente para personagem 25e43f78-6041-45ef-ae45-1a989e409fd0
+VM233 src_components_a3fe876f._.js:1038 [FloorTransition] Verificando mudança: último=1, atual=1, inTransição=false
+670a6_next_dist_client_8b027f6a._.js:14585 [Fast Refresh] done in 270ms
+670a6_next_dist_client_8b027f6a._.js:14756 [Fast Refresh] rebuilding
+[root of the server]__b4f0e92c._.js:2439 [CharacterService] Personagem carregado do servidor: Cfgkng (andar: 1) com crítico: 5
+[root of the server]__b4f0e92c._.js:2338 [CharacterService] Aplicando cura automática para Cfgkng
+[root of the server]__b4f0e92c._.js:2316 [CharacterService] Usando personagem em cache: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:8831 [GameBattle] Personagem carregado com sucesso: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8091 [GameProvider] Iniciando seleção do personagem: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8094 [GameProvider] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:4453 [SpellService] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+VM231 src_components_game_3b006306._.js:8831 [GameBattle] Personagem carregado com sucesso: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8091 [GameProvider] Iniciando seleção do personagem: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8094 [GameProvider] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:4453 [SpellService] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+670a6_next_dist_client_8b027f6a._.js:14585 [Fast Refresh] done in 26ms
+670a6_next_dist_client_8b027f6a._.js:14756 [Fast Refresh] rebuilding
+[root of the server]__b4f0e92c._.js:4477 [SpellService] 1 magias equipadas encontradas
+[root of the server]__b4f0e92c._.js:4494 [SpellService] Magias equipadas processadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:8097 [GameProvider] 1 magias equipadas carregadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:8101 [GameProvider] Buscando consumíveis do personagem
+670a6_next_dist_client_8b027f6a._.js:14585 [Fast Refresh] done in 103ms
+[root of the server]__b4f0e92c._.js:8104 [GameProvider] 2 consumíveis carregados
+[root of the server]__b4f0e92c._.js:8107 [GameProvider] Carregando dados do andar 1
+[root of the server]__b4f0e92c._.js:6152 [GameService] Solicitando dados do andar 1
+[root of the server]__b4f0e92c._.js:6162 [GameService] Buscando dados do andar 1 do servidor
+[root of the server]__b4f0e92c._.js:4477 [SpellService] 1 magias equipadas encontradas
+[root of the server]__b4f0e92c._.js:4494 [SpellService] Magias equipadas processadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:8097 [GameProvider] 1 magias equipadas carregadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:8101 [GameProvider] Buscando consumíveis do personagem
+[root of the server]__b4f0e92c._.js:6188 [GameService] Dados do andar 1 carregados: Entrada da Torre - O Despertar (tipo: common, checkpoint: true)
+[root of the server]__b4f0e92c._.js:8113 [GameProvider] Dados do andar carregados: Entrada da Torre - O Despertar (tipo: common)
+[root of the server]__b4f0e92c._.js:8115 [GameProvider] Gerando inimigo para o andar 1
+[root of the server]__b4f0e92c._.js:5566 [GameService] Iniciando geração de inimigo para andar 1
+[root of the server]__b4f0e92c._.js:4544 [MonsterService] === INÍCIO BUSCA MONSTRO ANDAR 1 ===
+[root of the server]__b4f0e92c._.js:4750 [MonsterService] Cache de monstros limpo
+[root of the server]__b4f0e92c._.js:4548 [MonsterService] Buscando monstro DIRETAMENTE do servidor para andar 1
+[root of the server]__b4f0e92c._.js:8104 [GameProvider] 2 consumíveis carregados
+[root of the server]__b4f0e92c._.js:8107 [GameProvider] Carregando dados do andar 1
+[root of the server]__b4f0e92c._.js:6152 [GameService] Solicitando dados do andar 1
+[root of the server]__b4f0e92c._.js:6158 [GameService] Dados do andar 1 obtidos do cache: Entrada da Torre - O Despertar
+[root of the server]__b4f0e92c._.js:8113 [GameProvider] Dados do andar carregados: Entrada da Torre - O Despertar (tipo: common)
+[root of the server]__b4f0e92c._.js:8115 [GameProvider] Gerando inimigo para o andar 1
+[root of the server]__b4f0e92c._.js:5566 [GameService] Iniciando geração de inimigo para andar 1
+[root of the server]__b4f0e92c._.js:4544 [MonsterService] === INÍCIO BUSCA MONSTRO ANDAR 1 ===
+[root of the server]__b4f0e92c._.js:4750 [MonsterService] Cache de monstros limpo
+[root of the server]__b4f0e92c._.js:4548 [MonsterService] Buscando monstro DIRETAMENTE do servidor para andar 1
+[root of the server]__b4f0e92c._.js:4569 [MonsterService] Resposta da RPC get_monster_for_floor: {hasData: true, hasError: false, dataType: 'object', isArray: true, dataLength: 1, …}
+[root of the server]__b4f0e92c._.js:4648 [MonsterService] === MONSTRO ENCONTRADO ===
+[root of the server]__b4f0e92c._.js:4649 [MonsterService] ID: 52b84e6a-03ac-443b-b520-65d0b0742334
+[root of the server]__b4f0e92c._.js:4650 [MonsterService] Nome: Slime Verde
+[root of the server]__b4f0e92c._.js:4651 [MonsterService] HP: 189, ATK: 30, DEF: 17
+[root of the server]__b4f0e92c._.js:4652 [MonsterService] Tier: 1, Ciclo: 1, Boss: false
+[root of the server]__b4f0e92c._.js:4653 [MonsterService] Level: 2, XP: 21, Gold: 23
+[root of the server]__b4f0e92c._.js:4655 [MonsterService] Buscando possible_drops para monstro 52b84e6a-03ac-443b-b520-65d0b0742334...
+[root of the server]__b4f0e92c._.js:4569 [MonsterService] Resposta da RPC get_monster_for_floor: {hasData: true, hasError: false, dataType: 'object', isArray: true, dataLength: 1, …}
+[root of the server]__b4f0e92c._.js:4648 [MonsterService] === MONSTRO ENCONTRADO ===
+[root of the server]__b4f0e92c._.js:4649 [MonsterService] ID: 52b84e6a-03ac-443b-b520-65d0b0742334
+[root of the server]__b4f0e92c._.js:4650 [MonsterService] Nome: Slime Verde
+[root of the server]__b4f0e92c._.js:4651 [MonsterService] HP: 189, ATK: 30, DEF: 17
+[root of the server]__b4f0e92c._.js:4652 [MonsterService] Tier: 1, Ciclo: 1, Boss: false
+[root of the server]__b4f0e92c._.js:4653 [MonsterService] Level: 2, XP: 21, Gold: 23
+[root of the server]__b4f0e92c._.js:4655 [MonsterService] Buscando possible_drops para monstro 52b84e6a-03ac-443b-b520-65d0b0742334...
+[root of the server]__b4f0e92c._.js:4682 [MonsterService] Encontrados 1 possible_drops para Slime Verde
+[root of the server]__b4f0e92c._.js:4684 [MonsterService] - Olho de Slime (chance: 70.0%, qtd: 1-3)
+[root of the server]__b4f0e92c._.js:4726 [MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===
+[root of the server]__b4f0e92c._.js:4727 [MonsterService] Retornando: Slime Verde (HP: 189, ATK: 30, DEF: 17)
+[root of the server]__b4f0e92c._.js:4728 [MonsterService] Possible drops: 1 tipos
+[root of the server]__b4f0e92c._.js:5629 [GameService] Monstro real gerado: Slime Verde (Tier 1, Pos 1)
+[root of the server]__b4f0e92c._.js:5630 [GameService] Stats: HP: 189/189, ATK: 30, DEF: 17, Boss: NÃO
+[root of the server]__b4f0e92c._.js:8121 [GameProvider] Inimigo gerado: Slime Verde (HP: 189/189)
+[root of the server]__b4f0e92c._.js:5554 [GameService] Limpando todos os caches
+[root of the server]__b4f0e92c._.js:4750 [MonsterService] Cache de monstros limpo
+[root of the server]__b4f0e92c._.js:5558 [GameService] Todos os caches foram limpos
+[root of the server]__b4f0e92c._.js:8124 [GameProvider] Carregando stats derivados para batalha: Cfgkng...
+[root of the server]__b4f0e92c._.js:4682 [MonsterService] Encontrados 1 possible_drops para Slime Verde
+[root of the server]__b4f0e92c._.js:4684 [MonsterService] - Olho de Slime (chance: 70.0%, qtd: 1-3)
+[root of the server]__b4f0e92c._.js:4726 [MonsterService] === MONSTRO PROCESSADO COM SUCESSO ===
+[root of the server]__b4f0e92c._.js:4727 [MonsterService] Retornando: Slime Verde (HP: 189, ATK: 30, DEF: 17)
+[root of the server]__b4f0e92c._.js:4728 [MonsterService] Possible drops: 1 tipos
+[root of the server]__b4f0e92c._.js:5629 [GameService] Monstro real gerado: Slime Verde (Tier 1, Pos 1)
+[root of the server]__b4f0e92c._.js:5630 [GameService] Stats: HP: 189/189, ATK: 30, DEF: 17, Boss: NÃO
+[root of the server]__b4f0e92c._.js:8121 [GameProvider] Inimigo gerado: Slime Verde (HP: 189/189)
+[root of the server]__b4f0e92c._.js:5554 [GameService] Limpando todos os caches
+[root of the server]__b4f0e92c._.js:4750 [MonsterService] Cache de monstros limpo
+[root of the server]__b4f0e92c._.js:5558 [GameService] Todos os caches foram limpos
+[root of the server]__b4f0e92c._.js:8124 [GameProvider] Carregando stats derivados para batalha: Cfgkng...
+[root of the server]__b4f0e92c._.js:3460 [CharacterService] Calculando stats derivados para: {id: '25e43f78-6041-45ef-ae45-1a989e409fd0', level: 3, strength: 13, dexterity: 12, intelligence: 10, …}
+[root of the server]__b4f0e92c._.js:3475 [CharacterService] Usando cálculo fallback para garantir consistência
+[root of the server]__b4f0e92c._.js:3506 [CharacterService] Build analysis - Diversidade: 94.9%, Mono-penalty: 1
+[root of the server]__b4f0e92c._.js:3460 [CharacterService] Calculando stats derivados para: {id: '25e43f78-6041-45ef-ae45-1a989e409fd0', level: 3, strength: 13, dexterity: 12, intelligence: 10, …}
+[root of the server]__b4f0e92c._.js:3475 [CharacterService] Usando cálculo fallback para garantir consistência
+[root of the server]__b4f0e92c._.js:3506 [CharacterService] Build analysis - Diversidade: 94.9%, Mono-penalty: 1
+[root of the server]__b4f0e92c._.js:3556 [CharacterService] Bônus de equipamentos calculado: {atk: 0, def: 0, speed: 0, critical_chance: 0, magic_damage: 0}
+[root of the server]__b4f0e92c._.js:3612 [CharacterService] Stats derivados calculados: {level: 3, diversityBonus: '19.0%', monoPenalty: '100.0%', final_stats: {…}}
+[root of the server]__b4f0e92c._.js:4453 [SpellService] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:3556 [CharacterService] Bônus de equipamentos calculado: {atk: 0, def: 0, speed: 0, critical_chance: 0, magic_damage: 0}
+[root of the server]__b4f0e92c._.js:3612 [CharacterService] Stats derivados calculados: {level: 3, diversityBonus: '19.0%', monoPenalty: '100.0%', final_stats: {…}}
+[root of the server]__b4f0e92c._.js:4453 [SpellService] Buscando magias equipadas para personagem: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:4477 [SpellService] 1 magias equipadas encontradas
+[root of the server]__b4f0e92c._.js:4494 [SpellService] Magias equipadas processadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:3314 [CharacterService] GamePlayer criado para Cfgkng: {level: 3, base_atk: 63, equipment_atk_bonus: 0, final_atk: 63, final_critical_damage: 172}
+[root of the server]__b4f0e92c._.js:8131 [GameProvider] Stats derivados carregados para batalha: {critical_chance: 17, critical_damage: 172, magic_damage_bonus: 29}
+[root of the server]__b4f0e92c._.js:8136 [GameProvider] Definindo estado do jogo para batalha
+[root of the server]__b4f0e92c._.js:7572 [TurnControl] Limpeza realizada: 0 sessões ativas, 0 locks ativos, 0 trackers
+[root of the server]__b4f0e92c._.js:7270 [TurnControl] Nova sessão de batalha criada: session-1749365590650-xkwkds3on (battleId: battle-1-Slime_Verde-1749365590650)
+[root of the server]__b4f0e92c._.js:7271 [TurnControl] Sessões ativas: 1
+[root of the server]__b4f0e92c._.js:8141 [GameProvider] Sessão de batalha inicializada: session-1749365590650-xkwkds3on
+[root of the server]__b4f0e92c._.js:8176 [GameProvider] Estado do jogo atualizado com sucesso:
+[root of the server]__b4f0e92c._.js:8177 - Modo: battle
+[root of the server]__b4f0e92c._.js:8178 - Jogador: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8179 - Inimigo: Slime Verde
+[root of the server]__b4f0e92c._.js:8180 - Andar: Entrada da Torre - O Despertar
+VM231 src_components_game_3b006306._.js:8835 [GameBattle] selectCharacter concluído para Cfgkng
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 189/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 100
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 100
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3422 [CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===
+VM231 src_components_game_3b006306._.js:3423 [CombinedBattleInterface] isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3424 [CombinedBattleInterface] loading.performAction: false
+VM231 src_components_game_3b006306._.js:3425 [CombinedBattleInterface] isDisabled: false
+VM231 src_components_game_3b006306._.js:3426 [CombinedBattleInterface] currentEnemy: {name: 'Slime Verde', hp: 189, maxHp: 189, isAlive: true}
+VM231 src_components_game_3b006306._.js:3432 [CombinedBattleInterface] battleRewards: null
+VM231 src_components_game_3b006306._.js:3437 [CombinedBattleInterface] === FIM DO LOG DETALHADO ===
+VM231 src_components_game_3b006306._.js:3462 [CombinedBattleInterface] === CONDIÇÕES DO BOTÃO FALLBACK ===
+VM231 src_components_game_3b006306._.js:3463 [CombinedBattleInterface] shouldShowNextFloorButton: false
+VM231 src_components_game_3b006306._.js:3464 [CombinedBattleInterface] - battleRewards: null/undefined
+VM231 src_components_game_3b006306._.js:3470 [CombinedBattleInterface] - loading.performAction: false
+VM231 src_components_game_3b006306._.js:3471 [CombinedBattleInterface] - isPlayerDead: false
+VM231 src_components_game_3b006306._.js:3472 [CombinedBattleInterface] - continuingAdventure: false
+VM231 src_components_game_3b006306._.js:3473 [CombinedBattleInterface] - currentEnemy: {name: 'Slime Verde', hp: 189, maxHp: 189, isDead: false}
+VM231 src_components_game_3b006306._.js:3479 [CombinedBattleInterface] === FIM DAS CONDIÇÕES ===
+VM231 src_components_game_3b006306._.js:3514 [CombinedBattleInterface] Consumáveis mudaram, recarregando slots
+VM233 src_components_a3fe876f._.js:1038 [FloorTransition] Verificando mudança: último=1, atual=1, inTransição=false
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 189/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 100
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 100
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3422 [CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===
+VM231 src_components_game_3b006306._.js:3423 [CombinedBattleInterface] isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3424 [CombinedBattleInterface] loading.performAction: false
+VM231 src_components_game_3b006306._.js:3425 [CombinedBattleInterface] isDisabled: false
+VM231 src_components_game_3b006306._.js:3426 [CombinedBattleInterface] currentEnemy: {name: 'Slime Verde', hp: 189, maxHp: 189, isAlive: true}
+VM231 src_components_game_3b006306._.js:3432 [CombinedBattleInterface] battleRewards: null
+VM231 src_components_game_3b006306._.js:3437 [CombinedBattleInterface] === FIM DO LOG DETALHADO ===
+VM231 src_components_game_3b006306._.js:3462 [CombinedBattleInterface] === CONDIÇÕES DO BOTÃO FALLBACK ===
+VM231 src_components_game_3b006306._.js:3463 [CombinedBattleInterface] shouldShowNextFloorButton: false
+VM231 src_components_game_3b006306._.js:3464 [CombinedBattleInterface] - battleRewards: null/undefined
+VM231 src_components_game_3b006306._.js:3470 [CombinedBattleInterface] - loading.performAction: false
+VM231 src_components_game_3b006306._.js:3471 [CombinedBattleInterface] - isPlayerDead: false
+VM231 src_components_game_3b006306._.js:3472 [CombinedBattleInterface] - continuingAdventure: false
+VM231 src_components_game_3b006306._.js:3473 [CombinedBattleInterface] - currentEnemy: {name: 'Slime Verde', hp: 189, maxHp: 189, isDead: false}
+VM231 src_components_game_3b006306._.js:3479 [CombinedBattleInterface] === FIM DAS CONDIÇÕES ===
+VM231 src_components_game_3b006306._.js:3514 [CombinedBattleInterface] Consumáveis mudaram, recarregando slots
+[root of the server]__b4f0e92c._.js:4477 [SpellService] 1 magias equipadas encontradas
+[root of the server]__b4f0e92c._.js:4494 [SpellService] Magias equipadas processadas: ['Bola de Fogo']
+[root of the server]__b4f0e92c._.js:3314 [CharacterService] GamePlayer criado para Cfgkng: {level: 3, base_atk: 63, equipment_atk_bonus: 0, final_atk: 63, final_critical_damage: 172}
+[root of the server]__b4f0e92c._.js:8131 [GameProvider] Stats derivados carregados para batalha: {critical_chance: 17, critical_damage: 172, magic_damage_bonus: 29}
+[root of the server]__b4f0e92c._.js:8136 [GameProvider] Definindo estado do jogo para batalha
+[root of the server]__b4f0e92c._.js:7572 [TurnControl] Limpeza realizada: 1 sessões ativas, 0 locks ativos, 1 trackers
+[root of the server]__b4f0e92c._.js:7237 [TurnControl] Criação de sessão em cooldown para 1-Slime_Verde (149ms)
+[root of the server]__b4f0e92c._.js:7241 [TurnControl] Retornando sessão existente durante cooldown: session-1749365590650-xkwkds3on
+[root of the server]__b4f0e92c._.js:8141 [GameProvider] Sessão de batalha inicializada: session-1749365590650-xkwkds3on
+[root of the server]__b4f0e92c._.js:8176 [GameProvider] Estado do jogo atualizado com sucesso:
+[root of the server]__b4f0e92c._.js:8177 - Modo: battle
+[root of the server]__b4f0e92c._.js:8178 - Jogador: Cfgkng (andar: 1)
+[root of the server]__b4f0e92c._.js:8179 - Inimigo: Slime Verde
+[root of the server]__b4f0e92c._.js:8180 - Andar: Entrada da Torre - O Despertar
+VM231 src_components_game_3b006306._.js:8835 [GameBattle] selectCharacter concluído para Cfgkng
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 189/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 100
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 100
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3514 [CombinedBattleInterface] Consumáveis mudaram, recarregando slots
+
+PRIMEIRO ATAQUE:
+
+[GameBattle] Sistema de controle de turnos ativo: {sessionId: 'session-1749365590650-xkwkds3on', battleId: 'battle-1-Slime_Verde-1749365590650', isProcessing: false, lastActionTimestamp: 1749365590650}
+VM231 src_components_game_3b006306._.js:9113 [GameBattle] Executando ação 'attack' (timestamp: 1749365613251)
+[root of the server]__b4f0e92c._.js:8306 [game-provider] === PERFORMACTION INÍCIO (ID: 1) ===
+[root of the server]__b4f0e92c._.js:8307 [game-provider] performAction chamado com ação: 'attack'
+[root of the server]__b4f0e92c._.js:8308 [game-provider] selectedCharacter: Cfgkng
+[root of the server]__b4f0e92c._.js:8309 [game-provider] loadingRef.current: false
+[root of the server]__b4f0e92c._.js:8310 [game-provider] gameState.mode: battle
+[root of the server]__b4f0e92c._.js:8311 [game-provider] gameState.battleRewards: false
+[root of the server]__b4f0e92c._.js:8372 [game-provider] Usando sessão válida existente: session-1749365590650-xkwkds3on
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-player-turn-1749365613252-1-attack
+[root of the server]__b4f0e92c._.js:8419 [game-provider] Ação 'attack' APROVADA pelo TurnControl - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365613252-1-attack-1749365613252-sppcmclpy
+[root of the server]__b4f0e92c._.js:8462 [game-provider] Todas as validações passaram, processando ação 'attack' (ID: 1)
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+[root of the server]__b4f0e92c._.js:8626 [game-provider] === PROCESSANDO TURNO COMPLETO ===
+[root of the server]__b4f0e92c._.js:8627 [game-provider] Ação do jogador: attack
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-player-turn-1749365613365-2-attack
+[root of the server]__b4f0e92c._.js:7410 [TurnControl] Ação iniciada: -attack (actionId: battle-1-Slime_Verde-1749365590650-player-turn-1749365613365-2-attack-1749365613365-9nmkm7wzd)
+[root of the server]__b4f0e92c._.js:8642 [game-provider] Ação do jogador iniciada - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365613365-2-attack-1749365613365-9nmkm7wzd
+[root of the server]__b4f0e92c._.js:5896 [GameService] Processando ação do jogador: attack
+[root of the server]__b4f0e92c._.js:8626 [game-provider] === PROCESSANDO TURNO COMPLETO ===
+[root of the server]__b4f0e92c._.js:8627 [game-provider] Ação do jogador: attack
+[root of the server]__b4f0e92c._.js:7327 [TurnControl] Ação bloqueada - sessão já processando: session-1749365590650-xkwkds3on (1ms)
+[root of the server]__b4f0e92c._.js:5896 [GameService] Processando ação do jogador: attack
+[root of the server]__b4f0e92c._.js:5877 [GameService] Cálculo avançado: ATK 63 vs DEF 17 | Base: 54 → Crítico (172%): 92
+[root of the server]__b4f0e92c._.js:5937 [GameService] Calculando skill XP para ataque com dano 92
+[root of the server]__b4f0e92c._.js:6124 [GameService] Ação processada: attack, mensagem: Cfgkng atacou Slime Verde CRITICAMENTE causando 92 de dano!
+[root of the server]__b4f0e92c._.js:6125 [GameService] Skill XP gains: 0
+[root of the server]__b4f0e92c._.js:6126 [GameService] Game log messages: 1
+[root of the server]__b4f0e92c._.js:8647 [game-provider] Ação do jogador processada - skipTurn: false
+[root of the server]__b4f0e92c._.js:8763 [game-provider] === PROCESSANDO TURNO DO INIMIGO COM DELAY ===
+[root of the server]__b4f0e92c._.js:7327 [TurnControl] Ação bloqueada - sessão já processando: session-1749365590650-xkwkds3on (129ms)
+
+game-provider] Turno do inimigo BLOQUEADO pelo TurnControl - Ação já sendo processada (129ms)
+
+[game-provider] Turno do inimigo bloqueado por motivo crítico: Ação já sendo processada (129ms
+
+[game-provider] Debug Stats: {activeSessions: 1, actionLocks: 1, processedTurns: 0, processedActions: 1, sessionCreationTrackers: 0, …}
+[root of the server]__b4f0e92c._.js:8819 [game-provider] Tentando destravar sessões para permitir turno do inimigo...
+[root of the server]__b4f0e92c._.js:7581 [TurnControl] Todas as ações foram forçadamente liberadas
+[root of the server]__b4f0e92c._.js:7340 [TurnControl] Debounce para inimigo reduzido para 100ms
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613496-3-enemy_turn
+[root of the server]__b4f0e92c._.js:8824 [game-provider] Turno do inimigo DESTRAVADO com sucesso - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613496-3-enemy_turn-1749365613496-203vvjwi7
+[root of the server]__b4f0e92c._.js:7410 [TurnControl] Ação iniciada: -enemy_turn (actionId: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613496-3-enemy_turn-1749365613496-203vvjwi7)
+[root of the server]__b4f0e92c._.js:8870 [game-provider] Chamando GameService.processEnemyActionWithDelay...
+[root of the server]__b4f0e92c._.js:8871 [game-provider] Estado antes do processamento do inimigo: {enemyName: 'Slime Verde', enemyHp: 97, playerHp: 139, isPlayerTurn: true}
+[root of the server]__b4f0e92c._.js:6366 [GameService] === PROCESSANDO TURNO DO INIMIGO ===
+[root of the server]__b4f0e92c._.js:6367 [GameService] Estado recebido: {hasEnemy: true, enemyName: 'Slime Verde', enemyHp: 97, enemyMaxHp: 189, playerHp: 139, …}
+[root of the server]__b4f0e92c._.js:6386 [GameService] Slime Verde está pensando... (2171ms)
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 97/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 100
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 51.32275132275132
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: false
+VM231 src_components_game_3b006306._.js:212 [BattleArena] Inimigo recebeu 92 de dano 
+VM231 src_components_game_3b006306._.js:3422 [CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===
+VM231 src_components_game_3b006306._.js:3423 [CombinedBattleInterface] isPlayerTurn: false
+VM231 src_components_game_3b006306._.js:3424 [CombinedBattleInterface] loading.performAction: false
+VM231 src_components_game_3b006306._.js:3425 [CombinedBattleInterface] isDisabled: true
+VM231 src_components_game_3b006306._.js:3426 [CombinedBattleInterface] currentEnemy: {name: 'Slime Verde', hp: 97, maxHp: 189, isAlive: true}
+VM231 src_components_game_3b006306._.js:3432 [CombinedBattleInterface] battleRewards: null
+VM231 src_components_game_3b006306._.js:3437 [CombinedBattleInterface] === FIM DO LOG DETALHADO ===
+
+VM231 src_components_game_3b006306._.js:3440 [CombinedBattleInterface] ⚠️  POSSÍVEL PROBLEMA: Turno travado no inimigo
+(...)
+
+[CombinedBattleInterface] === CONDIÇÕES DO BOTÃO FALLBACK ===
+VM231 src_components_game_3b006306._.js:3463 [CombinedBattleInterface] shouldShowNextFloorButton: false
+VM231 src_components_game_3b006306._.js:3464 [CombinedBattleInterface] - battleRewards: null/undefined
+VM231 src_components_game_3b006306._.js:3470 [CombinedBattleInterface] - loading.performAction: false
+VM231 src_components_game_3b006306._.js:3471 [CombinedBattleInterface] - isPlayerDead: false
+VM231 src_components_game_3b006306._.js:3472 [CombinedBattleInterface] - continuingAdventure: false
+VM231 src_components_game_3b006306._.js:3473 [CombinedBattleInterface] - currentEnemy: {name: 'Slime Verde', hp: 97, maxHp: 189, isDead: false}
+VM231 src_components_game_3b006306._.js:3479 [CombinedBattleInterface] === FIM DAS CONDIÇÕES ===
+VM231 src_components_game_3b006306._.js:8621 [GameBattle] Iniciando detecção de turno travado para Slime Verde
+
+sw.js:65 Uncaught (in promise) TypeError: Failed to execute 'put' on 'Cache': Request method 'POST' is unsupported
+    at sw.js:65:21
+
+    [game-provider] Debug Stats: {activeSessions: 1, actionLocks: 1, processedTurns: 0, processedActions: 2, sessionCreationTrackers: 0, …}
+[root of the server]__b4f0e92c._.js:8819 [game-provider] Tentando destravar sessões para permitir turno do inimigo...
+[root of the server]__b4f0e92c._.js:7581 [TurnControl] Todas as ações foram forçadamente liberadas
+[root of the server]__b4f0e92c._.js:7340 [TurnControl] Debounce para inimigo reduzido para 100ms
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn
+[root of the server]__b4f0e92c._.js:8824 [game-provider] Turno do inimigo DESTRAVADO com sucesso - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn-1749365613681-ajxajuil0
+[root of the server]__b4f0e92c._.js:7410 [TurnControl] Ação iniciada: -enemy_turn (actionId: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn-1749365613681-ajxajuil0)
+[root of the server]__b4f0e92c._.js:8870 [game-provider] Chamando GameService.processEnemyActionWithDelay...
+[root of the server]__b4f0e92c._.js:8871 [game-provider] Estado antes do processamento do inimigo: {enemyName: 'Slime Verde', enemyHp: 43, playerHp: 139, isPlayerTurn: true}
+[root of the server]__b4f0e92c._.js:6366 [GameService] === PROCESSANDO TURNO DO INIMIGO ===
+[root of the server]__b4f0e92c._.js:6367 [GameService] Estado recebido: {hasEnemy: true, enemyName: 'Slime Verde', enemyHp: 43, enemyMaxHp: 189, playerHp: 139, …}
+[root of the server]__b4f0e92c._.js:6386 [GameService] Slime Verde está pensando... (2454ms)
+670a6_next_dist_client_8b027f6a._.js:14585 [Fast Refresh] done in 31ms
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 43/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 100
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 22.75132275132275
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: false
+VM231 src_components_game_3b006306._.js:212 [BattleArena] Inimigo recebeu 54 de dano 
+VM231 src_components_game_3b006306._.js:3422 [CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===
+VM231 src_components_game_3b006306._.js:3423 [CombinedBattleInterface] isPlayerTurn: false
+VM231 src_components_game_3b006306._.js:3424 [CombinedBattleInterface] loading.performAction: false
+VM231 src_components_game_3b006306._.js:3425 [CombinedBattleInterface] isDisabled: true
+VM231 src_components_game_3b006306._.js:3426 [CombinedBattleInterface] currentEnemy: {name: 'Slime Verde', hp: 43, maxHp: 189, isAlive: true}
+VM231 src_components_game_3b006306._.js:3432 [CombinedBattleInterface] battleRewards: null
+VM231 src_components_game_3b006306._.js:3437 [CombinedBattleInterface] === FIM DO LOG DETALHADO ===
+
+VM231 src_components_game_3b006306._.js:3440 [CombinedBattleInterface] ⚠️  POSSÍVEL PROBLEMA: Turno travado no inimigo
+(...)
+
+[CombinedBattleInterface] === CONDIÇÕES DO BOTÃO FALLBACK ===
+VM231 src_components_game_3b006306._.js:3463 [CombinedBattleInterface] shouldShowNextFloorButton: false
+VM231 src_components_game_3b006306._.js:3464 [CombinedBattleInterface] - battleRewards: null/undefined
+VM231 src_components_game_3b006306._.js:3470 [CombinedBattleInterface] - loading.performAction: false
+VM231 src_components_game_3b006306._.js:3471 [CombinedBattleInterface] - isPlayerDead: false
+VM231 src_components_game_3b006306._.js:3472 [CombinedBattleInterface] - continuingAdventure: false
+VM231 src_components_game_3b006306._.js:3473 [CombinedBattleInterface] - currentEnemy: {name: 'Slime Verde', hp: 43, maxHp: 189, isDead: false}
+VM231 src_components_game_3b006306._.js:3479 [CombinedBattleInterface] === FIM DAS CONDIÇÕES ===
+VM231 src_components_game_3b006306._.js:8621 [GameBattle] Iniciando detecção de turno travado para Slime Verde
+[Fast Refresh] rebuilding
+670a6_next_dist_client_8b027f6a._.js:14585 [Fast Refresh] done in 20ms
+[root of the server]__b4f0e92c._.js:6396 [GameService] Slime Verde decidiu sua ação!
+[root of the server]__b4f0e92c._.js:6418 [GameService] === PROCESSANDO AÇÃO DO INIMIGO ===
+[root of the server]__b4f0e92c._.js:6419 [GameService] Inimigo: Slime Verde (HP: 43/189)
+[root of the server]__b4f0e92c._.js:6471 [GameService] Ação escolhida: attack (special: 0.30000000000000004, spell: 0.35)
+[root of the server]__b4f0e92c._.js:6477 [GameService] Executando ataque físico
+[root of the server]__b4f0e92c._.js:5877 [GameService] Cálculo avançado: ATK 30 vs DEF 37 | Base: 11
+[root of the server]__b4f0e92c._.js:3781 [SkillXpService] XP de defesa calculado: 2 (dano bloqueado: 3)
+[root of the server]__b4f0e92c._.js:6511 [GameService] XP de defesa passiva: [{…}]
+[root of the server]__b4f0e92c._.js:6590 [GameService] Ataque processado com sucesso. Mensagem: Slime Verde atacou e causou 11 de dano!
+[root of the server]__b4f0e92c._.js:8883 [game-provider] Resultado do processamento do inimigo: {finalMessage: 'Slime Verde atacou e causou 11 de dano!', playerHpAfter: 128, isPlayerTurnAfter: true}
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+[root of the server]__b4f0e92c._.js:8994 [game-provider] Finalizando ação do inimigo - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613496-3-enemy_turn-1749365613496-203vvjwi7
+[root of the server]__b4f0e92c._.js:9016 [game-provider] Ação do jogador finalizada - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365613365-2-attack-1749365613365-9nmkm7wzd
+[root of the server]__b4f0e92c._.js:9020 [game-provider] Ação do inimigo finalizada - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613496-3-enemy_turn-1749365613496-203vvjwi7
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 43/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 92.08633093525181
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 22.75132275132275
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:204 [BattleArena] Jogador recebeu 11 de dano
+VM231 src_components_game_3b006306._.js:3422 [CombinedBattleInterface] === ESTADO DETALHADO DO TURNO ===
+VM231 src_components_game_3b006306._.js:3423 [CombinedBattleInterface] isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:3424 [CombinedBattleInterface] loading.performAction: false
+VM231 src_components_game_3b006306._.js:3425 [CombinedBattleInterface] isDisabled: false
+VM231 src_components_game_3b006306._.js:3426 [CombinedBattleInterface] currentEnemy: {name: 'Slime Verde', hp: 43, maxHp: 189, isAlive: true}
+VM231 src_components_game_3b006306._.js:3432 [CombinedBattleInterface] battleRewards: null
+VM231 src_components_game_3b006306._.js:3437 [CombinedBattleInterface] === FIM DO LOG DETALHADO ===
+[root of the server]__b4f0e92c._.js:2795 [CharacterService] Cache invalidado para 1 personagens: 25e43f78-6041-45ef-ae45-1a989e409fd0
+[root of the server]__b4f0e92c._.js:6396 [GameService] Slime Verde decidiu sua ação!
+[root of the server]__b4f0e92c._.js:6418 [GameService] === PROCESSANDO AÇÃO DO INIMIGO ===
+[root of the server]__b4f0e92c._.js:6419 [GameService] Inimigo: Slime Verde (HP: 43/189)
+[root of the server]__b4f0e92c._.js:6471 [GameService] Ação escolhida: special (special: 0.30000000000000004, spell: 0.35)
+[root of the server]__b4f0e92c._.js:3781 [SkillXpService] XP de defesa calculado: 2 (dano bloqueado: 10)
+[root of the server]__b4f0e92c._.js:6889 [GameService] Habilidade especial processada com sucesso. Mensagem: Slime Verde usou Salto Ácido e causou 53 de dano!
+[root of the server]__b4f0e92c._.js:8883 [game-provider] Resultado do processamento do inimigo: {finalMessage: 'Slime Verde usou Salto Ácido e causou 53 de dano!', playerHpAfter: 86, isPlayerTurnAfter: true}
+[root of the server]__b4f0e92c._.js:8994 [game-provider] Finalizando ação do inimigo - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn-1749365613681-ajxajuil0
+[root of the server]__b4f0e92c._.js:7441 [TurnControl] Ação finalizada: -enemy_turn (actionId: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn-1749365613681-ajxajuil0)
+[root of the server]__b4f0e92c._.js:9020 [game-provider] Ação do inimigo finalizada - ID: battle-1-Slime_Verde-1749365590650-enemy-turn-1749365613681-4-enemy_turn-1749365613681-ajxajuil0
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+VM231 src_components_game_3b006306._.js:133 [BattleArena] Props recebidas:
+VM231 src_components_game_3b006306._.js:134 - player: Cfgkng (andar: 1)
+VM231 src_components_game_3b006306._.js:135 - currentEnemy: Slime Verde (HP: 43/189)
+VM231 src_components_game_3b006306._.js:136 - playerHpPercentage: 61.87050359712231
+VM231 src_components_game_3b006306._.js:137 - enemyHpPercentage: 22.75132275132275
+VM231 src_components_game_3b006306._.js:138 - isPlayerTurn: true
+VM231 src_components_game_3b006306._.js:204 [BattleArena] Jogador recebeu 42 de dano
+[root of the server]__b4f0e92c._.js:2795 [CharacterService] Cache invalidado para 1 personagens: 25e43f78-6041-45ef-ae45-1a989e409fd0
+
+AO TENTAR FUGIR:
+
+[GameBattle] Sistema de controle de turnos ativo: {sessionId: 'session-1749365590650-xkwkds3on', battleId: 'battle-1-Slime_Verde-1749365590650', isProcessing: false, lastActionTimestamp: 1749365616502}
+VM231 src_components_game_3b006306._.js:9113 [GameBattle] Executando ação 'flee' (timestamp: 1749365693921)
+[root of the server]__b4f0e92c._.js:8306 [game-provider] === PERFORMACTION INÍCIO (ID: 2) ===
+[root of the server]__b4f0e92c._.js:8307 [game-provider] performAction chamado com ação: 'flee'
+[root of the server]__b4f0e92c._.js:8308 [game-provider] selectedCharacter: Cfgkng
+[root of the server]__b4f0e92c._.js:8309 [game-provider] loadingRef.current: false
+[root of the server]__b4f0e92c._.js:8310 [game-provider] gameState.mode: battle
+[root of the server]__b4f0e92c._.js:8311 [game-provider] gameState.battleRewards: false
+[root of the server]__b4f0e92c._.js:8372 [game-provider] Usando sessão válida existente: session-1749365590650-xkwkds3on
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-player-turn-1749365693922-5-flee
+[root of the server]__b4f0e92c._.js:8419 [game-provider] Ação 'flee' APROVADA pelo TurnControl - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365693922-5-flee-1749365693922-p9b4h0bcu
+[root of the server]__b4f0e92c._.js:8462 [game-provider] Todas as validações passaram, processando ação 'flee' (ID: 2)
+VM231 src_components_game_3b006306._.js:7152 [BattleHeader] Props recebidas:
+VM231 src_components_game_3b006306._.js:7153 - currentFloor: Entrada da Torre - O Despertar (tipo: common)
+VM231 src_components_game_3b006306._.js:7154 - playerLevel: 3
+[root of the server]__b4f0e92c._.js:8626 [game-provider] === PROCESSANDO TURNO COMPLETO ===
+[root of the server]__b4f0e92c._.js:8627 [game-provider] Ação do jogador: flee
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-player-turn-1749365694026-6-flee
+[root of the server]__b4f0e92c._.js:7410 [TurnControl] Ação iniciada: -flee (actionId: battle-1-Slime_Verde-1749365590650-player-turn-1749365694026-6-flee-1749365694026-rr4288pu2)
+[root of the server]__b4f0e92c._.js:8642 [game-provider] Ação do jogador iniciada - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365694026-6-flee-1749365694026-rr4288pu2
+[root of the server]__b4f0e92c._.js:5896 [GameService] Processando ação do jogador: flee
+[root of the server]__b4f0e92c._.js:6124 [GameService] Ação processada: flee, mensagem: Cfgkng fugiu da batalha com sucesso!
+[root of the server]__b4f0e92c._.js:6125 [GameService] Skill XP gains: 0
+[root of the server]__b4f0e92c._.js:6126 [GameService] Game log messages: 1
+[root of the server]__b4f0e92c._.js:8647 [game-provider] Ação do jogador processada - skipTurn: false
+[root of the server]__b4f0e92c._.js:7441 [TurnControl] Ação finalizada: -flee (actionId: battle-1-Slime_Verde-1749365590650-player-turn-1749365694026-6-flee-1749365694026-rr4288pu2)
+[root of the server]__b4f0e92c._.js:9016 [game-provider] Ação do jogador finalizada - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365694026-6-flee-1749365694026-rr4288pu2
+[root of the server]__b4f0e92c._.js:8626 [game-provider] === PROCESSANDO TURNO COMPLETO ===
+[root of the server]__b4f0e92c._.js:8627 [game-provider] Ação do jogador: flee
+[root of the server]__b4f0e92c._.js:7344 [TurnControl] Sessão muito recente (1ms), ignorando debounce
+[root of the server]__b4f0e92c._.js:7379 [TurnControl] Ação aprovada: battle-1-Slime_Verde-1749365590650-player-turn-1749365694027-7-flee
+[root of the server]__b4f0e92c._.js:7410 [TurnControl] Ação iniciada: -flee (actionId: battle-1-Slime_Verde-1749365590650-player-turn-1749365694027-7-flee-1749365694027-z9mh57wo7)
+[root of the server]__b4f0e92c._.js:8642 [game-provider] Ação do jogador iniciada - ID: battle-1-Slime_Verde-1749365590650-player-turn-1749365694027-7-flee-1749365694027-z9mh57wo7
+[root of the server]__b4f0e92c._.js:5896 [GameService] Processando ação do jogador: flee
+[root of the server]__b4f0e92c._.js:6124 [GameService] Ação processada: flee, mensagem: Cfgkng tentou fugir mas falhou!
+[root of the server]__b4f0e92c._.js:6125 [GameService] Skill XP gains: 0
+[root of the server]__b4f0e92c._.js:6126 [GameService] Game log messages: 2
+[root of the server]__b4f0e92c._.js:8647 [game-provider] Ação do jogador processada - skipTurn: false
+[root of the server]__b4f0e92c._.js:8763 [game-provider] === PROCESSANDO TURNO DO INIMIGO COM DELAY ===
+[root of the server]__b4f0e92c._.js:7327 [TurnControl] Ação bloqueada - sessão já processando: session-1749365590650-xkwkds3on (0ms)
+
+(...)
+
+NADA ACONTECE, O TURNO NEM PASSA.

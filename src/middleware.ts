@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClientHelper } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/middleware';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 const publicRoutes = ['/auth', '/logout', '/403', '/404', '/game', '/game/play', '/game/ranking'];
@@ -30,9 +30,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Criar cliente Supabase no servidor
-  const supabase = createServerClientHelper({
-    get: (name) => req.cookies.get(name)
-  });
+  const { supabase, response } = createClient(req);
 
   // Verificar se o usuário está autenticado
   const {
@@ -44,7 +42,7 @@ export async function middleware(req: NextRequest) {
     if (pathname !== '/auth') {
       return NextResponse.redirect(new URL('/auth', req.url));
     }
-    return NextResponse.next(); // Already on /auth, allow to proceed
+    return response; // Already on /auth, allow to proceed
   }
 
   // Verificar acesso à área de administrador
@@ -53,7 +51,7 @@ export async function middleware(req: NextRequest) {
     try {
       const role = await getUserRole(supabase);
       if (role === 'ADMIN') {
-        return NextResponse.next();
+        return response;
       }
     } catch (error) {
       console.error('Failed to get user role', error);
@@ -66,7 +64,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Permitir a requisição se não houver restrições
-  return NextResponse.next();
+  return response;
 }
 
 // Middleware configuration

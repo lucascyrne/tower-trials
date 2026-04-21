@@ -95,25 +95,3 @@ export class TurnIdGenerator {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
-
-export interface AttributeDiversityInfo {
-  diversityScore: number; // 0-1
-  diversityPercentage: number; // 0-100
-  diversityBonus: number; // Multiplicador de bônus
-  monoBuildPenalty: number; // Penalidade para mono-builds
-  dominantAttribute: string;
-  dominantPercentage: number;
-  isMonoBuild: boolean;
-  recommendation: string;
-}
-
-export interface BuildAnalysis {
-  buildType: 'balanced' | 'specialist' | 'hybrid' | 'mono';
-  primaryAttributes: string[];
-  secondaryAttributes: string[];
-  strengths: string[];
-  weaknesses: string[];
-  synergies: string[];
-  efficiency: number; // 0-100
-  diversity: AttributeDiversityInfo;
-} 

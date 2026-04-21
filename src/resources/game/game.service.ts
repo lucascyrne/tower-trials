@@ -11,6 +11,10 @@ import { ConsumableService } from './consumable.service';
 import { CharacterService } from './character.service';
 import { CemeteryService } from './cemetery.service';
 import { EquipmentService } from './equipment.service';
+import {
+  decideEnemyAction,
+  getFallbackSpecialBehavior,
+} from './domain/enemy-action.domain';
 
 // Interface para salvar o progresso do jogo
 interface SaveProgressData {
@@ -46,6 +50,12 @@ interface GameProgressEntry {
   updated_at: string;
 }
 
+/**
+ * Regras de servidor/cliente para combate, andares e eventos.
+ * Domínios: (1) andar/monstro — getFloorData, generateEnemy, advanceToNextFloor;
+ * (2) turnos — processPlayerAction, processEnemyAction*, processEnemyDefeat;
+ * (3) progresso — save/load, eventos especiais. Extração em módulos menores pode seguir esses eixos.
+ */
 export class GameService {
   // Cache temporário para dados de andar
   private static floorCache: Map<number, Floor> = new Map();
@@ -57,11 +67,9 @@ export class GameService {
    * Esta função deve ser chamada após transições importantes para garantir dados atualizados
    */
   static clearAllCaches(): void {
-    console.log('[GameService] Limpando todos os caches');
     this.floorCache.clear();
     this.floorCacheExpiry.clear();
     MonsterService.clearCache();
-    console.log('[GameService] Todos os caches foram limpos');
   }
 
   /**
@@ -71,18 +79,36 @@ export class GameService {
    */
   static async generateEnemy(floor: number): Promise<Enemy | null> {
     try {
-      console.log(`[GameService] Iniciando geração de inimigo para andar ${floor}`);
-      
-      // Buscar monstro do serviço (dados reais do banco)
-      const { data: monsterData, error, success } = await MonsterService.getMonsterForFloor(floor);
+      // Buscar monstro do serviço (dados reais do banco) com retry curto para instabilidades transitórias.
+      let result = await MonsterService.getMonsterForFloor(floor);
+      if (!result.success || !result.data) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        result = await MonsterService.getMonsterForFloor(floor);
+      }
+      const { data: monsterData, error, success } = result;
       
       if (!success || error || !monsterData) {
         console.error(`[GameService] Erro ao buscar monstro para andar ${floor}:`, error);
         throw new Error(`Nenhum monstro encontrado para o andar ${floor}: ${error}`);
       }
 
+      const hp = Number(monsterData.hp);
+      const atk = Number(monsterData.atk);
+      const def = Number(monsterData.def);
+      const level = Number(monsterData.level);
+      const speed = Number(monsterData.speed);
+      const mana = Number(monsterData.mana);
+
       // Validar dados essenciais do monstro
-      if (!monsterData.name || !monsterData.hp || !monsterData.atk || !monsterData.def) {
+      if (
+        !monsterData.name ||
+        !Number.isFinite(hp) ||
+        !Number.isFinite(atk) ||
+        !Number.isFinite(def) ||
+        hp <= 0 ||
+        atk <= 0 ||
+        def < 0
+      ) {
         console.error(`[GameService] Dados de monstro incompletos para andar ${floor}:`, monsterData);
         throw new Error(`Dados de monstro incompletos para o andar ${floor}`);
       }
@@ -91,15 +117,15 @@ export class GameService {
       const enemy: Enemy = {
         id: monsterData.id,
         name: monsterData.name,
-        level: monsterData.level || Math.max(1, Math.floor(floor / 5) + 1),
-        hp: monsterData.hp,
-        maxHp: monsterData.hp,
-        attack: monsterData.atk,
-        defense: monsterData.def,
-        speed: monsterData.speed || 10,
+        level: Number.isFinite(level) ? Math.max(1, Math.floor(level)) : Math.max(1, Math.floor(floor / 5) + 1),
+        hp: Math.max(1, Math.floor(hp)),
+        maxHp: Math.max(1, Math.floor(hp)),
+        attack: Math.max(1, Math.floor(atk)),
+        defense: Math.max(0, Math.floor(def)),
+        speed: Number.isFinite(speed) ? Math.max(1, Math.floor(speed)) : 10,
         image: monsterData.image || '👾',
         behavior: monsterData.behavior || 'balanced',
-        mana: monsterData.mana || 0,
+        mana: Number.isFinite(mana) ? Math.max(0, Math.floor(mana)) : 0,
         reward_xp: monsterData.reward_xp,
         reward_gold: monsterData.reward_gold,
         possible_drops: monsterData.possible_drops || [],
@@ -139,9 +165,15 @@ export class GameService {
         special_abilities: monsterData.special_abilities || []
       };
 
-      console.log(`[GameService] Monstro real gerado: ${enemy.name} (Tier ${enemy.tier || 1}, Pos ${enemy.cycle_position || 'N/A'})`);
-      console.log(`[GameService] Stats: HP: ${enemy.hp}/${enemy.maxHp}, ATK: ${enemy.attack}, DEF: ${enemy.defense}, Boss: ${enemy.is_boss ? 'SIM' : 'NÃO'}`);
-      
+      const norm = this.normalizeRewardBase(
+        enemy.reward_xp,
+        enemy.reward_gold,
+        enemy.level,
+        enemy.tier ?? 1
+      );
+      enemy.reward_xp = norm.baseXP;
+      enemy.reward_gold = norm.baseGold;
+
       return enemy;
     } catch (error) {
       console.error(`[GameService] Erro ao gerar inimigo para andar ${floor}:`, error);
@@ -409,6 +441,8 @@ export class GameService {
    * @param criticalChance Chance de crítico (0-100)
    * @param criticalDamage Multiplicador de dano crítico (110% = 1.1)
    * @param doubleAttackChance Chance de duplo ataque (0-100)
+   * @param attackerDexterity Destreza do atacante (para cálculo de duplo ataque)
+   * @param attackerSpeed Velocidade do atacante (para cálculo de duplo ataque)
    * @returns Objeto com informações do dano
    */
   static calculateDamage(
@@ -416,7 +450,11 @@ export class GameService {
     defenderDefense: number,
     criticalChance: number = 0,
     criticalDamage: number = 110,
-    doubleAttackChance: number = 0
+    doubleAttackChance: number = 0,
+    attackerDexterity: number = 10,
+    attackerSpeed: number = 10,
+    /** Resistência a crítico do defensor (0–1), ex.: `enemy.critical_resistance`. */
+    defenderCriticalResistance: number = 0
   ): {
     damage: number;
     isCritical: boolean;
@@ -427,6 +465,7 @@ export class GameService {
     // Garantir que os valores sejam números válidos
     const safeAttack = Number(attackerAttack) || 0;
     const safeDefense = Number(defenderDefense) || 0;
+    const critRes = Math.min(0.85, Math.max(0, Number(defenderCriticalResistance) || 0));
     
     if (safeAttack <= 0) {
       console.warn(`[GameService] Ataque inválido: ${attackerAttack} -> usando 1`);
@@ -439,16 +478,18 @@ export class GameService {
       };
     }
     
-    // Fórmula básica: dano = ataque - (defesa * 0.5)
-    const baseDamage = Math.max(1, Math.floor(safeAttack - (safeDefense * 0.5)));
+    const baseDamage = Math.max(1, Math.floor(safeAttack - (safeDefense * 0.55)));
     
-    // Verificar crítico
+    const effectiveCritChance = Math.max(0, criticalChance * (1 - critRes));
     const critRoll = Math.random() * 100;
-    const isCritical = critRoll < criticalChance;
+    const isCritical = critRoll < effectiveCritChance;
     
-    // Verificar duplo ataque
+    const enhancedDoubleAttackChance =
+      doubleAttackChance +
+      Math.floor((attackerDexterity - 10) * 0.25) +
+      Math.floor((attackerSpeed - 10) * 0.15);
     const doubleRoll = Math.random() * 100;
-    const isDoubleAttack = doubleRoll < doubleAttackChance;
+    const isDoubleAttack = doubleRoll < Math.min(18, Math.max(0, enhancedDoubleAttackChance));
     
     // Calcular dano final
     let finalDamage = baseDamage;
@@ -466,10 +507,8 @@ export class GameService {
     if (isDoubleAttack) {
       finalDamage = finalDamage * 2;
       totalAttacks = 2;
-      damageBreakdown += ` → Duplo Ataque: ${finalDamage}`;
+      damageBreakdown += ` → Duplo Ataque (DEX: ${attackerDexterity}, SPD: ${attackerSpeed}): ${finalDamage}`;
     }
-    
-    console.log(`[GameService] Cálculo avançado: ATK ${safeAttack} vs DEF ${safeDefense} | ${damageBreakdown}`);
     
     return {
       damage: finalDamage,
@@ -480,20 +519,25 @@ export class GameService {
     };
   }
 
+  /** Dano mágico após resistência/vulnerabilidade do alvo (0–1 e multiplicador). */
+  static applyMagicalDamageMitigation(rawDamage: number, enemy: Enemy): number {
+    const res = enemy.magical_resistance ?? 0;
+    const vuln = enemy.magical_vulnerability ?? 1;
+    return Math.max(1, Math.floor(rawDamage * (1 - res) * vuln));
+  }
+
   /**
-   * Processar ação do jogador
-   * @param action Tipo de ação
-   * @param gameState Estado atual do jogo
-   * @param spellId ID da magia (opcional)
-   * @param _consumableId ID do consumível (opcional)
-   * @returns Novo estado do jogo e resultado da ação
+   * Resolve um turno do jogador (ataque, defesa, magia, item, fuga).
+   * Pré: `gameState.mode === 'battle'` e `currentEnemy` definido (exceto fuga tratada à parte).
+   * Pós: retorna cópia mutável do estado com HP/mana/efeitos atualizados; pode definir `skipTurn` ou inimigo morto (HP≤0).
+   * Persistência: não grava no banco — quem persiste é o GameProvider (HP/mana, XP de skill, ouro) após este retorno.
    */
   static async processPlayerAction(
     action: ActionType, 
     gameState: GameState,
     spellId?: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _consumableId?: string // Parâmetro reservado para futuro uso
+    consumableId?: string
   ): Promise<{ 
     newState: GameState;
     skipTurn: boolean;
@@ -502,7 +546,6 @@ export class GameService {
     skillMessages?: string[];
     gameLogMessages?: { message: string; type: 'player_action' | 'damage' | 'system' | 'skill_xp' }[];
   }> {
-    console.log(`[GameService] Processando ação do jogador: ${action}`);
     const newState = { ...gameState };
     const gameLogMessages: { message: string; type: 'player_action' | 'damage' | 'system' | 'skill_xp' }[] = [];
     const skillXpGains: SkillXpGain[] = [];
@@ -523,7 +566,10 @@ export class GameService {
             newState.currentEnemy.defense,
             newState.player.critical_chance || 0,
             newState.player.critical_damage || 110,
-            newState.player.double_attack_chance || 0
+            newState.player.double_attack_chance || 0,
+            newState.player.dexterity || 10,
+            newState.player.speed || 10,
+            newState.currentEnemy.critical_resistance ?? 0
           );
 
           totalDamage = damageResult.damage;
@@ -555,7 +601,6 @@ export class GameService {
 
           // CORRIGIDO: Calcular e aplicar skill XP imediatamente após o ataque
           if (playerEquipment) {
-            console.log(`[GameService] Calculando skill XP para ataque com dano ${totalDamage}`);
             const attackSkillXp = SkillXpService.calculateAttackSkillXp(
               playerEquipment,
               totalDamage
@@ -566,7 +611,7 @@ export class GameService {
               
               // Aplicar skill XP imediatamente
               try {
-                const { messages: xpMessages, skillLevelUps } = await SkillXpService.applySkillXp(
+                const { messages: xpMessages } = await SkillXpService.applySkillXp(
                   newState.player.id,
                   attackSkillXp
                 );
@@ -581,10 +626,6 @@ export class GameService {
 
                 skillMessages.push(...xpMessages);
 
-                // Log de level ups de habilidade
-                for (const levelUp of skillLevelUps) {
-                  console.log(`[GameService] Skill level up: ${levelUp.skill} -> ${levelUp.newLevel}`);
-                }
               } catch (error) {
                 console.error('[GameService] Erro ao aplicar skill XP de ataque:', error);
               }
@@ -664,19 +705,11 @@ export class GameService {
             let actualSpellValue = 0;
 
             if (spell.effect_type === 'damage' && newState.currentEnemy) {
-              // Magia de dano
-              let magicDamage = spell.effect_value;
-              
-              // Aplicar bônus de magic attack do jogador
-              if (newState.player.magic_attack) {
-                magicDamage += Math.floor(newState.player.magic_attack * 0.5);
-              }
-
-              // Aplicar bônus de maestria mágica
-              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
-                const masteryBonus = Math.floor(magicDamage * (newState.player.magic_mastery - 1) * 0.1);
-                magicDamage += masteryBonus;
-              }
+              const scaled = SpellService.calculateScaledSpellDamage(spell.effect_value, newState.player);
+              const magicDamage = GameService.applyMagicalDamageMitigation(
+                scaled,
+                newState.currentEnemy
+              );
 
               actualSpellValue = magicDamage;
               newState.currentEnemy.hp = Math.max(0, newState.currentEnemy.hp - magicDamage);
@@ -687,19 +720,10 @@ export class GameService {
                 spellResult += ` e derrotando ${newState.currentEnemy.name}`;
               }
             } else if (spell.effect_type === 'heal') {
-              // Magia de cura
-              let healAmount = spell.effect_value;
-              
-              // Aplicar bônus de magic attack
-              if (newState.player.magic_attack) {
-                healAmount += Math.floor(newState.player.magic_attack * 0.3);
-              }
-
-              // Aplicar bônus de maestria mágica
-              if (newState.player.magic_mastery && newState.player.magic_mastery > 1) {
-                const masteryBonus = Math.floor(healAmount * (newState.player.magic_mastery - 1) * 0.1);
-                healAmount += masteryBonus;
-              }
+              const healAmount = SpellService.calculateScaledSpellHealing(
+                spell.effect_value,
+                newState.player
+              );
 
               actualSpellValue = healAmount;
               newState.player.hp = Math.min(newState.player.max_hp, newState.player.hp + healAmount);
@@ -752,39 +776,74 @@ export class GameService {
         break;
 
       case 'flee':
-        // Lógica de fuga
-        const fleeChance = 0.7; // 70% de chance base
-        const fleeSuccess = Math.random() < fleeChance;
-
+        const playerSpeed = newState.player.speed || 10;
+        const enemySpeed = newState.currentEnemy?.speed || 10;
+        
+        const speedDifference = playerSpeed - enemySpeed;
+        const speedModifier = Math.floor(speedDifference * 1);
+        let fleeChance = 48 + speedModifier;
+        
+        fleeChance = Math.max(12, Math.min(72, fleeChance));
+        
+        const fleeRoll = Math.random() * 100;
+        const fleeSuccess = fleeRoll < fleeChance;
+        
         if (fleeSuccess) {
-          newState.mode = 'fled';
+          // CRÍTICO: Estado limpo e consistente para fuga bem-sucedida
           newState.fleeSuccessful = true;
-          message = `${newState.player.name} fugiu da batalha com sucesso!`;
+          newState.currentEnemy = null;
+          newState.mode = 'fled';
+          newState.battleRewards = null;
+          newState.isPlayerTurn = true;
           
+          message = `${newState.player.name} fugiu da batalha com sucesso!`;
+          skipTurn = true; // CRÍTICO: Não há turno do inimigo após fuga bem-sucedida
+          
+          // Adicionar ao log do jogo
           gameLogMessages.push({
-            message: message,
+            message: `Fuga bem-sucedida! (${fleeChance}% de chance)`,
             type: 'system'
           });
-        } else {
-          newState.fleeSuccessful = false;
-          message = `${newState.player.name} tentou fugir mas falhou!`;
           
+        } else {
+          // Fuga falhou - jogador toma dano e inimigo pode atacar
+          const fleeFailDamage = Math.floor((newState.currentEnemy?.attack || 10) * 0.45);
+          newState.player.hp = Math.max(0, newState.player.hp - fleeFailDamage);
+          
+          // Verificar se jogador morreu na tentativa de fuga
+          if (newState.player.hp <= 0) {
+            newState.mode = 'gameover';
+            newState.characterDeleted = true;
+            message = `💀 Você morreu tentando fugir! O personagem foi perdido permanentemente.`;
+            skipTurn = true;
+            
+            return {
+              newState,
+              skipTurn,
+              message,
+              skillXpGains: [],
+              gameLogMessages: [{
+                message: 'Morte permanente por falha na fuga!',
+                type: 'system'
+              }]
+            };
+          }
+          
+          // CRÍTICO: Fuga falhou, jogador toma dano mas inimigo pode atacar
+          message = `${newState.player.name} tentou fugir mas falhou! Sofreu ${fleeFailDamage} de dano.`;
+          skipTurn = false; // Inimigo DEVE atacar após fuga falhada
+          
+          // Limpar flag de fuga bem-sucedida
+          newState.fleeSuccessful = false;
+          
+          // Adicionar ao log de batalha
           gameLogMessages.push({
-            message: message,
-            type: 'player_action'
+            message: `Fuga falhou (${fleeRoll.toFixed(1)}% vs ${fleeChance}%) - ${fleeFailDamage} de dano`,
+            type: 'damage'
           });
           
-          // Receber dano por falha na fuga
-          if (newState.currentEnemy) {
-            const fleeDamage = Math.floor(newState.currentEnemy.attack * 0.3);
-            newState.player.hp = Math.max(0, newState.player.hp - fleeDamage);
-            
-            gameLogMessages.push({
-              message: `${newState.player.name} recebeu ${fleeDamage} de dano ao tentar fugir!`,
-              type: 'damage'
-            });
-          }
         }
+        
         break;
 
       default:
@@ -800,10 +859,6 @@ export class GameService {
 
     // Resetar flag de poção usada no turno (será resetada no próximo turno)
     newState.player.potionUsedThisTurn = false;
-
-    console.log(`[GameService] Ação processada: ${action}, mensagem: ${message}`);
-    console.log(`[GameService] Skill XP gains:`, skillXpGains.length);
-    console.log(`[GameService] Game log messages:`, gameLogMessages.length);
 
     return {
       newState,
@@ -833,7 +888,6 @@ export class GameService {
    * @returns Dados do andar ou null se falhar
    */
   static async getFloorData(floorNumber: number): Promise<Floor | null> {
-    console.log(`[GameService] Solicitando dados do andar ${floorNumber}`);
     
     // Verificar cache primeiro
     const now = Date.now();
@@ -841,12 +895,10 @@ export class GameService {
     const cacheExpiry = this.floorCacheExpiry.get(floorNumber);
     
     if (cachedFloor && cacheExpiry && now < cacheExpiry) {
-      console.log(`[GameService] Dados do andar ${floorNumber} obtidos do cache: ${cachedFloor.description}`);
       return cachedFloor;
     }
 
     try {
-      console.log(`[GameService] Buscando dados do andar ${floorNumber} do servidor`);
       
       const { data, error } = await supabase.rpc('get_floor_data', {
         p_floor_number: floorNumber
@@ -879,7 +931,6 @@ export class GameService {
         description: floorData.description || `Andar ${floorNumber}`
       };
 
-      console.log(`[GameService] Dados do andar ${floorNumber} carregados: ${floor.description} (tipo: ${floor.type}, checkpoint: ${floor.isCheckpoint})`);
 
       // Cache por 10 segundos
       this.floorCache.set(floorNumber, floor);
@@ -899,6 +950,27 @@ export class GameService {
    * @param floorType Tipo do andar
    * @returns Recompensas calculadas
    */
+  /**
+   * Coagir recompensas vindas do PostgREST/JSON: evita `"0"` (truthy em `||`) e valores não numéricos.
+   */
+  static normalizeRewardBase(
+    rewardXp: unknown,
+    rewardGold: unknown,
+    level: number,
+    tier: number
+  ): { baseXP: number; baseGold: number } {
+    const lv = Math.max(1, level);
+    const ti = Math.max(1, tier);
+    const fallbackXp = Math.floor(5 + lv * 2 + ti * 2);
+    const fallbackGold = Math.floor(3 + lv + ti);
+    const x = Number(rewardXp);
+    const g = Number(rewardGold);
+    return {
+      baseXP: Number.isFinite(x) && x > 0 ? Math.floor(x) : fallbackXp,
+      baseGold: Number.isFinite(g) && g > 0 ? Math.floor(g) : fallbackGold,
+    };
+  }
+
   static calculateFloorRewards(baseXP: number, baseGold: number, floorType: FloorType): { xp: number; gold: number } {
     let multiplier = 1;
     
@@ -919,19 +991,19 @@ export class GameService {
     }
     
     return {
-      xp: Math.floor(baseXP * multiplier),
-      gold: Math.floor(baseGold * multiplier)
+      xp: Math.max(1, Math.floor(baseXP * multiplier)),
+      gold: Math.max(1, Math.floor(baseGold * multiplier)),
     };
   }
 
   /**
-   * Processar a derrota do inimigo
-   * @param gameState Estado atual do jogo
-   * @returns Novo estado do jogo após a derrota do inimigo
+   * Calcula recompensas (XP, ouro, drops) e atualiza o jogador em memória após HP do inimigo ≤ 0.
+   * Pré: inimigo derrotado; idempotente se `battleRewards` já existir (retorna estado atual).
+   * Pós: preenche `battleRewards`, pode subir nível; inimigo pode ser removido conforme fluxo interno.
+   * Persistência: chama CharacterService / RPCs conforme implementação interna (XP, ouro, inventário).
    */
   static async processEnemyDefeat(gameState: GameState): Promise<GameState> {
     try {
-      console.log('[GameService] Processando derrota do inimigo');
       
       const { player, currentEnemy, currentFloor } = gameState;
       
@@ -952,28 +1024,50 @@ export class GameService {
         return gameState;
       }
 
-      // Calcular recompensas base
-      const baseXP = currentEnemy.reward_xp || 10;
-      const baseGold = currentEnemy.reward_gold || 5;
-      
-      // Aplicar multiplicadores baseados no tipo de andar
-      const { xp, gold } = this.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
-      
-      console.log(`[GameService] Recompensas calculadas - XP: ${xp}, Gold: ${gold}`);
+      const { baseXP, baseGold } = this.normalizeRewardBase(
+        currentEnemy.reward_xp,
+        currentEnemy.reward_gold,
+        currentEnemy.level,
+        currentEnemy.tier ?? 1
+      );
 
-        // CRÍTICO: Persistir XP no banco de dados
-      console.log(`[GameService] === PERSISTINDO XP NO BANCO ===`);
+      const { xp, gold } = this.calculateFloorRewards(baseXP, baseGold, currentFloor.type);
+      console.info('[GameService] Recompensa calculada para derrota:', {
+        floor: currentFloor.floorNumber,
+        floorType: currentFloor.type,
+        enemyLevel: currentEnemy.level,
+        baseXP,
+        finalXP: xp,
+        baseGold,
+        finalGold: gold,
+        source: 'combat'
+      });
+
+      // XP é crítico para progressão, mas não deve bloquear a vitória (anti-softlock).
       const xpResult = await CharacterService.grantSecureXP(player.id, xp, 'combat');
-      if (!xpResult.success) {
-        console.error('[GameService] Erro ao conceder XP:', xpResult.error);
-        throw new Error(`Falha ao conceder XP: ${xpResult.error}`);
+      let xpGranted = xp;
+      let xpData = {
+        leveled_up: false,
+        new_level: player.level,
+        new_xp: player.xp,
+      };
+      let xpErrorMessage: string | null = null;
+      if (!xpResult.success || !xpResult.data) {
+        xpGranted = 0;
+        xpErrorMessage = xpResult.error || 'erro desconhecido';
+        console.error('[GameService] Erro ao conceder XP (mantendo fluxo de vitória):', {
+          error: xpErrorMessage,
+          floor: currentFloor.floorNumber,
+          floorType: currentFloor.type,
+          enemyLevel: currentEnemy.level,
+          requestedXP: xp,
+          source: 'combat'
+        });
+      } else {
+        xpData = xpResult.data;
       }
-      
-      const xpData = xpResult.data!;
-      console.log(`[GameService] XP persistido - Level: ${xpData.new_level}, XP: ${xpData.new_xp}, Level Up: ${xpData.leveled_up}`);
 
       // CRÍTICO: Persistir Gold no banco de dados
-      console.log(`[GameService] === PERSISTINDO GOLD NO BANCO ===`);
       const goldResult = await CharacterService.grantSecureGold(player.id, gold, 'combat');
       if (!goldResult.success) {
         console.error('[GameService] Erro ao conceder gold:', goldResult.error);
@@ -981,16 +1075,13 @@ export class GameService {
       }
       
       const newGoldTotal = goldResult.data!;
-      console.log(`[GameService] Gold persistido - Total: ${newGoldTotal}`);
 
       // CRÍTICO: Processar drops reais do monstro usando o sistema completo
-      console.log(`[GameService] === PROCESSANDO DROPS REAIS ===`);
       
       let drops: { name: string; quantity: number }[] = [];
       let dropsObtidos: { drop_id: string; quantity: number }[] = [];
       
       if (currentEnemy.possible_drops && currentEnemy.possible_drops.length > 0) {
-        console.log(`[GameService] Monstro ${currentEnemy.name} tem ${currentEnemy.possible_drops.length} possible_drops`);
         
         // Usar o sistema real de drops do ConsumableService
         dropsObtidos = ConsumableService.processMonsterDrops(
@@ -999,7 +1090,6 @@ export class GameService {
           currentFloor.type === 'boss' ? 1.5 : 1.0 // Boss tem chance aumentada
         );
         
-        console.log(`[GameService] Drops obtidos: ${dropsObtidos.length} itens`);
         
         if (dropsObtidos.length > 0) {
           // Buscar informações dos drops para exibição
@@ -1015,7 +1105,6 @@ export class GameService {
               };
             });
             
-            console.log(`[GameService] Drops identificados para exibição:`, drops.map(d => `${d.quantity}x ${d.name}`).join(', '));
           } else {
             console.error(`[GameService] Erro ao buscar informações dos drops:`, dropInfoResponse.error);
             // Fallback: usar IDs como nomes
@@ -1026,7 +1115,6 @@ export class GameService {
           }
           
           // CRÍTICO: Persistir drops no inventário do personagem usando função segura
-          console.log(`[GameService] === PERSISTINDO DROPS NO BANCO ===`);
           const addDropsResult = await ConsumableService.addDropsToInventory(player.id, dropsObtidos);
           
           if (!addDropsResult.success) {
@@ -1034,15 +1122,13 @@ export class GameService {
             throw new Error(`Falha ao persistir drops: ${addDropsResult.error}`);
           }
           
-          console.log(`[GameService] ${addDropsResult.data} drops persistidos com sucesso no inventário`);
         }
       } else {
-        console.log(`[GameService] Monstro ${currentEnemy.name} não possui possible_drops configurados`);
       }
 
       // Criar objeto de recompensas baseado nos dados persistidos
       const battleRewards: BattleRewards = {
-        xp,
+        xp: xpGranted,
         gold,
         drops,
         leveledUp: xpData.leveled_up,
@@ -1062,11 +1148,6 @@ export class GameService {
         })
       };
 
-      console.log(`[GameService] === DERROTA PROCESSADA COM PERSISTÊNCIA ===`);
-      console.log(`[GameService] - Level: ${updatedPlayer.level} (Level Up: ${xpData.leveled_up})`);
-      console.log(`[GameService] - XP: ${updatedPlayer.xp}/${xpData.new_xp_next_level}`);
-      console.log(`[GameService] - Gold: ${updatedPlayer.gold}`);
-      console.log(`[GameService] - Drops: ${drops.length} itens`);
 
       // CORRIGIDO: NÃO remover currentEnemy aqui - será removido apenas no avanço
       return {
@@ -1075,7 +1156,9 @@ export class GameService {
         battleRewards,
         // currentEnemy mantido para permitir exibição do modal
         isPlayerTurn: true,
-        gameMessage: `Inimigo derrotado! +${xp} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`
+        gameMessage: xpErrorMessage
+          ? `Inimigo derrotado! +${gold} Gold. XP não concedido nesta batalha: ${xpErrorMessage}`
+          : `Inimigo derrotado! +${xpGranted} XP, +${gold} Gold${battleRewards.leveledUp ? ` - LEVEL UP!` : ''}`
       };
     } catch (error) {
       console.error('[GameService] Erro ao processar derrota do inimigo:', error);
@@ -1091,11 +1174,10 @@ export class GameService {
   }
 
   /**
-   * Processar ação do inimigo com delay para melhor experiência do usuário
-   * @param gameState Estado atual do jogo
-   * @param playerDefendAction Indica se o jogador usou a ação de defesa (DEPRECATED)
-   * @param delayMs Delay em millisegundos antes de processar (padrão: 1500-2500ms aleatório)
-   * @returns Promise com novo estado do jogo após a ação do inimigo
+   * Executa o turno do inimigo (dano ao jogador, efeitos) após um atraso visual.
+   * Pré: `currentEnemy` vivo; estado já com `isPlayerTurn: false` conforme passado pelo provider.
+   * Pós: HP/mana do jogador atualizados; pode retornar `mode: 'gameover'`.
+   * Persistência: não grava — o provider chama `updateCharacterHpMana` após o retorno.
    */
   static async processEnemyActionWithDelay(
     gameState: GameState, 
@@ -1106,42 +1188,72 @@ export class GameService {
     skillXpGains?: SkillXpGain[];
     skillMessages?: string[];
   }> {
-    console.log('[GameService] === PROCESSANDO TURNO DO INIMIGO ===');
-    console.log('[GameService] Estado recebido:', {
-      hasEnemy: !!gameState.currentEnemy,
-      enemyName: gameState.currentEnemy?.name,
-      enemyHp: gameState.currentEnemy?.hp,
-      enemyMaxHp: gameState.currentEnemy?.maxHp,
-      playerHp: gameState.player.hp,
-      isPlayerTurn: gameState.isPlayerTurn,
-      gameMode: gameState.mode
-    });
     
     // CORRIGIDO: Verificar se o inimigo ainda está vivo antes de processar
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
-      console.log('[GameService] Inimigo morto antes do delay - cancelando ação');
       return { newState: gameState };
     }
     
     // Calcular delay aleatório entre 1.5 e 2.5 segundos se não especificado
     const finalDelay = delayMs ?? (1500 + Math.random() * 1000); // 1500-2500ms
     
-    const enemyName = gameState.currentEnemy?.name || 'Inimigo';
-    console.log(`[GameService] ${enemyName} está pensando... (${Math.round(finalDelay)}ms)`);
-    
     // Aguardar o delay antes de processar
     await new Promise(resolve => setTimeout(resolve, finalDelay));
     
     // CORRIGIDO: Verificar novamente após o delay se o inimigo ainda está vivo
     if (!gameState.currentEnemy || gameState.currentEnemy.hp <= 0) {
-      console.log('[GameService] Inimigo morto após delay - cancelando ação');
       return { newState: gameState };
     }
     
-    console.log(`[GameService] ${enemyName} decidiu sua ação!`);
     
     // Processar ação do inimigo normalmente
     return this.processEnemyAction(gameState, playerDefendAction);
+  }
+
+  private static async resolvePlayerDefeat(
+    gameState: GameState,
+    enemyName: string,
+    baseMessage: string,
+    stateOverrides?: Partial<GameState>
+  ): Promise<{ newState: GameState }> {
+    const { player } = gameState;
+
+    const buildGameOverState = (characterDeleted: boolean, suffix: string) => ({
+      ...gameState,
+      ...stateOverrides,
+      player: {
+        ...player,
+        hp: 0,
+        isDefending: false,
+      },
+      mode: 'gameover' as const,
+      isPlayerTurn: true,
+      gameMessage: `${baseMessage} ${suffix}`,
+      ...(characterDeleted ? { characterDeleted: true } : {}),
+    });
+
+    try {
+      const deathResult = await CemeteryService.killCharacter(
+        player.id,
+        'Battle defeat',
+        enemyName
+      );
+
+      if (deathResult.success) {
+        return {
+          newState: buildGameOverState(
+            true,
+            'Você foi derrotado! Seu personagem foi perdido permanentemente.'
+          ),
+        };
+      }
+    } catch {
+      // fallback tratado abaixo
+    }
+
+    return {
+      newState: buildGameOverState(false, 'Você foi derrotado!'),
+    };
   }
 
   /**
@@ -1164,15 +1276,12 @@ export class GameService {
     const skillXpGains: SkillXpGain[] = [];
     
     // LOG: Início do processamento da ação do inimigo
-    console.log(`[GameService] === PROCESSANDO AÇÃO DO INIMIGO ===`);
-    console.log(`[GameService] Inimigo: ${enemy.name} (HP: ${enemy.hp}/${enemy.maxHp})`);
     
     // Processar efeitos contínuos no inimigo (DoTs, buffs, etc.)
     SpellService.processOverTimeEffects(enemy);
     
     // Se o inimigo morreu por efeitos ao longo do tempo
     if (enemy.hp <= 0) {
-      console.log(`[GameService] Inimigo morreu por efeitos ao longo do tempo`);
       return {
         newState: {
           ...gameState,
@@ -1182,51 +1291,9 @@ export class GameService {
       };
     }
 
-    // Determinar ação do inimigo com sistema especializado
-    let actionType: 'attack' | 'spell' | 'special' = 'attack';
-    
-    // IA especializada baseada no comportamento e atributos do monstro
-    const hasSpecialAbilities = enemy.special_abilities && enemy.special_abilities.length > 0;
-    const isHighIntelligence = (enemy.intelligence || 10) > (enemy.strength || 10);
-    
-    // Probabilidades baseadas no comportamento
-    let specialChance = 0.15; // Base 15%
-    let spellChance = 0.20;   // Base 20%
-    
-    switch (enemy.behavior) {
-      case 'aggressive':
-        specialChance = 0.25; // Mais agressivo com especiais
-        spellChance = 0.10;   // Menos uso de magia
-        break;
-      case 'defensive':
-        specialChance = 0.30; // Muito uso de especiais defensivos
-        spellChance = 0.15;   // Magia moderada
-        break;
-      case 'balanced':
-        if (isHighIntelligence) {
-          spellChance = 0.35; // Magos usam muita magia
-          specialChance = 0.20;
-        } else {
-          spellChance = 0.20;
-          specialChance = 0.20;
-        }
-        break;
-    }
-    
-    // Aumentar chances de especiais se tem habilidades
-    if (hasSpecialAbilities) {
-      specialChance += 0.10;
-    }
-    
-    // Decidir ação
-    if (hasSpecialAbilities && Math.random() < specialChance) {
-      actionType = 'special';
-    } else if (enemy.mana >= 10 && Math.random() < spellChance) {
-      actionType = 'spell';
-    }
+    const { actionType } = decideEnemyAction(enemy);
 
     // LOG: Ação escolhida
-    console.log(`[GameService] Ação escolhida: ${actionType} (special: ${specialChance}, spell: ${spellChance})`);
 
     let message = '';
     let damage = 0;
@@ -1234,7 +1301,6 @@ export class GameService {
 
     switch (actionType) {
       case 'attack':
-        console.log(`[GameService] Executando ataque físico`);
         
         // Inimigos também podem ter críticos e duplo ataque baseado em seus stats
         const enemyDamageResult = this.calculateDamage(
@@ -1242,7 +1308,9 @@ export class GameService {
           player.def,
           enemy.critical_chance || 0,
           enemy.critical_damage || 110,
-          0 // Duplo ataque do inimigo baseado em velocidade seria implementado separadamente
+          0, // Duplo ataque do inimigo baseado em velocidade seria implementado separadamente
+          enemy.dexterity || 10,
+          enemy.speed || 10
         );
         
         damage = enemyDamageResult.damage;
@@ -1262,7 +1330,6 @@ export class GameService {
             const blockedDamage = damage - actualDamage;
             const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(null, blockedDamage);
             skillXpGains.push(...defenseSkillXp);
-            console.log(`[GameService] XP de defesa por bloqueio:`, defenseSkillXp);
           } catch (error) {
             console.warn('[processEnemyAction] Erro ao calcular XP de defesa:', error);
           }
@@ -1280,7 +1347,6 @@ export class GameService {
             // XP reduzido por ser um ataque não bloqueado
             const defenseSkillXp = SkillXpService.calculateDefenseSkillXp(null, Math.floor(actualDamage * 0.3));
             skillXpGains.push(...defenseSkillXp);
-            console.log(`[GameService] XP de defesa passiva:`, defenseSkillXp);
           } catch (error) {
             console.warn('[processEnemyAction] Erro ao calcular XP de defesa passiva:', error);
           }
@@ -1291,67 +1357,7 @@ export class GameService {
         
         // CRÍTICO: Verificar se o jogador morreu e processar permadeath
         if (newHp <= 0) {
-          console.log(`[GameService] Jogador ${player.name} morreu - iniciando processo de permadeath`);
-          
-          try {
-            // Matar o personagem permanentemente
-            const deathResult = await CemeteryService.killCharacter(
-              player.id,
-              'Battle defeat',
-              enemy.name
-            );
-            
-            if (deathResult.success) {
-              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
-              
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
-                  characterDeleted: true // Flag para indicar que o personagem foi deletado
-                }
-              };
-            } else {
-              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
-              // Em caso de erro, ainda processar como morte mas sem deletar
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado!`
-                }
-              };
-            }
-          } catch (error) {
-            console.error(`[GameService] Erro crítico ao processar morte:`, error);
-            // Fallback em caso de erro crítico
-            return {
-              newState: {
-                ...gameState,
-                player: {
-                  ...player,
-                  hp: 0,
-                  isDefending: false
-                },
-                mode: 'gameover',
-                isPlayerTurn: true,
-                gameMessage: `${message} Você foi derrotado!`
-              }
-            };
-          }
+          return this.resolvePlayerDefeat(gameState, enemy.name, message);
         }
         
         const resultState = {
@@ -1373,11 +1379,9 @@ export class GameService {
 
         // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
         const updatedResultState = SpellService.updateSpellCooldowns(resultState);
-        console.log(`[GameService] Ataque processado com sucesso. Mensagem: ${message}`);
         return { newState: updatedResultState, skillXpGains, skillMessages };
 
       case 'spell':
-        console.log(`[GameService] Executando magia`);
         // Inimigo usa magia
         const spellDamage = Math.floor(enemy.attack * 1.2);
         const spellCost = 10;
@@ -1407,79 +1411,12 @@ export class GameService {
         
         // CRÍTICO: Verificar se o jogador morreu e processar permadeath
         if (newSpellHp <= 0) {
-          console.log(`[GameService] Jogador ${player.name} morreu por magia - iniciando processo de permadeath`);
-          
-          try {
-            // Matar o personagem permanentemente
-            const deathResult = await CemeteryService.killCharacter(
-              player.id,
-              'Battle defeat',
-              enemy.name
-            );
-            
-            if (deathResult.success) {
-              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
-              
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  currentEnemy: {
-                    ...enemy,
-                    mana: Math.max(0, enemy.mana - spellCost)
-          },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
-                  characterDeleted: true // Flag para indicar que o personagem foi deletado
-                }
-              };
-            } else {
-              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
-              // Em caso de erro, ainda processar como morte mas sem deletar
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  currentEnemy: {
-                    ...enemy,
-                    mana: Math.max(0, enemy.mana - spellCost)
-                  },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado!`
-                }
-              };
-            }
-          } catch (error) {
-            console.error(`[GameService] Erro crítico ao processar morte por magia:`, error);
-            // Fallback em caso de erro crítico
-            return {
-              newState: {
-                ...gameState,
-                player: {
-                  ...player,
-                  hp: 0,
-                  isDefending: false
-                },
-                currentEnemy: {
-                  ...enemy,
-                  mana: Math.max(0, enemy.mana - spellCost)
-                },
-                mode: 'gameover',
-                isPlayerTurn: true,
-                gameMessage: `${message} Você foi derrotado!`
-              }
-            };
-          }
+          return this.resolvePlayerDefeat(gameState, enemy.name, message, {
+            currentEnemy: {
+              ...enemy,
+              mana: Math.max(0, enemy.mana - spellCost),
+            },
+          });
         }
         
         const spellResultState = {
@@ -1504,7 +1441,6 @@ export class GameService {
 
         // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
         const updatedSpellResultState = SpellService.updateSpellCooldowns(spellResultState);
-        console.log(`[GameService] Magia processada com sucesso. Mensagem: ${message}`);
         return { newState: updatedSpellResultState, skillXpGains, skillMessages: spellSkillMessages };
 
       case 'special':
@@ -1559,37 +1495,30 @@ export class GameService {
             message = `${enemy.name} usou ${abilityName}! ${actualDamage} de dano!`;
           }
         } else {
-          // Fallback para comportamento antigo se não tem habilidades
-          switch (enemy.behavior) {
-            case 'aggressive':
-              damage = Math.floor(enemy.attack * 1.5);
-              actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
-              message = `${enemy.name} usou Ataque Furioso e causou ${actualDamage} de dano!`;
-              break;
-            case 'defensive':
-              const healAmount = Math.floor(enemy.maxHp * 0.15);
-              const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
-              const defensiveHealState = {
-                ...gameState,
-                player: {
-                  ...player,
-                  potionUsedThisTurn: false
-                },
-                currentEnemy: {
-                  ...enemy,
-                  hp: newEnemyHp
-                },
-                isPlayerTurn: true,
-                gameMessage: `${enemy.name} se concentrou e recuperou ${healAmount} HP!`
-              };
-              // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
-              const updatedDefensiveHealState = SpellService.updateSpellCooldowns(defensiveHealState);
-              return { newState: updatedDefensiveHealState };
-            default:
-              damage = Math.floor(enemy.attack * 1.3);
-              actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
-              message = `${enemy.name} usou uma habilidade especial e causou ${actualDamage} de dano!`;
+          const fallbackBehavior = getFallbackSpecialBehavior(enemy);
+          if (fallbackBehavior.kind === 'heal') {
+            const healAmount = Math.floor(enemy.maxHp * 0.15);
+            const newEnemyHp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+            const defensiveHealState = {
+              ...gameState,
+              player: {
+                ...player,
+                potionUsedThisTurn: false
+              },
+              currentEnemy: {
+                ...enemy,
+                hp: newEnemyHp
+              },
+              isPlayerTurn: true,
+              gameMessage: fallbackBehavior.message.replace('{heal}', String(healAmount))
+            };
+            const updatedDefensiveHealState = SpellService.updateSpellCooldowns(defensiveHealState);
+            return { newState: updatedDefensiveHealState };
           }
+
+          damage = Math.floor(enemy.attack * (fallbackBehavior.multiplier || 1.3));
+          actualDamage = player.isDefending || playerDefendAction ? Math.floor(damage * 0.15) : damage;
+          message = fallbackBehavior.message.replace('{damage}', String(actualDamage));
         }
         
         // XP de defesa por receber habilidade especial
@@ -1616,67 +1545,7 @@ export class GameService {
         
         // CRÍTICO: Verificar se o jogador morreu e processar permadeath
         if (newSpecialHp <= 0) {
-          console.log(`[GameService] Jogador ${player.name} morreu por habilidade especial - iniciando processo de permadeath`);
-          
-          try {
-            // Matar o personagem permanentemente
-            const deathResult = await CemeteryService.killCharacter(
-              player.id,
-              'Battle defeat',
-              enemy.name
-            );
-            
-            if (deathResult.success) {
-              console.log(`[GameService] Personagem ${player.name} movido para o cemitério com sucesso`);
-              
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado! Seu personagem foi perdido permanentemente.`,
-                  characterDeleted: true // Flag para indicar que o personagem foi deletado
-                }
-              };
-            } else {
-              console.error(`[GameService] Erro ao mover personagem para cemitério:`, deathResult.error);
-              // Em caso de erro, ainda processar como morte mas sem deletar
-              return {
-                newState: {
-                  ...gameState,
-                  player: {
-                    ...player,
-                    hp: 0,
-                    isDefending: false
-                  },
-                  mode: 'gameover',
-                  isPlayerTurn: true,
-                  gameMessage: `${message} Você foi derrotado!`
-                }
-              };
-            }
-          } catch (error) {
-            console.error(`[GameService] Erro crítico ao processar morte por habilidade especial:`, error);
-            // Fallback em caso de erro crítico
-            return {
-              newState: {
-                ...gameState,
-                player: {
-                  ...player,
-                  hp: 0,
-                  isDefending: false
-                },
-                mode: 'gameover',
-                isPlayerTurn: true,
-                gameMessage: `${message} Você foi derrotado!`
-              }
-            };
-          }
+          return this.resolvePlayerDefeat(gameState, enemy.name, message);
         }
         
         const specialResultState = {
@@ -1697,12 +1566,9 @@ export class GameService {
 
         // CRÍTICO: Reduzir cooldowns das magias após turno do inimigo
         const updatedSpecialResultState = SpellService.updateSpellCooldowns(specialResultState);
-        console.log(`[GameService] Habilidade especial processada com sucesso. Mensagem: ${message}`);
         return { newState: updatedSpecialResultState, skillXpGains, skillMessages: specialSkillMessages };
 
       default:
-        console.log(`[GameService] ERRO: Ação desconhecida: ${actionType}`);
-        console.log(`[GameService] Este caso não deveria ser executado!`);
         const defaultState = { 
           ...gameState, 
           player: {
@@ -1718,70 +1584,53 @@ export class GameService {
   }
 
   /**
-   * Avançar para o próximo andar após coletar recompensas
-   * @param gameState Estado atual do jogo
-   * @returns Novo estado com o próximo andar
+   * Próximo andar após vitória: persiste `floor` no banco, gera piso e novo inimigo.
+   * Pré: recompensas já aplicadas ao jogador; chamado tipicamente após ação `continue` no provider.
+   * Pós: `player.floor` incrementado, novo `currentFloor` e `currentEnemy`, `battleRewards` limpo pelo caller.
+   * Persistência: CharacterService.updateCharacterFloor e leituras subsequentes de monstro/andar.
    */
   static async advanceToNextFloor(gameState: GameState): Promise<GameState> {
     const { player } = gameState;
     const nextFloor = player.floor + 1;
     
-    console.log(`[GameService] Avançando do andar ${player.floor} para ${nextFloor}`);
 
     try {
       // Limpar todos os caches antes de começar
-      console.log(`[GameService] === LIMPANDO CACHES ANTES DE AVANÇAR ===`);
       this.clearAllCaches();
       MonsterService.clearCache();
-      console.log(`[GameService] === CACHES LIMPOS ===`);
 
       // Atualizar andar no banco de dados ANTES de gerar novos dados
-      console.log(`[GameService] === ATUALIZANDO ANDAR NO BANCO ===`);
-      console.log(`[GameService] Personagem: ${player.id}`);
-      console.log(`[GameService] Andar atual: ${player.floor} -> Próximo andar: ${nextFloor}`);
       
       const updateResult = await CharacterService.updateCharacterFloor(player.id, nextFloor);
       if (!updateResult.success) {
         console.error(`[GameService] ERRO ao atualizar andar:`, updateResult.error);
         throw new Error(updateResult.error || 'Erro ao atualizar andar do personagem');
       }
-      console.log(`[GameService] === ANDAR ATUALIZADO NO BANCO: ${nextFloor} ===`);
 
       // Obter dados do próximo andar
-      console.log(`[GameService] Carregando dados do andar ${nextFloor}...`);
       const nextFloorData = await this.getFloorData(nextFloor);
       if (!nextFloorData) {
         throw new Error(`Erro ao gerar dados do andar ${nextFloor}`);
       }
 
-      console.log(`[GameService] Dados do andar ${nextFloor} carregados:`, nextFloorData.description);
 
       // Gerar novo inimigo para o próximo andar
-      console.log(`[GameService] === GERANDO INIMIGO PARA ANDAR ${nextFloor} ===`);
-      console.log(`[GameService] Chamando MonsterService.getMonsterForFloor(${nextFloor})...`);
       
       const nextEnemy = await this.generateEnemy(nextFloor);
       
-      // CRÍTICO: Se não conseguir gerar inimigo, algo está errado
+      // Verificar se conseguiu gerar inimigo
       if (!nextEnemy) {
-        console.error(`[GameService] === FALHA AO GERAR INIMIGO ===`);
-        console.error(`[GameService] Andar solicitado: ${nextFloor}`);
-        console.error(`[GameService] generateEnemy retornou: null`);
-        throw new Error(`Falha ao gerar inimigo para o andar ${nextFloor} - verifique se há monstros no banco para este andar`);
+        console.error(`[GameService] Falha ao gerar inimigo para andar ${nextFloor}`);
+        throw new Error(`Falha ao gerar inimigo para o andar ${nextFloor}`);
       }
 
-      console.log(`[GameService] === INIMIGO GERADO COM SUCESSO ===`);
-      console.log(`[GameService] Andar: ${nextFloor}`);
-      console.log(`[GameService] Inimigo: ${nextEnemy.name} (HP: ${nextEnemy.hp}/${nextEnemy.maxHp}, ATK: ${nextEnemy.attack}, DEF: ${nextEnemy.defense})`);
-      console.log(`[GameService] ID do inimigo: ${nextEnemy.id}`);
 
-      // Verificar se há evento especial (reduzido para 5% para evitar problemas)
+      // Verificar se há evento especial (5% de chance)
       let specialEvent = null;
       const specialEventChance = Math.random();
       
-      if (specialEventChance < 0.05) { // 5% de chance
+      if (specialEventChance < 0.05) {
         try {
-          console.log(`[GameService] Tentando gerar evento especial para andar ${nextFloor}...`);
           const { data: eventData, error: eventError } = await supabase
             .rpc('get_special_event_for_floor', {
               p_floor: nextFloor
@@ -1789,28 +1638,9 @@ export class GameService {
 
           if (!eventError && eventData) {
             specialEvent = eventData;
-            console.log(`[GameService] Evento especial gerado para andar ${nextFloor}:`, specialEvent.name);
           }
         } catch (error) {
           console.error('[GameService] Erro ao gerar evento especial (ignorando):', error);
-          // Continuar sem evento especial em caso de erro
-        }
-      }
-
-      // CRÍTICO: Criar nova sessão de batalha se não for evento especial
-      let newBattleSession = undefined;
-      if (!specialEvent && nextEnemy) {
-        try {
-          // Importar TurnControlService dinamicamente para evitar dependência circular
-          const { TurnControlService } = await import('./turn-control.service');
-          
-          console.log(`[GameService] Criando nova sessão de batalha para andar ${nextFloor} com inimigo ${nextEnemy.name}`);
-          TurnControlService.performCleanup(); // Limpar sessões antigas primeiro
-          newBattleSession = TurnControlService.initializeBattleSession(nextFloor, nextEnemy.name);
-          console.log(`[GameService] Nova sessão de batalha criada: ${newBattleSession.sessionId}`);
-        } catch (error) {
-          console.error('[GameService] Erro ao criar sessão de batalha, continuando sem ela:', error);
-          // Continuar sem sessão - será criada posteriormente se necessário
         }
       }
 
@@ -1837,16 +1667,9 @@ export class GameService {
         selectedSpell: null, // Limpar spell selecionado ao avançar
         characterDeleted: false, // Resetar flags de estado
         fleeSuccessful: false,
-        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor),
-        battleSession: newBattleSession, // CRÍTICO: Incluir nova sessão no estado
-        actionLocks: new Map() // Limpar locks de ações
+        highestFloor: Math.max(gameState.highestFloor || 0, nextFloor)
       };
 
-      console.log(`[GameService] Estado do jogo atualizado para andar ${nextFloor} com sucesso`);
-      console.log(`[GameService] - Modo: ${newGameState.mode}`);
-      console.log(`[GameService] - Andar: ${newGameState.currentFloor?.description}`);
-      console.log(`[GameService] - Inimigo: ${newGameState.currentEnemy?.name || 'N/A'}`);
-      console.log(`[GameService] - Evento: ${newGameState.currentSpecialEvent?.name || 'N/A'}`);
       
       return newGameState;
 
@@ -1854,7 +1677,6 @@ export class GameService {
       console.error(`[GameService] Erro crítico ao avançar para andar ${nextFloor}:`, error);
       
       // FALLBACK: Tentar gerar estado mínimo funcional
-      console.log(`[GameService] Tentando criar estado de fallback para andar ${nextFloor}...`);
       
       try {
         const fallbackEnemy = await this.generateEnemy(nextFloor);
@@ -1871,7 +1693,6 @@ export class GameService {
           description: `Andar ${nextFloor} - Área Desconhecida`
         };
         
-        console.log(`[GameService] Estado de fallback criado para andar ${nextFloor}`);
         
         return {
           ...gameState,
@@ -1918,7 +1739,6 @@ export class GameService {
       return gameState;
     }
 
-    console.log(`[GameService] Processando evento especial: ${currentSpecialEvent.name}`);
 
     // Aplicar efeitos do evento
     let newHp = player.hp;
@@ -1949,17 +1769,50 @@ export class GameService {
         message = `Você explorou o evento ${currentSpecialEvent.name}.`;
     }
 
+    const updatedPlayer = {
+      ...player,
+      hp: newHp,
+      mana: newMana,
+      gold: newGold,
+    };
+
+    const floorNum = updatedPlayer.floor;
+    let currentFloor = gameState.currentFloor;
+    if (!currentFloor || currentFloor.floorNumber !== floorNum) {
+      currentFloor = (await this.getFloorData(floorNum)) ?? {
+        floorNumber: floorNum,
+        type: 'event' as FloorType,
+        isCheckpoint: floorNum % 10 === 0,
+        minLevel: Math.max(1, Math.floor(floorNum / 5)),
+        description: `Andar ${floorNum}`,
+      };
+    }
+
+    const enemy = await this.generateEnemy(floorNum);
+    if (!enemy) {
+      return {
+        ...gameState,
+        player: updatedPlayer,
+        currentFloor,
+        currentEnemy: null,
+        currentSpecialEvent: null,
+        mode: 'battle',
+        gameMessage: `${message} Não foi possível gerar um inimigo para o andar ${floorNum}. Volte ao hub ou tente novamente.`,
+        isPlayerTurn: true,
+        battleRewards: null,
+      };
+    }
+
     return {
       ...gameState,
-      player: {
-        ...player,
-        hp: newHp,
-        mana: newMana,
-        gold: newGold
-      },
-      gameMessage: message,
-      currentSpecialEvent: null, // Remove o evento após interação
-      mode: 'battle' // Volta para modo de batalha
+      player: updatedPlayer,
+      currentFloor,
+      currentEnemy: enemy,
+      currentSpecialEvent: null,
+      mode: 'battle',
+      gameMessage: `${message} Um ${enemy.name} aparece!`,
+      isPlayerTurn: true,
+      battleRewards: null,
     };
   }
 

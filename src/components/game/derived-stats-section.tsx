@@ -11,10 +11,6 @@ interface DerivedStatsSectionProps {
 }
 
 export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps) {
-  // =====================================
-  // SISTEMA ANTI-MONO-BUILD (EXATO DO CharacterService)
-  // =====================================
-  
   const str = characterStats.strength || 10;
   const dex = characterStats.dexterity || 10;
   const int = characterStats.intelligence || 10;
@@ -22,58 +18,23 @@ export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps
   const vit = characterStats.vitality || 10;
   const luck = characterStats.luck || 10;
   const level = characterStats.level;
-  
-  const totalAttributes = str + dex + int + wis + vit + luck;
-  
-  // Calcular diversidade EXATA (0-1, onde 1 = perfeitamente balanceado)
-  const attributeDiversity = 1.0 - (
-    Math.abs(str / totalAttributes - 1.0/6.0) +
-    Math.abs(dex / totalAttributes - 1.0/6.0) +
-    Math.abs(int / totalAttributes - 1.0/6.0) +
-    Math.abs(wis / totalAttributes - 1.0/6.0) +
-    Math.abs(vit / totalAttributes - 1.0/6.0) +
-    Math.abs(luck / totalAttributes - 1.0/6.0)
-  ) / 2.0;
-  
-  // Bônus por diversidade (builds balanceadas ganham até 20% de bônus)
-  const diversityBonus = 1.0 + (attributeDiversity * 0.2);
-  
-  // Penalidade para mono-builds EXATA
-  let monoPenalty = 1.0;
-  const maxAttributePercentage = Math.max(
-    str / totalAttributes,
-    dex / totalAttributes,
-    int / totalAttributes,
-    wis / totalAttributes,
-    vit / totalAttributes,
-    luck / totalAttributes
-  );
-  
-  if (maxAttributePercentage > 0.8) {
-    monoPenalty = 0.7; // Penalidade de 30%
-  }
-  
-  // =====================================
-  // ESCALAMENTO LOGARÍTMICO EXATO
-  // =====================================
-  
-  const strScaling = Math.pow(str, 1.2) * diversityBonus * monoPenalty;
-  const dexScaling = Math.pow(dex, 1.15) * diversityBonus * monoPenalty;
-  const intScaling = Math.pow(int, 1.25) * diversityBonus * monoPenalty;
-  const wisScaling = Math.pow(wis, 1.1) * diversityBonus * monoPenalty;
-  const vitScaling = Math.pow(vit, 1.3) * diversityBonus * monoPenalty;
-  const luckScaling = luck * diversityBonus * monoPenalty;
-  
-  // Habilidades com bônus de diversidade EXATO
+
+  const strScaling = Math.pow(str, 1.2);
+  const dexScaling = Math.pow(dex, 1.15);
+  const intScaling = Math.pow(int, 1.25);
+  const wisScaling = Math.pow(wis, 1.1);
+  const vitScaling = Math.pow(vit, 1.3);
+  const luckScaling = luck;
+
   const swordMastery = characterStats.sword_mastery || 1;
   const axeMastery = characterStats.axe_mastery || 1;
   const bluntMastery = characterStats.blunt_mastery || 1;
   const defenseMastery = characterStats.defense_mastery || 1;
   const magicMastery = characterStats.magic_mastery || 1;
-  
-  const weaponMasteryBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1) * diversityBonus;
-  const defMasteryBonus = Math.pow(defenseMastery, 1.2) * diversityBonus;
-  const magicMasteryBonus = Math.pow(magicMastery, 1.15) * diversityBonus;
+
+  const weaponMasteryBonus = Math.pow(Math.max(swordMastery, axeMastery, bluntMastery), 1.1);
+  const defMasteryBonus = Math.pow(defenseMastery, 1.2);
+  const magicMasteryBonus = Math.pow(magicMastery, 1.15);
   
   // =====================================
   // BASES EXATAS
@@ -179,22 +140,7 @@ export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps
     finalTotal: number
   ) => {
     const calculations = [...components];
-    
-    // Adicionar informações do sistema anti-mono-build
-    calculations.push({
-      label: `Diversidade da Build: ${(attributeDiversity * 100).toFixed(1)}%`,
-      value: `Bônus: ${((diversityBonus - 1) * 100).toFixed(1)}%`,
-      color: attributeDiversity > 0.7 ? 'text-green-400' : attributeDiversity > 0.4 ? 'text-yellow-400' : 'text-orange-400'
-    });
-    
-    if (monoPenalty < 1.0) {
-      calculations.push({
-        label: 'Penalidade Mono-Build:',
-        value: `-${((1 - monoPenalty) * 100).toFixed(0)}%`,
-        color: 'text-red-400'
-      });
-    }
-    
+
     // Adicionar bônus de equipamento se houver
     if (equipmentBonus > 0) {
       calculations.push({
@@ -435,41 +381,6 @@ export function DerivedStatsSection({ characterStats }: DerivedStatsSectionProps
               tooltipData={stat.tooltipData}
             />
           ))}
-        </div>
-        
-        {/* Análise da Build */}
-        <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
-          <h4 className="text-sm font-medium text-slate-200 mb-2">Análise da Build:</h4>
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <span className="text-slate-400">Diversidade:</span>
-              <span className={`ml-2 ${attributeDiversity > 0.7 ? 'text-green-400' : attributeDiversity > 0.4 ? 'text-yellow-400' : 'text-orange-400'}`}>
-                {(attributeDiversity * 100).toFixed(1)}%
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400">Bônus:</span>
-              <span className="ml-2 text-green-400">
-                +{((diversityBonus - 1) * 100).toFixed(1)}%
-              </span>
-            </div>
-            {monoPenalty < 1.0 && (
-              <>
-                <div>
-                  <span className="text-slate-400">Mono-Build:</span>
-                  <span className="ml-2 text-red-400">
-                    -{((1 - monoPenalty) * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400">Dominante:</span>
-                  <span className="ml-2 text-yellow-400">
-                    {(maxAttributePercentage * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>

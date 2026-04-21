@@ -167,7 +167,7 @@ export const AuthService = {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       try {
-        // Usar função RPC ou inserção direta com service_role
+        // Perfil público via RPC (sessão recém-criada)
         await supabase.rpc('create_user_profile', {
           p_uid: data.user.id,
           p_username: username,

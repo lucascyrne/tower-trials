@@ -90,12 +90,12 @@ export default function CharacterStatsPage() {
         toast.error('Erro ao carregar stats do personagem', {
           description: response.error
         });
-        router.push('/game/play/hub?character=' + characterId);
+        router.push('/game/play/hub?character=' + characterId + '&refresh=1');
       }
     } catch (error) {
       console.error('Erro ao carregar stats:', error);
       toast.error('Erro ao carregar stats do personagem');
-      router.push('/game/play/hub?character=' + characterId);
+      router.push('/game/play/hub?character=' + characterId + '&refresh=1');
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,7 @@ export default function CharacterStatsPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">Erro ao carregar</h2>
           <p className="text-muted-foreground mb-4">Não foi possível carregar os stats do personagem</p>
-          <Button onClick={() => router.push('/game/play/hub?character=' + characterId)}>
+          <Button onClick={() => router.push('/game/play/hub?character=' + characterId + '&refresh=1')}>
             Voltar ao Hub
           </Button>
         </div>
@@ -252,7 +252,7 @@ export default function CharacterStatsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push('/game/play/hub?character=' + characterId)}
+              onClick={() => router.push('/game/play/hub?character=' + characterId + '&refresh=1')}
             >
               <ArrowLeft className="h-2 w-2 mr-2" />
               Voltar ao Hub

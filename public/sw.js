@@ -39,6 +39,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch - Serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Cache API só suporta GET; POST (ex.: Supabase RPC) não deve passar por cache.put
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;

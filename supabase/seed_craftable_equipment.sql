@@ -1,5 +1,9 @@
 -- Script para adicionar equipamentos craftáveis únicos e poderosos
 -- Estes equipamentos são mais fortes que os da loja e requerem drops específicos
+-- Depende do schema da migração 20241205000006_create_equipment_crafting (coluna craftable e tabelas de receitas).
+
+-- Garantir coluna craftable (idempotente; já existe se a migração 20241205000006 foi aplicada)
+ALTER TABLE equipment ADD COLUMN IF NOT EXISTS craftable BOOLEAN DEFAULT FALSE;
 
 -- =====================================
 -- EQUIPAMENTOS CRAFTÁVEIS ÚNICOS

@@ -23,7 +23,7 @@ export function PermadeathWarningModal({
   const isMobileLandscape = useMobileLandscape();
   
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
       <DialogContent className={`overflow-hidden ${
         isMobileLandscape 
           ? 'max-w-[95vw] max-h-[95vh] w-[95vw] p-3' 

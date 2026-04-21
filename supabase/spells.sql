@@ -23,7 +23,7 @@ INSERT INTO spells (name, description, effect_type, mana_cost, cooldown, unlocke
     ('Veneno', 'Envenena o inimigo causando dano ao longo do tempo. Escala com Inteligência (+8%) e Maestria Mágica (+12%).', 'dot'::spell_effect_type, 25, 4, 8, 10, 3),
     ('Escudo Arcano', 'Escudo mágico que aumenta defesa temporariamente. Escala com Sabedoria (+5%) e Maestria Mágica (+15%).', 'buff'::spell_effect_type, 30, 5, 9, 15, 2),
     ('Regeneração Menor', 'Regeneração contínua que cura HP ao longo de vários turnos. Escala com Sabedoria (+12%) e Maestria Mágica (+10%).', 'hot'::spell_effect_type, 40, 6, 10, 15, 3),
-    ('Dança da Lâmina', 'Técnica de combate que combina velocidade e precisão. Escala com Destreza (+12%) e Força (+8%).', 'damage'::spell_effect_type, 35, 3, 11, 40, 1),
+('Dança da Lâmina', 'Técnica de combate que combina velocidade e precisão. Escala com Destreza (+12%) e Força (+8%).', 'damage'::spell_effect_type, 35, 3, 11, 40, 1),
     ('Pele de Ferro', 'Endurece a pele temporariamente aumentando defesa. Escala com Vitalidade (+10%) e Força (+5%).', 'buff'::spell_effect_type, 45, 7, 12, 30, 3),
     ('Agilidade Felina', 'Aumenta drasticamente a velocidade e esquiva. Escala com Destreza (+15%) e Sorte (+8%).', 'buff'::spell_effect_type, 50, 6, 13, 25, 2),
     ('Sede de Sangue', 'Aumenta ataque mas reduz defesa temporariamente. Escala com Força (+12%) e reduz com Sabedoria (-5%).', 'buff'::spell_effect_type, 40, 5, 14, 35, 3),

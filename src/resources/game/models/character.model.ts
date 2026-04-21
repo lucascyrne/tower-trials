@@ -1,15 +1,22 @@
 import { EquipmentSlots } from './equipment.model';
 
-// Constantes do jogo
+/**
+ * Constantes de referência. Autoridade de progressão e stats derivados: Postgres
+ * (`calculate_xp_next_level`, `calculate_derived_stats`, colunas em `characters`).
+ * `PLACEHOLDER_BASE_STATS` alimenta apenas skeletons de UI (ex. game-context) antes do servidor.
+ */
 export const GAME_CONSTANTS = {
+  /** XP do nível 1; próximos: `FLOOR(100 * POW(1.56, level - 1))` em SQL (`calculate_xp_next_level`). */
   BASE_XP_NEXT_LEVEL: 100,
-  BASE_STATS: {
+  XP_PER_LEVEL_RATIO: 1.56,
+  PLACEHOLDER_BASE_STATS: {
     hp: 100,
     mana: 50,
     atk: 20,
     def: 10,
     speed: 10,
   },
+  /** Crescimento linear legado só para `calculateBaseStats` (estimativa local; não usar em combate). */
   STAT_GROWTH_PER_LEVEL: {
     hp: 10,
     mana: 5,
@@ -19,9 +26,9 @@ export const GAME_CONSTANTS = {
   },
   CHARACTER_SLOTS: {
     BASE_SLOTS: 3,
-    LEVELS_PER_SLOT: 15, // Níveis totais necessários por slot adicional
-  }
-};
+    LEVELS_PER_SLOT: 15,
+  },
+} as const;
 
 export interface Character {
   id: string;
@@ -39,6 +46,11 @@ export interface Character {
   def: number;
   speed: number;
   floor: number;
+  /** Máximo histórico alcançado; autoridade no Postgres (`characters.highest_floor`). */
+  highest_floor?: number;
+  magic_attack?: number;
+  magic_damage_bonus?: number;
+  double_attack_chance?: number;
   
   // Atributos primários
   strength: number;
@@ -109,11 +121,11 @@ export interface UpdateCharacterStatsResult {
 // Função para calcular stats base por nível
 export function calculateBaseStats(level: number, equipmentSlots?: EquipmentSlots) {
   const baseStats = {
-    hp: GAME_CONSTANTS.BASE_STATS.hp + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.hp * (level - 1)),
-    mana: GAME_CONSTANTS.BASE_STATS.mana + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.mana * (level - 1)),
-    atk: GAME_CONSTANTS.BASE_STATS.atk + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.atk * (level - 1)),
-    def: GAME_CONSTANTS.BASE_STATS.def + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.def * (level - 1)),
-    speed: GAME_CONSTANTS.BASE_STATS.speed + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.speed * (level - 1)),
+    hp: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.hp + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.hp * (level - 1)),
+    mana: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.mana + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.mana * (level - 1)),
+    atk: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.atk + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.atk * (level - 1)),
+    def: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.def + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.def * (level - 1)),
+    speed: GAME_CONSTANTS.PLACEHOLDER_BASE_STATS.speed + (GAME_CONSTANTS.STAT_GROWTH_PER_LEVEL.speed * (level - 1)),
   };
 
   // Adicionar bônus de equipamentos se fornecidos
@@ -142,7 +154,7 @@ export function calculateRequiredLevelForSlot(slotNumber: number): number {
 
 // Função para calcular quantos slots um usuário pode ter baseado no nível total
 export function calculateAvailableSlots(totalCharacterLevel: number): number {
-  let slots = GAME_CONSTANTS.CHARACTER_SLOTS.BASE_SLOTS;
+  let slots: number = GAME_CONSTANTS.CHARACTER_SLOTS.BASE_SLOTS;
   let currentSlot = GAME_CONSTANTS.CHARACTER_SLOTS.BASE_SLOTS + 1;
   
   while (totalCharacterLevel >= calculateRequiredLevelForSlot(currentSlot)) {

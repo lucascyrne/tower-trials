@@ -16,19 +16,16 @@ function BattlePage() {
   const searchParams = useSearchParams();
   const { loading } = useGame();
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
 
-  // Monitor de carregamento global - otimizado
+  // Bootstrap global apenas: performAction é mutex de turno — não pode desmontar a batalha.
   useEffect(() => {
-    if (!loading.loadProgress && !loading.performAction) {
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-      }, 100); // Reduzir delay para transições mais rápidas
-      
+    if (!loading.loadProgress && !loading.startGame) {
+      const timer = setTimeout(() => setIsLoading(false), 100);
       return () => clearTimeout(timer);
-    } else {
-      setIsLoading(true);
     }
-  }, [loading.loadProgress, loading.performAction]);
+    setIsLoading(true);
+  }, [loading.loadProgress, loading.startGame]);
 
   // Validar se o personagem existe no URL - apenas uma vez
   useEffect(() => {
@@ -39,7 +36,24 @@ function BattlePage() {
       });
       router.push('/game/play');
     }
-  }, []); // Remover dependências para executar apenas uma vez
+  }, [router, searchParams]);
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const isMobile = window.innerWidth <= 1024 || coarsePointer;
+      const isLandscape = window.innerWidth > window.innerHeight;
+      setIsMobileLandscape(isMobile && isLandscape);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   // Renderizar skeleton loader enquanto carrega
   if (isLoading) {
@@ -86,7 +100,7 @@ function BattlePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
+    <div className={isMobileLandscape ? 'h-screen w-screen overflow-hidden bg-gradient-to-b from-background to-secondary p-0' : 'min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-secondary p-4'}>
       <GameBattleWithTransition>
         <GameBattle />
       </GameBattleWithTransition>

@@ -38,6 +38,7 @@ interface CombinedBattleInterfaceProps {
   onPlayerConsumablesUpdate: (consumables: CharacterConsumable[]) => void;
   currentEnemy?: { hp: number; maxHp: number; name: string } | null;
   battleRewards?: { xp: number; gold: number; drops: { name: string; quantity: number }[]; leveledUp: boolean; newLevel?: number } | null;
+  compactLandscape?: boolean;
 }
 
 interface TooltipInfo {
@@ -85,7 +86,8 @@ export function CombinedBattleInterface({
   onPlayerStatsUpdate,
   onPlayerConsumablesUpdate,
   currentEnemy,
-  battleRewards
+  battleRewards,
+  compactLandscape = false
 }: CombinedBattleInterfaceProps) {
   const { performAction } = useContext(GameContext);
   const [potionSlots, setPotionSlots] = useState<PotionSlot[]>([]);
@@ -94,6 +96,7 @@ export function CombinedBattleInterface({
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [usedPotionAnimation, setUsedPotionAnimation] = useState<number | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   
   // OTIMIZADO: Controle para evitar múltiplos cliques e execuções duplicadas
   const [continuingAdventure, setContinuingAdventure] = useState(false);
@@ -102,6 +105,16 @@ export function CombinedBattleInterface({
   const ACTION_COOLDOWN_MS = 300; // 300ms entre ações
   
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      setIsMobileDevice(window.innerWidth <= 768 || coarsePointer);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Função para avançar para o próximo andar
   const handleContinueAdventure = useCallback(async () => {
@@ -128,6 +141,7 @@ export function CombinedBattleInterface({
   }, [continuingAdventure, battleRewards, performAction]);
 
   const isDisabled = !isPlayerTurn || loading.performAction;
+  
   const potionUsedThisTurn = player.potionUsedThisTurn || false;
   
   // CRÍTICO: Verificar se o personagem está morto
@@ -163,7 +177,6 @@ export function CombinedBattleInterface({
   }, [isPlayerTurn, loading.performAction, isDisabled, currentEnemy?.name, currentEnemy?.hp, battleRewards]);
   
   // CORRIGIDO: Verificação mais rigorosa para mostrar botão de próximo andar
-  // CORRIGIDO: Botão de fallback para quando inimigo está morto mas modais foram fechados
   const shouldShowNextFloorButton = Boolean(
     battleRewards && 
     !loading.performAction && 
@@ -171,6 +184,9 @@ export function CombinedBattleInterface({
     !continuingAdventure &&
     (!currentEnemy || currentEnemy.hp <= 0) // Mostrar se não há inimigo ou se está morto
   );
+  
+  // CRÍTICO: Fuga deve ser permitida sempre, exceto quando morto ou processando
+  const isFleeDisabled = loading.performAction || isPlayerDead;
   
   // DEBUG: Log detalhado das condições do botão
   useEffect(() => {
@@ -316,7 +332,7 @@ export function CombinedBattleInterface({
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       // CRÍTICO: Bloquear atalhos se personagem está morto
-      if (isPlayerDead || isDisabled || usingSlot !== null) return;
+      if (isPlayerDead || usingSlot !== null) return;
 
       // Verificar se o usuário está digitando em um input
       const target = event.target as HTMLElement;
@@ -329,20 +345,27 @@ export function CombinedBattleInterface({
       // Ações de combate
       switch (key) {
         case 'a':
+          // Atacar requer turno do jogador
+          if (isDisabled) return;
           event.preventDefault();
           handleAction('attack');
           return;
         case 's':
-          if (player.defenseCooldown === 0) {
-            event.preventDefault();
-            handleAction('defend');
-          }
+          // Defender requer turno do jogador
+          if (isDisabled || player.defenseCooldown > 0) return;
+          event.preventDefault();
+          handleAction('defend');
           return;
         case 'd':
+          // CRÍTICO: Fuga pode ser usada a qualquer momento (exceto quando morto/processando)
+          if (isFleeDisabled) return;
           event.preventDefault();
-          handleAction('flee');
+          executeAction('flee');
           return;
       }
+
+      // Verificar se outras ações requerem turno do jogador
+      if (isDisabled) return;
 
       // Poções
       let slotPosition = 0;
@@ -377,7 +400,7 @@ export function CombinedBattleInterface({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn]);
+  }, [isDisabled, isFleeDisabled, usingSlot, potionSlots, player.spells, player.mana, player.defenseCooldown, potionUsedThisTurn, isPlayerDead]);
 
   const getPotionKeyBinding = (position: number) => {
     switch (position) {
@@ -483,6 +506,9 @@ export function CombinedBattleInterface({
 
   // Handlers para mobile (touch)
   const handleTouchStart = (info: Omit<TooltipInfo, 'position'>, event: React.TouchEvent) => {
+    if (isMobileDevice || compactLandscape) {
+      return;
+    }
     event.preventDefault();
     
     // Capturar coordenadas antes do setTimeout
@@ -499,6 +525,9 @@ export function CombinedBattleInterface({
   };
 
   const handleTouchEnd = () => {
+    if (isMobileDevice || compactLandscape) {
+      return;
+    }
     if (pressTimer) {
       clearTimeout(pressTimer);
       setPressTimer(null);
@@ -508,7 +537,96 @@ export function CombinedBattleInterface({
   // Limitar magias a 3 para UI mais enxuta
   const displaySpells = player.spells.slice(0, 3);
 
+  if (compactLandscape) {
     return (
+      <div className="pointer-events-none fixed inset-0 h-screen w-screen">
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/60 to-transparent px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-8">
+          <div className="mx-auto w-full max-w-none space-y-2">
+          {shouldShowNextFloorButton && (
+            <Button
+              onClick={handleContinueAdventure}
+              disabled={loading.performAction || isPlayerDead || continuingAdventure}
+              className="h-10 w-full bg-emerald-600 hover:bg-emerald-500"
+            >
+              {continuingAdventure ? 'Avançando...' : 'Continuar Aventura'}
+            </Button>
+          )}
+
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              onClick={() => executeAction('attack')}
+              disabled={isDisabled || shouldShowNextFloorButton || isPlayerDead}
+              className="h-12 bg-red-600/20 text-red-300 hover:bg-red-600/30"
+              variant="outline"
+            >
+              <Sword className="mr-1 h-4 w-4" /> A
+            </Button>
+            <Button
+              onClick={() => executeAction('defend')}
+              disabled={isDisabled || player.defenseCooldown > 0 || shouldShowNextFloorButton || isPlayerDead}
+              className="h-12 bg-blue-600/20 text-blue-300 hover:bg-blue-600/30"
+              variant="outline"
+            >
+              <Shield className="mr-1 h-4 w-4" /> S
+            </Button>
+            <Button
+              onClick={() => executeAction('flee')}
+              disabled={isFleeDisabled}
+              className="h-12 bg-amber-600/20 text-amber-300 hover:bg-amber-600/30"
+              variant="outline"
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" /> D
+            </Button>
+          </div>
+
+          {displaySpells.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {displaySpells.map((spell, index) => {
+                const canCast = player.mana >= spell.mana_cost && spell.current_cooldown === 0;
+                return (
+                  <Button
+                    key={spell.id}
+                    onClick={() => executeAction('spell', spell.id)}
+                    disabled={isDisabled || !canCast || shouldShowNextFloorButton || isPlayerDead}
+                    className="h-11 justify-between bg-violet-600/15 px-2 text-violet-200 hover:bg-violet-600/25"
+                    variant="outline"
+                  >
+                    <span className="flex items-center gap-1">{getSpellIcon(spell)} {index + 1}</span>
+                    <span className="text-[10px]">{spell.mana_cost}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
+          {potionSlots.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {potionSlots.map((slot, index) => {
+                const consumableInInventory = player.consumables?.find(c => c.consumable_id === slot.consumable_id);
+                const availableQuantity = consumableInInventory?.quantity || 0;
+                const isOutOfStock = !!slot.consumable_id && availableQuantity <= 0;
+                return (
+                  <Button
+                    key={slot.slot_position}
+                    onClick={() => handlePotionSlotUse(slot.slot_position)}
+                    disabled={isDisabled || !slot.consumable_id || usingSlot !== null || potionUsedThisTurn || isOutOfStock || isPlayerDead}
+                    className="h-11 justify-between bg-emerald-600/15 px-2 text-emerald-200 hover:bg-emerald-600/25"
+                    variant="outline"
+                  >
+                    <span className="flex items-center gap-1">{['Q', 'W', 'E'][index]}</span>
+                    <span className="text-[10px]">x{availableQuantity}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <>
       {/* CRÍTICO: Overlay bloqueando interface se personagem morto */}
       {isPlayerDead && (
@@ -634,7 +752,7 @@ export function CombinedBattleInterface({
                   </Button>
                   <Badge 
                     variant="outline" 
-                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium hidden bg-background/90 border-muted-foreground/30 md:flex md:items-center md:justify-center"
                   >
                     A
                   </Badge>
@@ -685,8 +803,9 @@ export function CombinedBattleInterface({
                   </Button>
                   <Badge 
                     variant="outline" 
-                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
-                    style={{ display: player.defenseCooldown > 0 ? 'none' : 'flex' }}
+                    className={`absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium bg-background/90 border-muted-foreground/30 ${
+                      player.defenseCooldown > 0 ? 'hidden' : 'hidden md:flex md:items-center md:justify-center'
+                    }`}
                   >
                     S
                   </Badge>
@@ -697,10 +816,11 @@ export function CombinedBattleInterface({
                     onClick={() => executeAction('flee')}
                     onMouseDown={(e) => handleMouseDown({
                       title: 'Fugir',
-                      description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
+                      description: 'Tenta escapar da batalha baseado na sua velocidade vs velocidade do inimigo',
                       stats: [
-                        { label: 'Chance base', value: '70%' },
-                        { label: 'Penalidade', value: 'Possível dano' },
+                        { label: 'Chance base', value: '70% + mod. velocidade' },
+                        { label: 'Falha', value: 'Toma dano e perde turno' },
+                        { label: 'Sucesso', value: 'Volta ao hub (andar 1)' },
                         { label: 'Tecla', value: 'D' }
                       ]
                     }, e)}
@@ -708,25 +828,27 @@ export function CombinedBattleInterface({
                     onMouseLeave={handleMouseLeave}
                     onTouchStart={(e) => handleTouchStart({
                       title: 'Fugir',
-                      description: 'Tenta escapar da batalha. Nem sempre funciona contra inimigos mais fortes',
+                      description: 'Tenta escapar da batalha baseado na sua velocidade vs velocidade do inimigo',
                       stats: [
-                        { label: 'Chance base', value: '70%' },
-                        { label: 'Penalidade', value: 'Possível dano' }
+                        { label: 'Chance base', value: '70% + mod. velocidade' },
+                        { label: 'Falha', value: 'Toma dano e perde turno' },
+                        { label: 'Sucesso', value: 'Volta ao hub (andar 1)' }
                       ]
                     }, e)}
                     onTouchEnd={handleTouchEnd}
-                    disabled={isDisabled || shouldShowNextFloorButton || isPlayerDead}
+                    disabled={isFleeDisabled}
                     variant="ghost"
                     size="lg"
                     className={`h-12 w-12 md:h-14 md:w-14 rounded-xl p-0 border-2 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50 shadow-lg shadow-amber-500/10 transition-all duration-200 ${
-                      isPlayerDead ? 'opacity-30 cursor-not-allowed' : ''
+                      isPlayerDead ? 'opacity-30 cursor-not-allowed' : 
+                      loading.performAction ? 'opacity-50 animate-pulse' : ''
                     }`}
                   >
                     <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-amber-500/80" />
                   </Button>
                   <Badge 
                     variant="outline" 
-                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                    className="absolute -top-1 -right-1 md:-top-2 md:-right-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium hidden bg-background/90 border-muted-foreground/30 md:flex md:items-center md:justify-center"
                   >
                     D
                   </Badge>
@@ -950,7 +1072,7 @@ export function CombinedBattleInterface({
                         
                         <Badge 
                           variant="outline" 
-                          className="absolute -top-1 -left-1 md:-top-2 md:-left-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium flex items-center justify-center bg-background/90 border-muted-foreground/30 hidden md:flex"
+                          className="absolute -top-1 -left-1 md:-top-2 md:-left-2 h-4 w-4 md:h-5 md:w-5 p-0 text-xs font-medium hidden bg-background/90 border-muted-foreground/30 md:flex md:items-center md:justify-center"
                         >
                           {keyBinding}
                         </Badge>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Equipment } from '@/resources/game/models/equipment.model';
 import { Consumable } from '@/resources/game/models/consumable.model';
 import { EquipmentService } from '@/resources/game/equipment.service';
@@ -6,6 +6,7 @@ import { ConsumableService } from '@/resources/game/consumable.service';
 import { Character } from '@/resources/game/models/character.model';
 import { ShopLayout } from './ShopLayout';
 import { InventoryModal } from './InventoryModal';
+import ConfirmationModal from '@/components/core/confirmation-modal';
 import { toast } from 'sonner';
 
 interface GameShopProps {
@@ -18,12 +19,15 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
     const [availableConsumables, setAvailableConsumables] = useState<Consumable[]>([]);
     const [loading, setLoading] = useState(true);
     const [inventoryOpen, setInventoryOpen] = useState(false);
+    const [purchaseConfirmationOpen, setPurchaseConfirmationOpen] = useState(false);
+    const [pendingPurchase, setPendingPurchase] = useState<{
+        type: 'equipment' | 'consumable';
+        equipment?: Equipment;
+        consumable?: Consumable;
+        quantity?: number;
+    } | null>(null);
 
-    useEffect(() => {
-        loadShopItems();
-    }, [character.level]);
-
-    const loadShopItems = async (preserveScroll: boolean = false) => {
+    const loadShopItems = useCallback(async (preserveScroll: boolean = false) => {
         try {
             // Salvar posição do scroll antes de recarregar se necessário
             let scrollTop = 0;
@@ -62,9 +66,13 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
                 setLoading(false);
             }
         }
-    };
+    }, [character.level]);
 
-    const handleEquipmentPurchase = async (equipment: Equipment) => {
+    useEffect(() => {
+        loadShopItems();
+    }, [loadShopItems]);
+
+    const executeEquipmentPurchase = async (equipment: Equipment) => {
         if (character.gold < equipment.price) {
             toast.error('Gold insuficiente para comprar este item!');
             return;
@@ -84,7 +92,7 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         }
     };
 
-    const handleConsumablePurchase = async (consumable: Consumable, quantity: number = 1) => {
+    const executeConsumablePurchase = async (consumable: Consumable, quantity: number = 1) => {
         const totalPrice = consumable.price * quantity;
         
         if (character.gold < totalPrice) {
@@ -103,6 +111,30 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
         } catch (error) {
             console.error('Erro ao comprar consumível:', error);
             toast.error('Erro ao comprar consumível!');
+        }
+    };
+
+    const handleEquipmentPurchase = (equipment: Equipment) => {
+        setPendingPurchase({ type: 'equipment', equipment });
+        setPurchaseConfirmationOpen(true);
+    };
+
+    const handleConsumablePurchase = (consumable: Consumable, quantity: number = 1) => {
+        setPendingPurchase({ type: 'consumable', consumable, quantity });
+        setPurchaseConfirmationOpen(true);
+    };
+
+    const handleConfirmPurchase = async () => {
+        if (!pendingPurchase) return;
+        if (pendingPurchase.type === 'equipment' && pendingPurchase.equipment) {
+            await executeEquipmentPurchase(pendingPurchase.equipment);
+            return;
+        }
+        if (pendingPurchase.type === 'consumable' && pendingPurchase.consumable) {
+            await executeConsumablePurchase(
+                pendingPurchase.consumable,
+                pendingPurchase.quantity || 1
+            );
         }
     };
 
@@ -138,6 +170,22 @@ export const GameShop: React.FC<GameShopProps> = ({ character, onPurchase }) => 
                 isOpen={inventoryOpen}
                 onClose={() => setInventoryOpen(false)}
                 onItemSold={handleInventoryItemSold}
+            />
+
+            <ConfirmationModal
+                isOpen={purchaseConfirmationOpen}
+                setIsOpen={setPurchaseConfirmationOpen}
+                onConfirmation={handleConfirmPurchase}
+                title="Confirmar compra"
+                description={
+                    pendingPurchase?.type === 'equipment' && pendingPurchase.equipment
+                        ? `Comprar ${pendingPurchase.equipment.name} por ${pendingPurchase.equipment.price} gold?`
+                        : pendingPurchase?.type === 'consumable' && pendingPurchase.consumable
+                          ? `Comprar ${pendingPurchase.quantity || 1}x ${pendingPurchase.consumable.name} por ${(pendingPurchase.consumable.price * (pendingPurchase.quantity || 1))} gold?`
+                          : 'Deseja confirmar esta compra?'
+                }
+                confirmText="Confirmar compra"
+                cancelText="Cancelar"
             />
         </>
     );
