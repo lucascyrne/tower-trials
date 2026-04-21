@@ -2,14 +2,14 @@
 
 import { useAuth } from '@/resources/auth/auth-hook';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { JSX, useEffect } from 'react';
+import { JSX, Suspense, useEffect } from 'react';
 import LoadingSpin from '../ui/loading-sping';
 
 interface Props {
   children: JSX.Element;
 }
 
-export default function AuthenticatedOnlyFeature({ children }: Props): JSX.Element {
+function AuthenticatedOnlyFeatureInner({ children }: Props): JSX.Element {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -27,4 +27,12 @@ export default function AuthenticatedOnlyFeature({ children }: Props): JSX.Eleme
   }
 
   return children;
+}
+
+export default function AuthenticatedOnlyFeature({ children }: Props): JSX.Element {
+  return (
+    <Suspense fallback={<LoadingSpin />}>
+      <AuthenticatedOnlyFeatureInner>{children}</AuthenticatedOnlyFeatureInner>
+    </Suspense>
+  );
 }

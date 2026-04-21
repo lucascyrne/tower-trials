@@ -15,7 +15,6 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  themeColor: "#1a1a1a",
 };
 
 export const viewport: Viewport = {
@@ -24,6 +23,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#1a1a1a",
 };
 
 export default function RootLayout({

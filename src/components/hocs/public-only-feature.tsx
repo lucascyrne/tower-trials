@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/resources/auth/auth-hook';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import LoadingSpin from '../ui/loading-sping';
 import { toast } from 'sonner';
 
@@ -10,7 +10,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-export default function PublicOnlyFeature({ children }: Props): React.ReactNode {
+function PublicOnlyFeatureInner({ children }: Props): React.ReactNode {
   const { user, signOut, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,4 +58,12 @@ export default function PublicOnlyFeature({ children }: Props): React.ReactNode 
   }
 
   return children;
+}
+
+export default function PublicOnlyFeature({ children }: Props): React.ReactNode {
+  return (
+    <Suspense fallback={<LoadingSpin />}>
+      <PublicOnlyFeatureInner>{children}</PublicOnlyFeatureInner>
+    </Suspense>
+  );
 }
